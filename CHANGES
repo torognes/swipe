@@ -1,0 +1,33 @@
+2012-08-09  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.5
+	* Added option (-H) to show taxid and membership/link bits
+
+2012-07-04  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.4
+	* Fixed display of header lines with TSV format (-m 9)
+
+2012-06-11  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.3
+	* Fixed bug with option "-c" not being allowed
+
+2012-06-08  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.2
+	* Fixed bug relating to amino acids symbols "JOU*" on non-SSSE3 cpus
+	* Minor output format changes / bug fixes
+
+2012-02-24  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.1
+	* hits.cc: Fixed bug in display of alignment coordinates 
+          in XML and TSV formats
+
+2012-02-01  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.0
+	* Initial release of version 2 with many new features
+
+2011-04-11  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 1.0
+	* Added scoring matrices to the distribution
+
+2011-02-25  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 1.0
+	* Initial release of the software

@@ -1,0 +1,88 @@
+SWIPE
+Smith-Waterman database searches with Inter-sequence Parallel Execution
+
+Copyright (C) 2008-2012 Torbjørn Rognes, University of Oslo, 
+Oslo University Hospital and Sencel Bioinformatics AS
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+Contact: Torbjørn Rognes <torognes@ifi.uio.no>, 
+Department of Informatics, University of Oslo, 
+PO Box 1080 Blindern, NO-0316 Oslo, Norway
+
+--
+
+SWIPE version 2 incorporates a number of new features compared to the initial
+release, most notably hit statistics, alignments, as well as support for
+nucleotide sequences, large databases and MPI.
+
+The software is available from http://dna.uio.no/swipe/
+
+SWIPE is distributed under the GNU Affero General Public License, version 3.
+See the file COPYING for details. SWIPE includes some public domain code for
+computing alignment statistics extracted from the BLAST software by the
+National Center for Biotechnology Information (NCBI).
+
+Please cite: Rognes T (2011) Faster Smith-Waterman database searches with
+inter-sequence SIMD parallelisation. BMC Bioinformatics 12, 221.
+
+Usage: ./[mpi]swipe [OPTIONS]
+  -h, --help                 show help
+  -d, --db=FILE              sequence database base name (required)
+  -i, --query=FILE           query sequence filename (stdin)
+  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)
+  -q, --penalty=NUM          penalty for nucleotide mismatch (-3)
+  -r, --reward=NUM           reward for nucleotide match (1)
+  -G, --gapopen=NUM          gap open penalty (11)
+  -E, --gapextend=NUM        gap extension penalty (1)
+  -v, --num_descriptions=NUM sequence descriptions to show (250)
+  -b, --num_alignments=NUM   sequence alignments to show (100)
+  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)
+  -k  --minevalue=REAL       minimum expect value of sequences to show (0.0)
+  -c, --min_score=NUM        minimum score of sequences to show (1)
+  -u, --max_score=NUM        maximum score of sequences to show (inf.)
+  -a, --num_threads=NUM      number of threads to use [1-256] (1)
+  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)
+  -I, --show_gis             show gi numbers in results (no)
+  -p, --symtype=NAME/NUM     symbol type/translation [0-5] (1)
+  -S, --strand=NAME/NUM      query strands to search [1-3] (3)
+  -Q, --query_gencode=NUM    query genetic code [1-23] (1)
+  -D, --db_gencode=NUM       database genetic code [1-23] (1)
+  -x, --taxidlist=FILE       taxid list filename (none)
+  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)
+  -o, --out=FILE             output file (stdout)
+
+Most features and options are similar and compatible with NCBI BLAST.
+
+Note that, currently, SWIPE does not employ composition based statistics, but
+uses the standard Karin-Altschul statistics. Also, sequence filtering of low
+complexity regions is not implemented.
+
+Defaults are indicated in parentheses in the option list above.
+
+The BLOSUM45, BLOSUM50, BLOSUM62, BLOSUM80, BLOSUM90, PAM30, PAM70 and PAM250
+matrices are "built-in". Other matrices may be specified with a file name.
+
+The query and database sequence type is specified with the "-p" option using
+either a numeric or text argument according to the table below:
+
+Numeric String  Query  Database Comparisons
+0       blastn  NT     NT       Direct + reverse complementary
+1       blastp  AA     AA       Direct
+2       blastx  NT     AA       Translated query (6 frames)
+3       tblastn AA     NT       Translated database (6 frames)
+4       tblastx NT     NT       Translated query and database (6x6 frames)
+
+A plain text file with a list of taxid numbers, one per line, may be specified
+with the "-x" option to search only sequences from the specified organisms.
