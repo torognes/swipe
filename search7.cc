@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 
 void dprofile_dump7(BYTE * dprofile)
 {
-  char * ss = sym_ncbi_aa;
+  const char * ss = sym_ncbi_aa;
   //  char * ss = sym_sound;
 
   printf("\ndprofile:\n");
@@ -58,7 +58,7 @@ char lines[4*16*1000];
 
 void dseq_dump7(BYTE * dseq)
 {
-  char * s = sym_ncbi_aa;
+  const char * s = sym_ncbi_aa;
 
   if (dumpcounter < 21)
   {

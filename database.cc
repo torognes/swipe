@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -143,7 +143,7 @@ typedef struct db_thread_s
   long xxbuffersize[16];
 } db_thread_t;
 
-void db_print_seq_map(char * address, long length, char * map)
+void db_print_seq_map(char * address, long length, const char * map)
 {
   long linelength = 80;
   long i = 0;
@@ -154,7 +154,7 @@ void db_print_seq_map(char * address, long length, char * map)
       end = length;
     while(i<end)
     {
-      putc(map[address[i]], out);
+      putc(map[(int)(address[i])], out);
       i++;
     }
     fprintf(out, "\n");
@@ -403,7 +403,7 @@ void show_volume_info(db_volume_t * vol)
 }
 
 
-al_info_t * db_read_alias(long symtype, char * basename)
+al_info_t * db_read_alias(long symtype, const char * basename)
 {
   // open an alias file and read contents
 
@@ -509,7 +509,7 @@ void db_close_al(al_info_t * a)
   }
 }
 
-long db_open_xin(long symtype, char * basename, db_volume_t * volume)
+long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 {
   db_volume_init(volume);
 
@@ -604,9 +604,9 @@ long db_open_xin(long symtype, char * basename, db_volume_t * volume)
   return 1;
 }
 
-char * get_path(char * basename)
+char * get_path(const char * basename)
 {
-  char * p = basename;
+  const char * p = basename;
   char * path;
   long pathlen = 0;
 
@@ -769,7 +769,7 @@ void db_read_taxid_file(char * filename)
 }
 
 
-void db_open(long symtype, char * basename, char * taxidfilename)
+void db_open(long symtype, const char * basename, char * taxidfilename)
 {
   al_info_t * ai = NULL;
 
@@ -905,10 +905,10 @@ void db_open(long symtype, char * basename, char * taxidfilename)
 
   for(int b=0; b<256; b++)
   {
-    char unpacked[4];
+    unsigned int unpacked;
     for(long i=0; i<4; i++)
-      unpacked[i] = (unsigned char)(1 << ((b >> ((3-(i&3))<<1)) & 3));
-    decompress_nt[b] = *((unsigned int*)&unpacked);
+      ((unsigned char*)(&unpacked))[i] = (unsigned char)(1 << ((b >> ((3-(i&3))<<1)) & 3));
+    decompress_nt[b] = unpacked;
   }
 
   if (taxidfilename)

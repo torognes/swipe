@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -114,7 +114,7 @@ char ntcompl[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 char q_translate[16*16*16];
 char d_translate[16*16*16];
 
-char * gencode_names[23] = 
+const char * gencode_names[23] = 
   {
     "Standard Code",
     "Vertebrate Mitochondrial Code",
@@ -141,7 +141,7 @@ char * gencode_names[23] =
     "Thraustochytrium Mitochondrial Code"
   };
 
-char * code[23] =
+const char * code[23] =
   { 
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG",
@@ -172,18 +172,18 @@ char remap[] = { 2, 1, 3, 0 };
   
 //                       00000000001111111111222222222233
 //                       01234567890123456789012345678901
-char * sym_ncbi_nt4   = "acgt############################";
-char * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
-char * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
-char * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
-char * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
+const char * sym_ncbi_nt4   = "acgt############################";
+const char * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
+const char * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
+const char * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
+const char * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
 
 FILE * query_fp;
 char query_line[LINE_MAX];
 
-void query_init(char * queryname, long symtype, long strands)
+void query_init(const char * queryname, long symtype, long strands)
 {
   if (strcmp(queryname, "-") == 0)
     query_fp = stdin;
@@ -312,7 +312,7 @@ int query_read()
   while(query_line[0] && (query_line[0] != '>'))
   {
     char * p = query_line;
-    while(char c = *p++)
+    while(int c = *p++)
     {
       if ((m = map[c]) >= 0)
       {

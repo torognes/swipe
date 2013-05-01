@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -166,7 +166,7 @@ long stats_getparams_nt(long matchscore,
   return 0;
 }
 
-long stats_getparams(char * matrix,
+long stats_getparams(const char * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
@@ -246,7 +246,7 @@ long stats_getparams(char * matrix,
   return 0;
 }
 
-long stats_getprefs(char * matrix,
+long stats_getprefs(const char * matrix,
 		    long * gopen,
 		    long * gextend)
 {

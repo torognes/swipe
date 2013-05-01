@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -79,7 +79,7 @@ void region(char * a_seq,
 	f = MAX(f, h - q) - r;
 	EE[j] = MAX(EE[j], HH[j] - q) - r;
 	
-	h = p + (scorematrix + (a_seq[i]<<5))[b_seq[j]];
+	h = p + (scorematrix + (a_seq[i]<<5))[(int)(b_seq[j])];
 	
 	if (h < 0)
 	  h = 0;
@@ -126,7 +126,7 @@ void region(char * a_seq,
 	  f = MAX(f, h - q) - r;
 	  EE[j] = MAX(EE[j], HH[j] - q) - r;
 
-	  h = p + (scorematrix + (a_seq[i]<<5))[b_seq[j]];
+	  h = p + (scorematrix + (a_seq[i]<<5))[(int)(b_seq[j])];
 
 	  if (f > h)
 	    h = f;
@@ -289,7 +289,7 @@ void diff(struct aligner_info * aip,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (a_seq[a_pos]<<5))[b_seq[b_pos+j]] - r * (N-1);
+	  long Score = (scorematrix + (a_seq[a_pos]<<5))[(int)(b_seq[b_pos+j])] - r * (N-1);
 
 	  if (j > 0)
 	    Score -= q;
@@ -356,7 +356,7 @@ void diff(struct aligner_info * aip,
 	      f = MAX(f, h - q) - r;
 	      EE[j] = MAX(EE[j], HH[j] - q) - r;
 
-	      h = p + (scorematrix + (a_seq[a_pos+i-1]<<5))[b_seq[b_pos+j-1]];
+	      h = p + (scorematrix + (a_seq[a_pos+i-1]<<5))[(int)(b_seq[b_pos+j-1])];
 
 	      if (f > h)
 		h = f;
@@ -397,7 +397,7 @@ void diff(struct aligner_info * aip,
 	      f = MAX(f, h - q) - r;
 	      YY[j] = MAX(YY[j], XX[j] - q) - r;
 
-	      h = p + (scorematrix + (a_seq[a_pos+M-i]<<5))[b_seq[b_pos+N-j]];
+	      h = p + (scorematrix + (a_seq[a_pos+M-i]<<5))[(int)(b_seq[b_pos+N-j])];
 
 	      if (f > h)
 		h = f;

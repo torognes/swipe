@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -35,6 +35,9 @@
 #endif
 
 #define MAXSTRING 2048
+#define MAXDEFLINESTRING 10240
+
+long maxdefline = 0;
 
 struct asnparse_info
 {
@@ -74,9 +77,9 @@ struct asnparse_info
   char pat_doctype[MAXSTRING];
 
   char id[MAXSTRING];
-  char title[MAXSTRING];
+  char title[MAXDEFLINESTRING];
   
-  char defline[MAXSTRING];
+  char defline[MAXDEFLINESTRING];
 
   long show_gis;
   long indent;
@@ -606,7 +609,7 @@ void parse_pdb_seq_id(apt p)
 
 void show_seq_id(apt p, char * dbi)
 {
-  char * db = dbi;
+  const char * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
     db = "tr";
   if (p->version)
@@ -630,7 +633,7 @@ void parse_seq_id(apt p)
 {
   /* http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5 */
 
-  char * dbstr[] = 
+  const char * dbstr[] = 
     { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
       "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat" };
 
@@ -856,6 +859,10 @@ void parse_blast_def_line(apt p)
   if (strlen(p->defline) && strlen(p->title))
     strcat(p->defline, " ");
 
+  long zzz = strlen(p->defline) + strlen(p->title);
+  if (zzz > MAXDEFLINESTRING)
+    fatal("Error: defline too long");
+
   strcat(p->defline, p->title);
 }
 
@@ -1052,6 +1059,7 @@ long parse_header(apt p, unsigned char * buf, long len, long memb,
 long parse_getdeflinecount(apt p, unsigned char * buf, long len,
 			   long memb, long(*f_checktaxid)(long))
 {
+  p->show_gis = 0;
   p->memb = memb;
   p->f_checktaxid = f_checktaxid;
 

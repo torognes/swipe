@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -36,20 +36,26 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <byteswap.h>
 #include <math.h>
+#include <tmmintrin.h> // SSSE3
 
 #ifdef MPISWIPE
 #include <mpi.h>
 #endif
 
-#include <tmmintrin.h>
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define bswap_32 OSSwapInt32
+#define bswap_64 OSSwapInt64
+#else
+#include <byteswap.h>
+#endif
 
 #ifndef LINE_MAX
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.0.5"
+#define SWIPE_VERSION "2.0.6"
 
 // Should be 32bits integer
 typedef unsigned int UINT32;
@@ -67,6 +73,7 @@ typedef BYTE VECTOR[16];
 #define ext4 ".shi"
 
 extern char BIAS;
+
 
 //#define BIASED
 
@@ -86,8 +93,8 @@ void * xrealloc(void *ptr, size_t size);
 extern long ssse3_present;
 extern long sse41_present;
 
-extern char * queryname;
-extern char * matrixname;
+extern const char * queryname;
+extern const char * matrixname;
 extern long gapopen;
 extern long gapextend;
 extern long gapopenextend;
@@ -96,28 +103,29 @@ extern long symtype;
 extern long matchscore;
 extern long mismatchscore;
 extern long totalhits;
-extern char * gencode_names[];
+extern const char * gencode_names[];
 extern long querystrands;
 extern double minexpect;
 extern double expect;
 extern long maxmatches;
 extern long threads;
-extern char * databasename;
+extern const char * databasename;
 extern long alignments;
 extern long queryno;
 extern long compute7;
 extern long show_taxid;
+extern long effdbsize;
 
 extern char map_ncbi_nt4[];
 extern char map_ncbi_nt16[];
 extern char map_ncbi_aa[];
 extern char map_sound[];
 
-extern char * sym_ncbi_nt4;
-extern char * sym_ncbi_nt16;
-extern char * sym_ncbi_nt16u;
-extern char * sym_ncbi_aa;
-extern char * sym_sound;
+extern const char * sym_ncbi_nt4;
+extern const char * sym_ncbi_nt16;
+extern const char * sym_ncbi_nt16u;
+extern const char * sym_ncbi_aa;
+extern const char * sym_sound;
 
 extern char ntcompl[];
 extern char d_translate[];
@@ -161,7 +169,7 @@ struct query_s
   long symtype;
   long strands;
   char * map;
-  char * sym;
+  const char * sym;
 };
 
 extern struct query_s query;
@@ -185,8 +193,8 @@ struct time_info
 
 extern struct time_info ti;
 
-void fatal(char * message);
-void fatal(char * format, char * message);
+void fatal(const char * message);
+void fatal(const char * format, const char * message);
 
 void search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
@@ -264,7 +272,7 @@ void align(char * a_seq,
 	   char ** alignment,
 	   long * s);
 
-void query_init(char * queryname, long symtype, long strands);
+void query_init(const char * queryname, long symtype, long strands);
 void query_exit();
 int query_read();
 void query_show();
@@ -293,7 +301,7 @@ void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 long parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long));
 
-void db_open(long symtype, char * basename, char * taxidfilename);
+void db_open(long symtype, const char * basename, char * taxidfilename);
 void db_close();
 long db_getseqcount();
 long db_getseqcount_masked();
@@ -386,7 +394,7 @@ long stats_getparams_nt(long matchscore,
 			double * alpha,
 			double * beta);
 
-long stats_getparams(char * matrix,
+long stats_getparams(const char * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
@@ -395,7 +403,7 @@ long stats_getparams(char * matrix,
 		     double * alpha,
 		     double * beta);
 
-long stats_getprefs(char * matrix,
+long stats_getprefs(const char * matrix,
 		    long * gopen,
 		    long * gextend);
 

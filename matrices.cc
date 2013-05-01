@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -348,16 +348,178 @@ void score_matrix_dump()
   }
 }
 
-void score_matrix_read()
+void score_matrix_read_file(const char * matrix)
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
-  char *p, *q;
-  char c;
-  int a, b, i;
-  int symbols = 0;
+
+  int a, b, i, read, symbols;
+  long sc; 
+  char * map, * p, * q, c;
+
+  FILE * fp = fopen(matrixname, "r");
+
+  if (!fp)
+    fatal("Cannot open score matrix file.");
+  
+  if (symtype == 5)
+    map = map_sound;
+  else
+    map = map_ncbi_aa;
+  
+  symbols = 0;
+
+  while(fgets(line, LINE_MAX, fp) != NULL)
+    {
+      p = line;
+      c = *p++;
+      
+      switch(c)
+	{
+	  
+	case '\n':
+	case '#':
+	  
+	  /* ignore blank lines and comments starting with # */
+	  
+	  break;
+	
+	case '\t':
+	  
+	case ' ':
+	  
+	  /* read order of symbols, copy non-whitespace chars */
+	  
+	  q = order;
+
+	  while ((c = *p++))
+	    if (strchr(" \t\n", c) == NULL)
+	      {
+		*q++ = map[(int)c];
+		symbols++;
+	      }
+
+	  break;
+	  
+	default:
+
+	  /* ordinary lines */
+	  
+	  a = map[(int)c];
+	  for (i=0; i<symbols; i++)
+	    {
+	      if (sscanf(p, "%ld%n", & sc, & read) == 0)
+		fatal("Problem parsing score matrix file.");
+	  
+	      b = order[i];
+	  
+	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
+		score_matrix_63[(a<<5) + b] = sc;
+	  
+	      p += read;
+	    }
+	  break;
+	}
+    }
+    
+  fclose(fp);
+}
+
+void score_matrix_read_string(const char * matrix)
+{
+  char line[LINE_MAX];
+  char order[LINE_MAX];
+
+  int a, b, i, read, symbols;
+  long sc; 
+  char * map, * p, * q, c;
+
+  char * s = (char*) matrix;
+
+  if (!s)
+    fatal("Cannot read score matrix string.");
+  
+  if (symtype == 5)
+    map = map_sound;
+  else
+    map = map_ncbi_aa;
+  
+  symbols = 0;
+
+  while(*s)
+    {
+      char * nextline = strchr(s, '\n');
+      int linelen;
+      if (nextline)
+	linelen = nextline - s;
+      else
+	linelen = strlen(s);
+      
+      strncpy(line, s, linelen);
+      line[linelen] = 0;
+
+      p = line;
+      c = *p++;
+      
+      switch(c)
+	{
+	  
+	case '\n':
+	case '#':
+	  
+	  /* ignore blank lines and comments starting with # */
+	  
+	  break;
+	
+	case '\t':
+	case ' ':
+	  
+	  /* read order of symbols, copy non-whitespace chars */
+	  
+	  q = order;
+
+	  while ((c = *p++))
+	    if (strchr(" \t\n", c) == NULL)
+	      {
+		*q++ = map[(int)c];
+		symbols++;
+	      }
+
+	  break;
+	  
+	default:
+
+	  /* ordinary lines */
+	  
+	  a = map[(int)c];
+	  for (i=0; i<symbols; i++)
+	    {
+	      if (sscanf(p, "%ld%n", & sc, & read) == 0)
+		fatal("Problem parsing score matrix file.");
+	  
+	      b = order[i];
+	  
+	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
+		score_matrix_63[(a<<5) + b] = sc;
+	  
+	      p += read;
+	    }
+	  break;
+	}
+
+      if (nextline)
+	s = nextline + 1;
+      else
+	s = s + strlen(s);
+
+    }
+}
+
+
+void score_matrix_read()
+{
+  int a, b;
   long sc, lo, hi; 
-  int read;
   
   score_matrix_7 = (char *) xmalloc(32*32*sizeof(char));
   score_matrix_8 = (unsigned char *) xmalloc(32*32*sizeof(char));
@@ -366,113 +528,46 @@ void score_matrix_read()
   score_matrix_63 = (long *) xmalloc(32*32*sizeof(long));
   memset(score_matrix_63, -1, 32*32*8);
   
-  hi = -100;
-  lo = 100;
-    
   if (symtype == 0)
   {
     for(a=1;a<16;a++)
       for(b=1;b<16;b++)
+	score_matrix_63[(a<<5) + b] = ((a==b) ? matchscore : mismatchscore);
+  }
+  else if (strcasecmp(matrixname, "blosum45")     == 0)
+    score_matrix_read_string(mat_blosum45);
+  else if (strcasecmp(matrixname, "blosum50")     == 0)
+    score_matrix_read_string(mat_blosum50);
+  else if (strcasecmp(matrixname, "blosum62")     == 0)
+    score_matrix_read_string(mat_blosum62);
+  else if (strcasecmp(matrixname, "blosum80")     == 0)
+    score_matrix_read_string(mat_blosum80);
+  else if (strcasecmp(matrixname, "blosum90")     == 0)
+    score_matrix_read_string(mat_blosum90);
+  else if (strcasecmp(matrixname, "pam30")        == 0)
+    score_matrix_read_string(mat_pam30);
+  else if (strcasecmp(matrixname, "pam70")        == 0)
+    score_matrix_read_string(mat_pam70);
+  else if (strcasecmp(matrixname, "pam250")       == 0)
+    score_matrix_read_string(mat_pam250);
+  else if (strcasecmp(matrixname, "identity_5_1") == 0)
+    score_matrix_read_string(mat_identity_5_1);
+  else
+    score_matrix_read_file(matrixname);
+
+  hi = -100;
+  lo = 100;
+
+  for(a=0;a<32;a++)
+    for(b=0;b<32;b++)
       {
-	sc = (a==b) ? matchscore : mismatchscore;
+	sc = score_matrix_63[(a<<5) + b];
 	if (sc < lo)
 	  lo = sc;
 	if (sc > hi)
 	  hi = sc;
-	score_matrix_63[(a<<5) + b] = sc;
       }
-  }
-  else
-  {
-    FILE * fp;
-
-    if (strcasecmp(matrixname, "blosum45") == 0)
-      fp = fmemopen((void*)mat_blosum45, strlen(mat_blosum45), "r");
-    else if (strcasecmp(matrixname, "blosum50") == 0)
-      fp = fmemopen((void*)mat_blosum50, strlen(mat_blosum50), "r");
-    else if (strcasecmp(matrixname, "blosum62") == 0)
-      fp = fmemopen((void*)mat_blosum62, strlen(mat_blosum62), "r");
-    else if (strcasecmp(matrixname, "blosum80") == 0)
-      fp = fmemopen((void*)mat_blosum80, strlen(mat_blosum80), "r");
-    else if (strcasecmp(matrixname, "blosum90") == 0)
-      fp = fmemopen((void*)mat_blosum90, strlen(mat_blosum90), "r");
-    else if (strcasecmp(matrixname, "pam30") == 0)
-      fp = fmemopen((void*)mat_pam30, strlen(mat_pam30), "r");
-    else if (strcasecmp(matrixname, "pam70") == 0)
-      fp = fmemopen((void*)mat_pam70, strlen(mat_pam70), "r");
-    else if (strcasecmp(matrixname, "pam250") == 0)
-      fp = fmemopen((void*)mat_pam250, strlen(mat_pam250), "r");
-    else if (strcasecmp(matrixname, "identity_5_1") == 0)
-      fp = fmemopen((void*)mat_identity_5_1, strlen(mat_identity_5_1), "r");
-    else
-      fp = fopen(matrixname, "r");
-    
-    if (!fp)
-      fatal("Cannot open score matrix file.");
-    
-    char * map;
-
-    if (symtype == 5)
-      map = map_sound;
-    else
-      map = map_ncbi_aa;
-    
-    while(fgets(line, LINE_MAX, fp) != NULL)
-    {
-      p = line;
-      c = *p++;
-      
-      switch(c)
-      {   
-      case '\n':
-      case '#':
-	/* ignore blank lines and comments starting with # */
-	break;
-	
-      case '\t':
-      case ' ':
-	/* read order of symbols, copy non-whitespace chars */
-	q = order;
-	symbols = 0;
-	while ((c = *p++))
-	  if (strchr(" \t\n", c) == NULL)
-	  {
-	    *q++ = map[(int)c];
-	    symbols++;
-	  }
-	break;
-	
-      default:
-	/* ordinary lines */
-	a = map[(int)c];
-	for (i=0; i<symbols; i++)
-	{
-	  if (sscanf(p, "%ld%n", & sc, & read) == 0)
-	    fatal("Problem parsing score matrix file.");
-	  
-	  b = order[i];
-	  
-	  if ((a>=0) && (b>=0))
-	  {
-	    if (sc < lo)
-	      lo = sc;
-	    if (sc > hi)
-	      hi = sc;
-	    
-	    //	  fprintf(out, "a,b,adr: %d %d %d\n", a, b, (a<<5)+b);
-	    
-	    score_matrix_63[(a<<5) + b] = sc;
-	  }
-	  
-	  p += read;
-	}
-	break;
-      }
-    }
-    
-    fclose(fp);
-
-  }
+  
 
   BIAS = - lo;
   SCORELIMIT_7  = 128 - hi;

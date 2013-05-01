@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -301,6 +301,7 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
 
   int seqcount;
   long symcount;
+
   if (db_ismasked())
   {
     seqcount = db_getseqcount_masked();
@@ -316,8 +317,9 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
 
   stats_available = 0;
 
-  long m, n;
-  int lenadj;
+  long m = 0;
+  long n = 0;
+  int lenadj = 0;
   if (symtype == 0)
   {
     if (stats_getparams_nt(matchscore,
@@ -333,8 +335,8 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
       stats_available = 1;
 
       /*
-	fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
-	lambda, K, H, alpha, beta);
+      fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
+	      lambda, K, H, alpha, beta);
       */
 
       logK = log(K);
@@ -345,19 +347,30 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
       
       long qlen = query.nt[0].len;
 
+      long dlen;
+      if (effdbsize > 0)
+	dlen = effdbsize;
+      else
+	dlen = symcount;
+
       BlastComputeLengthAdjustment(K,
 				   logK,
 				   alpha / lambda,
 				   beta,
 				   qlen,
-				   symcount,
+				   dlen,
 				   seqcount,
 				   & lenadj);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
 
       m = qlen - lenadj;
-      n = symcount - seqcount * lenadj;
+
+      if (effdbsize > 0)
+	n = effdbsize;
+      else
+	n = dlen - seqcount * lenadj;
+
       Kmn = K * (double)m * (double)n;
     }
   }
@@ -390,10 +403,10 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
     if (stats_available)
     {
       
-      /*
-	fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
-	lambda, K, H, alpha, beta);
-      */
+#ifdef DEBUG
+      fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
+	      lambda, K, H, alpha, beta);
+#endif
 
       logK = log(K);
       lambda_d_log2 = lambda / log(2.0);
@@ -402,12 +415,22 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
       lenadj = 0;
       
       long qlen = query.aa[0].len;
-      long dlen = symcount;
       if ((symtype == 2) || (symtype == 4))
 	qlen = query.nt[0].len / 3;
-      if ((symtype == 3) || (symtype == 4))
-	dlen = symcount / 3;
-      
+
+      long dlen;
+      if (effdbsize > 0)
+      {
+	dlen = effdbsize;
+      }
+      else
+      {
+	if ((symtype == 3) || (symtype == 4))
+	  dlen = symcount / 3;
+	else
+	  dlen = symcount;
+      }
+
       BlastComputeLengthAdjustment(K,
 				   logK,
 				   alpha / lambda,
@@ -416,17 +439,21 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
 				   dlen,
 				   seqcount,
 				   & lenadj);
-      
 
       m = qlen - lenadj;
-      n = dlen - seqcount * lenadj;
+
+      if (effdbsize > 0)
+	n = effdbsize;
+      else
+	n = dlen - seqcount * lenadj;
+
       Kmn = K * (double)m * (double)n;
     }
   }
 
-  /*
-    fprintf(out, "lenadj=%d m=%ld n=%ld mn=%.1f\n", lenadj, m, n, (double)m * (double)n);
-  */
+#ifdef DEBUG
+  fprintf(out, "lenadj=%d m=%ld n=%ld mn=%.1f\n", lenadj, m, n, (double)m * (double)n);
+#endif
 
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
@@ -586,7 +613,7 @@ char * d_seq;
 char q_line[ALIGNLEN+1];
 char a_line[ALIGNLEN+1];
 char d_line[ALIGNLEN+1];
-char * sym;
+const char * sym;
 int poswidth;
 
 void putalignop(char c, long len)
@@ -609,23 +636,23 @@ void putalignop(char c, long len)
     case 'M':
       qs = q_seq[q_pos++];
       ds = d_seq[d_pos++];
-      q_line[line_pos] = sym[qs];
+      q_line[line_pos] = sym[(int)(qs)];
       if (symtype == 0)
       {
 	a_line[line_pos] = (qs == ds) ? '|' : ' ';
       }
       else
       {
-	a_line[line_pos] = (qs == ds) ? sym[qs] : 
+	a_line[line_pos] = (qs == ds) ? sym[(int)(qs)] : 
 	  (score_matrix_63[32*qs+ds] > 0 ? '+' : ' ');
       }
-      d_line[line_pos] = sym[ds];
+      d_line[line_pos] = sym[(int)(ds)];
       line_pos++;
       break;
 
     case 'D':
       qs = q_seq[q_pos++];
-      q_line[line_pos] = sym[qs];
+      q_line[line_pos] = sym[(int)(qs)];
       a_line[line_pos] = ' ';
       d_line[line_pos] = '-';
       line_pos++;
@@ -635,7 +662,7 @@ void putalignop(char c, long len)
       ds = d_seq[d_pos++];
       q_line[line_pos] = '-';
       a_line[line_pos] = ' ';
-      d_line[line_pos] = sym[ds];
+      d_line[line_pos] = sym[(int)(ds)];
       line_pos++;
       break;
     }
@@ -845,7 +872,7 @@ void whole_align(long i,
       for(long j=0; j<len; j++)
       {
 	char qs = q_seq[q_pos++];
-	*qlinep++ = sym[qs];
+	*qlinep++ = sym[(int)(qs)];
 	*alinep++ = ' ';
 	*dlinep++ = '-';
       }
@@ -859,7 +886,7 @@ void whole_align(long i,
 	char ds = d_seq[d_pos++];
 	*qlinep++ = '-';
 	*alinep++ = ' ';
-	*dlinep++ = sym[ds];
+	*dlinep++ = sym[(int)(ds)];
       }
       *gaps += 1;
       *indels += len;
@@ -870,7 +897,7 @@ void whole_align(long i,
       {
 	char qs = q_seq[q_pos++];
 	char ds = d_seq[d_pos++];
-	*qlinep++ = sym[qs];
+	*qlinep++ = sym[(int)(qs)];
 	if (qs == ds)
 	{
 	  *alinep++ = '|';
@@ -886,7 +913,7 @@ void whole_align(long i,
 	{
 	  *alinep++ = ' ';
 	}
-	*dlinep++ = sym[ds];
+	*dlinep++ = sym[(int)(ds)];
       }
     }
     else
@@ -1124,7 +1151,7 @@ void hits_show_expect(double expect)
   else if (expect < 9.5e-100)
   {
     sprintf(temp, "%-6.0e", expect);
-    fprintf(out, temp+1);
+    fputs(temp+1, out);
   }
   else if (expect < 0.00095)
     fprintf(out, "%-5.0e", expect);
@@ -1236,7 +1263,7 @@ void hits_show_xml_paralign(long showalignments,
   
   fprintf(out, "\t<paralignOutput>\n");
   
-  char * qseqtypedescr;
+  const char * qseqtypedescr;
   struct sequence q;
   if ((query.symtype == 1) || (query.symtype == 3))
   {
@@ -1256,13 +1283,13 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
   fprintf(out, "\t\t\t<querySequence>");
   for(int i=0; i<q.len; i++)
-    putc(query.sym[q.seq[i]], out);
+    putc(query.sym[(int)(q.seq[i])], out);
   fprintf(out, "</querySequence>\n");
   fprintf(out, "\t\t</queryInformation>\n");
   
-  char * dbseqtypedescr;
-  char * ncbidb;
-  char * ncbiopt;
+  const char * dbseqtypedescr;
+  const char * ncbidb;
+  const char * ncbiopt;
   if ((query.symtype == 0) || (query.symtype == 3) || (query.symtype == 4))
   {
     dbseqtypedescr = "Nucleotide";
@@ -1286,7 +1313,7 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t<longestSequenceLength>%ld</longestSequenceLength>\n", db_getlongest());
   fprintf(out, "\t\t</databaseInformation>\n");
   
-  char * strands = "";
+  const char * strands = "";
   switch(querystrands)
   {
   case 1:

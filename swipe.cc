@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2012 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -51,11 +51,12 @@
 #define DEFAULT_SUBALIGNMENTS 1
 #define DEFAULT_DUMP 0
 #define DEFAULT_OUT stdout
+#define DEFAULT_EFFDBSIZE 0
 
 char * progname;
-char * matrixname;
-char * databasename;
-char * queryname;
+const char * matrixname;
+const char * databasename;
+const char * queryname;
 char * taxidfilename;
 char * outfile = NULL;
 
@@ -80,6 +81,7 @@ long query_gencode;
 long db_gencode;
 long subalignments;
 long dump;
+long effdbsize;
 
 /* Other variables */
 
@@ -151,14 +153,14 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-void fatal(char * message)
+void fatal(const char * message)
 {
   if (message)
     fprintf(stderr, "%s\n", message);
   exit(1);
 }
 
-void fatal(char * format, char * message)
+void fatal(const char * format, const char * message)
 {
   fprintf(stderr, format, message);
   fprintf(stderr, "\n");
@@ -670,7 +672,7 @@ void args_show()
     }
 #endif
     
-    char * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
+    const char * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
     
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
@@ -691,6 +693,9 @@ void args_show()
       }
 
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
+
+      if (effdbsize > 0)
+	fprintf(out, "Effecive db size:  %ld\n", effdbsize);
 
       fprintf(out, "Query file name:   %s\n", queryname);
 
@@ -791,7 +796,7 @@ void args_usage()
   fprintf(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
   fprintf(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
   fprintf(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
-  fprintf(out, "  -k  --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
+  fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
   fprintf(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
   fprintf(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
   fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", MAX_THREADS);
@@ -805,6 +810,7 @@ void args_usage()
   fprintf(out, "  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)\n");
   fprintf(out, "  -H, --show_taxid           show taxid etc in results (no)\n");
   fprintf(out, "  -o, --out=FILE             output file (stdout)\n");
+  fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
 void args_help()
@@ -843,11 +849,12 @@ void args_init(int argc, char **argv)
   db_gencode = DEFAULT_DB_GENCODE;
   subalignments = DEFAULT_SUBALIGNMENTS;
   dump = DEFAULT_DUMP;
+  effdbsize = DEFAULT_EFFDBSIZE;
 
   progname = argv[0];
 
   opterr = 1;
-  char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:IHh";
+  char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
   static struct option long_options[] =
   {
@@ -876,6 +883,7 @@ void args_init(int argc, char **argv)
     {"subalignments",    required_argument, NULL, 'K' },
     {"dump",             required_argument, NULL, 'N' },
     {"out",              required_argument, NULL, 'o' },
+    {"dbsize",           required_argument, NULL, 'z' },
     {"show_gis",         no_argument,       NULL, 'I' },
     {"show_taxid",       no_argument,       NULL, 'H' },
     {"help",             no_argument,       NULL, 'h' },
@@ -1054,6 +1062,11 @@ void args_init(int argc, char **argv)
 	  taxidfilename = optarg;
 	  break;
 	  
+	case 'z':
+	  /* effective db size */
+	  effdbsize = atol(optarg);
+	  break;
+	  
 	case '?':
 	default:
 	  args_usage();
@@ -1109,6 +1122,9 @@ void args_init(int argc, char **argv)
   }
 
   gapopenextend = gapopen + gapextend;
+
+  if (effdbsize < 0)
+    fatal("Illegal effective db size specified");
 
   if ((threads < 1) || (threads > MAX_THREADS))
     fatal("Illegal number of threads specified");
@@ -1840,7 +1856,8 @@ void master(int size)
     }
 
   long slaves_active = 0;
-  long first, last;
+  long first = 0;
+  long last = 0;
   
   long buffersize = 1024;
 

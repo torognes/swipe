@@ -2,7 +2,7 @@
 # 
 # Smith-Waterman database searches with Inter-sequence Parallel Execution
 # 
-# Copyright (C) 2008-2012 Torbjørn Rognes, University of Oslo, 
+# Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
 # Oslo University Hospital and Sencel Bioinformatics AS
 # 
 # This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # 
-# Contact: Torbjørn Rognes <torognes@ifi.uio.no>, 
+# Contact: Torbjorn Rognes <torognes@ifi.uio.no>, 
 # Department of Informatics, University of Oslo, 
 # PO Box 1080 Blindern, NO-0316 Oslo, Norway
 
@@ -30,40 +30,44 @@ MPI_LINK=`mpicxx --showme:link`
 COMMON=-g
 #COMMON=-pg -g
 
+COMPILEOPT=-Wall -mssse3
+
 LIBS=-lpthread
-LINKFLAGS=$(COMMON)
 
 # Intel options
-CXX=icpc
-CXXFLAGS=-Wall -Wno-missing-declarations -fast -xSSE2 $(COMMON)
+#CXX=icpc
+#CXXFLAGS=$(COMPILEOPT) $(COMMON) -Wno-missing-declarations -fast
+#LINKFLAGS=$(COMMON)
 
 # GNU options
-#CXX=g++
-#CXXFLAGS=-Wall -O3 -march=core2 $(COMMON)
+CXX=g++
+CXXFLAGS=$(COMPILEOPT) $(COMMON) -O3
+LINKFLAGS=$(COMMON)
 
 PROG=swipe mpiswipe
 
+all : $(PROG)
+
+clean :
+	rm -f *.o *~ $(PROG) gmon.out
+
 OBJS = database.o asnparse.o align.o matrices.o \
-	search7.o search16s.o search16.o search63.o \
-	stats.o hits.o query.o
+	stats.o hits.o query.o \
+	search63.o search16.o search16s.o search7.o
 
 DEPS = swipe.h Makefile
 
 .SUFFIXES:.o .cc
 
+swipe : swipe.o $(OBJS)
+	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS)
+
+mpiswipe : mpiswipe.o $(OBJS)
+	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
+
 %.o : %.cc $(DEPS)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-all : $(PROG)
 
 mpiswipe.o : swipe.cc $(DEPS)
 	$(CXX) $(CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
-swipe : swipe.o $(OBJS)
-	$(CXX) $(LINKFLAGS) -o $@ swipe.o $(OBJS) $(LIBS)
-
-mpiswipe : mpiswipe.o $(OBJS)
-	$(CXX) $(LINKFLAGS) -o $@ mpiswipe.o $(OBJS) $(LIBS) $(MPI_LINK)
-
-clean :
-	rm -f *.o *~ $(PROG) gmon.out
