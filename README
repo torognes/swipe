@@ -30,6 +30,8 @@ nucleotide sequences, large databases and MPI.
 The software is distributed from http://github.com/torognes/swipe
 Older versions are also available from http://dna.uio.no/swipe/
 
+Binary executables are available for Linux and Mac (both 64-bit).
+
 SWIPE is distributed under the GNU Affero General Public License, version 3.
 See the file COPYING for details. SWIPE includes some public domain code for
 computing alignment statistics extracted from the BLAST software by the
