@@ -1,3 +1,7 @@
+2013-05-02  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.7
+	* Removed a few memory leaks discovered with Valgrind
+
 2013-05-01  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.0.6
 	* Added some information to the README file

@@ -994,6 +994,10 @@ void db_close()
     free(db_main.time);
     db_main.time = NULL;
   }
+  if (db_main.taxid_bitmap_address)
+    free(db_main.taxid_bitmap_address);
+  if (db_main.taxid_filename)
+    free(db_main.taxid_filename);
 }
 
 long db_getsymtype();

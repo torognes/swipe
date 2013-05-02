@@ -122,6 +122,8 @@ long totalhits;
 
 FILE * out = stdout;
 
+struct time_info ti;
+
 struct search_data
 {
   struct db_thread_s * dbt;
@@ -424,6 +426,7 @@ void align_done(struct search_data * sdp)
   free(sdp->bestpos);
   free(sdp->bestq);
   free(sdp->start_list);
+  free(sdp->start_hits);
   free(sdp->in_list);
   free(sdp->out_list);
   
@@ -438,7 +441,7 @@ void calc_chunks(long volcount,
 		 long par,
 		 long channels,
 		 long * volseqs,
-		 long * * volchunksp,
+		 long * volchunks,
 		 long * totalchunks,
 		 long * biggestchunk)
 {
@@ -448,7 +451,6 @@ void calc_chunks(long volcount,
 
   long volsused = 0;
   long chunksizes[volcount];
-  long * volchunks = (long*) xmalloc(volcount * sizeof(long));
   long totalseqs = 0;
   long maxchunksize = 0;
   long vv = 0;
@@ -517,7 +519,6 @@ void calc_chunks(long volcount,
   }
 #endif
   
-  *volchunksp = volchunks;
   *biggestchunk = maxchunksize;
   *totalchunks = chunks;
 }
@@ -531,6 +532,7 @@ void align_threads_init()
   long bins = 7;
 
   align_volseqs = (long*) xmalloc(bins*sizeof(long));
+  align_volchunks = (long*) xmalloc(bins*sizeof(long));
 
   for(long i = 0; i<bins; i++)
     align_volseqs[i] = 0;
@@ -563,7 +565,7 @@ void align_threads_init()
 	      threads,
 	      8,
 	      align_volseqs,
-	      & align_volchunks,
+	      align_volchunks,
 	      & totalchunks,
 	      & maxchunksize);
 
@@ -1611,7 +1613,7 @@ void prepare_search(long par)
 	      par,
 	      16,
 	      volseqs,
-	      & volchunks,
+	      volchunks,
 	      & totalchunks,
 	      & maxchunksize);
 
@@ -1714,8 +1716,6 @@ void cpu_features()
 #endif
 }
 
-struct time_info ti;
-
 void clock_start(struct time_info * tip)
 {
   tip->clk_tck = sysconf(_SC_CLK_TCK);
@@ -1785,6 +1785,11 @@ void clock_stop(struct time_info * tip)
     fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
     fprintf(out, "\n");
   }
+
+  free(tip->starttime);
+  tip->starttime = 0;
+  free(tip->endtime);
+  tip->endtime = 0;
 }
 
 
@@ -1809,8 +1814,6 @@ void clock_stop(struct time_info * tip)
 
 void master(int size)
 {
-  //  fprintf(out, "sizeof(long) = %lu\n", sizeof(long));
-
   long nodes_with_sse2 = sse2_present;
   long nodes_with_ssse3 = ssse3_present;
 
@@ -2587,7 +2590,7 @@ int main(int argc, char**argv)
 #endif
     score_matrix_free();
   }
-
+  
   free(volchunks);
   free(volseqs);
 
