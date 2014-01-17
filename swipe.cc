@@ -401,7 +401,8 @@ void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
 	  
 	    long hitno = sdp->start_hits[i];
 	  
-	    hits_enter_align_hint(hitno, bestq, pos);
+	    if (sdp->scores[i] < SCORELIMIT_16)
+	      hits_enter_align_hint(hitno, bestq, pos);
 	  }
 	}
       }

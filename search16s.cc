@@ -445,7 +445,7 @@ void search16s(WORD * * q_start,
 		  
 	  if (cand_id >= 0)
 	  {
-	    long score = ((WORD*)&S)[c] - 0x8000;
+	    long score = ((WORD*)&S)[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];	    
 	    bestq[cand_id] = q_best[c];
