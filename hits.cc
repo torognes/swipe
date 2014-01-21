@@ -1070,8 +1070,11 @@ void count_align(long i,
 	char qs = q_seq[q_pos++];
 	char ds = d_seq[d_pos++];
 	if (qs == ds)
+	{
 	  (*identities)++;
-	if (score_matrix_63[32*qs+ds] > 0)
+	  (*positives)++;
+	}
+	else if (score_matrix_63[32*qs+ds] > 0)
 	  (*positives)++;
       }
     }

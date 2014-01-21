@@ -37,7 +37,7 @@
 #include <pthread.h>
 #include <getopt.h>
 #include <math.h>
-#include <tmmintrin.h> // SSSE3
+#include <x86intrin.h>
 
 #ifdef MPISWIPE
 #include <mpi.h>
@@ -55,7 +55,7 @@
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.0.8"
+#define SWIPE_VERSION "2.0.9"
 
 // Should be 32bits integer
 typedef unsigned int UINT32;
@@ -90,8 +90,8 @@ void * xmalloc(size_t size);
 void * xrealloc(void *ptr, size_t size);
 
 
-extern long ssse3_present;
-extern long sse41_present;
+extern long cpu_feature_ssse3;
+extern long cpu_feature_sse41;
 
 extern const char * queryname;
 extern const char * matrixname;
@@ -208,6 +208,18 @@ void search7(BYTE * * q_start,
 	     long * scores,
 	     long qlen);
 
+void search7_ssse3(BYTE * * q_start,
+		   BYTE gap_open_penalty,
+		   BYTE gap_extend_penalty,
+		   BYTE * score_matrix,
+		   BYTE * dprofile,
+		   BYTE * hearray,
+		   struct db_thread_s * dbt,
+		   long sequences,
+		   long * seqnos,
+		   long * scores,
+		   long qlen);
+
 void search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,
@@ -234,20 +246,6 @@ void search16s(WORD * * q_start,
 	       long * bestpos,
 	       long * bestq,
 	       int qlen);
-
-/*
-void search32(UINT32 * * q_start,
-	      UINT32 gap_open_penalty,
-	      UINT32 gap_extend_penalty,
-	      UINT32 * score_matrix,
-	      UINT32 * dprofile,
-	      UINT32 * hearray,
-	      struct db_thread_s * dbt,
-	      long sequences,
-	      long * seqnos,
-	      long * scores,
-	      int qlen);
-*/
 
 long fullsw(char * dseq,
 	    char * dend,

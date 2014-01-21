@@ -1,3 +1,14 @@
+2014-01-21  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.9
+	* Changed inline assembler syntax (adding register prefix) to
+	  adapt to the LLVM clang compiler on Mac
+	* Improved detection of CPU features (SSSE3 etc) and added
+	  alternative code for the search7 function for CPUs with 
+	  and without SSSE3
+	* Fixed an inconsistency in the counting of 'positives', i.e.
+	  similar but non-identical residues
+	* Added binaries for Mac, including an openmpi version
+
 2014-01-17  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.0.8
 	* Removed a bug in computation of the score of alignments 

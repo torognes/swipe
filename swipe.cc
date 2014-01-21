@@ -87,9 +87,9 @@ long effdbsize;
 
 long queryno;
 
-long sse2_present;
-long ssse3_present;
-long sse41_present;
+long cpu_feature_sse2;
+long cpu_feature_ssse3;
+long cpu_feature_sse41;
 
 #define MAX_THREADS 256
 
@@ -669,7 +669,7 @@ void args_show()
   {
     
 #ifndef MPISWIPE
-    if (! ssse3_present)
+    if (! cpu_feature_ssse3)
     {
       fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
@@ -1430,18 +1430,31 @@ void search_chunk(struct search_data * sdp)
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
 	    
-	search7(qtable,
-		gapopenextend,
-		gapextend,
-		(BYTE*) score_matrix_7,
-		sdp->dprofile,
-		sdp->hearray,
-		sdp->dbt,
-		sdp->in_count,
-		sdp->in_list,
-		sdp->scores,
-		qlen);
-    
+	if (cpu_feature_ssse3)
+	  search7_ssse3(qtable,
+			gapopenextend,
+			gapextend,
+			(BYTE*) score_matrix_7,
+			sdp->dprofile,
+			sdp->hearray,
+			sdp->dbt,
+			sdp->in_count,
+			sdp->in_list,
+			sdp->scores,
+			qlen);
+	else
+	  search7(qtable,
+		  gapopenextend,
+		  gapextend,
+		  (BYTE*) score_matrix_7,
+		  sdp->dprofile,
+		  sdp->hearray,
+		  sdp->dbt,
+		  sdp->in_count,
+		  sdp->in_list,
+		  sdp->scores,
+		  qlen);
+	
 	sdp->out_count = 0;
     
 	for (int i=0; i<sdp->in_count; i++)
@@ -1686,35 +1699,19 @@ void run_threads()
   }
 }
 
-#define cpuid(f,a,b,c,d) asm("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (f));
-
+#define cpuid(l1,l2,a,b,c,d)						\
+  __asm__ __volatile__							\
+    ("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (l1), "c" (l2));
 
 void cpu_features()
 {
   unsigned int a __attribute__ ((unused));
   unsigned int b __attribute__ ((unused));
   unsigned int c,d;
-  cpuid(1,a,b,c,d);
-  //  fprintf(out, "cpuid: %08x %08x %08x %08x\n", a, b, c, d);
-
-  sse2_present  = (d >> 26) & 1;
-  ssse3_present = (c >>  9) & 1;
-  sse41_present = (c >> 19) & 1;
-
-#if 0
-  int has_mmx   = (d >> 23) & 1;
-  int has_sse   = (d >> 25) & 1;
-  int has_sse3  = (c      ) & 1;
-  int has_sse42 = (c >> 20) & 1;
-  
-  fprintf(out, "MMX:    %d\n", has_mmx);
-  fprintf(out, "SSE:    %d\n", has_sse);
-  fprintf(out, "SSE2:   %d\n", has_sse2);
-  fprintf(out, "SSE3:   %d\n", has_sse3);
-  fprintf(out, "SSSE3:  %d\n", has_ssse3);
-  fprintf(out, "SSE4.1: %d\n", has_sse41);
-  fprintf(out, "SSE4.2: %d\n", has_sse42);
-#endif
+  cpuid(1,0,a,b,c,d);
+  cpu_feature_sse2  = (d >> 26) & 1;
+  cpu_feature_ssse3 = (c >>  9) & 1;
+  cpu_feature_sse41 = (c >> 19) & 1;
 }
 
 void clock_start(struct time_info * tip)
@@ -1815,8 +1812,8 @@ void clock_stop(struct time_info * tip)
 
 void master(int size)
 {
-  long nodes_with_sse2 = sse2_present;
-  long nodes_with_ssse3 = ssse3_present;
+  long nodes_with_sse2 = cpu_feature_sse2;
+  long nodes_with_ssse3 = cpu_feature_ssse3;
 
   for(int i=1; i < size; i++)
   {
@@ -2177,10 +2174,10 @@ void slave(int rank, int size)
 {
   (void) rank; /* avoid warning */
   
-  long features = sse2_present * 2 + ssse3_present;
+  long features = cpu_feature_sse2 * 2 + cpu_feature_ssse3;
   MPI_Send(&features, 1, MPI_LONG, 0, tag_features, MPI_COMM_WORLD);
 
-  //  fprintf(out, "Node %d: SSE2: %ld SSSE3: %ld\n", rank, sse2_present, ssse3_present);
+  //  fprintf(out, "Node %d: SSE2: %ld SSSE3: %ld\n", rank, cpu_feature_sse2, cpu_feature_ssse3);
   //  fprintf(out, "This is slave no %d.\n", rank);
 
   hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, 0);
@@ -2528,7 +2525,7 @@ int main(int argc, char**argv)
   cpu_features();
 
 #ifndef MPISWIPE
-  if (! sse2_present)
+  if (! cpu_feature_sse2)
     fatal("This program requires a processor with SSE2.\n");
 #endif
 

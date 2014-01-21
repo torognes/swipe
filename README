@@ -68,7 +68,9 @@ Usage: ./[mpi]swipe [OPTIONS]
   -o, --out=FILE             output file (stdout)
   -z, --dbsize=NUM           set effective database size (0)
 
-Defaults are indicated in parentheses in the option list above.
+Defaults are indicated in parentheses in the option list above. NUM means an
+integer, while REAL means a floating point number (possibly in scientific
+notation).
 
 Most features and options are similar and compatible with NCBI
 BLAST. 

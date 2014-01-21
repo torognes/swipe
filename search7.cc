@@ -29,59 +29,9 @@
 
 #define CHANNELS 16
 #define CDEPTH 4
-
 #define MATRIXWIDTH 32
 
-void dprofile_dump7(BYTE * dprofile)
-{
-  const char * ss = sym_ncbi_aa;
-  //  char * ss = sym_sound;
-
-  printf("\ndprofile:\n");
-  for(int k=0; k<4; k++)
-  {
-    printf("k=%d 0 1 2 3 4 5 6 7 8 9 a b c d e f\n", k);
-    for(int i=0; i<32; i++)
-    {
-      printf("%c: ",ss[i]);
-      for(int j=0; j<16; j++)
-	printf("%2d", (char) dprofile[i*64+16*k+j]);
-      printf("\n");
-    }
-  }
-  printf("\n");
-  exit(1);
-}
-
-int dumpcounter = 0;
-char lines[4*16*1000];
-
-void dseq_dump7(BYTE * dseq)
-{
-  const char * s = sym_ncbi_aa;
-
-  if (dumpcounter < 21)
-  {
-    for(int i=0; i<CHANNELS; i++)
-    {
-      for(int j=0; j<CDEPTH; j++)
-      {
-	lines[4000*i+4*dumpcounter+j] = s[dseq[j*CHANNELS+i]];
-      }
-    }
-    dumpcounter++;
-  }
-  else
-  {
-    for(int i=0; i<16; i++)
-    {
-      printf("%.1000s\n", lines+4000*i);
-    }
-    exit(1);
-  }
-}
-
-
+#ifdef SWIPE_SSSE3
 
 inline void dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
@@ -222,6 +172,8 @@ inline void dprofile_shuffle7(BYTE * dprofile,
 
   //  dprofile_dump7(dprofile);
 }
+
+#else
 
 inline void dprofile_fill7(BYTE * dprofile,
 			   BYTE * score_matrix,
@@ -530,6 +482,56 @@ inline void dprofile_fill7(BYTE * dprofile,
   //  dprofile_dump7(dprofile);
 }
 
+void dprofile_dump7(BYTE * dprofile)
+{
+  const char * ss = sym_ncbi_aa;
+  //  char * ss = sym_sound;
+
+  printf("\ndprofile:\n");
+  for(int k=0; k<4; k++)
+  {
+    printf("k=%d 0 1 2 3 4 5 6 7 8 9 a b c d e f\n", k);
+    for(int i=0; i<32; i++)
+    {
+      printf("%c: ",ss[i]);
+      for(int j=0; j<16; j++)
+	printf("%2d", (char) dprofile[i*64+16*k+j]);
+      printf("\n");
+    }
+  }
+  printf("\n");
+  exit(1);
+}
+
+int dumpcounter = 0;
+char lines[4*16*1000];
+
+void dseq_dump7(BYTE * dseq)
+{
+  const char * s = sym_ncbi_aa;
+
+  if (dumpcounter < 21)
+  {
+    for(int i=0; i<CHANNELS; i++)
+    {
+      for(int j=0; j<CDEPTH; j++)
+      {
+	lines[4000*i+4*dumpcounter+j] = s[dseq[j*CHANNELS+i]];
+      }
+    }
+    dumpcounter++;
+  }
+  else
+  {
+    for(int i=0; i<16; i++)
+    {
+      printf("%.1000s\n", lines+4000*i);
+    }
+    exit(1);
+  }
+}
+
+#endif
 
 // Register usage
 // rdi:   hep
@@ -560,37 +562,37 @@ inline void dprofile_fill7(BYTE * dprofile,
 // xmm15: R
 
 
-#define INITIALIZE				\
-  "        movq      %0, rax             \n"	\
-  "        movdqa    (rax), xmm13        \n"	\
-  "        movdqa    (%3), xmm14         \n"	\
-  "        movdqa    (%4), xmm15         \n"	\
-  "        movq      %6, rax             \n"	\
-  "        movdqa    (rax), xmm0         \n"	\
-  "        movdqa    xmm0, xmm1          \n"	\
-  "        movdqa    xmm0, xmm2          \n"	\
-  "        movdqa    xmm0, xmm3          \n"	\
-  "        movdqa    xmm0, xmm4          \n"	\
-  "        movdqa    xmm0, xmm5          \n"	\
-  "        movdqa    xmm0, xmm6          \n"	\
-  "        movdqa    xmm0, xmm7          \n"	\
-  "        movq      %5, r12             \n"	\
-  "        shlq      $3, r12             \n"	\
-  "        movq      r12, r10            \n"	\
-  "        andq      $-16, r10           \n"	\
-  "        xorq      r11, r11            \n" 
+#define INITIALIZE					\
+  "        movq    %0, %%rax        \n"			\
+  "        movdqa  (%%rax), %%xmm13 \n"			\
+  "        movdqa  (%3), %%xmm14    \n"			\
+  "        movdqa  (%4), %%xmm15    \n"			\
+  "        movq    %6, %%rax        \n"			\
+  "        movdqa  (%%rax), %%xmm0  \n"			\
+  "        movdqa  %%xmm0, %%xmm1   \n"			\
+  "        movdqa  %%xmm0, %%xmm2   \n"			\
+  "        movdqa  %%xmm0, %%xmm3   \n"			\
+  "        movdqa  %%xmm0, %%xmm4   \n"			\
+  "        movdqa  %%xmm0, %%xmm5   \n"			\
+  "        movdqa  %%xmm0, %%xmm6   \n"			\
+  "        movdqa  %%xmm0, %%xmm7   \n"			\
+  "        movq    %5, %%r12        \n"			\
+  "        shlq    $3, %%r12        \n"			\
+  "        movq    %%r12, %%r10     \n"			\
+  "        andq    $-16, %%r10      \n"			\
+  "        xorq    %%r11, %%r11     \n"
 
-#define ONESTEP(H, N, F, V)			\
-  "        paddsb    "V"(rax), "H"       \n"	\
-  "        pmaxub    "F", "H"            \n"	\
-  "        pmaxub    xmm12, "H"          \n"	\
-  "        pmaxub    "H", xmm13          \n"	\
-  "        psubsb    xmm15, "F"          \n"	\
-  "        psubsb    xmm15, xmm12        \n"	\
-  "        movdqa    "H", "N"            \n"	\
-  "        psubsb    xmm14, "H"          \n"	\
-  "        pmaxub    "H", xmm12          \n"	\
-  "        pmaxub    "H", "F"            \n"
+#define ONESTEP(H, N, F, V)				\
+  "        paddsb  "V"(%%rax), "H"  \n"			\
+  "        pmaxub  "F", "H"         \n"			\
+  "        pmaxub  %%xmm12, "H"     \n"			\
+  "        pmaxub  "H", %%xmm13     \n"			\
+  "        psubsb  %%xmm15, "F"     \n"			\
+  "        psubsb  %%xmm15, %%xmm12 \n"			\
+  "        movdqa  "H", "N"         \n"			\
+  "        psubsb  %%xmm14, "H"     \n"			\
+  "        pmaxub  "H", %%xmm12     \n"			\
+  "        pmaxub  "H", "F"         \n"
 
 inline void donormal7(__m128i * Sm,
 		      __m128i * hep,
@@ -612,59 +614,58 @@ inline void donormal7(__m128i * Sm,
 #endif
   
   __asm__
-    __volatile__(".att_syntax noprefix    # Change assembler syntax \n"
-		 INITIALIZE
-		 "        jmp       2f                  \n"
-
-		 "1:      movq      0(%2,r11,1), rax    \n" // load x from qp[qi]
-		 "        movdqa    0(%1,r11,4), xmm8   \n" // load N0
-		 "        movdqa    16(%1,r11,4), xmm12 \n" // load E
-
-		 ONESTEP("xmm0",  "xmm9",          "xmm4", "0" )
-		 ONESTEP("xmm1",  "xmm10",         "xmm5", "16")
-		 ONESTEP("xmm2",  "xmm11",         "xmm6", "32")
-		 ONESTEP("xmm3",  "0(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 16(%1,r11,4) \n" // save E
-		 "        movq      8(%2,r11,1), rax    \n" // load x from qp[qi+1]
-		 "        movdqa    32(%1,r11,4), xmm0  \n" // load H0
-		 "        movdqa    48(%1,r11,4), xmm12 \n" // load E
-
-		 ONESTEP("xmm8",  "xmm1",           "xmm4", "0" )
-		 ONESTEP("xmm9",  "xmm2",           "xmm5", "16")
-		 ONESTEP("xmm10", "xmm3",           "xmm6", "32")
-		 ONESTEP("xmm11", "32(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 48(%1,r11,4) \n" // save E
-		 "        addq      $16, r11            \n" // qi++
-		 "2:      cmpq      r11, r10            \n" // qi = ql4 ?
-		 "        jne       1b                  \n" // loop
-
-		 "4:      cmpq      r11, r12            \n" 
-		 "        je        3f                  \n"
-		 "        movq      0(%2,r11,1), rax    \n" // load x from qp[qi]
-		 "        movdqa    16(%1,r11,4), xmm12 \n" // load E
-
-		 ONESTEP("xmm0",  "xmm9",          "xmm4", "0" )
-		 ONESTEP("xmm1",  "xmm10",         "xmm5", "16")
-		 ONESTEP("xmm2",  "xmm11",         "xmm6", "32")
-		 ONESTEP("xmm3",  "0(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 16(%1,r11,4)  \n" // save E
-		 "3:      movq      %0, rax              \n" // save S
-		 "        movdqa    xmm13, (rax)         \n"
-		 "        .att_syntax prefix      # Change back to standard syntax"
-
-		 : 
-		 : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm)
-
-		 : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-		   "xmm4",  "xmm5",  "xmm6",  "xmm7",
-		   "xmm8",  "xmm9",  "xmm10", "xmm11", 
-		   "xmm12", "xmm13", "xmm14", "xmm15",
-		   "rax",   "r10",   "r11",   "r12",
-		   "cc"
-		 );
+    __volatile__
+    (
+     "## donomal7                             \n"
+     INITIALIZE
+     "        jmp     2f                      \n"
+     
+     "1:      movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
+     "        movdqa  0(%1,%%r11,4), %%xmm8   \n" // load N0
+     "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
+     
+     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
+     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
+     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
+     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 16(%1,%%r11,4) \n" // save E
+     "        movq    8(%2,%%r11,1), %%rax    \n" // load x from qp[qi+1]
+     "        movdqa  32(%1,%%r11,4), %%xmm0  \n" // load H0
+     "        movdqa  48(%1,%%r11,4), %%xmm12 \n" // load E
+     
+     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
+     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
+     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
+     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 48(%1,%%r11,4) \n" // save E
+     "        addq    $16, %%r11              \n" // qi++
+     "2:      cmpq    %%r11, %%r10            \n" // qi = ql4 ?
+     "        jne     1b                      \n" // loop
+     
+     "        cmpq    %%r11, %%r12            \n" 
+     "        je      3f                      \n"
+     "        movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
+     "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
+     
+     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
+     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
+     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
+     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 16(%1,%%r11,4) \n" // save E
+     "3:      movq    %0, %%rax               \n" // save S
+     "        movdqa  %%xmm13, (%%rax)          "
+     :
+     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm)
+     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
+       "xmm4",  "xmm5",  "xmm6",  "xmm7",
+       "xmm8",  "xmm9",  "xmm10", "xmm11", 
+       "xmm12", "xmm13", "xmm14", "xmm15",
+       "rax",   "r10",   "r11",   "r12",
+       "cc"
+     );
 }
 
 inline void domasked7(__m128i * Sm,
@@ -688,85 +689,86 @@ inline void domasked7(__m128i * Sm,
   printf("Zm=%p\n", Zm);
   printf("Mm=%p\n", Mm);
 #endif
-
-#if 1
+  
   __asm__
-    __volatile__(".att_syntax noprefix    # Change assembler syntax \n"
-		 INITIALIZE
-		 "        paddsb    (%7), xmm13          \n" // mask
-		 "        jmp       2f                   \n"
-
-		 "1:      movq      0(%2,r11,1), rax     \n" // load x from qp[qi]
-		 "        movdqa    0(%1,r11,4), xmm8    \n" // load N0
-		 "        paddsb    (%7), xmm8           \n" // mask
-		 "        movdqa    16(%1,r11,4), xmm12  \n" // load E
-		 "        paddsb    (%7), xmm12          \n" // mask
-
-		 ONESTEP("xmm0",  "xmm9",          "xmm4", "0" )
-		 ONESTEP("xmm1",  "xmm10",         "xmm5", "16")
-		 ONESTEP("xmm2",  "xmm11",         "xmm6", "32")
-		 ONESTEP("xmm3",  "0(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 16(%1,r11,4)  \n" // save E
-		 "        movq      8(%2,r11,1), rax     \n" // load x from qp[qi+1]
-		 "        movdqa    32(%1,r11,4), xmm0   \n" // load H0
-		 "        paddsb    (%7), xmm0           \n" // mask
-		 "        movdqa    48(%1,r11,4), xmm12  \n" // load E
-		 "        paddsb    (%7), xmm12          \n" // mask
-		 
-		 ONESTEP("xmm8",  "xmm1",           "xmm4", "0" )
-		 ONESTEP("xmm9",  "xmm2",           "xmm5", "16")
-		 ONESTEP("xmm10", "xmm3",           "xmm6", "32")
-		 ONESTEP("xmm11", "32(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 48(%1,r11,4)  \n" // save E
-		 "        addq      $16, r11             \n" // qi++
-		 "2:      cmpq      r11, r10             \n" // qi = ql4 ?
-		 "        jne       1b                   \n" // loop
-
-		 "        cmpq      r11, r12             \n" 
-		 "        je        3f                   \n"
-		 "        movq      0(%2,r11,1), rax     \n" // load x from qp[qi]
-		 "        movdqa    16(%1,r11,4), xmm12  \n" // load E
-		 "        paddsb    (%7), xmm12          \n" // mask
-		 		 
-		 ONESTEP("xmm0",  "xmm9",          "xmm4", "0" )
-		 ONESTEP("xmm1",  "xmm10",         "xmm5", "16")
-		 ONESTEP("xmm2",  "xmm11",         "xmm6", "32")
-		 ONESTEP("xmm3",  "0(%1,r11,4)",   "xmm7", "48")
-
-		 "        movdqa    xmm12, 16(%1,r11,4)  \n" // save E
-		 "3:      movq      %0, rax              \n" // save S
-		 "        movdqa    xmm13, (rax)         \n"
-		 "        .att_syntax prefix      # Change back to standard syntax"
-
-		 : 
-
-		 : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm),
-		   "r"(Mm)
-
-		 : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-		   "xmm4",  "xmm5",  "xmm6",  "xmm7",
-		   "xmm8",  "xmm9",  "xmm10", "xmm11", 
-		   "xmm12", "xmm13", "xmm14", "xmm15",
-		   "rax",   "r10",   "r11",   "r12",
-		   "cc"
-		 );
-#endif
-
+    __volatile__
+    (
+     "## domasked7                             \n"
+     INITIALIZE
+     "        paddsb  (%7), %%xmm13            \n" // mask
+     "        jmp     2f                       \n"
+     
+     "1:      movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
+     "        movdqa  0(%1,%%r11,4), %%xmm8    \n" // load N0
+     "        paddsb  (%7), %%xmm8             \n" // mask
+     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
+     "        paddsb  (%7), %%xmm12            \n" // mask
+     
+     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
+     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
+     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
+     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
+     "        movq    8(%2,%%r11,1), %%rax     \n" // load x from qp[qi+1]
+     "        movdqa  32(%1,%%r11,4), %%xmm0   \n" // load H0
+     "        paddsb  (%7), %%xmm0             \n" // mask
+     "        movdqa  48(%1,%%r11,4), %%xmm12  \n" // load E
+     "        paddsb  (%7), %%xmm12            \n" // mask
+     
+     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
+     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
+     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
+     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 48(%1,%%r11,4)  \n" // save E
+     "        addq    $16, %%r11               \n" // qi++
+     "2:      cmpq    %%r11, %%r10             \n" // qi = ql4 ?
+     "        jne     1b                       \n" // loop
+     
+     "        cmpq    %%r11, %%r12             \n" 
+     "        je      3f                       \n"
+     "        movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
+     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
+     "        paddsb  (%7), %%xmm12            \n" // mask
+     
+     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
+     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
+     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
+     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
+     
+     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
+     "3:      movq    %0, %%rax                \n" // save S
+     "        movdqa  %%xmm13, (%%rax)           "
+     : 
+     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm),
+       "r"(Mm)
+     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
+       "xmm4",  "xmm5",  "xmm6",  "xmm7",
+       "xmm8",  "xmm9",  "xmm10", "xmm11", 
+       "xmm12", "xmm13", "xmm14", "xmm15",
+       "rax",   "r10",   "r11",   "r12",
+       "cc"
+     );
 }
 
-void search7(BYTE * * q_start,
-	     BYTE gap_open_penalty,
-	     BYTE gap_extend_penalty,
-	     BYTE * score_matrix,
-	     BYTE * dprofile,
-	     BYTE * hearray,
-	     struct db_thread_s * dbt,
-	     long sequences,
-	     long * seqnos,
-	     long * scores,
-	     long qlen)
+void
+#ifdef SWIPE_SSSE3
+search7_ssse3
+#else
+search7
+#endif
+       (BYTE * * q_start,
+	BYTE gap_open_penalty,
+	BYTE gap_extend_penalty,
+	BYTE * score_matrix,
+	BYTE * dprofile,
+	BYTE * hearray,
+	struct db_thread_s * dbt,
+	long sequences,
+	long * seqnos,
+	long * scores,
+	long qlen)
 {
   __m128i S, Q, R, T, M, Z, T0;
   __m128i *hep, **qp;
@@ -844,15 +846,12 @@ void search7(BYTE * * q_start,
 	  easy = 0;
       }
 
-      if (ssse3_present)
-      {
-	dprofile_shuffle7(dprofile, score_matrix, dseq);
-      }
-      else
-      {
-	dprofile_fill7(dprofile, score_matrix, dseq);
-      }
-	  
+#ifdef SWIPE_SSSE3
+      dprofile_shuffle7(dprofile, score_matrix, dseq);
+#else
+      dprofile_fill7(dprofile, score_matrix, dseq);
+#endif
+
       donormal7(&S, hep, qp, &Q, &R, qlen, &Z);
     }
     else
@@ -947,14 +946,11 @@ void search7(BYTE * * q_start,
       if (done == sequences)
 	break;
 	  
-      if (ssse3_present)
-      {
-	dprofile_shuffle7(dprofile, score_matrix, dseq);
-      }
-      else
-      {
-	dprofile_fill7(dprofile, score_matrix, dseq);
-      }
+#ifdef SWIPE_SSSE3
+      dprofile_shuffle7(dprofile, score_matrix, dseq);
+#else
+      dprofile_fill7(dprofile, score_matrix, dseq);
+#endif
 	  
       domasked7(&S, hep, qp, &Q, &R, qlen, &Z, &M);
     }

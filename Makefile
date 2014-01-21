@@ -30,7 +30,7 @@ MPI_LINK=`mpicxx --showme:link`
 COMMON=-g
 #COMMON=-pg -g
 
-COMPILEOPT=-Wall -mssse3
+COMPILEOPT=-Wall
 
 LIBS=-lpthread
 
@@ -53,7 +53,7 @@ clean :
 
 OBJS = database.o asnparse.o align.o matrices.o \
 	stats.o hits.o query.o \
-	search63.o search16.o search16s.o search7.o
+	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
 DEPS = swipe.h Makefile
 
@@ -71,3 +71,5 @@ mpiswipe : mpiswipe.o $(OBJS)
 mpiswipe.o : swipe.cc $(DEPS)
 	$(CXX) $(CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
+search7_ssse3.o : search7.cc $(DEPS)
+	$(CXX) -mssse3 $(CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
