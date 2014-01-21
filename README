@@ -70,10 +70,11 @@ Usage: ./[mpi]swipe [OPTIONS]
 
 Defaults are indicated in parentheses in the option list above. NUM means an
 integer, while REAL means a floating point number (possibly in scientific
-notation).
+notation). NAME is a string or integer, while FILE is a filename. For databases,
+FILE is the base name of the database files.
 
 Most features and options are similar and compatible with NCBI
-BLAST. 
+BLAST.
 
 Please note that SWIPE does not employ composition based statistics (BLAST
 option "-C"), but uses the standard Karin-Altschul statistics. Also, sequence
@@ -98,16 +99,15 @@ A plain text file with a list of taxid numbers, one per line, may be
 specified with the "-x" option to search only sequences from the
 specified organisms.
 
-SWIPE accepts databases prepared using the formatdb or makeblastdb
+SWIPE accepts only databases prepared using the formatdb or makeblastdb
 tools that are distributed together with NCBI BLAST and BLAST+. They
 can be downloaded at ftp://ftp.ncbi.nlm.nih.gov/blast/executables/
 from NCBI.
 
-The SWIPE distribution includes executable binaries for 64-bit
-Linux. SWIPE may be compiled from sources using either the GNU g++ or
-the Intel icpc compiler. Copy Makefile.intel to Makefile to compile
-with the Intel compiler. SWIPE is marginally faster when compiled with
-the Intel compiler than with the GNU compiler.
+The SWIPE distribution includes executable binaries for 64-bit Linux and
+Mac. SWIPE may be compiled from sources using either the GNU g++ compiler,
+the LLVM Clang compiler or the Intel icpc compiler. SWIPE is marginally
+faster when compiled with the Intel compiler than with the GNU compiler.
 
 SWIPE will only run on processors with the SSE2 instruction set and
 runs best on processors with the SSSE3 instruction set. Please see
