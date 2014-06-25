@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -322,6 +322,7 @@ long SCORELIMIT_63;
 char BIAS;
 
 char * score_matrix_7 = NULL;
+char * score_matrix_7t = NULL;
 unsigned char * score_matrix_8 = NULL;
 short * score_matrix_16 = NULL;
 unsigned int * score_matrix_32 = NULL;
@@ -522,6 +523,7 @@ void score_matrix_read()
   long sc, lo, hi; 
   
   score_matrix_7 = (char *) xmalloc(32*32*sizeof(char));
+  score_matrix_7t = (char *) xmalloc(32*32*sizeof(char));
   score_matrix_8 = (unsigned char *) xmalloc(32*32*sizeof(char));
   score_matrix_16 = (short *) xmalloc(32*32*sizeof(short));
   score_matrix_32 = (unsigned int *) xmalloc(32*32*sizeof(unsigned int));
@@ -580,8 +582,9 @@ void score_matrix_read()
     {
       sc = score_matrix_63[(a<<5) + b];
       
-      score_matrix_7[(a<<5) + b] = (char) sc;
-      score_matrix_8[(a<<5) + b] = (unsigned char) (BIAS + sc);
+      score_matrix_7 [(a<<5) + b] = (char) sc;
+      score_matrix_7t[(b<<5) + a] = (char) sc;
+      score_matrix_8 [(a<<5) + b] = (unsigned char) (BIAS + sc);
       score_matrix_32[(a<<5) + b] = (unsigned int) sc;
       score_matrix_16[(a<<5) + b] = (short) sc;
     }
@@ -596,6 +599,8 @@ void score_matrix_init()
 void score_matrix_free()
 {
   free(score_matrix_7);
+  score_matrix_7t = NULL;
+  free(score_matrix_7t);
   score_matrix_7 = NULL;
   free(score_matrix_8);
   score_matrix_8 = NULL;

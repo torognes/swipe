@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -55,7 +55,7 @@
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.0.9"
+#define SWIPE_VERSION "2.0.10"
 
 // Should be 32bits integer
 typedef unsigned int UINT32;
@@ -149,6 +149,7 @@ extern long SCORELIMIT_63;
 extern char BIAS;
 
 extern char * score_matrix_7;
+extern char * score_matrix_7t;
 extern unsigned char * score_matrix_8;
 extern short * score_matrix_16;
 extern unsigned int * score_matrix_32;

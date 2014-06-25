@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -1434,7 +1434,7 @@ void search_chunk(struct search_data * sdp)
 	  search7_ssse3(qtable,
 			gapopenextend,
 			gapextend,
-			(BYTE*) score_matrix_7,
+			(BYTE*) score_matrix_7t,
 			sdp->dprofile,
 			sdp->hearray,
 			sdp->dbt,

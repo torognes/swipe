@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -28,6 +28,10 @@
 // These functions are based on the following articles:
 // - Huang, Hardison & Miller (1990) CABIOS 6:373-381
 // - Myers & Miller (1988) CABIOS 4:11-17
+
+// For consistency with non-symmetric score matrices:
+// a (of length M) is the query sequence
+// b (of length N) is the database sequence
 
 #define MAX(a,b) (a > b ? a : b)
 
@@ -79,7 +83,7 @@ void region(char * a_seq,
 	f = MAX(f, h - q) - r;
 	EE[j] = MAX(EE[j], HH[j] - q) - r;
 	
-	h = p + (scorematrix + (a_seq[i]<<5))[(int)(b_seq[j])];
+	h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
 	
 	if (h < 0)
 	  h = 0;
@@ -126,7 +130,7 @@ void region(char * a_seq,
 	  f = MAX(f, h - q) - r;
 	  EE[j] = MAX(EE[j], HH[j] - q) - r;
 
-	  h = p + (scorematrix + (a_seq[i]<<5))[(int)(b_seq[j])];
+	  h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
 
 	  if (f > h)
 	    h = f;
@@ -289,7 +293,7 @@ void diff(struct aligner_info * aip,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (a_seq[a_pos]<<5))[(int)(b_seq[b_pos+j])] - r * (N-1);
+	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[(int)(a_seq[a_pos])] - r * (N-1);
 
 	  if (j > 0)
 	    Score -= q;
@@ -356,7 +360,7 @@ void diff(struct aligner_info * aip,
 	      f = MAX(f, h - q) - r;
 	      EE[j] = MAX(EE[j], HH[j] - q) - r;
 
-	      h = p + (scorematrix + (a_seq[a_pos+i-1]<<5))[(int)(b_seq[b_pos+j-1])];
+	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[(int)(a_seq[a_pos+i-1])];
 
 	      if (f > h)
 		h = f;
@@ -397,7 +401,7 @@ void diff(struct aligner_info * aip,
 	      f = MAX(f, h - q) - r;
 	      YY[j] = MAX(YY[j], XX[j] - q) - r;
 
-	      h = p + (scorematrix + (a_seq[a_pos+M-i]<<5))[(int)(b_seq[b_pos+N-j])];
+	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[(int)(a_seq[a_pos+M-i])];
 
 	      if (f > h)
 		h = f;

@@ -1,3 +1,9 @@
+2014-06-25  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.10
+	* Resolved an inconsistency in SWIPE with custom non-symmetric
+	  matrices. This problem could result in SWIPE terminating with a
+	  fatal internal error in the align function.
+  
 2014-01-21  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.0.9
 	* Changed inline assembler syntax (adding register prefix) to
