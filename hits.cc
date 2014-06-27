@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo, 
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo, 
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -285,6 +285,34 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
   opt_descriptions = descriptions;
   opt_alignments = alignments;
   keephits = descriptions > alignments ? descriptions : alignments;
+  
+  long maxhits = db_getseqcount_masked();
+  if (symtype == 0)
+    {
+      if (querystrands == 3)
+	maxhits *= 2;
+    }
+  else if (symtype == 2)
+    {
+      if (querystrands == 3)
+	maxhits *= 6;
+      else
+	maxhits *= 3;
+    }
+  else if (symtype == 3)
+    {
+      maxhits *= 6;
+    }
+  else if (symtype == 4)
+    {
+      if (querystrands == 3)
+	maxhits *= 36;
+      else
+	maxhits *= 18;
+    }
+
+  if (keephits > maxhits)
+    keephits = maxhits;
 
   obvious = 0;
   hits_count = 0;

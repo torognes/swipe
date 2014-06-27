@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -616,7 +616,7 @@ inline void donormal7(__m128i * Sm,
   __asm__
     __volatile__
     (
-     "## donomal7                             \n"
+     "## donormal7                             \n"
      INITIALIZE
      "        jmp     2f                      \n"
      

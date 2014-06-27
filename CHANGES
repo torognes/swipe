@@ -1,3 +1,13 @@
+2014-06-27  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.11
+	* Resolved a bug that resulted in SWIPE terminating with a fatal
+	  internal error in the align function. After recomputing an alignment
+	  score > 32768 with 16-bit magnitude, a subsequent 16-bit score
+	  computation could be wrong.
+	* Reduced memory usage when a the number of alignments or results
+	  asked for using the -b and -v options was higher than the possible
+	  maximum number.
+
 2014-06-25  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.0.10
 	* Resolved an inconsistency in SWIPE with custom non-symmetric

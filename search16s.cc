@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -175,12 +175,15 @@ inline void domasked16s(volatile __m128i * Sm,
      "## domasked16                             \n"
      INITIALIZE
      "        paddsw  (%7), %%xmm13           \n" // add M
+     "        paddsw  (%7), %%xmm13           \n" // add M
      "        jmp     2f                      \n"
      
      "1:      movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
      "        movdqa  0(%1,%%r11,4), %%xmm8   \n" // load N0
      "        paddsw  (%7), %%xmm8            \n" // add M
+     "        paddsw  (%7), %%xmm8            \n" // add M
      "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
+     "        paddsw  (%7), %%xmm12           \n" // add M
      "        paddsw  (%7), %%xmm12           \n" // add M
      
      ONESTEP("%%xmm0",  "0(%1,%%r11,4)",   "%%xmm4", "0" )
@@ -189,7 +192,9 @@ inline void domasked16s(volatile __m128i * Sm,
      "        movq    8(%2,%%r11,1), %%rax    \n" // load x from qp[qi+1]
      "        movdqa  32(%1,%%r11,4), %%xmm0  \n" // load H0
      "        paddsw  (%7), %%xmm0            \n" // add M
+     "        paddsw  (%7), %%xmm0            \n" // add M
      "        movdqa  48(%1,%%r11,4), %%xmm12 \n" // load E
+     "        paddsw  (%7), %%xmm12           \n" // add M
      "        paddsw  (%7), %%xmm12           \n" // add M
      
      ONESTEP("%%xmm8",  "32(%1,%%r11,4)",   "%%xmm4", "0" )
@@ -203,6 +208,7 @@ inline void domasked16s(volatile __m128i * Sm,
      "        je      3f                      \n"
      "        movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
      "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
+     "        paddsw  (%7), %%xmm12           \n" // add M
      "        paddsw  (%7), %%xmm12           \n" // add M
      
      ONESTEP("%%xmm0",  "0(%1,%%r11,4)",   "%%xmm4", "0" )
@@ -505,6 +511,7 @@ void search16s(WORD * * q_start,
 
       /* save column address if new highscore */
 
+      SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
       int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
       if (mask)
