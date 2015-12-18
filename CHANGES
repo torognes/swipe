@@ -1,4 +1,9 @@
 2014-06-27  Torbjorn Rognes  <torognes@ifi.uio.no>
+	* Version 2.0.12
+	* Fixed a bug in memory allocation that caused segfaults.
+	* Fixed a minor memory leak.
+
+2014-06-27  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.0.11
 	* Resolved a bug that resulted in SWIPE terminating with a fatal
 	  internal error in the align function. After recomputing an alignment

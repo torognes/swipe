@@ -599,9 +599,9 @@ void score_matrix_init()
 void score_matrix_free()
 {
   free(score_matrix_7);
-  score_matrix_7t = NULL;
-  free(score_matrix_7t);
   score_matrix_7 = NULL;
+  free(score_matrix_7t);
+  score_matrix_7t = NULL;
   free(score_matrix_8);
   score_matrix_8 = NULL;
   free(score_matrix_16);
