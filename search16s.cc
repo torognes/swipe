@@ -90,17 +90,17 @@ void dprofile_dump16s(WORD * dprofile)
   "        andq    $-16, %%r10      \n"	\
   "        xorq    %%r11, %%r11     \n" 
 
-#define ONESTEP(H, N, F, V)		\
-  "        paddsw  " V"(%%rax), " H"  \n"	\
-  "        pmaxsw  " F", " H"         \n"	\
-  "        pmaxsw  %%xmm12, " H"     \n"	\
-  "        pmaxsw  " H", %%xmm13     \n"	\
-  "        psubsw  %%xmm15, " F"     \n"	\
-  "        psubsw  %%xmm15, %%xmm12 \n"	\
-  "        movdqa  " H", " N"         \n"	\
-  "        psubsw  %%xmm14, " H"     \n"	\
-  "        pmaxsw  " H", %%xmm12     \n"	\
-  "        pmaxsw  " H", " F"         \n"	
+#define ONESTEP(H, N, F, V)			\
+  "        paddsw  " V "(%%rax), " H " \n"	\
+  "        pmaxsw  " F ", " H "        \n"	\
+  "        pmaxsw  %%xmm12, " H "      \n"	\
+  "        pmaxsw  " H ", %%xmm13      \n"	\
+  "        psubsw  %%xmm15, " F "      \n"	\
+  "        psubsw  %%xmm15, %%xmm12    \n"	\
+  "        movdqa  " H ", " N "        \n"	\
+  "        psubsw  %%xmm14, " H "      \n"	\
+  "        pmaxsw  " H ", %%xmm12      \n"	\
+  "        pmaxsw  " H ", " F "        \n"
 
 
 inline void donormal16s(volatile __m128i * Sm,  /* r9  */

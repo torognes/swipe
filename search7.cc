@@ -582,17 +582,17 @@ void dseq_dump7(BYTE * dseq)
   "        andq    $-16, %%r10      \n"			\
   "        xorq    %%r11, %%r11     \n"
 
-#define ONESTEP(H, N, F, V)				\
-  "        paddsb  " V"(%%rax), " H"  \n"			\
-  "        pmaxub  " F", " H"         \n"			\
-  "        pmaxub  %%xmm12, " H"     \n"			\
-  "        pmaxub  " H", %%xmm13     \n"			\
-  "        psubsb  %%xmm15, " F"     \n"			\
-  "        psubsb  %%xmm15, %%xmm12 \n"			\
-  "        movdqa  " H", " N"         \n"			\
-  "        psubsb  %%xmm14, " H"     \n"			\
-  "        pmaxub  " H", %%xmm12     \n"			\
-  "        pmaxub  " H", " F"         \n"
+#define ONESTEP(H, N, F, V)                             \
+  "        paddsb  " V "(%%rax), " H "\n"               \
+  "        pmaxub  " F ", " H "       \n"               \
+  "        pmaxub  %%xmm12, " H "     \n"               \
+  "        pmaxub  " H ", %%xmm13     \n"               \
+  "        psubsb  %%xmm15, " F "     \n"               \
+  "        psubsb  %%xmm15, %%xmm12   \n"               \
+  "        movdqa  " H ", " N "       \n"               \
+  "        psubsb  %%xmm14, " H "     \n"               \
+  "        pmaxub  " H ", %%xmm12     \n"               \
+  "        pmaxub  " H ", " F "       \n"
 
 inline void donormal7(__m128i * Sm,
 		      __m128i * hep,
