@@ -473,6 +473,9 @@ al_info_t * db_read_alias(long symtype, const char * basename)
       }
     }
 
+    if (!al_info->title)
+      al_info->title = strdup(basename);
+
     fclose(db_file_xal);
 
     //    show_alias_info(al_info);
@@ -836,6 +839,12 @@ void db_open(long symtype, const char * basename, char * taxidfilename)
       }
       else
       {
+        if (ai->oidlist_len == 0)
+          {
+            ai->memb_bit = 0;
+            db_main.memb_bit = 0;
+          }
+
 	if (ai->memb_bit)
 	{
 	  if ((ai->oidlist_len != 1) || (ai->dblist_len != 1))
