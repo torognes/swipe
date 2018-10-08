@@ -23,3 +23,7 @@ a little bit of documentation.
 
 More information about SWIPE can be found on its
 [website](http://dna.uio.no/swipe/).
+
+SWIPE may be installed with Homebrew using the following command:
+
+`brew install brewsci/bio/swipe`
