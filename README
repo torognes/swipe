@@ -76,6 +76,9 @@ FILE is the base name of the database files.
 Most features and options are similar and compatible with NCBI
 BLAST.
 
+All scores (e.g. for options -c and -u) are raw alignment scores
+(not bit scores) unless otherwise noted.
+
 Please note that SWIPE does not employ composition based statistics (BLAST
 option "-C"), but uses the standard Karin-Altschul statistics. Also, sequence
 filtering of low complexity regions (BLAST option "-F") is not implemented.
