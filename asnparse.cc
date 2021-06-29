@@ -2,7 +2,7 @@
     SWIPE
     Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-    Copyright (C) 2008-2013 Torbjorn Rognes, University of Oslo,
+    Copyright (C) 2008-2021 Torbjorn Rognes, University of Oslo,
     Oslo University Hospital and Sencel Bioinformatics AS
 
     This program is free software: you can redistribute it and/or modify
@@ -194,7 +194,27 @@ void parse_visiblestring(apt p)
       length = (length << 8) | p->ch;
       nextch(p);
     }
-  else if (p->len > 0x82)
+  else if (p->len == 0x83)
+    {
+      length = p->ch;
+      nextch(p);
+      length = (length << 8) | p->ch;
+      nextch(p);
+      length = (length << 8) | p->ch;
+      nextch(p);
+    }
+  else if (p->len == 0x84)
+    {
+      length = p->ch;
+      nextch(p);
+      length = (length << 8) | p->ch;
+      nextch(p);
+      length = (length << 8) | p->ch;
+      nextch(p);
+      length = (length << 8) | p->ch;
+      nextch(p);
+    }
+  else if (p->len > 0x84)
     {
       fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
       fatal("Error parsing binary ASN.1 in database sequence definition.");

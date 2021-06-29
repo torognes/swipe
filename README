@@ -1,7 +1,7 @@
 SWIPE
 Smith-Waterman database searches with Inter-sequence Parallel Execution
 
-Copyright (C) 2008-2014 Torbjorn Rognes, University of Oslo, 
+Copyright (C) 2008-2021 Torbjorn Rognes, University of Oslo,
 Oslo University Hospital and Sencel Bioinformatics AS
 
 This program is free software: you can redistribute it and/or modify
@@ -105,7 +105,8 @@ specified organisms.
 SWIPE accepts only databases prepared using the formatdb or makeblastdb
 tools that are distributed together with NCBI BLAST and BLAST+. They
 can be downloaded at ftp://ftp.ncbi.nlm.nih.gov/blast/executables/
-from NCBI.
+from NCBI. For makeblastdb, please use the "-blastdb_version 4" option
+to make databases that are compatible with SWIPE.
 
 The SWIPE distribution includes executable binaries for 64-bit Linux and
 Mac. SWIPE may be compiled from sources using either the GNU g++ compiler,

@@ -1,3 +1,7 @@
+2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
+        * Version 2.1.1
+        * Fix for very long header strings in NCBI database files
+
 2018-05-04  Torbjorn Rognes  <torognes@ifi.uio.no>
 	* Version 2.1.0
         * Fix for changes to NCBI database format
