@@ -64,6 +64,7 @@ double expect;
 double minexpect;
 long minscore;
 long maxscore;
+long show_best;
 long alignments;
 long maxmatches;
 long gapopen;
@@ -796,6 +797,7 @@ void args_usage()
   fprintf(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
   fprintf(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
   fprintf(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
+  fprintf(out, "  -B, --show_best=NUM        only show highest scoring sequences (0=no)\n");
   fprintf(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
   fprintf(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
   fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
@@ -856,7 +858,7 @@ void args_init(int argc, char **argv)
   progname = argv[0];
 
   opterr = 1;
-  char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
+  char short_options[] = "d:i:M:q:r:G:E:S:v:B:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
   static struct option long_options[] =
   {
@@ -869,6 +871,7 @@ void args_init(int argc, char **argv)
     {"gapextend",        required_argument, NULL, 'E' },
     {"strand",           required_argument, NULL, 'S' },
     {"num_descriptions", required_argument, NULL, 'v' },
+    {"show_best",        required_argument, NULL, 'B' },
     {"num_alignments",   required_argument, NULL, 'b' },
     {"min_score",        required_argument, NULL, 'c' },
     {"max_score",        required_argument, NULL, 'u' },
@@ -907,7 +910,12 @@ void args_init(int argc, char **argv)
 	  /* threads */
 	  threads = atol(optarg);
 	  break;
-	  
+    
+  case 'B':
+    /* show best */
+    show_best = atol(optarg);
+    break;
+    
 	case 'b':
 	  /* alignments */
 	  alignments = atol(optarg);
@@ -2147,7 +2155,7 @@ void master(int size)
   fprintf(out, "Showing hits.\n");
 #endif
 
-  hits_show(view, show_gis);
+  hits_show(view, show_gis, show_best);
   
 #ifdef DEBUG
   fprintf(out, "Shown hits.\n");
@@ -2500,7 +2508,7 @@ void work()
   //  if (view == 0)
   //    clock_stop(&ti);
 
-  hits_show(view, show_gis);
+  hits_show(view, show_gis, show_best);
   hits_exit();
 }
 

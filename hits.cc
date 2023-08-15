@@ -1986,7 +1986,7 @@ void hits_show_end(long view)
   }
 }
 
-void hits_show(long view, long show_gis)
+void hits_show(long view, long show_gis, long show_best)
 {
   // compute number of hits and alignments to actually show
 
@@ -2002,7 +2002,18 @@ void hits_show(long view, long show_gis)
     showalignments = hits_count;
   else
     showalignments = opt_alignments;
-  
+
+  if (show_best > 0)
+  {
+    long high_score = hits_list[0].score;
+    long show_best_end = 0;
+    while (((show_best_end+1) < hits_count) && (high_score == hits_list[(show_best_end+1)].score))
+      show_best_end++;
+    show_best_end++;
+    showhits = show_best_end;
+    showalignments = show_best_end;
+  }
+
   struct db_thread_s * t = db_thread_create();
 
   if(view == 0)

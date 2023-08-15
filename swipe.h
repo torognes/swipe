@@ -355,7 +355,7 @@ long hits_getcount();
 void hits_align(struct db_thread_s * t, long i);
 void hits_show_begin(long view);
 void hits_show_end(long view);
-void hits_show(long view, long show_gis);
+void hits_show(long view, long show_gis, long show_best);
 void hits_empty();
 void hits_exit();
 void hits_gethit(long i, long * seqno, long * score, 
