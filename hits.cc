@@ -2010,8 +2010,16 @@ void hits_show(long view, long show_gis, long show_best)
     while (((show_best_end+1) < hits_count) && (high_score == hits_list[(show_best_end+1)].score))
       show_best_end++;
     show_best_end++;
-    showhits = show_best_end;
-    showalignments = show_best_end;
+    if (hits_count > 0)
+    {
+      showhits = show_best_end;
+      showalignments = show_best_end;      
+  } else
+    {
+      showhits = 0;
+      showalignments = 0;  
+    }
+
   }
 
   struct db_thread_s * t = db_thread_create();
