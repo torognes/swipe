@@ -111,6 +111,7 @@ extern long maxmatches;
 extern long threads;
 extern const char * databasename;
 extern long alignments;
+extern long show_best;
 extern long queryno;
 extern long compute7;
 extern long show_taxid;
@@ -346,7 +347,7 @@ void db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
 void db_getheader(struct db_thread_s * t, long seqno, char ** address, 
 		  long * length);
 
-void hits_init(long descriptions, long alignments, long minscore, 
+void hits_init(long descriptions, long alignments, long show_best, long minscore, 
 	       long maxscore, double minexpect, double expect, int show_nostats);
 void hits_enter(long seqno, long score, long qstrand, long qframe,
 		long dstrand, long dframe, long align_hint, long bestq);
@@ -355,7 +356,7 @@ long hits_getcount();
 void hits_align(struct db_thread_s * t, long i);
 void hits_show_begin(long view);
 void hits_show_end(long view);
-void hits_show(long view, long show_gis, long show_best);
+void hits_show(long view, long show_gis);
 void hits_empty();
 void hits_exit();
 void hits_gethit(long i, long * seqno, long * score, 

@@ -34,6 +34,7 @@ long obvious;
 
 long opt_descriptions;
 long opt_alignments;
+long opt_show_best;
 
 /* parameters for bit scores and expect values */
 
@@ -189,7 +190,26 @@ void hits_enter(long seqno, long score, long qstrand, long qframe,
 			 ((score == hits_list[place-1].score) && 
 			  (seqno > hits_list[place-1].seqno))))
     place--;
-  
+
+  long Nbest = 1;
+  if (place > 0)
+  {
+    if (score < hits_list[place-1].score)
+      Nbest++;
+    
+    for (long j=(place-1); j>0; j--)
+    {
+      if (hits_list[j].score < hits_list[j-1].score)
+        Nbest++;
+    }
+  }
+
+  if (Nbest > opt_show_best)
+  {
+    pthread_mutex_unlock(&hitsmutex);
+    return;
+  }
+
   // move entries down
   
   long move = (hits_count < keephits ? hits_count : keephits - 1) - place;
@@ -280,10 +300,11 @@ void hits_enter_align_string(long i, char * align, long align_len)
   //  hits_list[i].alignment[align_len] = 0;
 }
 
-void hits_init(long descriptions, long alignments, long minscore, long maxscore, double minexpect, double expect, int show_nostats)
+void hits_init(long descriptions, long alignments, long show_best, long minscore, long maxscore, double minexpect, double expect, int show_nostats)
 {
   opt_descriptions = descriptions;
   opt_alignments = alignments;
+  opt_show_best = show_best;
   keephits = descriptions > alignments ? descriptions : alignments;
   
   long maxhits = db_getseqcount_masked();
@@ -1986,7 +2007,7 @@ void hits_show_end(long view)
   }
 }
 
-void hits_show(long view, long show_gis, long show_best)
+void hits_show(long view, long show_gis)
 {
   // compute number of hits and alignments to actually show
 
@@ -2003,24 +2024,24 @@ void hits_show(long view, long show_gis, long show_best)
   else
     showalignments = opt_alignments;
 
-  if (show_best > 0)
+  long Nbest = 1;
+  long place = 1;
+  while (place < hits_count)
   {
-    long high_score = hits_list[0].score;
-    long show_best_end = 0;
-    while (((show_best_end+1) < hits_count) && (high_score == hits_list[(show_best_end+1)].score))
-      show_best_end++;
-    show_best_end++;
-    if (hits_count > 0)
-    {
-      showhits = show_best_end;
-      showalignments = show_best_end;      
-  } else
-    {
-      showhits = 0;
-      showalignments = 0;  
-    }
+    if (hits_list[place-1].score > hits_list[place].score)
+      Nbest++;
 
+    if (Nbest <= opt_show_best)
+      place++;
+    else
+      break;
   }
+
+  if (showhits > place)
+    showhits = place;
+  
+  if (showalignments > place)
+    showalignments = place;
 
   struct db_thread_s * t = db_thread_create();
 
