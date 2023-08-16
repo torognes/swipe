@@ -28,6 +28,7 @@
 /* ARGUMENTS AND THEIR DEFAULTS */
 
 #define DEFAULT_MAXMATCHES 250
+#define DEFAULT_SHOW_BEST 250
 #define DEFAULT_ALIGNMENTS 100
 #define DEFAULT_MINSCORE 1
 #define DEFAULT_MAXSCORE (LONG_MAX)
@@ -64,6 +65,7 @@ double expect;
 double minexpect;
 long minscore;
 long maxscore;
+long show_best;
 long alignments;
 long maxmatches;
 long gapopen;
@@ -739,6 +741,7 @@ void args_show()
       fprintf(out, "Min score shown:   %ld\n", minscore);
       fprintf(out, "Max matches shown: %ld\n", maxmatches);
       fprintf(out, "Alignments shown:  %ld\n", alignments);
+      fprintf(out, "Best scores shown: %ld\n", show_best);
       fprintf(out, "Show gi's:         %ld\n", show_gis);
       fprintf(out, "Show taxid's:      %ld\n", show_taxid);
       fprintf(out, "Threads:           %ld\n", threads);
@@ -796,6 +799,7 @@ void args_usage()
   fprintf(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
   fprintf(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
   fprintf(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
+  fprintf(out, "  -B, --show_best=NUM        number of different scoring sequences to show (250)\n");
   fprintf(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
   fprintf(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
   fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
@@ -836,6 +840,7 @@ void args_init(int argc, char **argv)
   maxscore = DEFAULT_MAXSCORE;
   maxmatches = DEFAULT_MAXMATCHES;
   alignments = DEFAULT_ALIGNMENTS;
+  show_best = DEFAULT_SHOW_BEST;
   threads = DEFAULT_THREADS;
   view = DEFAULT_VIEW;
   symtype = DEFAULT_SYMTYPE;
@@ -856,7 +861,7 @@ void args_init(int argc, char **argv)
   progname = argv[0];
 
   opterr = 1;
-  char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
+  char short_options[] = "d:i:M:q:r:G:E:S:v:B:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
   static struct option long_options[] =
   {
@@ -869,6 +874,7 @@ void args_init(int argc, char **argv)
     {"gapextend",        required_argument, NULL, 'E' },
     {"strand",           required_argument, NULL, 'S' },
     {"num_descriptions", required_argument, NULL, 'v' },
+    {"show_best",        required_argument, NULL, 'B' },
     {"num_alignments",   required_argument, NULL, 'b' },
     {"min_score",        required_argument, NULL, 'c' },
     {"max_score",        required_argument, NULL, 'u' },
@@ -907,7 +913,12 @@ void args_init(int argc, char **argv)
 	  /* threads */
 	  threads = atol(optarg);
 	  break;
-	  
+    
+  case 'B':
+    /* show best */
+    show_best = atol(optarg);
+    break;
+    
 	case 'b':
 	  /* alignments */
 	  alignments = atol(optarg);
@@ -1157,6 +1168,9 @@ void args_init(int argc, char **argv)
 
   if ((dump<0) || (dump>2))
     fatal("Illegal dump mode.");
+
+  if (maxmatches < show_best)
+    maxmatches = show_best;
   
   translate_init(query_gencode, db_gencode);
 }
@@ -1845,7 +1859,7 @@ void master(int size)
 
   /* init */
   
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
+  hits_init(maxmatches, alignments, show_best, minscore, maxscore, minexpect, expect, view==0);
 
   prepare_search(size-1);
 
@@ -2179,7 +2193,7 @@ void slave(int rank, int size)
   //  fprintf(out, "Node %d: SSE2: %ld SSSE3: %ld\n", rank, cpu_feature_sse2, cpu_feature_ssse3);
   //  fprintf(out, "This is slave no %d.\n", rank);
 
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, 0);
+  hits_init(maxmatches, alignments, show_best, minscore, maxscore, minexpect, expect, 0);
 
   prepare_search(size-1);
 
@@ -2436,7 +2450,7 @@ void slave(int rank, int size)
 void work()
 {
   args_show();
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
+  hits_init(maxmatches, alignments, show_best, minscore, maxscore, minexpect, expect, view==0);
 
   compute7 = 0;
   compute16 = 0;
