@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Rognes"
+  given-names: "Torbjørn"
+  orcid: "https://orcid.org/0000-0002-9329-9974"
+title: "SWIPE: Smith-Waterman database searches with inter-sequence SIMD parallelisation"
+version: 2.1.1
+date-released: 2021-06-29
+url: "https://github.com/torognes/swipe"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Rognes"
+    given-names: "Torbjørn"
+    orcid: "https://orcid.org/0000-0002-9329-9974"
+  doi: "10.1186/1471-2105-12-221"
+  journal: "BMC Bioinformatics"
+  day: 1
+  month: 6
+  title: "Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation"
+  issue: 12
+  volume: 221
+  year: 2011
