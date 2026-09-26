@@ -398,7 +398,7 @@ void score_matrix_read_file(const char * matrix)
 	  while ((c = *p++))
 	    if (strchr(" \t\n", c) == NULL)
 	      {
-		*q++ = map[(int)c];
+		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
 
@@ -408,7 +408,7 @@ void score_matrix_read_file(const char * matrix)
 
 	  /* ordinary lines */
 	  
-	  a = map[(int)c];
+	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
 	      if (sscanf(p, "%ld%n", & sc, & read) == 0)
@@ -485,7 +485,7 @@ void score_matrix_read_string(const char * matrix)
 	  while ((c = *p++))
 	    if (strchr(" \t\n", c) == NULL)
 	      {
-		*q++ = map[(int)c];
+		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
 
@@ -495,7 +495,7 @@ void score_matrix_read_string(const char * matrix)
 
 	  /* ordinary lines */
 	  
-	  a = map[(int)c];
+	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
 	      if (sscanf(p, "%ld%n", & sc, & read) == 0)

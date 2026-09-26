@@ -338,7 +338,8 @@ int query_read()
   while((not query_line.empty()) and (query_line[0] != '>'))
   {
     char const * p = query_line.c_str();
-    while(int c = *p++)
+    // bytes above 0x7f must not be negative indexes (KI-19)
+    while(int const c = static_cast<unsigned char>(*p++))
     {
       if ((m = map[c]) >= 0)
       {
