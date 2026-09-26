@@ -70,6 +70,7 @@ struct asnparse_info
   char date[MAXSTRING];
   char pdb_molid[MAXSTRING];
   long pdb_chain;
+  char pdb_chain_id[MAXSTRING];
   
   char gnl_db[MAXSTRING];
   char gnl_id_string[MAXSTRING];
@@ -610,6 +611,7 @@ void parse_pdb_seq_id(apt p)
 {
   p->pdb_molid[0]=0;
   p->pdb_chain = 32;
+  p->pdb_chain_id[0] = 0;
   p->date[0] = 0;
 
   match_obj(p,0x30);
@@ -640,6 +642,19 @@ void parse_pdb_seq_id(apt p)
 #endif
     match_obj(p,0xA2);
     parse_date(p);
+    match_obj(p,0);
+  }
+
+  // chain-id [3] (VisibleString, optional): chain names of any length
+  // and case, written by current versions of makeblastdb (KI-22)
+  if (p->obj == 0xA3)
+  {
+#ifdef SHOW
+    printf("chain-id ");
+#endif
+    match_obj(p,0xA3);
+    parse_visiblestring(p);
+    strcpy(p->pdb_chain_id, p->parsed_string);
     match_obj(p,0);
   }
 
@@ -767,6 +782,12 @@ void parse_seq_id(apt p)
 
   case 0xAE:
     parse_pdb_seq_id(p);
+    if (p->pdb_chain_id[0])
+    {
+      // the chain name is shown as is, as done by BLAST+ (KI-22)
+      set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + p->pdb_chain_id);
+      break;
+    }
     if (p->pdb_chain > 95)
       sprintf(chain, "%c%c", (char) p->pdb_chain-32, (char) p->pdb_chain-32);
     else
