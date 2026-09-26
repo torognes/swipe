@@ -38,6 +38,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <x86intrin.h>
+#include <array>
 
 #ifdef MPISWIPE
 #include <mpi.h>
@@ -186,8 +187,9 @@ struct time_info
   clock_t wc1, wc2;
   long clk_tck;
 
-  char * starttime;
-  char * endtime;
+  // kept until the results are shown (-m 99, KI-28)
+  std::array<char, 30> starttime;
+  std::array<char, 30> endtime;
   double elapsed;
   double speed;
 };

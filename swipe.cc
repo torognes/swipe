@@ -1725,21 +1725,16 @@ void clock_start(struct time_info * tip)
 void clock_stop(struct time_info * tip)
 {
   struct tm tms;
-  char buf[30];
-  char timeformat[] = "%a, %e %b %Y %T UTC";
+  char const timeformat[] = "%a, %e %b %Y %T UTC";
 
   tip->wc2 = times(& tip->times2);
   time(& tip->t2);
 
   gmtime_r(&tip->t1, & tms);
-  strftime(buf, 30, timeformat, & tms);
-  tip->starttime = (char*) xmalloc(30);
-  strcpy(tip->starttime, buf);
+  strftime(tip->starttime.data(), tip->starttime.size(), timeformat, & tms);
   
   gmtime_r(&tip->t2, & tms);
-  strftime(buf, 30, timeformat, & tms);
-  tip->endtime = (char*) xmalloc(30);
-  strcpy(tip->endtime, buf);
+  strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
 
   tip->elapsed = ((double)(tip->wc2 - tip->wc1)) / tip->clk_tck;
   
@@ -1778,17 +1773,12 @@ void clock_stop(struct time_info * tip)
   
   if (view == 0)
   {
-    fprintf(out, "Search started:    %s\n", tip->starttime);
-    fprintf(out, "Search completed:  %s\n", tip->endtime);
+    fprintf(out, "Search started:    %s\n", tip->starttime.data());
+    fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
     fprintf(out, "\n");
   }
-
-  free(tip->starttime);
-  tip->starttime = 0;
-  free(tip->endtime);
-  tip->endtime = 0;
 }
 
 

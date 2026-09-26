@@ -18,6 +18,9 @@
           score matrix files were read as negative indexes, out of the
           bounds of the symbol tables (KI-19). They are ignored, as other
           unknown symbols
+        * Fix: in the ParAlign XML output (-m 99), search start and end
+          times were printed after they were freed ("(null)" with glibc)
+          (KI-28)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
