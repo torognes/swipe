@@ -37,10 +37,17 @@ STD=-std=c++11
 
 LIBS=-lpthread
 
-# GNU options
-CXX=g++
-CXXFLAGS=$(COMPILEOPT) $(COMMON) -O3
-LINKFLAGS=$(COMMON)
+# GNU options: g++, unless CXX is given (environment or command line)
+ifeq ($(origin CXX),default)
+  CXX=g++
+endif
+OPTIMIZATION=-O3
+
+# User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
+# for compatibility) are appended after the flags above, so they can
+# override them (e.g. make CXXFLAGS=-O2).
+SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) $(CPPFLAGS) $(CXXFLAGS)
+SWIPE_LDFLAGS=$(COMMON) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe mpiswipe
 
@@ -63,16 +70,16 @@ OBJS = database.o asnparse.o align.o matrices.o \
 DEPS = swipe.h Makefile
 
 swipe : swipe.o $(OBJS)
-	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS)
+	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)
 
 mpiswipe : mpiswipe.o $(OBJS)
-	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
+	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
 
 %.o : %.cc $(DEPS)
-	$(CXX) $(STD) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(SWIPE_CXXFLAGS) -c -o $@ $<
 
 mpiswipe.o : swipe.cc $(DEPS)
-	$(CXX) $(STD) $(CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
+	$(CXX) $(SWIPE_CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
 search7_ssse3.o : search7.cc $(DEPS)
-	$(CXX) $(STD) -mssse3 $(CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
+	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
