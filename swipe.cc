@@ -173,7 +173,8 @@ void * xmalloc(size_t size)
 {
   const size_t alignment = 16;
   void * t = NULL;
-  posix_memalign(& t, alignment, size);
+  if (posix_memalign(& t, alignment, size) != 0)
+    t = NULL;
   
   if (t==NULL)
     fatal("Unable to allocate enough memory.");
