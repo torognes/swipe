@@ -24,7 +24,9 @@
 */
 
 #include "swipe.h"
-#include <cstring>  // std::strcmp
+#include <cstdio>  // std::getc, EOF
+#include <cstring>  // std::strcpy
+#include <string>
 
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
@@ -182,7 +184,25 @@ const char * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 struct query_s query;
 
 FILE * query_fp;
-char query_line[LINE_MAX];
+
+// next line of the query file, with its end-of-line character (an
+// empty string means the end of the file)
+std::string query_line;
+
+// read the next line of fp into line, whatever its length (KI-16,
+// KI-17), including its end-of-line character; line is empty at the
+// end of the file (or after a read error)
+auto read_line(std::FILE * const fp, std::string & line) -> void
+{
+  line.clear();
+  auto symbol = 0;
+  while ((symbol = std::getc(fp)) != EOF)
+    {
+      line.push_back(static_cast<char>(symbol));
+      if (symbol == '\n')
+        break;
+    }
+}
 
 void query_init(const char * queryname, long symtype, long strands)
 {
@@ -227,16 +247,13 @@ void query_init(const char * queryname, long symtype, long strands)
     }
   }
 
-  query_line[0] = 0;
-  if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
-    query_line[0] = '\0';  // end of file or read error
+  read_line(query_fp, query_line);
 
   // skip empty lines at the beginning of the file (KI-18): an empty
   // first line was read as an empty query, and the rest of the file
   // was ignored
-  while (std::strcmp(query_line, "\n") == 0)
-    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
-      query_line[0] = '\0';
+  while ((query_line == "\n") or (query_line == "\r\n"))
+    read_line(query_fp, query_line);
 }
 
 void query_free()
@@ -273,29 +290,28 @@ void query_exit()
 
 int query_read()
 {
-  if (!query_line[0])
+  if (query_line.empty())
     return 0;
 
   query_free();
 
   // read description
 
-  int len = strlen(query_line);
-  
-  if (query_line[len-1] == '\n')
-  {
-    query_line[len-1] = 0;
-    len--;
-  }
+  // the line up to its first null byte, without its line ending
+  // (\n, or \r\n: KI-21)
+  std::string header(query_line, 0, query_line.find('\0'));
+  if ((not header.empty()) and (header.back() == '\n'))
+    header.pop_back();
+  if ((not header.empty()) and (header.back() == '\r'))
+    header.pop_back();
+  int len = static_cast<int>(header.size());
 
-  if (query_line[0] == '>')
+  if (header[0] == '>')
   {
     query.description = (char*) xmalloc(len);
-    strcpy(query.description, query_line+1);
+    std::strcpy(query.description, header.c_str() + 1);
     query.dlen = len-1;
-    query_line[0] = 0;
-    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
-      query_line[0] = '\0';  // end of file or read error
+    read_line(query_fp, query_line);
   }
   else
   {
@@ -319,9 +335,9 @@ int query_read()
   else
     map = map_ncbi_nt16;
 
-  while(query_line[0] && (query_line[0] != '>'))
+  while((not query_line.empty()) and (query_line[0] != '>'))
   {
-    char * p = query_line;
+    char const * p = query_line.c_str();
     while(int c = *p++)
     {
       if ((m = map[c]) >= 0)
@@ -334,9 +350,7 @@ int query_read()
 	query_sequence[query_length++] = m;
       }
     }
-    query_line[0] = 0;
-    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
-      query_line[0] = '\0';  // end of file or read error
+    read_line(query_fp, query_line);
   }
   query_sequence[query_length] = 0;
     

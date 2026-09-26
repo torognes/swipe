@@ -3,6 +3,12 @@
         * Fix: an empty line at the beginning of the query file was read
           as an empty query, and all the other queries were silently
           ignored (KI-18)
+        * Fix: query lines longer than 2,047 characters were read in
+          chunks: the end of a long header was read as sequence (KI-16),
+          and a '>' at position 2,048 of a sequence line started a new
+          query (KI-17). Lines of any length are now read whole
+        * Fix: carriage returns (Windows line endings) are removed from
+          query headers (KI-21)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
