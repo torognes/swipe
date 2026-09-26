@@ -557,15 +557,17 @@ void hits_align(struct db_thread_s * t, long i)
   h->header_address = (char*) xmalloc(length);
   memcpy(h->header_address, address, length);
 
+  // the sequence length is needed for every hit shown (-m 7 <len>,
+  // KI-37), the sequence itself only for hits with an alignment
+  db_mapsequences(t, h->seqno, h->seqno);
+
+  db_getsequence(t, h->seqno, h->dstrand, h->dframe,
+		 & address, & length, & ntlen, 0);
+  h->dlen = length - 1;
+  h->dlennt = ntlen;
+
   if (i < opt_alignments)
   {
-    db_mapsequences(t, h->seqno, h->seqno);
-    
-    db_getsequence(t, h->seqno, h->dstrand, h->dframe,
-		   & address, & length, & ntlen, 0);
-    h->dlen = length - 1;
-    h->dlennt = ntlen;
-
     h->dseq = (char*)xmalloc(h->dlen);
     memcpy(h->dseq, address, h->dlen);
     

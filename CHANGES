@@ -9,6 +9,9 @@
           query (KI-17). Lines of any length are now read whole
         * Fix: carriage returns (Windows line endings) are removed from
           query headers (KI-21)
+        * Fix: with the simple XML output (-m 7), hits shown without an
+          alignment (beyond -b) reported an uninitialized sequence length
+          (<len>), which made the output non-deterministic (KI-37)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
