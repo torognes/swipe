@@ -41,13 +41,61 @@ LIBS=
 ifeq ($(origin CXX),default)
   CXX=g++
 endif
-OPTIMIZATION=-O3
+
+# Compiler identity: ask the preprocessor (works for g++, clang++,
+# version-suffixed names, ccache wrappers and cross-compilers)
+IS_CLANG := $(shell $(CXX) -x c++ -E -dM - < /dev/null 2>/dev/null | grep -c '__clang__')
+
+# Extra warnings of the DEBUG recipe (current GCC and clang only: the
+# oldest supported GCC rejects some of these options)
+DEBUG_WARNINGS_COMMON=-Wcast-align -Wcast-qual -Wconversion -Wdate-time \
+	-Wdouble-promotion -Wfloat-equal -Wformat=2 -Wnon-virtual-dtor \
+	-Wnull-dereference -Wold-style-cast -Woverloaded-virtual -Wpedantic \
+	-Wshadow -Wsign-conversion -Wuninitialized -Wunused -Wunused-macros \
+	-Wvla
+DEBUG_WARNINGS_GCC=-Wduplicated-branches -Wduplicated-cond \
+	-Wformat-overflow -Wlogical-op -Wuseless-cast
+DEBUG_WARNINGS_CLANG=-Wextra-semi -Wcomma -Wassign-enum -Wover-aligned
+ifneq ($(IS_CLANG),0)
+  DEBUG_WARNINGS=$(DEBUG_WARNINGS_COMMON) $(DEBUG_WARNINGS_CLANG)
+else
+  DEBUG_WARNINGS=$(DEBUG_WARNINGS_COMMON) $(DEBUG_WARNINGS_GCC)
+endif
+DEBUG_SANITIZER=-fsanitize=undefined,address -fno-omit-frame-pointer
+
+# Build recipes: exactly one is active, RELEASE by default. Objects
+# are not tagged with the recipe: run "make clean" when switching.
+ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE),$(TRACE)),)
+  RELEASE := 1
+endif
+
+ifdef RELEASE
+  # "make" or "make RELEASE=1": distributed binaries, benchmarks
+  OPTIMIZATION=-O3 -DNDEBUG
+else ifdef DEBUG
+  # "make DEBUG=1": sanitizers and extended warnings (current GCC or
+  # clang). DEBUG is not defined: it enables the trace blocks (TRACE=1)
+  OPTIMIZATION=-O0 -ggdb3 -D_GLIBCXX_DEBUG $(DEBUG_SANITIZER) $(DEBUG_WARNINGS)
+  LINKOPT=$(DEBUG_SANITIZER)
+else ifdef PROFILE
+  # "make PROFILE=1": gprof (number of calls vs time per call)
+  OPTIMIZATION=-pg -O1
+  LINKOPT=-pg
+else ifdef COVERAGE
+  # "make COVERAGE=1": line and branch coverage with gcov
+  OPTIMIZATION=-DCOVERAGE -fprofile-arcs -ftest-coverage -O0
+  LINKOPT=--coverage
+  LIBS+=-lgcov
+else ifdef TRACE
+  # "make TRACE=1": the #ifdef DEBUG trace blocks, printed to the output
+  OPTIMIZATION=-O0 -ggdb3 -DDEBUG
+endif
 
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
 SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) $(CPPFLAGS) $(CXXFLAGS)
-SWIPE_LDFLAGS=$(COMMON) $(LDFLAGS) $(LINKFLAGS)
+SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe mpiswipe
 
