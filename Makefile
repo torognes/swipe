@@ -49,7 +49,9 @@ LINKFLAGS=$(COMMON)
 
 PROG=swipe mpiswipe
 
-all : $(PROG)
+# mpiswipe (MPI version, needs mpicxx) is deprecated: it is no longer
+# built by default, run "make mpiswipe" to build it
+all : swipe
 
 clean :
 	rm -f *.o *~ $(PROG) gmon.out
