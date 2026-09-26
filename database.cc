@@ -768,6 +768,7 @@ void db_read_taxid_file(char * filename)
   }
 
   //  fprintf(out, "Read %ld taxid's.\n", lines);
+  static_cast<void>(lines);  // only read by the trace above
   fclose(db_main.taxid_file);
 }
 

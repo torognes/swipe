@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <vector>
 
 /* ARGUMENTS AND THEIR DEFAULTS */
 
@@ -452,7 +453,7 @@ void calc_chunks(long volcount,
 #endif
 
   long volsused = 0;
-  long chunksizes[volcount];
+  std::vector<long> chunksizes(volcount);
   long totalseqs = 0;
   long maxchunksize = 0;
   long vv = 0;
