@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <cstring>  // std::strcmp
 
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
@@ -229,6 +230,13 @@ void query_init(const char * queryname, long symtype, long strands)
   query_line[0] = 0;
   if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
     query_line[0] = '\0';  // end of file or read error
+
+  // skip empty lines at the beginning of the file (KI-18): an empty
+  // first line was read as an empty query, and the rest of the file
+  // was ignored
+  while (std::strcmp(query_line, "\n") == 0)
+    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
+      query_line[0] = '\0';
 }
 
 void query_free()

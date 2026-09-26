@@ -1,3 +1,9 @@
+2026-09-26  Frederic Mahe  <frederic.mahe@intp.science>
+        * Version 2.1.2 (in development)
+        * Fix: an empty line at the beginning of the query file was read
+          as an empty query, and all the other queries were silently
+          ignored (KI-18)
+
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
         * Fix for very long header strings in NCBI database files
