@@ -103,7 +103,24 @@ PROG=swipe mpiswipe
 # built by default, run "make mpiswipe" to build it
 all : swipe
 
-.PHONY : all clean distclean
+# Installation directories (GNU conventions): make install PREFIX=...
+# DESTDIR is prepended for staged installs (packaging)
+PREFIX ?= /usr/local
+exec_prefix := $(PREFIX)
+bindir := $(exec_prefix)/bin
+
+INSTALL ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+MKDIR_P ?= $(INSTALL) -d
+
+.PHONY : all clean distclean install uninstall
+
+install : swipe
+	$(MKDIR_P) $(DESTDIR)$(bindir)
+	$(INSTALL_PROGRAM) swipe $(DESTDIR)$(bindir)/swipe
+
+uninstall :
+	rm -f $(DESTDIR)$(bindir)/swipe
 
 clean :
 	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov
