@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <cstddef>  // std::size_t
+#include <limits>
 
 long keephits;
 long scorethreshold;
@@ -1215,6 +1217,40 @@ void hits_show_expect_nospace(double expect)
     fprintf(out, "%.0f", expect);
 }
 
+auto xml_putc(char const symbol) noexcept -> void
+{
+  switch (symbol)
+    {
+    case '&':
+      fputs("&amp;", out);
+      break;
+    case '<':
+      fputs("&lt;", out);
+      break;
+    case '>':
+      fputs("&gt;", out);
+      break;
+    case '"':
+      fputs("&quot;", out);
+      break;
+    case '\'':
+      fputs("&apos;", out);
+      break;
+    default:
+      putc(symbol, out);
+      break;
+    }
+}
+
+// print at most max_length characters of text, escaped as XML (KI-27);
+// the text is truncated before it is escaped
+static auto xml_print(char const * const text,
+                      std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
+{
+  for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
+    xml_putc(text[i]);
+}
+
 void make_anchor(char * anchor, long size, long symtype, long queryno, long i)
 {
   switch(symtype)
@@ -1313,9 +1349,13 @@ void hits_show_xml_paralign(long showalignments,
   }
   
   fprintf(out, "\t\t<queryInformation>\n");
-  fprintf(out, "\t\t\t<queryFilename>./%s</queryFilename>\n", queryname);
+  fprintf(out, "\t\t\t<queryFilename>./");
+  xml_print(queryname);
+  fprintf(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
-  fprintf(out, "\t\t\t<queryDescription>%s</queryDescription>\n", query.description);
+  fprintf(out, "\t\t\t<queryDescription>");
+  xml_print(query.description);
+  fprintf(out, "</queryDescription>\n");
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
   fprintf(out, "\t\t\t<querySequence>");
   for(int i=0; i<q.len; i++)
@@ -1339,11 +1379,17 @@ void hits_show_xml_paralign(long showalignments,
     ncbiopt = "GenPept";
   }
   fprintf(out, "\t\t<databaseInformation>\n");
-  fprintf(out, "\t\t\t<databaseFilename>%s</databaseFilename>\n", databasename);
+  fprintf(out, "\t\t\t<databaseFilename>");
+  xml_print(databasename);
+  fprintf(out, "</databaseFilename>\n");
   fprintf(out, "\t\t\t<databaseSequencetype>%s</databaseSequencetype>\n", dbseqtypedescr);
-  fprintf(out, "\t\t\t<databaseDescription>%s</databaseDescription>\n", db_gettitle());
+  fprintf(out, "\t\t\t<databaseDescription>");
+  xml_print(db_gettitle());
+  fprintf(out, "</databaseDescription>\n");
   fprintf(out, "\t\t\t<databaseVersion>%ld</databaseVersion>\n", db_getversion());
-  fprintf(out, "\t\t\t<databaseDate>%s</databaseDate>\n", db_gettime());
+  fprintf(out, "\t\t\t<databaseDate>");
+  xml_print(db_gettime());
+  fprintf(out, "</databaseDate>\n");
   fprintf(out, "\t\t\t<residueCount>%ld</residueCount>\n", db_getsymcount_masked());
   fprintf(out, "\t\t\t<sequenceCount>%ld</sequenceCount>\n", db_getseqcount_masked());
   fprintf(out, "\t\t\t<longestSequenceLength>%ld</longestSequenceLength>\n", db_getlongest());
@@ -1374,7 +1420,11 @@ void hits_show_xml_paralign(long showalignments,
   if (symtype == 0)
     fprintf(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
   else
-    fprintf(out, "\t\t\t<scoreMatrix>%s</scoreMatrix>\n", matrixname);
+  {
+    fprintf(out, "\t\t\t<scoreMatrix>");
+    xml_print(matrixname);
+    fprintf(out, "</scoreMatrix>\n");
+  }
 
   fprintf(out, "\t\t\t<gapPenalties>\n");
   fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", gapopen);
@@ -1456,10 +1506,16 @@ void hits_show_xml_paralign(long showalignments,
     fprintf(out, "\t\t\t\t</shortVersionLink>\n");
       }
     fprintf(out, "\t\t\t\t<shortVersionLink>\n");
-    fprintf(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=%.*s&amp;doptcmdl=%s</shortVersionLinkDestination>\n", ncbidb, linklen, link, ncbiopt);
-    fprintf(out, "\t\t\t\t\t<shortVersionLinkText>%.*s</shortVersionLinkText>\n", linklen, link);
+    fprintf(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=", ncbidb);
+    xml_print(link, linklen);
+    fprintf(out, "&amp;doptcmdl=%s</shortVersionLinkDestination>\n", ncbiopt);
+    fprintf(out, "\t\t\t\t\t<shortVersionLinkText>");
+    xml_print(link, linklen);
+    fprintf(out, "</shortVersionLinkText>\n");
     fprintf(out, "\t\t\t\t</shortVersionLink>\n");
-    fprintf(out, "\t\t\t\t<shortVersionName>%.35s</shortVersionName>\n", title);
+    fprintf(out, "\t\t\t\t<shortVersionName>");
+    xml_print(title, 35);
+    fprintf(out, "</shortVersionName>\n");
     if (symtype == 0)
     {
       fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", hits_list[i].dstrand ? '-' : '+');
@@ -1534,11 +1590,17 @@ void hits_show_xml_paralign(long showalignments,
 	}
       
 	fprintf(out, "\t\t\t\t\t<longVersionLink>\n");
-	fprintf(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=%.*s&amp;doptcmdl=%s</longVersionLinkDestination>\n", ncbidb, linklen, link, ncbiopt);
-	fprintf(out, "\t\t\t\t\t\t<longVersionLinkText>%.*s</longVersionLinkText>\n", linklen, link);
+	fprintf(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=", ncbidb);
+	xml_print(link, linklen);
+	fprintf(out, "&amp;doptcmdl=%s</longVersionLinkDestination>\n", ncbiopt);
+	fprintf(out, "\t\t\t\t\t\t<longVersionLinkText>");
+	xml_print(link, linklen);
+	fprintf(out, "</longVersionLinkText>\n");
 	fprintf(out, "\t\t\t\t\t</longVersionLink>\n");
       
-	fprintf(out, "\t\t\t\t\t<longVersionName>%s</longVersionName>\n", title);
+	fprintf(out, "\t\t\t\t\t<longVersionName>");
+	xml_print(title);
+	fprintf(out, "</longVersionName>\n");
       
 	free(deflinetable[d]);
       }
@@ -1662,6 +1724,14 @@ static void show_description(const char *desc)
   }
 }
 
+// query id (the description up to its first space), escaped as XML
+// (KI-27)
+static auto show_description_xml(char const * const desc) -> void
+{
+  for (auto const * dptr = desc; (*dptr != '\0') and (*dptr != ' '); ++dptr)
+    xml_putc(*dptr);
+}
+
 void hits_show_xml(long show_gis,
 		   long showalignments,
 		   long showhits,
@@ -1685,12 +1755,12 @@ void hits_show_xml(long show_gis,
     fprintf(out, "      <hitno>%ld</hitno>\n", i+1);
     fprintf(out, "      <track>%ld</track>\n", seqno);
     fprintf(out, "      <query>");
-    show_description(query.description);
+    show_description_xml(query.description);
     fprintf(out,"</query>\n");
     fprintf(out, "      <name>");
     db_showheader(t, hits_list[i].header_address,
 		  hits_list[i].header_length,
-		  show_gis, 0, 0, LONG_MAX, 1, 1);
+		  show_gis, 0, 0, LONG_MAX, 1, 1, Escaping::xml);
     fprintf(out, "</name>\n");
     fprintf(out, "      <len>%ld</len>\n", dlen);
     fprintf(out, "      <score>%ld</score>\n", score);

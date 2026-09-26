@@ -94,6 +94,7 @@ struct asnparse_info
   long linelen;
   long maxdeflines;
   long show_descr;
+  Escaping escaping;
 };
 
 // append src to the null-terminated string dst (capacity: size
@@ -968,7 +969,10 @@ long show_deflines(apt p, long deflines, char ** deflinetable)
 	  }
 	  else
 	  {
-	    putc(defline[pos], out);
+	    if (p->escaping == Escaping::xml)
+	      xml_putc(defline[pos]);
+	    else
+	      putc(defline[pos], out);
 	    pos++;
 	    col++;
 	  }
@@ -1079,8 +1083,10 @@ void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 
 long parse_header(apt p, unsigned char * buf, long len, long memb, 
 		  long (*f_checktaxid)(long), long show_gis, long indent, 
-		  long maxlen, long linelen, long maxdeflines, long show_descr)
+		  long maxlen, long linelen, long maxdeflines, long show_descr,
+		  Escaping const escaping)
 {
+  p->escaping = escaping;
   p->show_gis = show_gis;
   p->indent = indent;
   p->maxlen = maxlen;

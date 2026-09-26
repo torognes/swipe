@@ -28,6 +28,11 @@
         * Fix: in the ParAlign XML output (-m 99), blastn hits on the minus
           strand were reported on the plus strand, and their anchors were
           not unique when both strands of a sequence matched (KI-29)
+        * Fix: special characters (& < > " ') are escaped in the XML
+          outputs (-m 7 and -m 99): query ids and descriptions, database
+          sequence descriptions, links, file names, database title and
+          score matrix name. Descriptions such as "5'-3' exonuclease" or
+          "A&B" produced invalid XML (KI-27)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
