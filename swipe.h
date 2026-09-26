@@ -343,6 +343,9 @@ long db_check_inclusion(struct db_thread_s * t, long seqno);
 void db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno);
 void db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno);
 
+// frame value asking db_getsequence() for the nucleotide sequence of
+// a translated database (symtypes 3 and 4), without translation
+constexpr long untranslated_frame = -1;
 void db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
 		    char ** addressp, long * lengthp, long * ntlenp, int c);
 void db_getheader(struct db_thread_s * t, long seqno, char ** address, 

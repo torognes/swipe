@@ -18,6 +18,10 @@
           score matrix files were read as negative indexes, out of the
           bounds of the symbol tables (KI-19). They are ignored, as other
           unknown symbols
+        * Fix: the dump (-N) of a database with the tblastn or tblastx
+          symbol types (-p 3, -p 4) printed the translated sequence with
+          the nucleotide alphabet ('###'). The nucleotide sequence is now
+          dumped (KI-24)
         * Fix: in the ParAlign XML output (-m 99), search start and end
           times were printed after they were freed ("(null)" with glibc)
           (KI-28)
