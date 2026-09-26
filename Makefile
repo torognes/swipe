@@ -32,6 +32,9 @@ COMMON=-g
 
 COMPILEOPT=-Wall
 
+# language standard (swipe must build with GCC 4.8.5 and later)
+STD=-std=c++11
+
 LIBS=-lpthread
 
 # Intel options
@@ -66,10 +69,10 @@ mpiswipe : mpiswipe.o $(OBJS)
 	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
 
 %.o : %.cc $(DEPS)
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(STD) $(CXXFLAGS) -c -o $@ $<
 
 mpiswipe.o : swipe.cc $(DEPS)
-	$(CXX) $(CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
+	$(CXX) $(STD) $(CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
 search7_ssse3.o : search7.cc $(DEPS)
-	$(CXX) -mssse3 $(CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
+	$(CXX) $(STD) -mssse3 $(CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
