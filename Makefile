@@ -37,11 +37,6 @@ STD=-std=c++11
 
 LIBS=-lpthread
 
-# Intel options
-#CXX=icpc
-#CXXFLAGS=$(COMPILEOPT) $(COMMON) -Wno-missing-declarations -fast
-#LINKFLAGS=$(COMMON)
-
 # GNU options
 CXX=g++
 CXXFLAGS=$(COMPILEOPT) $(COMMON) -O3
@@ -53,16 +48,19 @@ PROG=swipe mpiswipe
 # built by default, run "make mpiswipe" to build it
 all : swipe
 
+.PHONY : all clean distclean
+
 clean :
-	rm -f *.o *~ $(PROG) gmon.out
+	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov
+
+distclean : clean
+	rm -f compile_commands.json
 
 OBJS = database.o asnparse.o align.o matrices.o \
 	stats.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
 DEPS = swipe.h Makefile
-
-.SUFFIXES:.o .cc
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(LINKFLAGS) -o $@ $^ $(LIBS)
