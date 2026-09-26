@@ -27,7 +27,7 @@
 MPI_COMPILE=`mpicxx --showme:compile`
 MPI_LINK=`mpicxx --showme:link`
 
-COMMON=-g
+COMMON=-g -pthread
 #COMMON=-pg -g
 
 COMPILEOPT=-Wall -Wextra
@@ -35,7 +35,7 @@ COMPILEOPT=-Wall -Wextra
 # language standard (swipe must build with GCC 4.8.5 and later)
 STD=-std=c++11
 
-LIBS=-lpthread
+LIBS=
 
 # GNU options: g++, unless CXX is given (environment or command line)
 ifeq ($(origin CXX),default)
