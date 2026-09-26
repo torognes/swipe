@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <cassert>
+#include <cstring>  // std::memcpy
 
 const char mat_blosum45[] = 
 "# Entries for the BLOSUM45 matrix at a scale of ln(2)/3.0.\n\
@@ -358,7 +360,7 @@ void score_matrix_read_file(const char * matrix)
   long sc; 
   char * map, * p, * q, c;
 
-  FILE * fp = fopen(matrixname, "r");
+  FILE * fp = fopen(matrix, "r");
 
   if (!fp)
     fatal("Cannot open score matrix file.");
@@ -456,7 +458,8 @@ void score_matrix_read_string(const char * matrix)
       else
 	linelen = strlen(s);
       
-      strncpy(line, s, linelen);
+      assert(linelen < LINE_MAX);
+      std::memcpy(line, s, linelen);
       line[linelen] = 0;
 
       p = line;
