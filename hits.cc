@@ -1220,10 +1220,12 @@ void make_anchor(char * anchor, long size, long symtype, long queryno, long i)
   switch(symtype)
   {
   case 0:
+    // blastn: the strand of a hit is stored as its database strand
+    // (KI-29)
     snprintf(anchor, size, "%ld_%ld__%c__+",
 	     queryno,
 	     hits_list[i].seqno,
-	     hits_list[i].qstrand ? '-' : '+');
+	     hits_list[i].dstrand ? '-' : '+');
     break;
   case 2:
     snprintf(anchor, size, "%ld_%ld_%ld_%c__",
@@ -1460,7 +1462,7 @@ void hits_show_xml_paralign(long showalignments,
     fprintf(out, "\t\t\t\t<shortVersionName>%.35s</shortVersionName>\n", title);
     if (symtype == 0)
     {
-      fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", hits_list[i].qstrand ? '-' : '+');
+      fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", hits_list[i].dstrand ? '-' : '+');
     }
     else if (symtype == 2)
     {
@@ -1557,7 +1559,7 @@ void hits_show_xml_paralign(long showalignments,
       
       if (symtype == 0)
       {
-	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", hits_list[i].qstrand ? "Matches on complementary strands." : "Matches on same strands.");
+	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", hits_list[i].dstrand ? "Matches on complementary strands." : "Matches on same strands.");
       }
       else if ((symtype>=2) && (symtype<=4))
       {
