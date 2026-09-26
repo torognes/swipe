@@ -30,7 +30,7 @@ MPI_LINK=`mpicxx --showme:link`
 COMMON=-g
 #COMMON=-pg -g
 
-COMPILEOPT=-Wall
+COMPILEOPT=-Wall -Wextra
 
 # language standard (swipe must build with GCC 4.8.5 and later)
 STD=-std=c++11
