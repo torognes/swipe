@@ -215,7 +215,8 @@ void hits_enter(long seqno, long score, long qstrand, long qframe,
       hits_count++;
   }
   
-  if (hits_count == keephits)
+  // no hit is kept with -v 0 -b 0: the list is empty (KI-10)
+  if ((keephits > 0) and (hits_count == keephits))
     scorethreshold = hits_list[keephits-1].score;
   
   pthread_mutex_unlock(&hitsmutex);

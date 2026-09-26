@@ -3,6 +3,8 @@
         * Fix: an empty line at the beginning of the query file was read
           as an empty query, and all the other queries were silently
           ignored (KI-18)
+        * Fix: with -v 0 -b 0, an element before the start of the (empty)
+          hit list was read (KI-10). No hits are reported, as before
         * Fix: query lines longer than 2,047 characters were read in
           chunks: the end of a long header was read as sequence (KI-16),
           and a '>' at position 2,048 of a sequence line started a new
