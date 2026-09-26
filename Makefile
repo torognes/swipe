@@ -67,7 +67,14 @@ OBJS = database.o asnparse.o align.o matrices.o \
 	stats.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
-DEPS = swipe.h Makefile
+# Header dependencies are generated alongside each object (*.d
+# files), so that editing any header, or blastkar_partial.c (included
+# by stats.cc), rebuilds the right objects.
+DEPFLAGS = -MMD -MP
+DEPFILES = swipe.d mpiswipe.d $(OBJS:.o=.d)
+-include $(DEPFILES)
+
+DEPS = Makefile
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)
@@ -76,10 +83,10 @@ mpiswipe : mpiswipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
 
 %.o : %.cc $(DEPS)
-	$(CXX) $(SWIPE_CXXFLAGS) -c -o $@ $<
+	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
 
 mpiswipe.o : swipe.cc $(DEPS)
-	$(CXX) $(SWIPE_CXXFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
+	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
 search7_ssse3.o : search7.cc $(DEPS)
-	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
+	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
