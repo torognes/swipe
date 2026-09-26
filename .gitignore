@@ -1,0 +1,19 @@
+# build products
+*.o
+*.d
+/swipe
+/mpiswipe
+gmon.out
+
+# coverage
+*.gcda
+*.gcno
+*.gcov
+
+# tooling
+compile_commands.json
+
+# untracked notes and AI instructions
+TBD_*
+DONE_*
+CLAUDE.md
