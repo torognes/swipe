@@ -17,3 +17,6 @@ compile_commands.json
 TBD_*
 DONE_*
 CLAUDE.md
+
+# local conformity and performance harness (not tracked, as in vsearch)
+/perf-results/
