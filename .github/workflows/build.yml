@@ -106,7 +106,10 @@ jobs:
     # swipe needs x86-64 (SSE2/SSSE3 intrinsics and inline assembly):
     # no macOS arm64 build until the ARM64 port (phase 10)
     runs-on: macos-15-intel
-    timeout-minutes: 30
+    # the macOS Intel runners start processes slowly: the test-suite
+    # (about 2,000 swipe and makeblastdb runs, 2 minutes on Linux)
+    # takes more than 30 minutes there
+    timeout-minutes: 120
 
     steps:
     - name: Checkout
@@ -128,8 +131,8 @@ jobs:
         makeblastdb -version
 
     - name: Run tests
-      timeout-minutes: 30
+      timeout-minutes: 90
       run: |
         bash .github/scripts/fetch_tests.sh "${BRANCH}"
         cd swipe-tests || exit 1
-        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+        time bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
