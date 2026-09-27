@@ -1082,14 +1082,6 @@ void args_init(int argc, char **argv)
 	}
     }
   
-  if (outfile)
-  {
-    FILE * f = fopen(outfile, "w");
-    if (! f)
-      fatal("Unable to open output file for writing.");
-    out = f;
-  }
-
   long gopen_default;
   long gextend_default;
 
@@ -1162,6 +1154,16 @@ void args_init(int argc, char **argv)
 
   if ((dump<0) || (dump>2))
     fatal("Illegal dump mode.");
+
+  /* the output file is opened (and truncated) only once all the
+     options are checked (KI-8) */
+  if (outfile)
+  {
+    FILE * f = fopen(outfile, "w");
+    if (! f)
+      fatal("Unable to open output file for writing.");
+    out = f;
+  }
   
   translate_init(query_gencode, db_gencode);
 }

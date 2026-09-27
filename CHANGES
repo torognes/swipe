@@ -81,6 +81,10 @@
           specified for protein query."), although its query is a
           nucleotide sequence. The minus strand of the query can now be
           searched alone (KI-4)
+        * Fix: the output file (--out) was created, or truncated, before
+          the other options were checked: a typo in another option
+          destroyed the previous content of the file (KI-8). It is now
+          opened once all options are checked
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
