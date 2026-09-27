@@ -137,6 +137,13 @@
         * Fix: in the ParAlign XML output (-m 99), sound queries (-p 5)
           were described as nucleotides, with an empty sequence (KI-30).
           They are now described as "Sound", with their sequence
+        * Fix: the elapsed time was measured with times(), in clock ticks
+          (10 ms): small searches reported "Speed: inf GCUPS", empty
+          queries "nan GCUPS", and the speed of sound searches (-p 5)
+          was not multiplied by the query length (KI-33). The elapsed
+          time is now measured with a monotonic clock
+          (std::chrono::steady_clock), the speed is "n/a" when no time
+          elapsed, and 0 for empty queries
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

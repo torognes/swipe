@@ -1507,7 +1507,10 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t\t<searchStarted>%s</searchStarted>\n", ti.starttime.data());
   fprintf(out, "\t\t\t\t<searchCompleted>%s</searchCompleted>\n", ti.endtime.data());
   fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
-  fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+  if (ti.elapsed > 0.0)
+    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+  else
+    fprintf(out, "\t\t\t\t<searchSpeed>n/a</searchSpeed>\n");
   fprintf(out, "\t\t\t\t<searchSWAlignments>\n");
   fprintf(out, "\t\t\t\t\t<SWAbsolute>%ld</SWAbsolute>\n", compute7);
   fprintf(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");

@@ -1796,9 +1796,8 @@ void cpu_features()
 
 void clock_start(struct time_info * tip)
 {
-  tip->clk_tck = sysconf(_SC_CLK_TCK);
   time(& tip->t1);                 /* time(2)   */
-  tip->wc1 = times(& tip->times1); /* times (2) */
+  tip->clock1 = std::chrono::steady_clock::now();
 }
 
 void clock_stop(struct time_info * tip)
@@ -1806,7 +1805,7 @@ void clock_stop(struct time_info * tip)
   struct tm tms;
   char const timeformat[] = "%a, %e %b %Y %T UTC";
 
-  tip->wc2 = times(& tip->times2);
+  tip->clock2 = std::chrono::steady_clock::now();
   time(& tip->t2);
 
   gmtime_r(&tip->t1, & tms);
@@ -1815,7 +1814,7 @@ void clock_stop(struct time_info * tip)
   gmtime_r(&tip->t2, & tms);
   strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
 
-  tip->elapsed = ((double)(tip->wc2 - tip->wc1)) / tip->clk_tck;
+  tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
   
   double speed = ((double)db_getsymcount_masked());
 
@@ -1825,8 +1824,9 @@ void clock_stop(struct time_info * tip)
     if (querystrands == 3)
       speed *= 2;
   }
-  else if (symtype == 1)
+  else if ((symtype == 1) || (symtype == 5))
   {
+    /* sound queries are stored as amino acid queries (KI-33) */
     speed *= query.aa[0].len;
   }
   else if (symtype == 2)
@@ -1847,15 +1847,18 @@ void clock_stop(struct time_info * tip)
     if (querystrands == 3)
       speed *= 2;
   }
-  speed /= tip->elapsed;
-  tip->speed = speed;
+  /* the speed is unknown when no time elapsed (KI-33) */
+  tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
   
   if (view == 0)
   {
     fprintf(out, "Search started:    %s\n", tip->starttime.data());
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
-    fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    if (tip->elapsed > 0.0)
+      fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    else
+      fprintf(out, "Speed:             n/a\n");
     fprintf(out, "\n");
   }
 }
