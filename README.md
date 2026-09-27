@@ -21,8 +21,8 @@ Please see the [README](https://github.com/torognes/swipe/blob/master/README)
 and [CHANGES](https://github.com/torognes/swipe/blob/master/CHANGES) file for
 a little bit of documentation.
 
-More information about SWIPE can be found on its
-[website](http://dna.uio.no/swipe/).
+Releases, including older versions, are available on
+[GitHub](https://github.com/torognes/swipe/releases).
 
 SWIPE may be installed with Homebrew using the following command:
 
