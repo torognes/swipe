@@ -73,6 +73,10 @@
           (.psq, .nsq) was followed by an empty line (KI-35)
         * Fix: typo in the parameter block of the plain output (-m 0),
           "Effecive db size" is now "Effective db size" (KI-34)
+        * Fix: with an illegal symbol type above 5 (e.g. -p 6), the error
+          message was "Illegal gap penalties." (no default gap penalties
+          for such types). The symbol type is now checked before the gap
+          penalties: "Illegal symbol type." (KI-5)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

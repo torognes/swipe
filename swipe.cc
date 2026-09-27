@@ -1142,11 +1142,11 @@ void args_init(int argc, char **argv)
   if (!((view==0)||(view==7)||(view==8)||(view==9)||(view==99)))
     fatal("Illegal view type.");
   
-  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
-    fatal("Illegal gap penalties.");
-  
   if ((symtype < 0) || (symtype > 5))
     fatal("Illegal symbol type.");
+
+  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
+    fatal("Illegal gap penalties.");
 
   if ((querystrands < 1) || (querystrands > 3))
     fatal("Illegal query strands specified.");
