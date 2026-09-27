@@ -1,3 +1,59 @@
+2026-09-26  Frédéric Mahé  <frederic.mahe@cirad.fr>
+        * Version 2.1.2 (in development)
+        * The build date and time are no longer shown in the help message,
+          the plain output (-m 0) and the tabular output with comments
+          (-m 9): two builds of the same sources are now identical
+          (reproducible builds)
+        * Fix: an empty line at the beginning of the query file was read
+          as an empty query, and all the other queries were silently
+          ignored (KI-18)
+        * Fix: with -v 0 -b 0, an element before the start of the (empty)
+          hit list was read (KI-10). No hits are reported, as before
+        * Fix: query lines longer than 2,047 characters were read in
+          chunks: the end of a long header was read as sequence (KI-16),
+          and a '>' at position 2,048 of a sequence line started a new
+          query (KI-17). Lines of any length are now read whole
+        * Fix: carriage returns (Windows line endings) are removed from
+          query headers (KI-21)
+        * Fix: with the simple XML output (-m 7), hits shown without an
+          alignment (beyond -b) reported an uninitialized sequence length
+          (<len>), which made the output non-deterministic (KI-37)
+        * Fix: bytes above 0x7f (e.g. UTF-8 characters) in query files and
+          score matrix files were read as negative indexes, out of the
+          bounds of the symbol tables (KI-19). They are ignored, as other
+          unknown symbols
+        * Fix: databases with PDB identifiers made by current versions of
+          makeblastdb (e.g. pdbaa, nr) could not be searched nor dumped
+          ("Unexpected object a3", "Error parsing binary ASN.1"): the
+          chain-id field of PDB identifiers is now read, and chain names
+          are shown as they are by BLAST+ (e.g. pdb|4JKL|Lb) (KI-22)
+        * Fix: gap penalties with a sum of 128 or more (gap open + gap
+          extension), and matrix scores or nucleotide penalties below
+          -128, wrapped around in the 7-bit search engine: wrong scores,
+          or "Internal error in align function." (KI-11, KI-12). They are
+          now clamped in the 7-bit engine only, which is exact; the other
+          engines use the real values
+        * Fix: matrix scores or nucleotide rewards from 32,768 to 65,535,
+          scores below -32,768, and gap penalties above 32,767 did not fit
+          in the 16-bit search engine: hits were lost or scores were wrong
+          (KI-11, KI-12, KI-13). The 16-bit engine is now skipped for such
+          values (the 63-bit engine is used, slower but exact)
+        * Fix: the dump (-N) of a database with the tblastn or tblastx
+          symbol types (-p 3, -p 4) printed the translated sequence with
+          the nucleotide alphabet ('###'). The nucleotide sequence is now
+          dumped (KI-24)
+        * Fix: in the ParAlign XML output (-m 99), search start and end
+          times were printed after they were freed ("(null)" with glibc)
+          (KI-28)
+        * Fix: in the ParAlign XML output (-m 99), blastn hits on the minus
+          strand were reported on the plus strand, and their anchors were
+          not unique when both strands of a sequence matched (KI-29)
+        * Fix: special characters (& < > " ') are escaped in the XML
+          outputs (-m 7 and -m 99): query ids and descriptions, database
+          sequence descriptions, links, file names, database title and
+          score matrix name. Descriptions such as "5'-3' exonuclease" or
+          "A&B" produced invalid XML (KI-27)
+
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
         * Fix for very long header strings in NCBI database files

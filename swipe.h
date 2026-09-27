@@ -38,6 +38,7 @@
 #include <getopt.h>
 #include <math.h>
 #include <x86intrin.h>
+#include <array>
 
 #ifdef MPISWIPE
 #include <mpi.h>
@@ -186,8 +187,9 @@ struct time_info
   clock_t wc1, wc2;
   long clk_tck;
 
-  char * starttime;
-  char * endtime;
+  // kept until the results are shown (-m 99, KI-28)
+  std::array<char, 30> starttime;
+  std::array<char, 30> endtime;
   double elapsed;
   double speed;
 };
@@ -254,8 +256,8 @@ long fullsw(char * dseq,
 	    char * qend,
 	    long * hearray, 
 	    long * score_matrix,
-	    BYTE gap_open_penalty,
-	    BYTE gap_extend_penalty);
+	    long gap_open_penalty,
+	    long gap_extend_penalty);
 
 void align(char * a_seq,
 	   char * b_seq,
@@ -291,9 +293,16 @@ typedef struct asnparse_info * apt;
 apt parser_create();
 void parser_destruct(apt p);
 
+// XML outputs: the five special characters are escaped (KI-27)
+enum struct Escaping : int { none, xml };
+
+// print a character to out, escaped as XML (&amp; &lt; &gt; &quot; &apos;)
+auto xml_putc(char symbol) noexcept -> void;
+
 long parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
 		  long show_gis, long indent, long maxlen, 
-		  long linelen, long maxdeflines, long show_descr);
+		  long linelen, long maxdeflines, long show_descr,
+		  Escaping escaping = Escaping::none);
 
 void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable);
 
@@ -328,7 +337,8 @@ void db_parse_header(struct db_thread_s * t, char * address, long length,
 
 void db_showheader(struct db_thread_s * t, char * address, long length, 
 		   long show_gis, long indent,
-		   long maxlen, long linelen, long maxdeflines, long show_descr);
+		   long maxlen, long linelen, long maxdeflines, long show_descr,
+		   Escaping escaping = Escaping::none);
 void db_getshowheader(struct db_thread_s * t, long seqno,
 		      long show_gis, long indent,
 		      long maxlen, long linelen, long maxdeflines);
@@ -341,6 +351,9 @@ long db_check_inclusion(struct db_thread_s * t, long seqno);
 void db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno);
 void db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno);
 
+// frame value asking db_getsequence() for the nucleotide sequence of
+// a translated database (symtypes 3 and 4), without translation
+constexpr long untranslated_frame = -1;
 void db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
 		    char ** addressp, long * lengthp, long * ntlenp, int c);
 void db_getheader(struct db_thread_s * t, long seqno, char ** address, 

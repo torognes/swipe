@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::min
+#include <limits>
 #include <vector>
 
 /* ARGUMENTS AND THEIR DEFAULTS */
@@ -821,7 +823,7 @@ void args_help()
 {
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s [%s %s]\n\n%s\n\n", title, __DATE__, __TIME__, ref);
+  fprintf(out, "%s\n\n%s\n\n", title, ref);
   
   args_usage();
 }
@@ -1366,6 +1368,14 @@ int search_getwork(long * first, long * last)
 
 void search_chunk(struct search_data * sdp)
 {
+  // the 7-bit engine uses signed bytes: gap penalties are clamped to
+  // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
+  // penalty of 127 already takes any score down to zero. The 16-bit
+  // and 63-bit engines, and the alignments, use the real penalties
+  long const max_7 = std::numeric_limits<signed char>::max();
+  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(gapopenextend, max_7));
+  BYTE const gapextend_7 = static_cast<BYTE>(std::min(gapextend, max_7));
+
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
   
   if(taxidfilename)
@@ -1433,8 +1443,8 @@ void search_chunk(struct search_data * sdp)
 	    
 	if (cpu_feature_ssse3)
 	  search7_ssse3(qtable,
-			gapopenextend,
-			gapextend,
+			gapopenextend_7,
+			gapextend_7,
 			(BYTE*) score_matrix_7t,
 			sdp->dprofile,
 			sdp->hearray,
@@ -1445,8 +1455,8 @@ void search_chunk(struct search_data * sdp)
 			qlen);
 	else
 	  search7(qtable,
-		  gapopenextend,
-		  gapextend,
+		  gapopenextend_7,
+		  gapextend_7,
 		  (BYTE*) score_matrix_7,
 		  sdp->dprofile,
 		  sdp->hearray,
@@ -1725,21 +1735,16 @@ void clock_start(struct time_info * tip)
 void clock_stop(struct time_info * tip)
 {
   struct tm tms;
-  char buf[30];
-  char timeformat[] = "%a, %e %b %Y %T UTC";
+  char const timeformat[] = "%a, %e %b %Y %T UTC";
 
   tip->wc2 = times(& tip->times2);
   time(& tip->t2);
 
   gmtime_r(&tip->t1, & tms);
-  strftime(buf, 30, timeformat, & tms);
-  tip->starttime = (char*) xmalloc(30);
-  strcpy(tip->starttime, buf);
+  strftime(tip->starttime.data(), tip->starttime.size(), timeformat, & tms);
   
   gmtime_r(&tip->t2, & tms);
-  strftime(buf, 30, timeformat, & tms);
-  tip->endtime = (char*) xmalloc(30);
-  strcpy(tip->endtime, buf);
+  strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
 
   tip->elapsed = ((double)(tip->wc2 - tip->wc1)) / tip->clk_tck;
   
@@ -1778,17 +1783,12 @@ void clock_stop(struct time_info * tip)
   
   if (view == 0)
   {
-    fprintf(out, "Search started:    %s\n", tip->starttime);
-    fprintf(out, "Search completed:  %s\n", tip->endtime);
+    fprintf(out, "Search started:    %s\n", tip->starttime.data());
+    fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
     fprintf(out, "\n");
   }
-
-  free(tip->starttime);
-  tip->starttime = 0;
-  free(tip->endtime);
-  tip->endtime = 0;
 }
 
 

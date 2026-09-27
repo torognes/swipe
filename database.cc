@@ -1358,7 +1358,8 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	*lengthp = nt_length + 1;
       }
     }
-    else if ((db_main.symtype == 3) || (db_main.symtype == 4))
+    else if (((db_main.symtype == 3) || (db_main.symtype == 4)) and
+             (frame != untranslated_frame))
     {
       /* translation */
 
@@ -1424,11 +1425,12 @@ void db_parse_header(db_thread_t * t, char * address, long length,
 
 void db_showheader(struct db_thread_s * t, char * address, long length, 
 		   long show_gis, long indent,
-		   long maxlen, long linelen, long maxdeflines, long show_descr)
+		   long maxlen, long linelen, long maxdeflines, long show_descr,
+		   Escaping const escaping)
 {
   parse_header(t->parser, (unsigned char*) address, length,
 	       db_main.memb_bit, db_check_taxid, show_gis,
-	       indent, maxlen, linelen, maxdeflines, show_descr);
+	       indent, maxlen, linelen, maxdeflines, show_descr, escaping);
 }
 
 void db_getshowheader(struct db_thread_s * t, long seqno,
@@ -1445,6 +1447,12 @@ void db_print_seq(db_thread_t * t, long seqno, long strand, long frame)
 {
   char * address;
   long length, ntlen;
+
+  // databases of translated searches are dumped as nucleotides,
+  // not translated (KI-24)
+  if ((db_main.symtype==3)||(db_main.symtype==4))
+    frame = untranslated_frame;
+
   db_getsequence(t, seqno, strand, frame, & address, & length, & ntlen, 0);
 
   if ((db_main.symtype==1)||(db_main.symtype==2))
