@@ -4,6 +4,9 @@
           the plain output (-m 0) and the tabular output with comments
           (-m 9): two builds of the same sources are now identical
           (reproducible builds)
+        * Fix: the long option --taxidlist, shown in the help message and
+          in the README, was rejected: only --taxid was accepted (KI-1).
+          Both names are now accepted (--taxid is kept as an alias)
         * Fix: an empty line at the beginning of the query file was read
           as an empty query, and all the other queries were silently
           ignored (KI-18)

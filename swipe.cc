@@ -881,7 +881,8 @@ void args_init(int argc, char **argv)
     {"num_threads",      required_argument, NULL, 'a' },
     {"outfmt",           required_argument, NULL, 'm' },
     {"symtype",          required_argument, NULL, 'p' },
-    {"taxid",            required_argument, NULL, 'x' },
+    {"taxidlist",        required_argument, NULL, 'x' },
+    {"taxid",            required_argument, NULL, 'x' },  /* alias (2.1.1 and older) */
     {"comp_based_stats", required_argument, NULL, 'C' },
     {"query_gencode",    required_argument, NULL, 'Q' },
     {"db_gencode",       required_argument, NULL, 'D' },
