@@ -26,7 +26,10 @@
 #include "swipe.h"
 #include <algorithm>  // std::all_of
 #include <cctype>  // std::isdigit, std::isspace
+#include <cstdint>  // std::uint64_t
 #include <cstdlib>  // std::strtoul
+#include <cstring>  // std::memcpy
+#include <iterator>  // std::next
 #include <string>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
@@ -516,6 +519,32 @@ void db_close_al(al_info_t * a)
   }
 }
 
+// numbers stored in the database files, read at any alignment: a cast
+// to an integer pointer is undefined behaviour when the address is not
+// aligned (reported by UBSan), memcpy is not
+static auto load_uint32_be(char const * const address) -> UINT32
+{
+  UINT32 value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return bswap_32(value);
+}
+
+static auto load_uint64_be(char const * const address) -> std::uint64_t
+{
+  std::uint64_t value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return bswap_64(value);
+}
+
+// the residue count of the index file is not byte-swapped (read in the
+// byte order of the host, as before)
+static auto load_uint64_host(char const * const address) -> std::uint64_t
+{
+  std::uint64_t value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return value;
+}
+
 long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 {
   db_volume_init(volume);
@@ -568,21 +597,21 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
   char * p = (char*) volume->adr_xin;
-  volume->version = bswap_32(*(UINT32*)p);
+  volume->version = load_uint32_be(p);
   
   if (volume->version != 4)
     fatal("Illegal database version (must be 4).");
 
   p += 4;
-  volume->symtype = bswap_32(*(UINT32*)p);
+  volume->symtype = load_uint32_be(p);
   p += 4;
-  long titlelen = bswap_32(*(UINT32*)p);
+  long titlelen = load_uint32_be(p);
   p += 4;
   volume->title = (char*) xmalloc(titlelen+1);
   strncpy(volume->title, p, titlelen);
   volume->title[titlelen] = 0;
   p += titlelen;
-  unsigned datelen = bswap_32(*(UINT32*)p);
+  unsigned datelen = load_uint32_be(p);
   p += 4;
   volume->time = (char*) xmalloc(datelen+1);
   strncpy(volume->time, p, datelen);
@@ -594,11 +623,11 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
     p++;
   if ((long)p & 3)
     p++;
-  volume->seqcount = bswap_32(*(UINT32*)p);
+  volume->seqcount = load_uint32_be(p);
   p += 4;
-  volume->symcount = *(unsigned long*)p;
+  volume->symcount = static_cast<long>(load_uint64_host(p));
   p += 8;
-  volume->longest = bswap_32(*(UINT32*)p);
+  volume->longest = load_uint32_be(p);
   p += 4;
   volume->offset_xhr = p - (char*)volume->adr_xin;
   volume->offset_xsq = volume->offset_xhr + 4 * (volume->seqcount + 1);
@@ -1343,18 +1372,20 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     {
       //    printf("#number of ambiguity fixup bytes: %ld\n", amb_bytes);
     
-      unsigned int * ambp = (unsigned int *)(address + aoff);
-      unsigned long amb_entries = bswap_32(*ambp++);
+      char const * ambp = std::next(address, aoff);
+      unsigned long amb_entries = load_uint32_be(ambp);
+      ambp = std::next(ambp, sizeof(UINT32));
       unsigned long big_table = (amb_entries >> 31);
     
       if (big_table)
       {
 	unsigned long entries = (amb_bytes - 4) / 8;
-	unsigned long * ambp64 = (unsigned long*)(address + aoff + 4);
+	char const * ambp64 = std::next(address, aoff + 4);
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned long e = bswap_64(*ambp64++);
+	  unsigned long e = load_uint64_be(ambp64);
+	  ambp64 = std::next(ambp64, sizeof(std::uint64_t));
 	  unsigned long n = e >> 60;
 	  unsigned long r = ((e >> 48) & 0xfff) + 1;
 	  unsigned long o = e & 0x0000fffffffffff;
@@ -1369,7 +1400,8 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned int e = bswap_32(*ambp++);
+	  unsigned int e = load_uint32_be(ambp);
+	  ambp = std::next(ambp, sizeof(UINT32));
 	  unsigned int n = e >> 28;
 	  unsigned int r = ((e >> 24) & 0xf) + 1;
 	  unsigned int o = e & 0x00ffffff;
