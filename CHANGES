@@ -85,6 +85,26 @@
           the other options were checked: a typo in another option
           destroyed the previous content of the file (KI-8). It is now
           opened once all options are checked
+        * Fix: numerical option values were not checked (atol, atof):
+          trailing characters were ignored (-a 2abc was read as 2),
+          non-numerical values were read as zero (-v abc), and -z
+          7.06e+06 was read as 7 (KI-9, GitHub #9). Values are now
+          checked: non-numerical values, trailing characters and values
+          out of range are rejected with the error message of the
+          option. -z accepts the real notation (7.06e+06 is 7,060,000),
+          but not fractional values. Negative values of -v, -b, -u and
+          -k are rejected, as well as -c values below 1 (a minimum score
+          of 0 or less ended with "Internal error in align function.")
+        * Fix: unknown names of symbol types (e.g. -p blastpp or
+          -p BLASTP) silently selected blastn (symbol type 0), and
+          unknown strand names were read as 0 (KI-3). They are now
+          rejected ("Illegal symbol type.", "Illegal query strands
+          specified.")
+        * Fix: an expect value (-e) of zero, negative or non-numerical
+          disabled the E-value filter: all hits were reported (KI-7).
+          Such values are now rejected ("Illegal expect value
+          specified."). Score thresholds computed from E-values are also
+          protected against infinite values (e.g. an empty database)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

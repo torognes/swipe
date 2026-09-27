@@ -24,7 +24,9 @@
 */
 
 #include "swipe.h"
+#include <cassert>
 #include <cctype>  // std::isspace
+#include <cmath>  // std::isnan
 #include <cstddef>  // std::size_t
 #include <limits>
 
@@ -284,6 +286,21 @@ void hits_enter_align_string(long i, char * align, long align_len)
   //  hits_list[i].alignment[align_len] = 0;
 }
 
+// score thresholds computed from E-values can be infinite (e.g. an
+// empty database, Kmn = 0) or beyond the range of long: converting
+// them with a cast is undefined behaviour (KI-7)
+static auto threshold_to_long(double const value) -> long
+{
+  assert(not std::isnan(value));
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  constexpr auto lower_limit = static_cast<double>(std::numeric_limits<long>::min());
+  if (value >= upper_limit)
+    return std::numeric_limits<long>::max();
+  if (value <= lower_limit)
+    return std::numeric_limits<long>::min();
+  return static_cast<long>(value);
+}
+
 void hits_init(long descriptions, long alignments, long minscore, long maxscore, double minexpect, double expect, int show_nostats)
 {
   opt_descriptions = descriptions;
@@ -492,13 +509,13 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
   
   if (stats_available)
   {
-    long minscore_expect = (long)(ceil(- log(expect / Kmn) / lambda));
+    long minscore_expect = threshold_to_long(ceil(- log(expect / Kmn) / lambda));
     if (minscore_expect > minscore)
       scorethreshold = minscore_expect;
     
     if (minexpect > 0.0)
     {
-      long maxscore_expect = (long)(floor(- log(minexpect / Kmn) / lambda));
+      long maxscore_expect = threshold_to_long(floor(- log(minexpect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
 	upperscorethreshold = maxscore_expect;
     }

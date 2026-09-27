@@ -25,6 +25,10 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::min
+#include <cassert>
+#include <cerrno>  // errno, ERANGE
+#include <cmath>  // std::floor, std::isfinite
+#include <cstdlib>  // std::strtol, std::strtod
 #include <limits>
 #include <vector>
 
@@ -828,6 +832,44 @@ void args_help()
   args_usage();
 }
 
+// strict conversions of option values (KI-9): the whole value must be
+// a number, without trailing characters, and within the range of the
+// type; otherwise, swipe stops with the error message of the option
+static auto parse_long(char const * const text, char const * const message) -> long
+{
+  assert(text != nullptr);
+  char * end = nullptr;
+  errno = 0;
+  auto const value = std::strtol(text, &end, 10);
+  if ((end == text) or (*end != '\0') or (errno == ERANGE))
+    fatal(message);
+  return value;
+}
+
+static auto parse_double(char const * const text, char const * const message) -> double
+{
+  assert(text != nullptr);
+  char * end = nullptr;
+  errno = 0;
+  auto const value = std::strtod(text, &end);
+  if ((end == text) or (*end != '\0') or (errno == ERANGE) or
+      (not std::isfinite(value)))
+    fatal(message);
+  return value;
+}
+
+// the effective database size accepts the real notation of blastall's
+// -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
+static auto parse_dbsize(char const * const text) -> long
+{
+  static char const message[] = "Illegal effective db size specified";
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  auto const value = parse_double(text, message);
+  if ((value < 0.0) or (value != std::floor(value)) or (value >= upper_limit))
+    fatal(message);
+  return static_cast<long>(value);
+}
+
 void args_init(int argc, char **argv)
 {
   /* Set defaults */
@@ -910,17 +952,17 @@ void args_init(int argc, char **argv)
 	{
 	case 'a':
 	  /* threads */
-	  threads = atol(optarg);
+	  threads = parse_long(optarg, "Illegal number of threads specified");
 	  break;
 	  
 	case 'b':
 	  /* alignments */
-	  alignments = atol(optarg);
+	  alignments = parse_long(optarg, "Illegal number of alignments specified.");
 	  break;
 	  
 	case 'c':
 	  /* min score threshold */
-	  minscore = atol(optarg);
+	  minscore = parse_long(optarg, "Illegal minimum score specified.");
 	  break;
 	  
 	case 'C':
@@ -936,17 +978,17 @@ void args_init(int argc, char **argv)
 	  
 	case 'D':
 	  /* database genetic code */
-	  db_gencode = atol(optarg);
+	  db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
 	  break;
 	  
 	case 'e':
 	  /* evalue */
-	  expect = atof(optarg);
+	  expect = parse_double(optarg, "Illegal expect value specified.");
 	  break;
 	  
 	case 'E':
 	  /* gap extend */
-	  gapextend = atol(optarg);
+	  gapextend = parse_long(optarg, "Illegal gap penalties.");
 	  break;
 	  
 	case 'F':
@@ -957,7 +999,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'G':
 	  /* gap open */
-	  gapopen = atol(optarg);
+	  gapopen = parse_long(optarg, "Illegal gap penalties.");
 	  break;
 	  
 	case 'h':
@@ -982,17 +1024,17 @@ void args_init(int argc, char **argv)
 	  
 	case 'k':
 	  /* min evalue threshold */
-	  minexpect = atof(optarg);
+	  minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
 	  break;
 	  
 	case 'K':
 	  /* subalignments */
-	  subalignments = atol(optarg);
+	  subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
 	  break;
 	  
 	case 'm':
 	  /* view */
-	  view = atol(optarg);
+	  view = parse_long(optarg, "Illegal view type.");
 	  break;
 	  
 	case 'M':
@@ -1002,7 +1044,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'N':
 	  /* dump */
-	  dump = atol(optarg);
+	  dump = parse_long(optarg, "Illegal dump mode.");
 	  break;
 	  
 	case 'o':
@@ -1025,22 +1067,22 @@ void args_init(int argc, char **argv)
 	  else if (strcmp(optarg, "sound") == 0)
 	    symtype = 5;
 	  else
-	    symtype = atol(optarg);
+	    symtype = parse_long(optarg, "Illegal symbol type.");
 	  break;
 	  
 	case 'q':
 	  /* penalty */
-	  mismatchscore = atol(optarg);
+	  mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
 	  break;
 	  
 	case 'Q':
 	  /* query genetic code */
-	  query_gencode = atol(optarg);
+	  query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
 	  break;
 	  
 	case 'r':
 	  /* reward */
-	  matchscore = atol(optarg);
+	  matchscore = parse_long(optarg, "Illegal match reward specified.");
 	  break;
 	  
 	case 'S':
@@ -1051,17 +1093,17 @@ void args_init(int argc, char **argv)
 	  else if (strcmp(optarg, "both") == 0)
 	    querystrands = 3;
 	  else
-	    querystrands = atol(optarg);
+	    querystrands = parse_long(optarg, "Illegal query strands specified.");
 	  break;
 
 	case 'u':
 	  /* maxscore */
-	  maxscore = atol(optarg);
+	  maxscore = parse_long(optarg, "Illegal maximum score specified.");
 	  break;
 	  
 	case 'v':
 	  /* max matches shown */
-	  maxmatches = atol(optarg);
+	  maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
 	  break;
 	  
 	case 'x':
@@ -1071,7 +1113,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'z':
 	  /* effective db size */
-	  effdbsize = atol(optarg);
+	  effdbsize = parse_dbsize(optarg);
 	  break;
 	  
 	case '?':
@@ -1154,6 +1196,27 @@ void args_init(int argc, char **argv)
 
   if ((dump<0) || (dump>2))
     fatal("Illegal dump mode.");
+
+  /* ranges of the result limits (KI-7, KI-9) */
+  if (maxmatches < 0)
+    fatal("Illegal number of descriptions specified.");
+
+  if (alignments < 0)
+    fatal("Illegal number of alignments specified.");
+
+  /* scores below 1 are not alignments ("Internal error in align
+     function.") */
+  if (minscore < 1)
+    fatal("Illegal minimum score specified.");
+
+  if (maxscore < 0)
+    fatal("Illegal maximum score specified.");
+
+  if (expect <= 0.0)
+    fatal("Illegal expect value specified.");
+
+  if (minexpect < 0.0)
+    fatal("Illegal minimum expect value specified.");
 
   /* the output file is opened (and truncated) only once all the
      options are checked (KI-8) */
