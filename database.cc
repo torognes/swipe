@@ -596,7 +596,18 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
+  /* the index file must hold its header and its offset tables, and
+     the offsets must stay within the header and sequence files: a
+     truncated or corrupted file was read beyond its end (KI-23) */
+  char const * const xin_end = std::next(volume->adr_xin, volume->len_xin);
+  auto const check_xin_room = [&](char const * const position, long const size)
+    {
+      if ((size < 0) or (std::distance(position, xin_end) < size))
+        fatal("Database index file %s is truncated or corrupted.", name_pin);
+    };
+
   char * p = (char*) volume->adr_xin;
+  check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
   if (volume->version != 4)
@@ -607,12 +618,14 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   p += 4;
   long titlelen = load_uint32_be(p);
   p += 4;
+  check_xin_room(p, titlelen + 4);
   volume->title = (char*) xmalloc(titlelen+1);
   strncpy(volume->title, p, titlelen);
   volume->title[titlelen] = 0;
   p += titlelen;
   unsigned datelen = load_uint32_be(p);
   p += 4;
+  check_xin_room(p, datelen);
   volume->time = (char*) xmalloc(datelen+1);
   strncpy(volume->time, p, datelen);
   volume->time[datelen] = 0;
@@ -623,6 +636,7 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
     p++;
   if ((long)p & 3)
     p++;
+  check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
   p += 4;
   volume->symcount = static_cast<long>(load_uint64_host(p));
@@ -632,6 +646,40 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   volume->offset_xhr = p - (char*)volume->adr_xin;
   volume->offset_xsq = volume->offset_xhr + 4 * (volume->seqcount + 1);
   volume->offset_amb = volume->offset_xsq + 4 * (volume->seqcount + 1);
+
+  /* offset tables: seqcount + 1 header and sequence offsets, and, for
+     nucleotides, seqcount + 1 ambiguity offsets */
+  bool const is_nucleotide = (symtype != 1) and (symtype != 2) and (symtype != 5);
+  long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
+    4 * (volume->seqcount + 1);
+  check_xin_room(volume->adr_xin, tables_end);
+
+  auto const offset_at = [volume](long const table, long const seqno) -> long
+    {
+      return load_uint32_be(std::next(volume->adr_xin, table + 4 * seqno));
+    };
+
+  for (long seqno = 0; seqno < volume->seqcount; ++seqno)
+  {
+    if (offset_at(volume->offset_xhr, seqno) > offset_at(volume->offset_xhr, seqno + 1))
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+    long const seq_start = offset_at(volume->offset_xsq, seqno);
+    long const seq_end = offset_at(volume->offset_xsq, seqno + 1);
+    if (seq_start > seq_end)
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+    if (not is_nucleotide)
+      continue;
+    /* the packed nucleotides use at least one byte, before the
+       ambiguity table of the sequence */
+    long const amb_start = offset_at(volume->offset_amb, seqno);
+    if ((amb_start <= seq_start) or (amb_start > seq_end))
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+  }
+
+  if (offset_at(volume->offset_xhr, volume->seqcount) > volume->len_xhr)
+    fatal("Database header file %s is truncated or corrupted.", name_phr);
+  if (offset_at(volume->offset_xsq, volume->seqcount) > volume->len_xsq)
+    fatal("Database sequence file %s is truncated or corrupted.", name_psq);
 
   free(name_pin);
   free(name_phr);

@@ -144,6 +144,13 @@
           time is now measured with a monotonic clock
           (std::chrono::steady_clock), the speed is "n/a" when no time
           elapsed, and 0 for empty queries
+        * Fix: the sizes of the database files were not checked: a
+          truncated index file (.pin, .nin) was read beyond its end and
+          taken as an empty database, and offsets beyond the ends of the
+          header and sequence files could be used (KI-23). The header
+          and offset tables of the index file, and the offsets, are now
+          checked ("Database index file FILE is truncated or
+          corrupted.", and the same for header and sequence files)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
