@@ -1789,7 +1789,8 @@ static void show_description(const char *desc)
   }
 }
 
-// query id (the description up to its first space), escaped as XML
+// query id (the description up to its first whitespace character),
+// escaped as XML
 // (KI-27)
 static auto show_description_xml(char const * const desc) -> void
 {
