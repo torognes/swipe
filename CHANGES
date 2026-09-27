@@ -64,6 +64,11 @@
           columns was accepted, and the missing scores took the value of
           the previous score (KI-14). Such rows are now rejected
           ("Problem parsing score matrix file.")
+        * Fix: only spaces ended the query id: with a tab in the query
+          header (e.g. ">q1<TAB>description"), the tabular outputs (-m 8,
+          -m 9) had an extra column, and the XML output (-m 7) showed the
+          description in the query id (KI-20). Any whitespace character
+          now ends the query id, as in BLAST
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

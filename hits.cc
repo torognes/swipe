@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <cctype>  // std::isspace
 #include <cstddef>  // std::size_t
 #include <limits>
 
@@ -1714,11 +1715,19 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t</paralignOutput>\n");
 }
 
+// the query id ends at the first whitespace character (space, tab,
+// ...), as in BLAST (KI-20)
+static auto ends_query_id(char const symbol) -> bool
+{
+  return (symbol == '\0') or
+    (std::isspace(static_cast<unsigned char>(symbol)) != 0);
+}
+
 static void show_description(const char *desc)
 {
   const char *dptr;
 
-  for (dptr = desc; *dptr != '\0' && *dptr != ' '; dptr++)
+  for (dptr = desc; not ends_query_id(*dptr); dptr++)
   {
     putc(*dptr, out);
   }
@@ -1728,7 +1737,7 @@ static void show_description(const char *desc)
 // (KI-27)
 static auto show_description_xml(char const * const desc) -> void
 {
-  for (auto const * dptr = desc; (*dptr != '\0') and (*dptr != ' '); ++dptr)
+  for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
     xml_putc(*dptr);
 }
 
