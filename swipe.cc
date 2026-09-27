@@ -2528,7 +2528,7 @@ int main(int argc, char**argv)
 
 #ifndef MPISWIPE
   if (! cpu_feature_sse2)
-    fatal("This program requires a processor with SSE2.\n");
+    fatal("This program requires a processor with SSE2.");
 #endif
 
   args_init(argc,argv);

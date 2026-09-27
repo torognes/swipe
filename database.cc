@@ -559,7 +559,7 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 
   volume->fd_xsq = open(name_psq, O_RDONLY, 0);
   if (volume->fd_xsq < 0)
-    fatal("Unable to open file %s.\n", name_psq);
+    fatal("Unable to open file %s.", name_psq);
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
