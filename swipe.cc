@@ -823,7 +823,7 @@ void args_help()
 {
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s [%s %s]\n\n%s\n\n", title, __DATE__, __TIME__, ref);
+  fprintf(out, "%s\n\n%s\n\n", title, ref);
   
   args_usage();
 }

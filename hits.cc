@@ -1810,7 +1810,7 @@ void hits_show_tsv(long showalignments,
   
   if (showcomments)
     {
-      fprintf(out, "# %s - Compiled %s %s - %s\n", title, __DATE__, __TIME__, ref);
+      fprintf(out, "# %s - %s\n", title, ref);
       fprintf(out, "# Query: %s\n", query.description);
       fprintf(out, "# Database: %s\n", databasename);
       if (stats_available)
@@ -2023,10 +2023,8 @@ void hits_show_begin(long view)
 {
   if (view==0)
     {
-      fprintf(out, "%s [%s %s]\n\n%s\n\n", 
+      fprintf(out, "%s\n\n%s\n\n", 
 	      "SWIPE " SWIPE_VERSION, 
-	      __DATE__, 
-	      __TIME__, 
 	      "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.");
     }
   else if (view==7)

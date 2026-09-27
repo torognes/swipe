@@ -1,5 +1,9 @@
 2026-09-26  Frederic Mahe  <frederic.mahe@intp.science>
         * Version 2.1.2 (in development)
+        * The build date and time are no longer shown in the help message,
+          the plain output (-m 0) and the tabular output with comments
+          (-m 9): two builds of the same sources are now identical
+          (reproducible builds)
         * Fix: an empty line at the beginning of the query file was read
           as an empty query, and all the other queries were silently
           ignored (KI-18)
