@@ -1,4 +1,4 @@
-2026-09-26  Frederic Mahe  <frederic.mahe@intp.science>
+2026-09-26  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2 (in development)
         * The build date and time are no longer shown in the help message,
           the plain output (-m 0) and the tabular output with comments
