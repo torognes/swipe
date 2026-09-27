@@ -24,8 +24,10 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::min, std::max
 #include <cassert>
 #include <cstring>  // std::memcpy
+#include <limits>
 
 const char mat_blosum45[] = 
 "# Entries for the BLOSUM45 matrix at a scale of ln(2)/3.0.\n\
@@ -578,6 +580,15 @@ void score_matrix_read()
   SCORELIMIT_7  = 128 - hi;
   SCORELIMIT_8  = 256 - hi;
   SCORELIMIT_16 = 65536 - hi;
+
+  // the 16-bit engine uses signed 16-bit scores and gap penalties:
+  // when a score or a gap penalty does not fit (KI-13), it is not used
+  // (no 16-bit result is accepted, all the sequences are aligned by
+  // the 63-bit engine)
+  long const max_16 = std::numeric_limits<short>::max();
+  long const min_16 = std::numeric_limits<short>::min();
+  if ((hi > max_16) or (lo < min_16) or (gapopenextend > max_16))
+    SCORELIMIT_16 = 0;
   SCORELIMIT_32 = 4294967296 - hi;
   
   for(a=0;a<32;a++)
@@ -585,8 +596,15 @@ void score_matrix_read()
     {
       sc = score_matrix_63[(a<<5) + b];
       
-      score_matrix_7 [(a<<5) + b] = (char) sc;
-      score_matrix_7t[(b<<5) + a] = (char) sc;
+      // the 7-bit engine uses signed bytes: scores are clamped to
+      // [-128, 127] (KI-12). This is exact: 7-bit scores are in [0,
+      // 127], so a score of -128 already takes any alignment down to
+      // zero, and with a score above 127 no 7-bit result is accepted
+      // (SCORELIMIT_7 <= 0)
+      long const sc_7 = std::max<long>(std::numeric_limits<signed char>::min(),
+                                       std::min<long>(sc, std::numeric_limits<signed char>::max()));
+      score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
+      score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
       score_matrix_8 [(a<<5) + b] = (unsigned char) (BIAS + sc);
       score_matrix_32[(a<<5) + b] = (unsigned int) sc;
       score_matrix_16[(a<<5) + b] = (short) sc;

@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::min
+#include <limits>
 #include <vector>
 
 /* ARGUMENTS AND THEIR DEFAULTS */
@@ -1366,6 +1368,14 @@ int search_getwork(long * first, long * last)
 
 void search_chunk(struct search_data * sdp)
 {
+  // the 7-bit engine uses signed bytes: gap penalties are clamped to
+  // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
+  // penalty of 127 already takes any score down to zero. The 16-bit
+  // and 63-bit engines, and the alignments, use the real penalties
+  long const max_7 = std::numeric_limits<signed char>::max();
+  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(gapopenextend, max_7));
+  BYTE const gapextend_7 = static_cast<BYTE>(std::min(gapextend, max_7));
+
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
   
   if(taxidfilename)
@@ -1433,8 +1443,8 @@ void search_chunk(struct search_data * sdp)
 	    
 	if (cpu_feature_ssse3)
 	  search7_ssse3(qtable,
-			gapopenextend,
-			gapextend,
+			gapopenextend_7,
+			gapextend_7,
 			(BYTE*) score_matrix_7t,
 			sdp->dprofile,
 			sdp->hearray,
@@ -1445,8 +1455,8 @@ void search_chunk(struct search_data * sdp)
 			qlen);
 	else
 	  search7(qtable,
-		  gapopenextend,
-		  gapextend,
+		  gapopenextend_7,
+		  gapextend_7,
 		  (BYTE*) score_matrix_7,
 		  sdp->dprofile,
 		  sdp->hearray,

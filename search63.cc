@@ -31,8 +31,8 @@ long fullsw(char * dseq,
 	    char * qend,
 	    long * hearray,
 	    long * score_matrix,
-	    BYTE gapopenextend,
-	    BYTE gapextend)
+	    long gapopenextend,
+	    long gapextend)
 {
   long h, n, e, f, s;
   long *hep;

@@ -23,6 +23,17 @@
           ("Unexpected object a3", "Error parsing binary ASN.1"): the
           chain-id field of PDB identifiers is now read, and chain names
           are shown as they are by BLAST+ (e.g. pdb|4JKL|Lb) (KI-22)
+        * Fix: gap penalties with a sum of 128 or more (gap open + gap
+          extension), and matrix scores or nucleotide penalties below
+          -128, wrapped around in the 7-bit search engine: wrong scores,
+          or "Internal error in align function." (KI-11, KI-12). They are
+          now clamped in the 7-bit engine only, which is exact; the other
+          engines use the real values
+        * Fix: matrix scores or nucleotide rewards from 32,768 to 65,535,
+          scores below -32,768, and gap penalties above 32,767 did not fit
+          in the 16-bit search engine: hits were lost or scores were wrong
+          (KI-11, KI-12, KI-13). The 16-bit engine is now skipped for such
+          values (the 63-bit engine is used, slower but exact)
         * Fix: the dump (-N) of a database with the tblastn or tblastx
           symbol types (-p 3, -p 4) printed the translated sequence with
           the nucleotide alphabet ('###'). The nucleotide sequence is now

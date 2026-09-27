@@ -256,8 +256,8 @@ long fullsw(char * dseq,
 	    char * qend,
 	    long * hearray, 
 	    long * score_matrix,
-	    BYTE gap_open_penalty,
-	    BYTE gap_extend_penalty);
+	    long gap_open_penalty,
+	    long gap_extend_penalty);
 
 void align(char * a_seq,
 	   char * b_seq,
