@@ -105,6 +105,15 @@
           Such values are now rejected ("Illegal expect value
           specified."). Score thresholds computed from E-values are also
           protected against infinite values (e.g. an empty database)
+        * Fix: taxid list files (-x) were read with fscanf(): negative
+          values became huge values, huge values made the allocation of
+          the taxid bitmap fail ("Unable to allocate enough memory."),
+          and reading stopped silently at the first non-numerical value
+          (e.g. "abc", or "9606,10090": only 9606 was read) (KI-25).
+          Taxids must now be decimal numbers below 2^31, separated by
+          whitespace (usually one per line); any other value stops swipe
+          with its line number ("Illegal taxid on line N of taxid file
+          FILE.")
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

@@ -24,6 +24,10 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::all_of
+#include <cctype>  // std::isdigit, std::isspace
+#include <cstdlib>  // std::strtoul
+#include <string>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
@@ -732,6 +736,56 @@ long db_check_taxid(long taxid)
     return 1;
 }
 
+// NCBI taxids are below 2^31; values above would also make the taxid
+// bitmap huge (KI-25)
+constexpr unsigned long max_taxid = (1UL << 31) - 1;
+constexpr std::size_t max_taxid_digits = 10;
+
+static auto is_digit(char const symbol) -> bool
+{
+  return std::isdigit(static_cast<unsigned char>(symbol)) != 0;
+}
+
+// a taxid is a string of decimal digits, no larger than max_taxid;
+// anything else stops swipe with the line number (KI-25)
+static auto parse_taxid(std::string const & token,
+                        char const * const filename,
+                        long const line_number) -> unsigned long
+{
+  auto const is_valid = (not token.empty()) and
+    (token.size() <= max_taxid_digits) and
+    std::all_of(token.cbegin(), token.cend(), is_digit) and
+    (std::strtoul(token.c_str(), nullptr, 10) <= max_taxid);
+  if (not is_valid)
+  {
+    std::string const message = "Illegal taxid on line " +
+      std::to_string(line_number) + " of taxid file " + filename + ".";
+    fatal(message.c_str());
+  }
+  return std::strtoul(token.c_str(), nullptr, 10);
+}
+
+static void db_add_taxid(unsigned long const taxid)
+{
+  //    fprintf(stderr, "read taxid: %lu\n", taxid);
+
+  long byteno = taxid / 8;
+  long bitno = taxid & 7;
+    
+  if (byteno >= db_main.taxid_bitmap_size)
+  {
+    long old = db_main.taxid_bitmap_size;
+    db_main.taxid_bitmap_size = byteno+1;
+    db_main.taxid_bitmap_address = (unsigned char *)
+      xrealloc(db_main.taxid_bitmap_address, 
+               db_main.taxid_bitmap_size);
+    memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
+  }
+    
+  unsigned char v = db_main.taxid_bitmap_address[byteno];
+  db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
+}
+
 void db_read_taxid_file(char * filename)
 {
   db_main.taxid_filename = strdup(filename);
@@ -743,27 +797,30 @@ void db_read_taxid_file(char * filename)
   db_main.taxid_bitmap_address = (unsigned char*) xmalloc(db_main.taxid_bitmap_size);
   memset(db_main.taxid_bitmap_address, 0, db_main.taxid_bitmap_size);
 
+  /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;
-  unsigned long taxid;
-  while(fscanf(db_main.taxid_file, "%lu\n", & taxid) > 0)
+  long line_number = 1;
+  std::string token;
+  int symbol = 0;
+  while ((symbol = getc(db_main.taxid_file)) != EOF)
   {
-    //    fprintf(stderr, "read taxid: %lu\n", taxid);
-
-    long byteno = taxid / 8;
-    long bitno = taxid & 7;
-    
-    if (byteno >= db_main.taxid_bitmap_size)
+    if (std::isspace(symbol) == 0)
     {
-      long old = db_main.taxid_bitmap_size;
-      db_main.taxid_bitmap_size = byteno+1;
-      db_main.taxid_bitmap_address = (unsigned char *)
-	xrealloc(db_main.taxid_bitmap_address, 
-		 db_main.taxid_bitmap_size);
-      memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
+      token.push_back(static_cast<char>(symbol));
+      continue;
     }
-    
-    unsigned char v = db_main.taxid_bitmap_address[byteno];
-    db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
+    if (not token.empty())
+    {
+      db_add_taxid(parse_taxid(token, filename, line_number));
+      lines++;
+      token.clear();
+    }
+    if (symbol == '\n')
+      ++line_number;
+  }
+  if (not token.empty())
+  {
+    db_add_taxid(parse_taxid(token, filename, line_number));
     lines++;
   }
 
