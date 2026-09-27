@@ -25,6 +25,10 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::min
+#include <cassert>
+#include <cerrno>  // errno, ERANGE
+#include <cmath>  // std::floor, std::isfinite
+#include <cstdlib>  // std::strtol, std::strtod
 #include <limits>
 #include <vector>
 
@@ -701,7 +705,7 @@ void args_show()
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
       if (effdbsize > 0)
-	fprintf(out, "Effecive db size:  %ld\n", effdbsize);
+	fprintf(out, "Effective db size: %ld\n", effdbsize);
 
       fprintf(out, "Query file name:   %s\n", queryname);
 
@@ -824,8 +828,49 @@ void args_help()
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n\n", title, ref);
+#ifdef MPISWIPE
+  fprintf(out, "Note: mpiswipe is deprecated, and will be removed in SWIPE 2.2.0.\n\n");
+#endif
   
   args_usage();
+}
+
+// strict conversions of option values (KI-9): the whole value must be
+// a number, without trailing characters, and within the range of the
+// type; otherwise, swipe stops with the error message of the option
+static auto parse_long(char const * const text, char const * const message) -> long
+{
+  assert(text != nullptr);
+  char * end = nullptr;
+  errno = 0;
+  auto const value = std::strtol(text, &end, 10);
+  if ((end == text) or (*end != '\0') or (errno == ERANGE))
+    fatal(message);
+  return value;
+}
+
+static auto parse_double(char const * const text, char const * const message) -> double
+{
+  assert(text != nullptr);
+  char * end = nullptr;
+  errno = 0;
+  auto const value = std::strtod(text, &end);
+  if ((end == text) or (*end != '\0') or (errno == ERANGE) or
+      (not std::isfinite(value)))
+    fatal(message);
+  return value;
+}
+
+// the effective database size accepts the real notation of blastall's
+// -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
+static auto parse_dbsize(char const * const text) -> long
+{
+  static char const message[] = "Illegal effective db size specified";
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  auto const value = parse_double(text, message);
+  if ((value < 0.0) or (value != std::floor(value)) or (value >= upper_limit))
+    fatal(message);
+  return static_cast<long>(value);
 }
 
 void args_init(int argc, char **argv)
@@ -881,7 +926,8 @@ void args_init(int argc, char **argv)
     {"num_threads",      required_argument, NULL, 'a' },
     {"outfmt",           required_argument, NULL, 'm' },
     {"symtype",          required_argument, NULL, 'p' },
-    {"taxid",            required_argument, NULL, 'x' },
+    {"taxidlist",        required_argument, NULL, 'x' },
+    {"taxid",            required_argument, NULL, 'x' },  /* alias (2.1.1 and older) */
     {"comp_based_stats", required_argument, NULL, 'C' },
     {"query_gencode",    required_argument, NULL, 'Q' },
     {"db_gencode",       required_argument, NULL, 'D' },
@@ -909,17 +955,17 @@ void args_init(int argc, char **argv)
 	{
 	case 'a':
 	  /* threads */
-	  threads = atol(optarg);
+	  threads = parse_long(optarg, "Illegal number of threads specified");
 	  break;
 	  
 	case 'b':
 	  /* alignments */
-	  alignments = atol(optarg);
+	  alignments = parse_long(optarg, "Illegal number of alignments specified.");
 	  break;
 	  
 	case 'c':
 	  /* min score threshold */
-	  minscore = atol(optarg);
+	  minscore = parse_long(optarg, "Illegal minimum score specified.");
 	  break;
 	  
 	case 'C':
@@ -935,17 +981,17 @@ void args_init(int argc, char **argv)
 	  
 	case 'D':
 	  /* database genetic code */
-	  db_gencode = atol(optarg);
+	  db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
 	  break;
 	  
 	case 'e':
 	  /* evalue */
-	  expect = atof(optarg);
+	  expect = parse_double(optarg, "Illegal expect value specified.");
 	  break;
 	  
 	case 'E':
 	  /* gap extend */
-	  gapextend = atol(optarg);
+	  gapextend = parse_long(optarg, "Illegal gap penalties.");
 	  break;
 	  
 	case 'F':
@@ -956,7 +1002,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'G':
 	  /* gap open */
-	  gapopen = atol(optarg);
+	  gapopen = parse_long(optarg, "Illegal gap penalties.");
 	  break;
 	  
 	case 'h':
@@ -981,17 +1027,17 @@ void args_init(int argc, char **argv)
 	  
 	case 'k':
 	  /* min evalue threshold */
-	  minexpect = atof(optarg);
+	  minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
 	  break;
 	  
 	case 'K':
 	  /* subalignments */
-	  subalignments = atol(optarg);
+	  subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
 	  break;
 	  
 	case 'm':
 	  /* view */
-	  view = atol(optarg);
+	  view = parse_long(optarg, "Illegal view type.");
 	  break;
 	  
 	case 'M':
@@ -1001,7 +1047,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'N':
 	  /* dump */
-	  dump = atol(optarg);
+	  dump = parse_long(optarg, "Illegal dump mode.");
 	  break;
 	  
 	case 'o':
@@ -1024,22 +1070,22 @@ void args_init(int argc, char **argv)
 	  else if (strcmp(optarg, "sound") == 0)
 	    symtype = 5;
 	  else
-	    symtype = atol(optarg);
+	    symtype = parse_long(optarg, "Illegal symbol type.");
 	  break;
 	  
 	case 'q':
 	  /* penalty */
-	  mismatchscore = atol(optarg);
+	  mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
 	  break;
 	  
 	case 'Q':
 	  /* query genetic code */
-	  query_gencode = atol(optarg);
+	  query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
 	  break;
 	  
 	case 'r':
 	  /* reward */
-	  matchscore = atol(optarg);
+	  matchscore = parse_long(optarg, "Illegal match reward specified.");
 	  break;
 	  
 	case 'S':
@@ -1050,17 +1096,17 @@ void args_init(int argc, char **argv)
 	  else if (strcmp(optarg, "both") == 0)
 	    querystrands = 3;
 	  else
-	    querystrands = atol(optarg);
+	    querystrands = parse_long(optarg, "Illegal query strands specified.");
 	  break;
 
 	case 'u':
 	  /* maxscore */
-	  maxscore = atol(optarg);
+	  maxscore = parse_long(optarg, "Illegal maximum score specified.");
 	  break;
 	  
 	case 'v':
 	  /* max matches shown */
-	  maxmatches = atol(optarg);
+	  maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
 	  break;
 	  
 	case 'x':
@@ -1070,7 +1116,7 @@ void args_init(int argc, char **argv)
 	  
 	case 'z':
 	  /* effective db size */
-	  effdbsize = atol(optarg);
+	  effdbsize = parse_dbsize(optarg);
 	  break;
 	  
 	case '?':
@@ -1081,14 +1127,6 @@ void args_init(int argc, char **argv)
 	}
     }
   
-  if (outfile)
-  {
-    FILE * f = fopen(outfile, "w");
-    if (! f)
-      fatal("Unable to open output file for writing.");
-    out = f;
-  }
-
   long gopen_default;
   long gextend_default;
 
@@ -1141,16 +1179,16 @@ void args_init(int argc, char **argv)
   if (!((view==0)||(view==7)||(view==8)||(view==9)||(view==99)))
     fatal("Illegal view type.");
   
-  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
-    fatal("Illegal gap penalties.");
-  
   if ((symtype < 0) || (symtype > 5))
     fatal("Illegal symbol type.");
+
+  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
+    fatal("Illegal gap penalties.");
 
   if ((querystrands < 1) || (querystrands > 3))
     fatal("Illegal query strands specified.");
 
-  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3) || (symtype == 4)))
+  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
     fatal("Illegal strand specified for protein query.");
 
   if ((query_gencode < 1)  || (query_gencode > 23) || (! gencode_names[query_gencode-1]))
@@ -1161,6 +1199,37 @@ void args_init(int argc, char **argv)
 
   if ((dump<0) || (dump>2))
     fatal("Illegal dump mode.");
+
+  /* ranges of the result limits (KI-7, KI-9) */
+  if (maxmatches < 0)
+    fatal("Illegal number of descriptions specified.");
+
+  if (alignments < 0)
+    fatal("Illegal number of alignments specified.");
+
+  /* scores below 1 are not alignments ("Internal error in align
+     function.") */
+  if (minscore < 1)
+    fatal("Illegal minimum score specified.");
+
+  if (maxscore < 0)
+    fatal("Illegal maximum score specified.");
+
+  if (expect <= 0.0)
+    fatal("Illegal expect value specified.");
+
+  if (minexpect < 0.0)
+    fatal("Illegal minimum expect value specified.");
+
+  /* the output file is opened (and truncated) only once all the
+     options are checked (KI-8) */
+  if (outfile)
+  {
+    FILE * f = fopen(outfile, "w");
+    if (! f)
+      fatal("Unable to open output file for writing.");
+    out = f;
+  }
   
   translate_init(query_gencode, db_gencode);
 }
@@ -1727,9 +1796,8 @@ void cpu_features()
 
 void clock_start(struct time_info * tip)
 {
-  tip->clk_tck = sysconf(_SC_CLK_TCK);
   time(& tip->t1);                 /* time(2)   */
-  tip->wc1 = times(& tip->times1); /* times (2) */
+  tip->clock1 = std::chrono::steady_clock::now();
 }
 
 void clock_stop(struct time_info * tip)
@@ -1737,7 +1805,7 @@ void clock_stop(struct time_info * tip)
   struct tm tms;
   char const timeformat[] = "%a, %e %b %Y %T UTC";
 
-  tip->wc2 = times(& tip->times2);
+  tip->clock2 = std::chrono::steady_clock::now();
   time(& tip->t2);
 
   gmtime_r(&tip->t1, & tms);
@@ -1746,7 +1814,7 @@ void clock_stop(struct time_info * tip)
   gmtime_r(&tip->t2, & tms);
   strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
 
-  tip->elapsed = ((double)(tip->wc2 - tip->wc1)) / tip->clk_tck;
+  tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
   
   double speed = ((double)db_getsymcount_masked());
 
@@ -1756,8 +1824,9 @@ void clock_stop(struct time_info * tip)
     if (querystrands == 3)
       speed *= 2;
   }
-  else if (symtype == 1)
+  else if ((symtype == 1) || (symtype == 5))
   {
+    /* sound queries are stored as amino acid queries (KI-33) */
     speed *= query.aa[0].len;
   }
   else if (symtype == 2)
@@ -1778,15 +1847,18 @@ void clock_stop(struct time_info * tip)
     if (querystrands == 3)
       speed *= 2;
   }
-  speed /= tip->elapsed;
-  tip->speed = speed;
+  /* the speed is unknown when no time elapsed (KI-33) */
+  tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
   
   if (view == 0)
   {
     fprintf(out, "Search started:    %s\n", tip->starttime.data());
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
-    fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    if (tip->elapsed > 0.0)
+      fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    else
+      fprintf(out, "Speed:             n/a\n");
     fprintf(out, "\n");
   }
 }
@@ -2527,7 +2599,7 @@ int main(int argc, char**argv)
 
 #ifndef MPISWIPE
   if (! cpu_feature_sse2)
-    fatal("This program requires a processor with SSE2.\n");
+    fatal("This program requires a processor with SSE2.");
 #endif
 
   args_init(argc,argv);

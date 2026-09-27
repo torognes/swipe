@@ -29,7 +29,6 @@
 #include <limits.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include <sys/times.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -39,6 +38,8 @@
 #include <math.h>
 #include <x86intrin.h>
 #include <array>
+#include <chrono>
+#include <ctime>
 
 #ifdef MPISWIPE
 #include <mpi.h>
@@ -183,9 +184,9 @@ struct db_thread_s;
 struct time_info
 {
   time_t t1, t2;
-  struct tms times1, times2;
-  clock_t wc1, wc2;
-  long clk_tck;
+  // monotonic clock for the elapsed time (KI-33)
+  std::chrono::steady_clock::time_point clock1;
+  std::chrono::steady_clock::time_point clock2;
 
   // kept until the results are shown (-m 99, KI-28)
   std::array<char, 30> starttime;

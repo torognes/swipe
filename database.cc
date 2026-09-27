@@ -24,6 +24,13 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::all_of
+#include <cctype>  // std::isdigit, std::isspace
+#include <cstdint>  // std::uint64_t
+#include <cstdlib>  // std::strtoul
+#include <cstring>  // std::memcpy
+#include <iterator>  // std::next
+#include <string>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
@@ -512,6 +519,32 @@ void db_close_al(al_info_t * a)
   }
 }
 
+// numbers stored in the database files, read at any alignment: a cast
+// to an integer pointer is undefined behaviour when the address is not
+// aligned (reported by UBSan), memcpy is not
+static auto load_uint32_be(char const * const address) -> UINT32
+{
+  UINT32 value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return bswap_32(value);
+}
+
+static auto load_uint64_be(char const * const address) -> std::uint64_t
+{
+  std::uint64_t value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return bswap_64(value);
+}
+
+// the residue count of the index file is not byte-swapped (read in the
+// byte order of the host, as before)
+static auto load_uint64_host(char const * const address) -> std::uint64_t
+{
+  std::uint64_t value = 0;
+  std::memcpy(&value, address, sizeof(value));
+  return value;
+}
+
 long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 {
   db_volume_init(volume);
@@ -559,27 +592,40 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 
   volume->fd_xsq = open(name_psq, O_RDONLY, 0);
   if (volume->fd_xsq < 0)
-    fatal("Unable to open file %s.\n", name_psq);
+    fatal("Unable to open file %s.", name_psq);
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
+  /* the index file must hold its header and its offset tables, and
+     the offsets must stay within the header and sequence files: a
+     truncated or corrupted file was read beyond its end (KI-23) */
+  char const * const xin_end = std::next(volume->adr_xin, volume->len_xin);
+  auto const check_xin_room = [&](char const * const position, long const size)
+    {
+      if ((size < 0) or (std::distance(position, xin_end) < size))
+        fatal("Database index file %s is truncated or corrupted.", name_pin);
+    };
+
   char * p = (char*) volume->adr_xin;
-  volume->version = bswap_32(*(UINT32*)p);
+  check_xin_room(p, 12);
+  volume->version = load_uint32_be(p);
   
   if (volume->version != 4)
     fatal("Illegal database version (must be 4).");
 
   p += 4;
-  volume->symtype = bswap_32(*(UINT32*)p);
+  volume->symtype = load_uint32_be(p);
   p += 4;
-  long titlelen = bswap_32(*(UINT32*)p);
+  long titlelen = load_uint32_be(p);
   p += 4;
+  check_xin_room(p, titlelen + 4);
   volume->title = (char*) xmalloc(titlelen+1);
   strncpy(volume->title, p, titlelen);
   volume->title[titlelen] = 0;
   p += titlelen;
-  unsigned datelen = bswap_32(*(UINT32*)p);
+  unsigned datelen = load_uint32_be(p);
   p += 4;
+  check_xin_room(p, datelen);
   volume->time = (char*) xmalloc(datelen+1);
   strncpy(volume->time, p, datelen);
   volume->time[datelen] = 0;
@@ -590,15 +636,50 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
     p++;
   if ((long)p & 3)
     p++;
-  volume->seqcount = bswap_32(*(UINT32*)p);
+  check_xin_room(p, 16);
+  volume->seqcount = load_uint32_be(p);
   p += 4;
-  volume->symcount = *(unsigned long*)p;
+  volume->symcount = static_cast<long>(load_uint64_host(p));
   p += 8;
-  volume->longest = bswap_32(*(UINT32*)p);
+  volume->longest = load_uint32_be(p);
   p += 4;
   volume->offset_xhr = p - (char*)volume->adr_xin;
   volume->offset_xsq = volume->offset_xhr + 4 * (volume->seqcount + 1);
   volume->offset_amb = volume->offset_xsq + 4 * (volume->seqcount + 1);
+
+  /* offset tables: seqcount + 1 header and sequence offsets, and, for
+     nucleotides, seqcount + 1 ambiguity offsets */
+  bool const is_nucleotide = (symtype != 1) and (symtype != 2) and (symtype != 5);
+  long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
+    4 * (volume->seqcount + 1);
+  check_xin_room(volume->adr_xin, tables_end);
+
+  auto const offset_at = [volume](long const table, long const seqno) -> long
+    {
+      return load_uint32_be(std::next(volume->adr_xin, table + 4 * seqno));
+    };
+
+  for (long seqno = 0; seqno < volume->seqcount; ++seqno)
+  {
+    if (offset_at(volume->offset_xhr, seqno) > offset_at(volume->offset_xhr, seqno + 1))
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+    long const seq_start = offset_at(volume->offset_xsq, seqno);
+    long const seq_end = offset_at(volume->offset_xsq, seqno + 1);
+    if (seq_start > seq_end)
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+    if (not is_nucleotide)
+      continue;
+    /* the packed nucleotides use at least one byte, before the
+       ambiguity table of the sequence */
+    long const amb_start = offset_at(volume->offset_amb, seqno);
+    if ((amb_start <= seq_start) or (amb_start > seq_end))
+      fatal("Database index file %s is truncated or corrupted.", name_pin);
+  }
+
+  if (offset_at(volume->offset_xhr, volume->seqcount) > volume->len_xhr)
+    fatal("Database header file %s is truncated or corrupted.", name_phr);
+  if (offset_at(volume->offset_xsq, volume->seqcount) > volume->len_xsq)
+    fatal("Database sequence file %s is truncated or corrupted.", name_psq);
 
   free(name_pin);
   free(name_phr);
@@ -732,6 +813,56 @@ long db_check_taxid(long taxid)
     return 1;
 }
 
+// NCBI taxids are below 2^31; values above would also make the taxid
+// bitmap huge (KI-25)
+constexpr unsigned long max_taxid = (1UL << 31) - 1;
+constexpr std::size_t max_taxid_digits = 10;
+
+static auto is_digit(char const symbol) -> bool
+{
+  return std::isdigit(static_cast<unsigned char>(symbol)) != 0;
+}
+
+// a taxid is a string of decimal digits, no larger than max_taxid;
+// anything else stops swipe with the line number (KI-25)
+static auto parse_taxid(std::string const & token,
+                        char const * const filename,
+                        long const line_number) -> unsigned long
+{
+  auto const is_valid = (not token.empty()) and
+    (token.size() <= max_taxid_digits) and
+    std::all_of(token.cbegin(), token.cend(), is_digit) and
+    (std::strtoul(token.c_str(), nullptr, 10) <= max_taxid);
+  if (not is_valid)
+  {
+    std::string const message = "Illegal taxid on line " +
+      std::to_string(line_number) + " of taxid file " + filename + ".";
+    fatal(message.c_str());
+  }
+  return std::strtoul(token.c_str(), nullptr, 10);
+}
+
+static void db_add_taxid(unsigned long const taxid)
+{
+  //    fprintf(stderr, "read taxid: %lu\n", taxid);
+
+  long byteno = taxid / 8;
+  long bitno = taxid & 7;
+    
+  if (byteno >= db_main.taxid_bitmap_size)
+  {
+    long old = db_main.taxid_bitmap_size;
+    db_main.taxid_bitmap_size = byteno+1;
+    db_main.taxid_bitmap_address = (unsigned char *)
+      xrealloc(db_main.taxid_bitmap_address, 
+               db_main.taxid_bitmap_size);
+    memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
+  }
+    
+  unsigned char v = db_main.taxid_bitmap_address[byteno];
+  db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
+}
+
 void db_read_taxid_file(char * filename)
 {
   db_main.taxid_filename = strdup(filename);
@@ -743,27 +874,30 @@ void db_read_taxid_file(char * filename)
   db_main.taxid_bitmap_address = (unsigned char*) xmalloc(db_main.taxid_bitmap_size);
   memset(db_main.taxid_bitmap_address, 0, db_main.taxid_bitmap_size);
 
+  /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;
-  unsigned long taxid;
-  while(fscanf(db_main.taxid_file, "%lu\n", & taxid) > 0)
+  long line_number = 1;
+  std::string token;
+  int symbol = 0;
+  while ((symbol = getc(db_main.taxid_file)) != EOF)
   {
-    //    fprintf(stderr, "read taxid: %lu\n", taxid);
-
-    long byteno = taxid / 8;
-    long bitno = taxid & 7;
-    
-    if (byteno >= db_main.taxid_bitmap_size)
+    if (std::isspace(symbol) == 0)
     {
-      long old = db_main.taxid_bitmap_size;
-      db_main.taxid_bitmap_size = byteno+1;
-      db_main.taxid_bitmap_address = (unsigned char *)
-	xrealloc(db_main.taxid_bitmap_address, 
-		 db_main.taxid_bitmap_size);
-      memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
+      token.push_back(static_cast<char>(symbol));
+      continue;
     }
-    
-    unsigned char v = db_main.taxid_bitmap_address[byteno];
-    db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
+    if (not token.empty())
+    {
+      db_add_taxid(parse_taxid(token, filename, line_number));
+      lines++;
+      token.clear();
+    }
+    if (symbol == '\n')
+      ++line_number;
+  }
+  if (not token.empty())
+  {
+    db_add_taxid(parse_taxid(token, filename, line_number));
     lines++;
   }
 
@@ -1286,18 +1420,20 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     {
       //    printf("#number of ambiguity fixup bytes: %ld\n", amb_bytes);
     
-      unsigned int * ambp = (unsigned int *)(address + aoff);
-      unsigned long amb_entries = bswap_32(*ambp++);
+      char const * ambp = std::next(address, aoff);
+      unsigned long amb_entries = load_uint32_be(ambp);
+      ambp = std::next(ambp, sizeof(UINT32));
       unsigned long big_table = (amb_entries >> 31);
     
       if (big_table)
       {
 	unsigned long entries = (amb_bytes - 4) / 8;
-	unsigned long * ambp64 = (unsigned long*)(address + aoff + 4);
+	char const * ambp64 = std::next(address, aoff + 4);
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned long e = bswap_64(*ambp64++);
+	  unsigned long e = load_uint64_be(ambp64);
+	  ambp64 = std::next(ambp64, sizeof(std::uint64_t));
 	  unsigned long n = e >> 60;
 	  unsigned long r = ((e >> 48) & 0xfff) + 1;
 	  unsigned long o = e & 0x0000fffffffffff;
@@ -1312,7 +1448,8 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned int e = bswap_32(*ambp++);
+	  unsigned int e = load_uint32_be(ambp);
+	  ambp = std::next(ambp, sizeof(UINT32));
 	  unsigned int n = e >> 28;
 	  unsigned int r = ((e >> 24) & 0xf) + 1;
 	  unsigned int o = e & 0x00ffffff;

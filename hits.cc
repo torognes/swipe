@@ -24,6 +24,9 @@
 */
 
 #include "swipe.h"
+#include <cassert>
+#include <cctype>  // std::isspace
+#include <cmath>  // std::isnan
 #include <cstddef>  // std::size_t
 #include <limits>
 
@@ -47,6 +50,15 @@ double lambda;
 double K;
 double H;
 double Kmn = 0;
+
+/* ungapped statistical parameters, only shown with -m 99 (KI-31) */
+double ungapped_lambda = 0;
+double ungapped_K = 0;
+double ungapped_H = 0;
+
+/* gap penalties of the ungapped rows of the NCBI score matrix tables
+   (INT2_MAX, see blastkar_partial.c) */
+constexpr long ungapped_penalty = 32767;
 double logK;
 double lambda_d_log2;
 double logK_d_log2;
@@ -283,6 +295,21 @@ void hits_enter_align_string(long i, char * align, long align_len)
   //  hits_list[i].alignment[align_len] = 0;
 }
 
+// score thresholds computed from E-values can be infinite (e.g. an
+// empty database, Kmn = 0) or beyond the range of long: converting
+// them with a cast is undefined behaviour (KI-7)
+static auto threshold_to_long(double const value) -> long
+{
+  assert(not std::isnan(value));
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  constexpr auto lower_limit = static_cast<double>(std::numeric_limits<long>::min());
+  if (value >= upper_limit)
+    return std::numeric_limits<long>::max();
+  if (value <= lower_limit)
+    return std::numeric_limits<long>::min();
+  return static_cast<long>(value);
+}
+
 void hits_init(long descriptions, long alignments, long minscore, long maxscore, double minexpect, double expect, int show_nostats)
 {
   opt_descriptions = descriptions;
@@ -486,18 +513,35 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
   fprintf(out, "lenadj=%d m=%ld n=%ld mn=%.1f\n", lenadj, m, n, (double)m * (double)n);
 #endif
 
+  /* ungapped statistical parameters (-m 99): the (0, 0) rows of the
+     nucleotide tables, the ungapped rows of the matrix tables; the
+     gapped values when there are none (KI-31) */
+  ungapped_lambda = lambda;
+  ungapped_K = K;
+  ungapped_H = H;
+  double ungapped_alpha = 0;
+  double ungapped_beta = 0;
+  if (symtype == 0)
+    stats_getparams_nt(matchscore, mismatchscore, 0, 0,
+                       & ungapped_lambda, & ungapped_K, & ungapped_H,
+                       & ungapped_alpha, & ungapped_beta);
+  else if (symtype < 5)
+    stats_getparams(matrixname, ungapped_penalty, ungapped_penalty,
+                    & ungapped_lambda, & ungapped_K, & ungapped_H,
+                    & ungapped_alpha, & ungapped_beta);
+
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
   
   if (stats_available)
   {
-    long minscore_expect = (long)(ceil(- log(expect / Kmn) / lambda));
+    long minscore_expect = threshold_to_long(ceil(- log(expect / Kmn) / lambda));
     if (minscore_expect > minscore)
       scorethreshold = minscore_expect;
     
     if (minexpect > 0.0)
     {
-      long maxscore_expect = (long)(floor(- log(minexpect / Kmn) / lambda));
+      long maxscore_expect = threshold_to_long(floor(- log(minexpect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
 	upperscorethreshold = maxscore_expect;
     }
@@ -1342,6 +1386,12 @@ void hits_show_xml_paralign(long showalignments,
     qseqtypedescr = "Amino Acid";
     q = query.aa[0];
   }
+  else if (query.symtype == 5)
+  {
+    /* sound queries are stored as amino acid queries (KI-30) */
+    qseqtypedescr = "Sound";
+    q = query.aa[0];
+  }
   else
   {
     qseqtypedescr = "Nucleotide";
@@ -1349,7 +1399,7 @@ void hits_show_xml_paralign(long showalignments,
   }
   
   fprintf(out, "\t\t<queryInformation>\n");
-  fprintf(out, "\t\t\t<queryFilename>./");
+  fprintf(out, "\t\t\t<queryFilename>");
   xml_print(queryname);
   fprintf(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
@@ -1378,6 +1428,10 @@ void hits_show_xml_paralign(long showalignments,
     ncbidb = "Protein";
     ncbiopt = "GenPept";
   }
+
+  /* sound databases are stored as amino acid databases (KI-30) */
+  if (query.symtype == 5)
+    dbseqtypedescr = "Sound";
   fprintf(out, "\t\t<databaseInformation>\n");
   fprintf(out, "\t\t\t<databaseFilename>");
   xml_print(databasename);
@@ -1430,9 +1484,9 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", gapopen);
   fprintf(out, "\t\t\t\t<gapPenaltyExtension>%ld</gapPenaltyExtension>\n", gapextend);
   fprintf(out, "\t\t\t\t<ungapped>\n");
-  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", lambda);
-  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", K);
-  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", H);
+  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
+  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
+  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", ungapped_H);
   fprintf(out, "\t\t\t\t</ungapped>\n");
   fprintf(out, "\t\t\t\t<gapped>\n");
   fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", lambda);
@@ -1457,7 +1511,10 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t\t<searchStarted>%s</searchStarted>\n", ti.starttime.data());
   fprintf(out, "\t\t\t\t<searchCompleted>%s</searchCompleted>\n", ti.endtime.data());
   fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
-  fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+  if (ti.elapsed > 0.0)
+    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+  else
+    fprintf(out, "\t\t\t\t<searchSpeed>n/a</searchSpeed>\n");
   fprintf(out, "\t\t\t\t<searchSWAlignments>\n");
   fprintf(out, "\t\t\t\t\t<SWAbsolute>%ld</SWAbsolute>\n", compute7);
   fprintf(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
@@ -1714,21 +1771,30 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t</paralignOutput>\n");
 }
 
+// the query id ends at the first whitespace character (space, tab,
+// ...), as in BLAST (KI-20)
+static auto ends_query_id(char const symbol) -> bool
+{
+  return (symbol == '\0') or
+    (std::isspace(static_cast<unsigned char>(symbol)) != 0);
+}
+
 static void show_description(const char *desc)
 {
   const char *dptr;
 
-  for (dptr = desc; *dptr != '\0' && *dptr != ' '; dptr++)
+  for (dptr = desc; not ends_query_id(*dptr); dptr++)
   {
     putc(*dptr, out);
   }
 }
 
-// query id (the description up to its first space), escaped as XML
+// query id (the description up to its first whitespace character),
+// escaped as XML
 // (KI-27)
 static auto show_description_xml(char const * const desc) -> void
 {
-  for (auto const * dptr = desc; (*dptr != '\0') and (*dptr != ' '); ++dptr)
+  for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
     xml_putc(*dptr);
 }
 

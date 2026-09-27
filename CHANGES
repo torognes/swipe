@@ -4,6 +4,9 @@
           the plain output (-m 0) and the tabular output with comments
           (-m 9): two builds of the same sources are now identical
           (reproducible builds)
+        * Fix: the long option --taxidlist, shown in the help message and
+          in the README, was rejected: only --taxid was accepted (KI-1).
+          Both names are now accepted (--taxid is kept as an alias)
         * Fix: an empty line at the beginning of the query file was read
           as an empty query, and all the other queries were silently
           ignored (KI-18)
@@ -57,6 +60,98 @@
           (e.g. long titles) were stored without room for their final
           null byte, which was written one byte past the end of the
           buffer (KI-38). Outputs are unchanged
+        * Fix: in score matrix files, a row with fewer scores than
+          columns was accepted, and the missing scores took the value of
+          the previous score (KI-14). Such rows are now rejected
+          ("Problem parsing score matrix file.")
+        * Fix: only spaces ended the query id: with a tab in the query
+          header (e.g. ">q1<TAB>description"), the tabular outputs (-m 8,
+          -m 9) had an extra column, and the XML output (-m 7) showed the
+          description in the query id (KI-20). Any whitespace character
+          now ends the query id, as in BLAST
+        * Fix: the error message for a missing database sequence file
+          (.psq, .nsq) was followed by an empty line (KI-35)
+        * Fix: typo in the parameter block of the plain output (-m 0),
+          "Effecive db size" is now "Effective db size" (KI-34)
+        * Fix: with an illegal symbol type above 5 (e.g. -p 6), the error
+          message was "Illegal gap penalties." (no default gap penalties
+          for such types). The symbol type is now checked before the gap
+          penalties: "Illegal symbol type." (KI-5)
+        * Fix: tblastx (-p 4) refused --strand 2 ("Illegal strand
+          specified for protein query."), although its query is a
+          nucleotide sequence. The minus strand of the query can now be
+          searched alone (KI-4)
+        * Fix: the output file (--out) was created, or truncated, before
+          the other options were checked: a typo in another option
+          destroyed the previous content of the file (KI-8). It is now
+          opened once all options are checked
+        * Fix: numerical option values were not checked (atol, atof):
+          trailing characters were ignored (-a 2abc was read as 2),
+          non-numerical values were read as zero (-v abc), and -z
+          7.06e+06 was read as 7 (KI-9, GitHub #9). Values are now
+          checked: non-numerical values, trailing characters and values
+          out of range are rejected with the error message of the
+          option. -z accepts the real notation (7.06e+06 is 7,060,000),
+          but not fractional values. Negative values of -v, -b, -u and
+          -k are rejected, as well as -c values below 1 (a minimum score
+          of 0 or less ended with "Internal error in align function.")
+        * Fix: unknown names of symbol types (e.g. -p blastpp or
+          -p BLASTP) silently selected blastn (symbol type 0), and
+          unknown strand names were read as 0 (KI-3). They are now
+          rejected ("Illegal symbol type.", "Illegal query strands
+          specified.")
+        * Fix: an expect value (-e) of zero, negative or non-numerical
+          disabled the E-value filter: all hits were reported (KI-7).
+          Such values are now rejected ("Illegal expect value
+          specified."). Score thresholds computed from E-values are also
+          protected against infinite values (e.g. an empty database)
+        * Fix: taxid list files (-x) were read with fscanf(): negative
+          values became huge values, huge values made the allocation of
+          the taxid bitmap fail ("Unable to allocate enough memory."),
+          and reading stopped silently at the first non-numerical value
+          (e.g. "abc", or "9606,10090": only 9606 was read) (KI-25).
+          Taxids must now be decimal numbers below 2^31, separated by
+          whitespace (usually one per line); any other value stops swipe
+          with its line number ("Illegal taxid on line N of taxid file
+          FILE.")
+        * mpiswipe (the MPI version of SWIPE) is deprecated: it is no
+          longer built by "make" ("make mpiswipe" builds it), its help
+          message says so, and it will be removed in version 2.2.0
+        * Build: "make" builds swipe only (mpiswipe is opt-in). The
+          Makefile honours CXX, CXXFLAGS, CPPFLAGS and LDFLAGS (user
+          flags come after swipe's own flags), compiles with -std=c++11
+          and -pthread, tracks header dependencies, has install and
+          uninstall targets (PREFIX, DESTDIR), a complete clean target,
+          and build recipes: release (default), DEBUG=1 (sanitizers,
+          extended warnings), COVERAGE=1, PROFILE=1 and TRACE=1
+        * Build: no compilation warnings with -Wall -Wextra, with GCC
+          4.8.5 to 15 and clang 20; several of the fixed warnings were
+          potential buffer overflows (ASN.1 parser, matrix reader)
+        * Fix: in the ParAlign XML output (-m 99), the ungapped
+          statistical parameters (lambda, kappa, eta) were the gapped
+          ones (KI-31). They are now read from the ungapped rows of the
+          NCBI tables (e.g. BLOSUM62: 0.3176, 0.134, 0.4012)
+        * Fix: in the ParAlign XML output (-m 99), the query file name
+          was prefixed with "./" (".//tmp/q.fa", "./-" for the standard
+          input) (KI-32). It is now shown as given
+        * Fix: in the ParAlign XML output (-m 99), sound queries (-p 5)
+          were described as nucleotides, with an empty sequence, and
+          their database as amino acids (KI-30). Both are now described
+          as "Sound", and the query sequence is shown
+        * Fix: the elapsed time was measured with times(), in clock ticks
+          (10 ms): small searches reported "Speed: inf GCUPS", empty
+          queries "nan GCUPS", and the speed of sound searches (-p 5)
+          was not multiplied by the query length (KI-33). The elapsed
+          time is now measured with a monotonic clock
+          (std::chrono::steady_clock), the speed is "n/a" when no time
+          elapsed, and 0 for empty queries
+        * Fix: the sizes of the database files were not checked: a
+          truncated index file (.pin, .nin) was read beyond its end and
+          taken as an empty database, and offsets beyond the ends of the
+          header and sequence files could be used (KI-23). The header
+          and offset tables of the index file, and the offsets, are now
+          checked ("Database index file FILE is truncated or
+          corrupted.", and the same for header and sequence files)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
