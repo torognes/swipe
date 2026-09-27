@@ -701,7 +701,7 @@ void args_show()
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
       if (effdbsize > 0)
-	fprintf(out, "Effecive db size:  %ld\n", effdbsize);
+	fprintf(out, "Effective db size: %ld\n", effdbsize);
 
       fprintf(out, "Query file name:   %s\n", queryname);
 
