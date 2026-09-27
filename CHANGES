@@ -117,6 +117,16 @@
         * mpiswipe (the MPI version of SWIPE) is deprecated: it is no
           longer built by "make" ("make mpiswipe" builds it), its help
           message says so, and it will be removed in version 2.2.0
+        * Build: "make" builds swipe only (mpiswipe is opt-in). The
+          Makefile honours CXX, CXXFLAGS, CPPFLAGS and LDFLAGS (user
+          flags come after swipe's own flags), compiles with -std=c++11
+          and -pthread, tracks header dependencies, has install and
+          uninstall targets (PREFIX, DESTDIR), a complete clean target,
+          and build recipes: release (default), DEBUG=1 (sanitizers,
+          extended warnings), COVERAGE=1, PROFILE=1 and TRACE=1
+        * Build: no compilation warnings with -Wall -Wextra, with GCC
+          4.8.5 to 15 and clang 20; several of the fixed warnings were
+          potential buffer overflows (ASN.1 parser, matrix reader)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
