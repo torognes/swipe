@@ -28,7 +28,6 @@ MPI_COMPILE=`mpicxx --showme:compile`
 MPI_LINK=`mpicxx --showme:link`
 
 COMMON=-g -pthread
-#COMMON=-pg -g
 
 COMPILEOPT=-Wall -Wextra
 
