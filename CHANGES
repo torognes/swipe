@@ -114,6 +114,9 @@
           whitespace (usually one per line); any other value stops swipe
           with its line number ("Illegal taxid on line N of taxid file
           FILE.")
+        * mpiswipe (the MPI version of SWIPE) is deprecated: it is no
+          longer built by "make" ("make mpiswipe" builds it), its help
+          message says so, and it will be removed in version 2.2.0
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

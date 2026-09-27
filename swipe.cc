@@ -828,6 +828,9 @@ void args_help()
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n\n", title, ref);
+#ifdef MPISWIPE
+  fprintf(out, "Note: mpiswipe is deprecated, and will be removed in SWIPE 2.2.0.\n\n");
+#endif
   
   args_usage();
 }
