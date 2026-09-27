@@ -49,7 +49,8 @@ struct asnparse_info
   unsigned char * header_p;
   unsigned char * header_end;
   
-  char parsed_string[MAXSTRING];
+  /* strings are read up to MAXSTRING characters, plus a null byte */
+  char parsed_string[MAXSTRING + 1];
   unsigned long parsed_string_length;
   unsigned long parsed_integer;
   
@@ -59,28 +60,28 @@ struct asnparse_info
   
   unsigned long gi;
   char database[MAXSTRING];
-  char name[MAXSTRING];
-  char accession[MAXSTRING];
-  char release[MAXSTRING];
+  char name[MAXSTRING + 1];
+  char accession[MAXSTRING + 1];
+  char release[MAXSTRING + 1];
   unsigned long version;
   unsigned long taxid;
   unsigned long memberships;
   unsigned long links;
   
   char date[MAXSTRING];
-  char pdb_molid[MAXSTRING];
+  char pdb_molid[MAXSTRING + 1];
   long pdb_chain;
-  char pdb_chain_id[MAXSTRING];
+  char pdb_chain_id[MAXSTRING + 1];
   
-  char gnl_db[MAXSTRING];
-  char gnl_id_string[MAXSTRING];
+  char gnl_db[MAXSTRING + 1];
+  char gnl_id_string[MAXSTRING + 1];
   unsigned long gnl_id_integer;
   
   unsigned long pat_sequence;
-  char pat_country[MAXSTRING];
+  char pat_country[MAXSTRING + 1];
   unsigned long pat_granted;
-  char pat_id[MAXSTRING];
-  char pat_doctype[MAXSTRING];
+  char pat_id[MAXSTRING + 1];
+  char pat_doctype[MAXSTRING + 1];
 
   char id[MAXSTRING];
   char title[MAXDEFLINESTRING];
@@ -465,7 +466,7 @@ void parse_date_std(apt p)
   long hour = -1;
   long min = -1;
   long sec = -1;
-  char season[MAXSTRING] = "";
+  char season[MAXSTRING + 1] = "";
   p->date[0] = 0;
   temp[0] = 0;
 
