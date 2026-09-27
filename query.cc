@@ -227,7 +227,8 @@ void query_init(const char * queryname, long symtype, long strands)
   }
 
   query_line[0] = 0;
-  fgets(query_line, LINE_MAX, query_fp);
+  if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
+    query_line[0] = '\0';  // end of file or read error
 }
 
 void query_free()
@@ -285,7 +286,8 @@ int query_read()
     strcpy(query.description, query_line+1);
     query.dlen = len-1;
     query_line[0] = 0;
-    fgets(query_line, LINE_MAX, query_fp);
+    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
+      query_line[0] = '\0';  // end of file or read error
   }
   else
   {
@@ -325,7 +327,8 @@ int query_read()
       }
     }
     query_line[0] = 0;
-    fgets(query_line, LINE_MAX, query_fp);
+    if (fgets(query_line, LINE_MAX, query_fp) == nullptr)
+      query_line[0] = '\0';  // end of file or read error
   }
   query_sequence[query_length] = 0;
     

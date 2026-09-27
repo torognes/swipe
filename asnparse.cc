@@ -24,6 +24,11 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::min
+#include <cassert>
+#include <cstring>  // std::memcpy, std::strlen
+#include <iterator>  // std::next
+#include <string>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
@@ -90,6 +95,19 @@ struct asnparse_info
   long maxdeflines;
   long show_descr;
 };
+
+// append src to the null-terminated string dst (capacity: size
+// bytes), truncating src if necessary
+auto append_bounded(char * const dst, std::size_t const size,
+                    char const * const src) -> void
+{
+  assert(size > 0);
+  auto const used = std::strlen(dst);
+  assert(used < size);
+  auto const count = std::min(std::strlen(src), size - used - 1);
+  std::memcpy(std::next(dst, used), src, count);
+  *std::next(dst, used + count) = '\0';
+}
 
 void nextch(apt p)
 {
@@ -531,33 +549,33 @@ void parse_date_std(apt p)
   if (month > 0)
   {
     sprintf(temp, "-%02ld", month);
-    strcat(p->date, temp);
+    append_bounded(p->date, sizeof(p->date), temp);
 
     if (day > 0)
     {
       sprintf(temp, "-%02ld", day);
-      strcat(p->date, temp);
+      append_bounded(p->date, sizeof(p->date), temp);
     }
   }
   if (strlen(season))
   {
-    strcat(p->date, " ");
-    strcat(p->date, season);
+    append_bounded(p->date, sizeof(p->date), " ");
+    append_bounded(p->date, sizeof(p->date), season);
   }
   if (hour >= 0)
   {
     sprintf(temp, " %02ld", hour);
-    strcat(p->date, temp);
+    append_bounded(p->date, sizeof(p->date), temp);
 
     if (min >= 0)
     {
       sprintf(temp, ":%02ld", min);
-      strcat(p->date, temp);
+      append_bounded(p->date, sizeof(p->date), temp);
 
       if (sec >= 0)
       {
 	sprintf(temp, ":%02ld", sec);
-	strcat(p->date, temp);
+	append_bounded(p->date, sizeof(p->date), temp);
       }
     }
   }
@@ -627,26 +645,35 @@ void parse_pdb_seq_id(apt p)
   match_obj(p,0);
 }
 
+// p->id = id, truncated if necessary
+auto set_id(apt p, std::string const & id) -> void
+{
+  p->id[0] = '\0';
+  append_bounded(p->id, sizeof(p->id), id.c_str());
+}
+
 void show_seq_id(apt p, char * dbi)
 {
   const char * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
     db = "tr";
   if (p->version)
-    sprintf(p->id, "%s|%s.%lu|%s", db, p->accession, p->version, p->name);
+    set_id(p, std::string(db) + "|" + p->accession + "." +
+           std::to_string(p->version) + "|" + p->name);
   else
-    sprintf(p->id, "%s|%s|%s", db, p->accession, p->name);
+    set_id(p, std::string(db) + "|" + p->accession + "|" + p->name);
 }
 
 void show_id_int(apt p, char * db)
 {
-  sprintf(p->id, "%s|%lu", db, p->parsed_integer);
+  set_id(p, std::string(db) + "|" + std::to_string(p->parsed_integer));
 }
 
 void show_pat(apt p)
 {
-  sprintf(p->id, "%s|%s|%s|%lu", p->pat_granted ? "pat" : "pgp", 
-	  p->pat_country, p->pat_id, p->pat_sequence);
+  set_id(p, std::string(p->pat_granted ? "pat" : "pgp") + "|" +
+         p->pat_country + "|" + p->pat_id + "|" +
+         std::to_string(p->pat_sequence));
 }
 
 void parse_seq_id(apt p)
@@ -707,9 +734,9 @@ void parse_seq_id(apt p)
   case 0xA0:
     parse_object_id(p);
     if (*(p->gnl_id_string))
-      sprintf(p->id, "%s|%s", db, p->gnl_id_string);
+      set_id(p, std::string(db) + "|" + p->gnl_id_string);
     else
-      sprintf(p->id, "%s|%lu", db, p->gnl_id_integer);
+      set_id(p, std::string(db) + "|" + std::to_string(p->gnl_id_integer));
     break;
 
   case 0xA3:
@@ -725,9 +752,10 @@ void parse_seq_id(apt p)
   case 0xAA:
     parse_dbtag(p);
     if (*(p->gnl_id_string))
-      sprintf(p->id, "%s|%s|%s", db, p->gnl_db, p->gnl_id_string);
+      set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
     else
-      sprintf(p->id, "%s|%s|%lu", db, p->gnl_db, p->gnl_id_integer);
+      set_id(p, std::string(db) + "|" + p->gnl_db + "|" +
+             std::to_string(p->gnl_id_integer));
     break;
 
   case 0xAB:
@@ -742,7 +770,7 @@ void parse_seq_id(apt p)
       sprintf(chain, "%c%c", (char) p->pdb_chain-32, (char) p->pdb_chain-32);
     else
       sprintf(chain, "%c", (char) p->pdb_chain);
-    sprintf(p->id, "%s|%s|%s", db, p->pdb_molid, chain);
+    set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
     break;
 
   }
@@ -792,8 +820,8 @@ void parse_blast_def_line(apt p)
       {
 	parse_seq_id(p);
 	if (strlen(seqids))
-	  strcat(seqids, "|");
-	strcat(seqids, p->id);
+	  append_bounded(seqids, sizeof(seqids), "|");
+	append_bounded(seqids, sizeof(seqids), p->id);
       }
       match_obj(p,0x00);
       match_obj(p,0x00);
@@ -880,10 +908,10 @@ void parse_blast_def_line(apt p)
     strcat(p->defline, " ");
 
   long zzz = strlen(p->defline) + strlen(p->title);
-  if (zzz > MAXDEFLINESTRING)
+  if (zzz >= MAXDEFLINESTRING)
     fatal("Error: defline too long");
 
-  strcat(p->defline, p->title);
+  append_bounded(p->defline, sizeof(p->defline), p->title);
 }
 
 long show_deflines(apt p, long deflines, char ** deflinetable)

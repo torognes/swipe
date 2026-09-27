@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <vector>
 
 /* ARGUMENTS AND THEIR DEFAULTS */
 
@@ -173,7 +174,8 @@ void * xmalloc(size_t size)
 {
   const size_t alignment = 16;
   void * t = NULL;
-  posix_memalign(& t, alignment, size);
+  if (posix_memalign(& t, alignment, size) != 0)
+    t = NULL;
   
   if (t==NULL)
     fatal("Unable to allocate enough memory.");
@@ -451,7 +453,7 @@ void calc_chunks(long volcount,
 #endif
 
   long volsused = 0;
-  long chunksizes[volcount];
+  std::vector<long> chunksizes(volcount);
   long totalseqs = 0;
   long maxchunksize = 0;
   long vv = 0;
