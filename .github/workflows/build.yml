@@ -1,0 +1,135 @@
+name: Build
+
+# Build swipe and run the black-box test-suite (swipe-tests) with the
+# supported compilers. The swipe-tests branch with the same name as
+# the swipe branch is used (twin branches), otherwise main (master)
+# or dev: see .github/scripts/fetch_tests.sh
+
+on:
+  push:
+    branches: [ "master", "dev", "tmp_*" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+
+env:
+  # for pull requests, the source branch (its twin in swipe-tests)
+  BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build:
+          - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 }
+          - { name: gcc-debug,    cxx: g++,     recipe: DEBUG=1 }
+          - { name: clang-release, cxx: clang++, recipe: RELEASE=1 }
+
+    name: linux-x86_64 (${{ matrix.build.name }})
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: Build (${{ matrix.build.name }})
+      timeout-minutes: 10
+      run: |
+        ${{ matrix.build.cxx }} --version
+        make clean
+        make -j "$(nproc)" CXX=${{ matrix.build.cxx }} ${{ matrix.build.recipe }}
+        # swipe -h exits with status 1 (KI-2)
+        ./swipe -h 2>&1 | head -n 1
+
+    - name: Install NCBI BLAST+ (makeblastdb)
+      timeout-minutes: 10
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install ncbi-blast+
+        makeblastdb -version
+
+    - name: Run tests
+      timeout-minutes: 30
+      run: |
+        bash .github/scripts/fetch_tests.sh "${BRANCH}"
+        cd swipe-tests || exit 1
+        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+
+
+  linux-gcc-legacy:
+    # Guard the oldest supported compilers (GCC 4.8.5 and 4.9). Their
+    # images (Debian jessie) are too old for the JavaScript actions and
+    # for a BLAST+ with -blastdb_version 4: swipe is built in the
+    # container (docker run), and tested on the host. Never use the
+    # floating tag gcc:4.8 (schema-1 manifest, refused at pull time).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc: [ "4.8.5", "4.9" ]
+
+    name: linux-x86_64 (gcc-${{ matrix.gcc }})
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: Build (GCC ${{ matrix.gcc }})
+      timeout-minutes: 15
+      run: |
+        docker run --rm -v "${PWD}":/src -w /src gcc:${{ matrix.gcc }} \
+            bash -c 'g++ --version && make clean && make -j "$(nproc)" RELEASE=1'
+        ./swipe -h 2>&1 | head -n 1
+
+    - name: Install NCBI BLAST+ (makeblastdb)
+      timeout-minutes: 10
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install ncbi-blast+
+        makeblastdb -version
+
+    - name: Run tests
+      timeout-minutes: 30
+      run: |
+        bash .github/scripts/fetch_tests.sh "${BRANCH}"
+        cd swipe-tests || exit 1
+        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+
+
+  macos-x86_64:
+    # swipe needs x86-64 (SSE2/SSSE3 intrinsics and inline assembly):
+    # no macOS arm64 build until the ARM64 port (phase 10)
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: Build
+      timeout-minutes: 10
+      run: |
+        c++ --version
+        make clean
+        make -j "$(sysctl -n hw.ncpu)" RELEASE=1
+        ./swipe -h 2>&1 | head -n 1
+
+    - name: Install NCBI BLAST+ (makeblastdb)
+      timeout-minutes: 15
+      run: |
+        brew install blast
+        makeblastdb -version
+
+    - name: Run tests
+      timeout-minutes: 30
+      run: |
+        bash .github/scripts/fetch_tests.sh "${BRANCH}"
+        cd swipe-tests || exit 1
+        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
