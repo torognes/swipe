@@ -1151,7 +1151,7 @@ void args_init(int argc, char **argv)
   if ((querystrands < 1) || (querystrands > 3))
     fatal("Illegal query strands specified.");
 
-  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3) || (symtype == 4)))
+  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
     fatal("Illegal strand specified for protein query.");
 
   if ((query_gencode < 1)  || (query_gencode > 23) || (! gencode_names[query_gencode-1]))

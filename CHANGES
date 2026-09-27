@@ -77,6 +77,10 @@
           message was "Illegal gap penalties." (no default gap penalties
           for such types). The symbol type is now checked before the gap
           penalties: "Illegal symbol type." (KI-5)
+        * Fix: tblastx (-p 4) refused --strand 2 ("Illegal strand
+          specified for protein query."), although its query is a
+          nucleotide sequence. The minus strand of the query can now be
+          searched alone (KI-4)
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
