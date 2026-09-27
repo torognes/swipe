@@ -50,6 +50,15 @@ double lambda;
 double K;
 double H;
 double Kmn = 0;
+
+/* ungapped statistical parameters, only shown with -m 99 (KI-31) */
+double ungapped_lambda = 0;
+double ungapped_K = 0;
+double ungapped_H = 0;
+
+/* gap penalties of the ungapped rows of the NCBI score matrix tables
+   (INT2_MAX, see blastkar_partial.c) */
+constexpr long ungapped_penalty = 32767;
 double logK;
 double lambda_d_log2;
 double logK_d_log2;
@@ -503,6 +512,23 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
 #ifdef DEBUG
   fprintf(out, "lenadj=%d m=%ld n=%ld mn=%.1f\n", lenadj, m, n, (double)m * (double)n);
 #endif
+
+  /* ungapped statistical parameters (-m 99): the (0, 0) rows of the
+     nucleotide tables, the ungapped rows of the matrix tables; the
+     gapped values when there are none (KI-31) */
+  ungapped_lambda = lambda;
+  ungapped_K = K;
+  ungapped_H = H;
+  double ungapped_alpha = 0;
+  double ungapped_beta = 0;
+  if (symtype == 0)
+    stats_getparams_nt(matchscore, mismatchscore, 0, 0,
+                       & ungapped_lambda, & ungapped_K, & ungapped_H,
+                       & ungapped_alpha, & ungapped_beta);
+  else if (symtype < 5)
+    stats_getparams(matrixname, ungapped_penalty, ungapped_penalty,
+                    & ungapped_lambda, & ungapped_K, & ungapped_H,
+                    & ungapped_alpha, & ungapped_beta);
 
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
@@ -1360,6 +1386,12 @@ void hits_show_xml_paralign(long showalignments,
     qseqtypedescr = "Amino Acid";
     q = query.aa[0];
   }
+  else if (query.symtype == 5)
+  {
+    /* sound queries are stored as amino acid queries (KI-30) */
+    qseqtypedescr = "Sound";
+    q = query.aa[0];
+  }
   else
   {
     qseqtypedescr = "Nucleotide";
@@ -1367,7 +1399,7 @@ void hits_show_xml_paralign(long showalignments,
   }
   
   fprintf(out, "\t\t<queryInformation>\n");
-  fprintf(out, "\t\t\t<queryFilename>./");
+  fprintf(out, "\t\t\t<queryFilename>");
   xml_print(queryname);
   fprintf(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
@@ -1448,9 +1480,9 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", gapopen);
   fprintf(out, "\t\t\t\t<gapPenaltyExtension>%ld</gapPenaltyExtension>\n", gapextend);
   fprintf(out, "\t\t\t\t<ungapped>\n");
-  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", lambda);
-  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", K);
-  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", H);
+  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
+  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
+  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", ungapped_H);
   fprintf(out, "\t\t\t\t</ungapped>\n");
   fprintf(out, "\t\t\t\t<gapped>\n");
   fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", lambda);

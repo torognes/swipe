@@ -127,6 +127,16 @@
         * Build: no compilation warnings with -Wall -Wextra, with GCC
           4.8.5 to 15 and clang 20; several of the fixed warnings were
           potential buffer overflows (ASN.1 parser, matrix reader)
+        * Fix: in the ParAlign XML output (-m 99), the ungapped
+          statistical parameters (lambda, kappa, eta) were the gapped
+          ones (KI-31). They are now read from the ungapped rows of the
+          NCBI tables (e.g. BLOSUM62: 0.3176, 0.134, 0.4012)
+        * Fix: in the ParAlign XML output (-m 99), the query file name
+          was prefixed with "./" (".//tmp/q.fa", "./-" for the standard
+          input) (KI-32). It is now shown as given
+        * Fix: in the ParAlign XML output (-m 99), sound queries (-p 5)
+          were described as nucleotides, with an empty sequence (KI-30).
+          They are now described as "Sound", with their sequence
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1
