@@ -1428,6 +1428,10 @@ void hits_show_xml_paralign(long showalignments,
     ncbidb = "Protein";
     ncbiopt = "GenPept";
   }
+
+  /* sound databases are stored as amino acid databases (KI-30) */
+  if (query.symtype == 5)
+    dbseqtypedescr = "Sound";
   fprintf(out, "\t\t<databaseInformation>\n");
   fprintf(out, "\t\t\t<databaseFilename>");
   xml_print(databasename);

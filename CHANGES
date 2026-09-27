@@ -135,8 +135,9 @@
           was prefixed with "./" (".//tmp/q.fa", "./-" for the standard
           input) (KI-32). It is now shown as given
         * Fix: in the ParAlign XML output (-m 99), sound queries (-p 5)
-          were described as nucleotides, with an empty sequence (KI-30).
-          They are now described as "Sound", with their sequence
+          were described as nucleotides, with an empty sequence, and
+          their database as amino acids (KI-30). Both are now described
+          as "Sound", and the query sequence is shown
         * Fix: the elapsed time was measured with times(), in clock ticks
           (10 ms): small searches reported "Speed: inf GCUPS", empty
           queries "nan GCUPS", and the speed of sound searches (-p 5)
