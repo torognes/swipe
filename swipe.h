@@ -57,7 +57,7 @@
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.1.1"
+#define SWIPE_VERSION "2.1.2"
 
 // Should be 32bits integer
 typedef unsigned int UINT32;

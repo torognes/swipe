@@ -1,5 +1,5 @@
-2026-09-26  Frédéric Mahé  <frederic.mahe@cirad.fr>
-        * Version 2.1.2 (in development)
+2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
+        * Version 2.1.2
         * The build date and time are no longer shown in the help message,
           the plain output (-m 0) and the tabular output with comments
           (-m 9): two builds of the same sources are now identical
