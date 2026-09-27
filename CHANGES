@@ -60,6 +60,10 @@
           (e.g. long titles) were stored without room for their final
           null byte, which was written one byte past the end of the
           buffer (KI-38). Outputs are unchanged
+        * Fix: in score matrix files, a row with fewer scores than
+          columns was accepted, and the missing scores took the value of
+          the previous score (KI-14). Such rows are now rejected
+          ("Problem parsing score matrix file.")
 
 2021-06-28  Torbjorn Rognes  <torognes@ifi.uio.no>
         * Version 2.1.1

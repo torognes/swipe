@@ -413,7 +413,7 @@ void score_matrix_read_file(const char * matrix)
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) == 0)
+	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
 		fatal("Problem parsing score matrix file.");
 	  
 	      b = order[i];
@@ -500,7 +500,7 @@ void score_matrix_read_string(const char * matrix)
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) == 0)
+	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
 		fatal("Problem parsing score matrix file.");
 	  
 	      b = order[i];
