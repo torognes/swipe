@@ -395,8 +395,17 @@ auto db_getheader(struct db_thread_s const * t, long seqno, char ** address,
 
 auto hits_init(long descriptions, long max_alignments, long minscore, 
 	       long maxscore, double min_expect, double max_expect, int show_nostats) -> void;
-auto hits_enter(long seqno, long score, long qstrand, long qframe,
-		long dstrand, long dframe, long align_hint, long bestq) -> void;
+// strands and frames of a hit: query and database sequence
+struct HitStrands
+{
+  long qstrand;
+  long qframe;
+  long dstrand;
+  long dframe;
+};
+
+auto hits_enter(long seqno, long score, HitStrands const & strands,
+		long align_hint) -> void;
 auto hits_sort() -> long *;
 auto hits_getcount() -> long;
 auto hits_align(struct db_thread_s * t, long i) -> void;

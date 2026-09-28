@@ -1515,6 +1515,17 @@ auto search_getwork(long * first, long * last) -> int
 }
 
 
+// blastn: a hit of the reverse complement of the query is entered as
+// a hit of the query on the reverse strand of the database sequence
+auto reported_strands(HitStrands const & strands) -> HitStrands
+{
+  if ((symtype == SymbolType::blastn) && (strands.qstrand != 0))
+  {
+    return {0, 0, 1, 0};
+  }
+  return strands;
+}
+
 auto search_chunk(struct search_data * sdp) -> void
 {
   // the 7-bit engine uses signed bytes: gap penalties are clamped to
@@ -1571,9 +1582,6 @@ auto search_chunk(struct search_data * sdp) -> void
   {
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
-      long dstrand = 0;
-      long dframe = 0;
-      
       sdp->out_count = sdp->start_count;
       memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
       
@@ -1635,17 +1643,11 @@ auto search_chunk(struct search_data * sdp) -> void
 	  if (score < SCORELIMIT_7)
 	  {
 	    long const seqno = seqnosf >> 3;
-	    dstrand = (seqnosf >> 2) & 1;
-	    dframe = seqnosf & 3;
+	    long const dstrand = (seqnosf >> 2) & 1;
+	    long const dframe = seqnosf & 3;
 
-	    if ((symtype == SymbolType::blastn) && (qstrand != 0))
-	    {
-	      hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
-	    }
-	    else
-	    {
-	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
-	    }
+	    hits_enter(seqno, score,
+		       reported_strands({qstrand, qframe, dstrand, dframe}), -1);
 	  }
 	  else
 	  {
@@ -1690,21 +1692,15 @@ auto search_chunk(struct search_data * sdp) -> void
 	  if (score < SCORELIMIT_16)
 	  {
 	    long const seqno = seqnosf >> 3;
-	    dstrand = (seqnosf >> 2) & 1;
-	    dframe = seqnosf & 3;
+	    long const dstrand = (seqnosf >> 2) & 1;
+	    long const dframe = seqnosf & 3;
 		
 	    long const pos = sdp->bestpos[i];
 	    
 	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
-	    if ((symtype == SymbolType::blastn) && (qstrand != 0))
-	    {
-	      hits_enter(seqno, score, 0, 0, 1, 0, pos, -1);
-	    }
-	    else
-	    {
-	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, -1);
-	    }
+	    hits_enter(seqno, score,
+		       reported_strands({qstrand, qframe, dstrand, dframe}), pos);
 	  }
 	  else
 	  {
@@ -1731,8 +1727,8 @@ auto search_chunk(struct search_data * sdp) -> void
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const seqno = seqnosf >> 3;
-	  dstrand = (seqnosf >> 2) & 1;
-	  dframe = seqnosf & 3;
+	  long const dstrand = (seqnosf >> 2) & 1;
+	  long const dframe = seqnosf & 3;
       
 	  char * address = nullptr;
 	  long length = 0;
@@ -1761,14 +1757,8 @@ auto search_chunk(struct search_data * sdp) -> void
 			      gapopenextend,
 			      gapextend);
 
-	  if ((symtype == SymbolType::blastn) && (qstrand != 0))
-	  {
-	    hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
-	  }
-	  else
-	  {
-	    hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
-	  }
+	  hits_enter(seqno, score,
+		     reported_strands({qstrand, qframe, dstrand, dframe}), -1);
 	}
       }
   
