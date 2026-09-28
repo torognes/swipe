@@ -3,10 +3,11 @@
 #
 #   usage: version.sh [tag]
 #
-# swipe has no single source for its version (phase 6a of the
-# maintenance plan), so a release has to keep these in step:
+# swipe's version number is in the file VERSION, but a release still
+# has to keep these in step:
 #
-#   swipe.h        SWIPE_VERSION, the version "swipe -h" prints
+#   VERSION        the version number, compiled into swipe by the
+#                  Makefile (SWIPE_VERSION), the version "swipe -h" prints
 #   CHANGES        the first entry ("* Version X.Y.Z"), which must no
 #                  longer be marked "(in development)"
 #   CITATION.cff   what Zenodo and citation managers read (checked when
@@ -21,17 +22,17 @@ set -eu
 
 fail() { echo "::error::$*" >&2 ; exit 1 ; }
 
-header=$(sed -n 's/^#define SWIPE_VERSION "\([^"]*\)".*/\1/p' swipe.h)
+header=$(sed -n '1p' VERSION)
 changes_line=$(grep -m 1 '^[[:space:]]*\* Version ' CHANGES || true)
 changes=$(printf '%s\n' "${changes_line}" | sed -n 's/^[[:space:]]*\* Version \([^ ]*\).*/\1/p')
 
-test -n "${header}" || fail "cannot read SWIPE_VERSION from swipe.h"
+test -n "${header}" || fail "cannot read the version number from VERSION"
 test -n "${changes}" || fail "cannot read the first version entry of CHANGES"
 
-echo "swipe.h:      ${header}" >&2
+echo "VERSION:      ${header}" >&2
 echo "CHANGES:      ${changes}" >&2
 
-test "${header}" = "${changes}" || fail "CHANGES says ${changes}, swipe.h says ${header}"
+test "${header}" = "${changes}" || fail "CHANGES says ${changes}, VERSION says ${header}"
 case "${changes_line}" in
   *"in development"*) fail "the CHANGES entry of ${changes} is still marked (in development)" ;;
 esac
@@ -40,7 +41,7 @@ if [ -f CITATION.cff ] ; then
   cff=$(sed -n 's/^version: *\([^ ]*\).*/\1/p' CITATION.cff | tr -d '\r"')
   test -n "${cff}" || fail "cannot read the version from CITATION.cff"
   echo "CITATION.cff: ${cff}" >&2
-  test "${header}" = "${cff}" || fail "CITATION.cff says ${cff}, swipe.h says ${header}"
+  test "${header}" = "${cff}" || fail "CITATION.cff says ${cff}, VERSION says ${header}"
 else
   echo "::warning::no CITATION.cff (GitHub PR #39): not checked" >&2
 fi

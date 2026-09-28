@@ -24,6 +24,13 @@
 
 # Makefile for SWIPE
 
+# the version number, in a single place (also read by
+# .github/scripts/version.sh)
+VERSION := $(shell cat VERSION 2>/dev/null)
+ifeq ($(VERSION),)
+  $(error cannot read the version number from ./VERSION)
+endif
+
 COMMON=-g -pthread
 
 # Warnings of every recipe. The extra ones are known to every
@@ -95,7 +102,8 @@ endif
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
-SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) $(CPPFLAGS) $(CXXFLAGS)
+SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
+	-DSWIPE_VERSION='"$(VERSION)"' $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe
@@ -138,7 +146,7 @@ DEPFLAGS = -MMD -MP
 DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)
 
-DEPS = Makefile
+DEPS = Makefile VERSION
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)

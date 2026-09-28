@@ -58,7 +58,10 @@
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.1.2"
+// the version number is read from the file VERSION by the Makefile
+#ifndef SWIPE_VERSION
+#error "SWIPE_VERSION is not defined: build swipe with make"
+#endif
 
 // Should be 32bits integer
 using UINT32 = unsigned int;
