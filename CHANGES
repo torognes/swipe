@@ -32,6 +32,9 @@
           searched (KI-39). They are now rejected, as GILIST already was
           ("TAXIDLIST in database alias files not implemented."); the
           taxid list can be given with -x instead
+        * Fix: the simple XML output (-m 7) had one root element per query
+          (<result>): with several queries, it was not well-formed XML
+          (KI-26). All results are now inside one <results> element
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2

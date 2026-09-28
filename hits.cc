@@ -2105,7 +2105,9 @@ void hits_show_begin(long view)
     }
   else if (view==7)
     {
+      // one root element around the results of all queries (KI-26)
       fprintf(out, "<?xml version=\"1.0\"?>\n");
+      fprintf(out, "<results>\n");
     }
   else if (view==99)
     {
@@ -2129,7 +2131,11 @@ void hits_show_begin(long view)
 
 void hits_show_end(long view)
 {
-  if (view==99)
+  if (view==7)
+  {
+    fprintf(out, "</results>\n");
+  }
+  else if (view==99)
   {
     fprintf(out, "</ParalignXML>\n");
   }
