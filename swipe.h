@@ -23,6 +23,9 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
+#ifndef SWIPE_H
+#define SWIPE_H
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -424,3 +427,5 @@ typedef long Int8;
 typedef double Nlm_FloatHi;
 
 #include "blastkar_partial.h"
+
+#endif  // SWIPE_H
