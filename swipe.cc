@@ -1327,28 +1327,6 @@ auto args_init(int argc, char * const * argv) -> void
   translate_init(query_gencode, db_gencode);
 }
 
-}  // anonymous namespace
-
-
-auto vector_print(BYTE const * vector) -> void
-{
-  for (int i = 0; i < 16; i++)
-  {
-    fprintf(out, " %02x", vector[i]);
-  }
-}
-
-auto vector_print_word(WORD const * vector) -> void
-{
-  for (int i = 0; i < 8; i++)
-  {
-    fprintf(out, " %04x", vector[i]);
-  }
-}
-
-
-namespace {
-
 auto search_init(struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();

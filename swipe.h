@@ -93,9 +93,6 @@ extern char BIAS;
 #define ZERO 0x80
 #endif
 
-auto vector_print(BYTE const * vector) -> void;
-auto vector_print_word(WORD const * vector) -> void;
-
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
 
