@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::max
+#include <cstddef>  // std::size_t
 
 // These functions are based on the following articles:
 // - Huang, Hardison & Miller (1990) CABIOS 6:373-381
@@ -51,8 +52,8 @@ auto region(char const * a_seq,
 	    long * s) -> void
 {
   
-  long * HH = static_cast<long *>(xmalloc(N * sizeof(long)));
-  long * EE = static_cast<long *>(xmalloc(N * sizeof(long)));
+  long * HH = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
+  long * EE = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
 
   long i = 0;
   long j = 0;
@@ -179,7 +180,7 @@ auto init(struct aligner_info * aip) -> void
   aip->op = 0;
   aip->count = 0;
   aip->size = 64;
-  aip->alignment = static_cast<char*>(xmalloc(aip->size));
+  aip->alignment = static_cast<char*>(xmalloc(static_cast<std::size_t>(aip->size)));
   aip->length = 0;
 }
 
@@ -191,12 +192,12 @@ auto push(struct aligner_info * aip) -> void
     {
       long const rest = aip->size - aip->length;
       int const n = snprintf(aip->alignment + aip->length,
-		       rest,
+		       static_cast<std::size_t>(rest),
 		       "%c%ld", aip->op, aip->count);
       if ((n < 0) || (n >= rest))
       {
 	aip->size += 64;
-	aip->alignment = static_cast<char*>(xrealloc(aip->alignment, aip->size));
+	aip->alignment = static_cast<char*>(xrealloc(aip->alignment, static_cast<std::size_t>(aip->size)));
 	//	fprintf(stderr, "Reallocating memory for alignment: %ld\n", aip->size);
       }
       else
@@ -350,8 +351,8 @@ auto diff(struct aligner_info * aip,
 
       // Compute HH & EE in forward phase with tb
 
-      long * HH = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
-      long * EE = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
+      long * HH = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      long * EE = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
 
       HH[0] = 0;
       t = -q;
@@ -388,8 +389,8 @@ auto diff(struct aligner_info * aip,
 
       // Compute XX & YY in reverse phase with te
 
-      long * XX = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
-      long * YY = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
+      long * XX = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      long * YY = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
 
       XX[0] = 0;
       t = -q;

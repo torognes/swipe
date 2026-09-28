@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <cassert>
+#include <cstddef>  // std::size_t
 #include <cstdio>  // std::getc, EOF
 #include <cstring>  // std::strcpy
 #include <string>
@@ -350,7 +352,7 @@ auto query_read() -> int
 
   if (header[0] == '>')
   {
-    query.description = static_cast<char*>(xmalloc(len));
+    query.description = static_cast<char*>(xmalloc(header.size()));
     std::strcpy(query.description, header.c_str() + 1);
     query.dlen = len-1;
     read_line(query_fp, query_line);
@@ -363,7 +365,7 @@ auto query_read() -> int
   }
 
   int size = LINE_MAX;
-  char * query_sequence = static_cast<char *>(xmalloc(size));
+  char * query_sequence = static_cast<char *>(xmalloc(static_cast<std::size_t>(size)));
   query_sequence[0] = 0;
   long query_length = 0;
  
@@ -394,7 +396,7 @@ auto query_read() -> int
 	if (query_length + 1 >= size)
 	{
 	  size += LINE_MAX;
-	  query_sequence = static_cast<char*>(xrealloc(query_sequence, size));
+	  query_sequence = static_cast<char*>(xrealloc(query_sequence, static_cast<std::size_t>(size)));
 	}
 	query_sequence[query_length++] = symbol;
       }
@@ -441,7 +443,7 @@ auto query_read() -> int
 
 auto revcompl(char const * seq, long len) -> char *
 {
-  char * rc = static_cast<char *>(xmalloc(len+1));
+  char * rc = static_cast<char *>(xmalloc(static_cast<std::size_t>(len) + 1));
   for (long i = 0; i < len; i++)
   {
     rc[i] = ntcompl[static_cast<int>(seq[len - 1 - i])];
@@ -551,7 +553,8 @@ auto translate(char const * dna, long dlen,
   long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
-  char * prot = static_cast<char*>(xmalloc(1+plen));
+  assert(plen >= 0);
+  char * prot = static_cast<char*>(xmalloc(1 + static_cast<std::size_t>(plen)));
 
   if (strand == 0)
   {
