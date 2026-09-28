@@ -61,10 +61,9 @@
 #define SWIPE_VERSION "2.1.2"
 
 // Should be 32bits integer
-typedef unsigned int UINT32;
-typedef unsigned short WORD;
-typedef unsigned char BYTE;
-typedef BYTE VECTOR[16];
+using UINT32 = unsigned int;
+using WORD = unsigned short;
+using BYTE = unsigned char;
 
 #define WIDTH 32
 #define WIDTH_SHIFT 5
@@ -290,7 +289,7 @@ void translate(char * dna, long dlen,
                char ** protp, long * plenp);
 
 struct asnparse_info;
-typedef struct asnparse_info * apt;
+using apt = asnparse_info *;
 
 apt parser_create();
 void parser_destruct(apt p);
@@ -422,9 +421,9 @@ long stats_getprefs(const char * matrix,
 		    long * gextend);
 
 
-typedef int Int4;
-typedef long Int8;
-typedef double Nlm_FloatHi;
+using Int4 = int;
+using Int8 = long;
+using Nlm_FloatHi = double;
 
 #include "blastkar_partial.h"
 
