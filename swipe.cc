@@ -161,7 +161,7 @@ struct search_data
 
 }  // anonymous namespace
 
-auto fatal(char const * message) -> void
+[[noreturn]] auto fatal(char const * message) noexcept -> void
 {
   if (message != nullptr)
   {
@@ -170,7 +170,7 @@ auto fatal(char const * message) -> void
   exit(1);
 }
 
-auto fatal(std::string const & message) -> void
+[[noreturn]] auto fatal(std::string const & message) noexcept -> void
 {
   fatal(message.c_str());
 }

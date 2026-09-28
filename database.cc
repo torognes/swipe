@@ -866,7 +866,7 @@ auto parse_taxid(std::string const & token,
   {
     std::string const message = "Illegal taxid on line " +
       std::to_string(line_number) + " of taxid file " + filename + ".";
-    fatal(message.c_str());
+    fatal(message);
   }
   return std::strtoul(token.c_str(), nullptr, 10);
 }

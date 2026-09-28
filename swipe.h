@@ -220,8 +220,10 @@ struct time_info
 
 extern struct time_info ti;
 
-auto fatal(char const * message) -> void;
-auto fatal(std::string const & message) -> void;
+// print the message to stderr and exit with status 1; [[noreturn]]
+// belongs on the declarations: callers know that fatal() never returns
+[[noreturn]] auto fatal(char const * message) noexcept -> void;
+[[noreturn]] auto fatal(std::string const & message) noexcept -> void;
 
 auto search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
