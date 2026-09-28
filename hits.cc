@@ -1910,9 +1910,11 @@ auto hits_show_xml(long show_gis,
     show_description_xml(query.description);
     fprintf(out,"</query>\n");
     fprintf(out, "      <name>");
+    HeaderLayout layout;
+    layout.show_gis = show_gis;
+    layout.escaping = Escaping::xml;
     db_showheader(t, hits_list[i].header_address,
-		  hits_list[i].header_length,
-		  show_gis, 0, 0, LONG_MAX, 1, 1, Escaping::xml);
+		  hits_list[i].header_length, layout);
     fprintf(out, "</name>\n");
     fprintf(out, "      <len>%ld</len>\n", dlen);
     fprintf(out, "      <score>%ld</score>\n", score);
@@ -1979,9 +1981,11 @@ auto hits_show_tsv(long showalignments,
   {
     show_description(query.description);
     putc('\t', out);
+    HeaderLayout layout;
+    layout.show_gis = 1;
+    layout.text = DeflineText::identifier;
     db_showheader(t, hits_list[i].header_address,
-		  hits_list[i].header_length,
-		  1, 0, 0, LONG_MAX, 1, 0);
+		  hits_list[i].header_length, layout);
     
     long identities = 0;
     long positives = 0;
@@ -2056,10 +2060,13 @@ auto hits_show_plain(long show_gis,
 	  headerlen = 61;
 	}
 
+	HeaderLayout layout;
+	layout.show_gis = show_gis;
+	layout.maxlen = headerlen;
+	layout.linelen = headerlen;
 	db_showheader(t, 
 		      hits_list[i].header_address,
-		      hits_list[i].header_length, 
-		      show_gis, 0, headerlen, headerlen, 1, 1);
+		      hits_list[i].header_length, layout);
 
 	long const score = hits_list[i].score;
 
@@ -2108,9 +2115,13 @@ auto hits_show_plain(long show_gis,
       for(long i=0; i<showalignments; i++)
       {
 	fprintf(out, "\n");
+	HeaderLayout layout;
+	layout.show_gis = show_gis;
+	layout.indent = 10;
+	layout.linelen = 79;
+	layout.maxdeflines = LONG_MAX;
 	db_showheader(t, hits_list[i].header_address,
-		      hits_list[i].header_length,
-		      show_gis, 10, 0, 79, LONG_MAX, 1);
+		      hits_list[i].header_length, layout);
 	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlennt);

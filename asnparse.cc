@@ -88,7 +88,7 @@ struct asnparse_info
   unsigned long memb;
   long linelen;
   long maxdeflines;
-  long show_descr;
+  DeflineText text;
   Escaping escaping;
 };
 
@@ -898,7 +898,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	while((pos < show) && (col < p->linelen))
 	{
 	  char const c = defline[pos];
-	  if ((p->show_descr == 0) && (c == ' '))
+	  if ((p->text == DeflineText::identifier) && (c == ' '))
 	  {
 	    pos = show;
 	  }
@@ -1011,7 +1011,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   p->f_checktaxid = f_checktaxid;
   p->linelen = LONG_MAX;
   p->maxdeflines = LONG_MAX;
-  p->show_descr = 1;
+  p->text = DeflineText::full;
 
   p->header_p = buf;
   p->header_end = buf + len;
@@ -1029,19 +1029,17 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 }
 
 auto parse_header(apt p, unsigned char * buf, long len, long memb, 
-		  long (*f_checktaxid)(long), long show_gis, long indent, 
-		  long maxlen, long linelen, long maxdeflines, long show_descr,
-		  Escaping const escaping) -> long
+		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
 {
-  p->escaping = escaping;
-  p->show_gis = show_gis;
-  p->indent = indent;
-  p->maxlen = maxlen;
+  p->escaping = layout.escaping;
+  p->show_gis = layout.show_gis;
+  p->indent = layout.indent;
+  p->maxlen = layout.maxlen;
   p->memb = memb;
   p->f_checktaxid = f_checktaxid;
-  p->linelen = linelen;
-  p->maxdeflines = maxdeflines;
-  p->show_descr = show_descr;
+  p->linelen = layout.linelen;
+  p->maxdeflines = layout.maxdeflines;
+  p->text = layout.text;
 
   p->header_p = buf;
   p->header_end = buf + len;

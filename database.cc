@@ -1606,14 +1606,11 @@ auto db_parse_header(db_thread_t const * t, char * address, long length,
 		    deflines, deflinetable);
 }
 
-auto db_showheader(struct db_thread_s const * t, char * address, long length, 
-		   long show_gis, long indent,
-		   long maxlen, long linelen, long maxdeflines, long show_descr,
-		   Escaping const escaping) -> void
+auto db_showheader(struct db_thread_s const * t, char * address, long length,
+		   HeaderLayout const & layout) -> void
 {
   parse_header(t->parser, reinterpret_cast<unsigned char*>(address), length,
-	       db_main.memb_bit, db_check_taxid, show_gis,
-	       indent, maxlen, linelen, maxdeflines, show_descr, escaping);
+	       db_main.memb_bit, db_check_taxid, layout);
 }
 
 namespace {

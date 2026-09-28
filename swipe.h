@@ -323,10 +323,25 @@ enum struct Escaping : int { none, xml };
 // print a character to out, escaped as XML (&amp; &lt; &gt; &quot; &apos;)
 auto xml_putc(char symbol) noexcept -> void;
 
+// deflines: whole, or only their identifier (up to the first space)
+enum struct DeflineText : int { identifier, full };
+
+// how parse_header() and db_showheader() print the deflines of a
+// database sequence (the defaults: the first defline, whole, on one
+// line, neither truncated nor padded)
+struct HeaderLayout
+{
+  long show_gis = 0;  // non-zero: show the gi numbers (-I)
+  long indent = 0;  // continuation lines, when maxdeflines > 1
+  long maxlen = 0;  // truncated after maxlen characters (0: never)
+  long linelen = LONG_MAX;  // wrapped and padded to linelen (LONG_MAX: never)
+  long maxdeflines = 1;  // more than one: one defline per line
+  DeflineText text = DeflineText::full;
+  Escaping escaping = Escaping::none;
+};
+
 auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
-		  long show_gis, long indent, long maxlen, 
-		  long linelen, long maxdeflines, long show_descr,
-		  Escaping escaping = Escaping::none) -> long;
+		  HeaderLayout const & layout) -> long;
 
 auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable) -> void;
 
@@ -359,10 +374,8 @@ auto db_parse_header(struct db_thread_s const * t, char * address, long length,
 		     long show_gis,
 		     long * deflines, char *** deflinetable) -> void;
 
-auto db_showheader(struct db_thread_s const * t, char * address, long length, 
-		   long show_gis, long indent,
-		   long maxlen, long linelen, long maxdeflines, long show_descr,
-		   Escaping escaping = Escaping::none) -> void;
+auto db_showheader(struct db_thread_s const * t, char * address, long length,
+		   HeaderLayout const & layout) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
 		   long strand, long frame, long split) -> void;
