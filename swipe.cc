@@ -162,7 +162,7 @@ struct search_data
 
 auto fatal(const char * message) -> void
 {
-  if (message)
+  if (message != nullptr)
     fprintf(stderr, "%s\n", message);
   exit(1);
 }
@@ -188,7 +188,7 @@ auto xmalloc(size_t size) -> void *
 auto xrealloc(void *ptr, size_t size) -> void *
 {
   void * t = realloc(ptr, size);
-  if (!t)
+  if (t == nullptr)
     fatal("Unable to allocate enough memory.");
   return t;
 }
@@ -225,7 +225,7 @@ auto align_init(struct search_data * sdp) -> void
   if (symtype == 0)
   {
     for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+      if (((s+1) & querystrands) != 0)
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -251,7 +251,7 @@ auto align_init(struct search_data * sdp) -> void
   else if ((symtype == 2) || (symtype == 4))
   {
     for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+      if (((s+1) & querystrands) != 0)
 	for(int f=0; f<3; f++)
 	{
 	  qlen = query.aa[3*s+f].len;
@@ -375,7 +375,7 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	  }
 	}
 
-	if (sdp->start_count)
+	if (sdp->start_count != 0)
 	{
 	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
 
@@ -429,7 +429,7 @@ auto align_done(struct search_data * sdp) -> void
 {
   for(int i = 0; i < 6; i++)
   {
-    if (sdp->qtable[i])
+    if (sdp->qtable[i] != nullptr)
       free(sdp->qtable[i]);
   }
 
@@ -469,7 +469,7 @@ auto calc_chunks(long volcount,
   long vv = 0;
   for(long v = 0; v < volcount; v++)
   {
-    if (volume_sequences[v])
+    if (volume_sequences[v] != 0)
     {
       totalseqs += volume_sequences[v];
       volsused++;
@@ -628,7 +628,7 @@ auto align_worker(void *) -> void *
 
   long i;
   long j;
-  while(align_getwork(&i, &j))
+  while(align_getwork(&i, &j) != 0)
     align_chunk(&sd, i, j);
   
   align_done(&sd);
@@ -644,12 +644,12 @@ auto align_threads() -> void
   
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, align_worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, align_worker, (void *)t) != 0)
 	fatal("Cannot create thread.");
     }
   
   for(t=0; t<threads; t++) {
-    if (pthread_join(pthread_id[t], &status))
+    if (pthread_join(pthread_id[t], &status) != 0)
       fatal("Cannot join thread.");
   }
 
@@ -661,7 +661,7 @@ auto args_show() -> void
   if (view == 0)
   {
     
-    if (! cpu_feature_ssse3)
+    if (cpu_feature_ssse3 == 0)
     {
       fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
@@ -675,7 +675,7 @@ auto args_show() -> void
     fprintf(out, "Database title:    %s\n", db_gettitle());
     fprintf(out, "Database time:     %s\n", db_gettime());
     
-    if (db_ismasked())
+    if (db_ismasked() != 0)
       {
 	fprintf(out, "Database size:     %ld residues", db_getsymcount_masked());
 	fprintf(out, " in %ld sequences\n", db_getseqcount_masked());
@@ -769,7 +769,7 @@ auto args_show() -> void
 #endif
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
-      if (taxidfilename)
+      if (taxidfilename != nullptr)
 	fprintf(out, "Taxid filename:    %s\n", taxidfilename);
       fprintf(out, "\n");
     }
@@ -1147,7 +1147,7 @@ auto args_init(int argc, char **argv) -> void
     if (strlen(matrixname) == 0)
       matrixname = DEFAULT_MATRIXNAME;
 
-    if (stats_getprefs(matrixname, & gopen_default, & gextend_default))
+    if (stats_getprefs(matrixname, & gopen_default, & gextend_default) != 0)
     {
       if (not gapopen_given)
 	gapopen = gopen_default;
@@ -1197,10 +1197,10 @@ auto args_init(int argc, char **argv) -> void
   if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
     fatal("Illegal strand specified for protein query.");
 
-  if ((query_gencode < 1)  || (query_gencode > 23) || (! gencode_names[query_gencode-1]))
+  if ((query_gencode < 1)  || (query_gencode > 23) || (gencode_names[query_gencode-1] == nullptr))
     fatal("Illegal query genetic code specified.");
 
-  if ((db_gencode < 1) || (db_gencode > 23) || (! gencode_names[db_gencode-1]))
+  if ((db_gencode < 1) || (db_gencode > 23) || (gencode_names[db_gencode-1] == nullptr))
     fatal("Illegal database genetic code specified.");
 
   if ((dump<0) || (dump>2))
@@ -1229,10 +1229,10 @@ auto args_init(int argc, char **argv) -> void
 
   /* the output file is opened (and truncated) only once all the
      options are checked (KI-8) */
-  if (outfile)
+  if (outfile != nullptr)
   {
     FILE * f = fopen(outfile, "w");
-    if (! f)
+    if (f == nullptr)
       fatal("Unable to open output file for writing.");
     out = f;
   }
@@ -1273,7 +1273,7 @@ auto search_init(struct search_data * sdp) -> void
   if (symtype == 0)
   {
     for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+      if (((s+1) & querystrands) != 0)
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -1299,7 +1299,7 @@ auto search_init(struct search_data * sdp) -> void
   else if ((symtype == 2) || (symtype == 4))
   {
     for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+      if (((s+1) & querystrands) != 0)
 	for(int f=0; f<3; f++)
 	{
 	  qlen = query.aa[3*s+f].len;
@@ -1395,7 +1395,7 @@ auto search_done(struct search_data * sdp) -> void
 {
   for(int i = 0; i < 6; i++)
   {
-    if (sdp->qtable[i])
+    if (sdp->qtable[i] != nullptr)
       free(sdp->qtable[i]);
   }
 
@@ -1452,13 +1452,13 @@ auto search_chunk(struct search_data * sdp) -> void
 
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
   
-  if(taxidfilename)
+  if(taxidfilename != nullptr)
     db_mapheaders(sdp->dbt, sdp->seqfirst, sdp->seqlast);
   
   sdp->start_count = 0;
   for(long seqno = sdp->seqfirst; seqno <= sdp->seqlast; seqno++)
   {
-    if (db_check_inclusion(sdp->dbt, seqno))
+    if (db_check_inclusion(sdp->dbt, seqno) != 0)
     {
       if ((symtype == 3) || (symtype == 4))
       {
@@ -1516,7 +1516,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
 	    
-	if (cpu_feature_ssse3)
+	if (cpu_feature_ssse3 != 0)
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
@@ -1554,7 +1554,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    dstrand = (seqnosf >> 2) & 1;
 	    dframe = seqnosf & 3;
 
-	    if ((symtype == 0) && qstrand)
+	    if ((symtype == 0) && (qstrand != 0))
 	      hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
 	    else
 	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
@@ -1612,7 +1612,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    
 	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
-	    if ((symtype == 0) && qstrand)
+	    if ((symtype == 0) && (qstrand != 0))
 	      hits_enter(seqno, score, 0, 0, 1, 0, pos, -1);
 	    else
 	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, -1);
@@ -1671,7 +1671,7 @@ auto search_chunk(struct search_data * sdp) -> void
 			      gapopenextend,
 			      gapextend);
 
-	  if ((symtype == 0) && qstrand)
+	  if ((symtype == 0) && (qstrand != 0))
 	    hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
 	  else
 	    hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
@@ -1688,7 +1688,7 @@ auto worker(void *) -> void *
   struct search_data sd;
   search_init(&sd);
 
-  while(search_getwork(&sd.seqfirst, &sd.seqlast))
+  while(search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
     search_chunk(&sd);
 
   search_done(&sd);
@@ -1775,12 +1775,12 @@ auto run_threads() -> void
 
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, worker, (void *)t) != 0)
 	fatal("Cannot create thread.");
     }
   
   for(t=0; t<threads; t++) {
-    if (pthread_join(pthread_id[t], &status))
+    if (pthread_join(pthread_id[t], &status) != 0)
       fatal("Cannot join thread.");
   }
 }
@@ -1879,7 +1879,7 @@ auto clock_stop(struct time_info * tip) -> void
 auto work() -> void
 {
   args_show();
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
+  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, static_cast<int>(view==0));
 
   compute7 = 0;
   compute16 = 0;
@@ -1954,7 +1954,7 @@ auto main(int argc, char**argv) -> int
 
   cpu_features();
 
-  if (! cpu_feature_sse2)
+  if (cpu_feature_sse2 == 0)
     fatal("This program requires a processor with SSE2.");
 
   args_init(argc,argv);
@@ -1964,7 +1964,7 @@ auto main(int argc, char**argv) -> int
   volchunks = (long*) xmalloc(db_getvolumecount() * sizeof(long));
   volseqs   = (long*) xmalloc(db_getvolumecount() * sizeof(long));
 
-  if(dump)
+  if(dump != 0)
   {
     struct db_thread_s * t = db_thread_create();
     long seqcount = db_getseqcount();
@@ -1984,7 +1984,7 @@ auto main(int argc, char**argv) -> int
       hits_show_begin(view);
     }
     
-    while (query_read())
+    while (query_read() != 0)
     {
       
       work();
@@ -2013,6 +2013,6 @@ auto main(int argc, char**argv) -> int
   db_close();
 
   
-  if (outfile)
+  if (outfile != nullptr)
     fclose(out);
 }

@@ -303,7 +303,7 @@ auto stats_getprefs(const char * matrix,
 
   for (long i=0; i<val; i++)
   {
-    if (prefs[i])
+    if (prefs[i] != 0)
     {
       * gopen = (long) mat[i][0];
       * gextend = (long) mat[i][1];

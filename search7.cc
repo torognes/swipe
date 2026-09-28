@@ -829,7 +829,7 @@ search7
 
   while(true)
   {
-    if (easy)
+    if (easy != 0)
     {
       // fill all channels
 

@@ -567,7 +567,7 @@ auto parse_date_std(apt p) -> void
       append_bounded(p->date, sizeof(p->date), temp);
     }
   }
-  if (strlen(season))
+  if (strlen(season) != 0u)
   {
     append_bounded(p->date, sizeof(p->date), " ");
     append_bounded(p->date, sizeof(p->date), season);
@@ -683,7 +683,7 @@ auto show_seq_id(apt p, char * dbi) -> void
   const char * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
     db = "tr";
-  if (p->version)
+  if (p->version != 0u)
     set_id(p, std::string(db) + "|" + p->accession + "." +
            std::to_string(p->version) + "|" + p->name);
   else
@@ -697,7 +697,7 @@ auto show_id_int(apt p, char * db) -> void
 
 auto show_pat(apt p) -> void
 {
-  set_id(p, std::string(p->pat_granted ? "pat" : "pgp") + "|" +
+  set_id(p, std::string((p->pat_granted != 0u) ? "pat" : "pgp") + "|" +
          p->pat_country + "|" + p->pat_id + "|" +
          std::to_string(p->pat_sequence));
 }
@@ -757,7 +757,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xA0:
     parse_object_id(p);
-    if (*(p->gnl_id_string))
+    if ((*(p->gnl_id_string)) != 0)
       set_id(p, std::string(db) + "|" + p->gnl_id_string);
     else
       set_id(p, std::string(db) + "|" + std::to_string(p->gnl_id_integer));
@@ -775,7 +775,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xAA:
     parse_dbtag(p);
-    if (*(p->gnl_id_string))
+    if ((*(p->gnl_id_string)) != 0)
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
     else
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" +
@@ -784,13 +784,13 @@ auto parse_seq_id(apt p) -> void
 
   case 0xAB:
     parse_integer(p);
-    if(p->show_gis)
+    if(p->show_gis != 0)
       show_id_int(p, db);
     break;
 
   case 0xAE:
     parse_pdb_seq_id(p);
-    if (p->pdb_chain_id[0])
+    if (p->pdb_chain_id[0] != 0)
     {
       // the chain name is shown as is, as done by BLAST+ (KI-22)
       set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + p->pdb_chain_id);
@@ -851,10 +851,10 @@ auto parse_blast_def_line(apt p) -> void
 #endif
       match_obj(p,0xA1);
       match_obj(p,0x30);
-      while(p->obj)
+      while(p->obj != 0u)
       {
 	parse_seq_id(p);
-	if (strlen(seqids))
+	if (strlen(seqids) != 0u)
 	  append_bounded(seqids, sizeof(seqids), "|");
 	append_bounded(seqids, sizeof(seqids), p->id);
       }
@@ -879,7 +879,7 @@ auto parse_blast_def_line(apt p) -> void
 #endif
       match_obj(p,0xA3);
       match_obj(p,0x30);
-      while(p->obj)
+      while(p->obj != 0u)
       {
 	parse_integer(p);
 	p->memberships = p->parsed_integer;
@@ -894,7 +894,7 @@ auto parse_blast_def_line(apt p) -> void
 #endif
       match_obj(p,0xA4);
       match_obj(p,0x30);
-      while(p->obj)
+      while(p->obj != 0u)
       {
 	parse_integer(p);
 	p->links = p->parsed_integer;
@@ -909,7 +909,7 @@ auto parse_blast_def_line(apt p) -> void
 #endif
       match_obj(p,0xA5);
       match_obj(p,0x30);
-      while(p->obj)
+      while(p->obj != 0u)
 	parse_integer(p);
       match_obj(p,0x00);
       match_obj(p,0x00);
@@ -919,23 +919,23 @@ auto parse_blast_def_line(apt p) -> void
   
   strcat(p->defline, seqids);
   
-  if (show_taxid)
+  if (show_taxid != 0)
     {
-      if (p->taxid)
+      if (p->taxid != 0u)
 	{
 	  strcat(p->defline, ("|taxid|" + std::to_string(p->taxid)).c_str());
 	}
-      if (p->links)
+      if (p->links != 0u)
 	{
 	  strcat(p->defline, ("|link|" + std::to_string(p->links)).c_str());
 	}
-      if (p->memberships)
+      if (p->memberships != 0u)
 	{
 	  strcat(p->defline, ("|memb|" + std::to_string(p->memberships)).c_str());
 	}
     }
 
-  if (strlen(p->defline) && strlen(p->title))
+  if ((strlen(p->defline) != 0u) && (strlen(p->title) != 0u))
     strcat(p->defline, " ");
 
   long zzz = strlen(p->defline) + strlen(p->title);
@@ -955,7 +955,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
-      if (p->maxlen)
+      if (p->maxlen != 0u)
 	if (show > p->maxlen)
 	  show = p->maxlen;
       
@@ -973,7 +973,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	{
 	  // indentation
 
-	  if (line)
+	  if (line != 0)
 	  {
 	    while(col < 1 + p->indent)
 	    {
@@ -983,7 +983,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	  }
 	  else
 	  {
-	    putc(x ? ' ' : '>', out);
+	    putc((x != 0) ? ' ' : '>', out);
 	    col++;
 	  }
 	}
@@ -993,7 +993,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	while((pos < show) && (col < p->linelen))
 	{
 	  char c = defline[pos];
-	  if ((!p->show_descr) && (c == ' '))
+	  if ((p->show_descr == 0) && (c == ' '))
 	  {
 	    pos = show;
 	  }
@@ -1039,19 +1039,19 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
   long size;
   char * * table = nullptr;
 
-  if (deflinetable)
+  if (deflinetable != nullptr)
   {
     size = 8;
     table = (char**) xmalloc(size * sizeof(char*));
   }
     
-  while (p->obj)
+  while (p->obj != 0u)
     {
       p->defline[0] = 0;
       parse_blast_def_line(p);
-      if ((p->f_checktaxid(p->taxid)) && ((p->memberships & p->memb) == p->memb))
+      if (((p->f_checktaxid(p->taxid)) != 0) && ((p->memberships & p->memb) == p->memb))
       {
-	if (deflinetable)
+	if (deflinetable != nullptr)
 	{
 	  if (deflines >= size)
 	  {
@@ -1069,7 +1069,7 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
   
   match_obj(p,0x00);
 
-  if (deflinetable)
+  if (deflinetable != nullptr)
     *deflinetable = table;
 
   return deflines;

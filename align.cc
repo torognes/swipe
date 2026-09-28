@@ -62,7 +62,7 @@ auto region(char * a_seq,
   // Forward pass
 
 #if 1
-  if (*s)
+  if ((*s) != 0)
   {
     score = *s;
   }

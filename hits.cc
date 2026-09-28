@@ -99,11 +99,11 @@ auto hits_compare(const void * a, const void * b) -> int
   struct hits_entry * ap = hits_list + index_a;
   struct hits_entry * bp = hits_list + index_b;
   
-  if ( (index_a >= opt_alignments) < (index_b >= opt_alignments) )
+  if ( static_cast<int>(index_a >= opt_alignments) < static_cast<int>(index_b >= opt_alignments) )
   {
     return -1;
   }
-  if ( (index_a >= opt_alignments) > (index_b >= opt_alignments) )
+  if ( static_cast<int>(index_a >= opt_alignments) > static_cast<int>(index_b >= opt_alignments) )
   {
     return +1;
   }
@@ -371,7 +371,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   int seqcount;
   long symcount;
 
-  if (db_ismasked())
+  if (db_ismasked() != 0)
   {
     seqcount = db_getseqcount_masked();
     symcount = db_getsymcount_masked();
@@ -399,7 +399,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 			   & K,
 			   & H,
 			   & alpha,
-			   & beta))
+			   & beta) != 0)
     {
       stats_available = 1;
 
@@ -469,7 +469,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
     }
 
 
-    if (stats_available)
+    if (stats_available != 0)
     {
       
 #ifdef DEBUG
@@ -544,7 +544,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
   
-  if (stats_available)
+  if (stats_available != 0)
   {
     long minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
     if (minscore_expect > minscore)
@@ -559,7 +559,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   }
   else
   {
-    if (show_nostats)
+    if (show_nostats != 0)
       fprintf(out, "Statistical parameters are not available for the scoring system specified.\nBit scores and E-values will not be computed.\n\n");
   }
 
@@ -574,19 +574,19 @@ auto hits_empty() -> void
   {
     struct hits_entry * h = hits_list + i;
 
-    if (h->header_address)
+    if (h->header_address != nullptr)
     {
       free(h->header_address);
       h->header_address = nullptr;
     }
     
-    if (h->dseq)
+    if (h->dseq != nullptr)
     {
       free(h->dseq);
       h->dseq = nullptr;
     }
 
-    if (h->alignment)
+    if (h->alignment != nullptr)
     {
       free(h->alignment);
       h->alignment = nullptr;
@@ -645,7 +645,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
     // give hint of alignment end
 
-    if ((h->bestq > 0) && (h->align_hint))
+    if ((h->bestq > 0) && ((h->align_hint) != 0))
     {
       h->score_align = h->score;
       h->align_q_end = h->bestq;
@@ -711,7 +711,7 @@ auto putalignop(char c, long len) -> void
 {
 
   long count = len;
-  while(count)
+  while(count != 0)
   {
     if (line_pos == 0)
     {
@@ -776,7 +776,7 @@ auto putalignop(char c, long len) -> void
 
       if (symtype == 0)
       {
-	if (d_strand)
+	if (d_strand != 0)
 	{
 	  d1 = d_len - d1 + 1;
 	  d2 = d_len - d2 + 1;
@@ -785,7 +785,7 @@ auto putalignop(char c, long len) -> void
 
       if ((symtype == 2) || (symtype == 4))
       {
-	if (q_strand)
+	if (q_strand != 0)
 	{
 	  q1 = q_len_nt - 3*q_start - q_frame;
 	  q2 = q_len_nt - 3*q_pos - q_frame + 1;
@@ -799,7 +799,7 @@ auto putalignop(char c, long len) -> void
       
       if ((symtype == 3) || (symtype == 4))
       {
-	if (d_strand)
+	if (d_strand != 0)
 	{
 	  d1 = d_len_nt - 3*d_start - d_frame;
 	  d2 = d_len_nt - 3*d_pos - d_frame + 1;
@@ -891,7 +891,7 @@ auto whole_align(long i,
   long al = 0;
   char * alignment = hits_list[i].alignment;
   char * p = alignment;
-  while(*p)
+  while((*p) != 0)
   {
     long len;
     int n;
@@ -951,7 +951,7 @@ auto whole_align(long i,
   
   p = alignment;
 
-  while(*p)
+  while((*p) != 0)
   {
     char op = *p++;
     long len;
@@ -1026,13 +1026,13 @@ auto whole_align(long i,
   
   if (symtype == 0)
   {
-    if (q_strand)
+    if (q_strand != 0)
     {
       q_first = q_len - 1 - q_first;
       q_last = q_len - 1 - q_last;
     }
 
-    if (d_strand)
+    if (d_strand != 0)
     {
       d_first = d_len - 1 - d_first;
       d_last = d_len - 1 - d_last;
@@ -1041,7 +1041,7 @@ auto whole_align(long i,
   
   if ((symtype == 2) || (symtype == 4))
   {
-    if (q_strand)
+    if (q_strand != 0)
     {
       q_first = query.nt[0].len - 1 - 3 * q_first - q_frame;
       q_last = query.nt[0].len - 1 - 3 * q_last - q_frame - 2;
@@ -1055,7 +1055,7 @@ auto whole_align(long i,
   
   if ((symtype == 3) || (symtype == 4))
   {
-    if (d_strand)
+    if (d_strand != 0)
     {
       d_first = d_len_nt - 1 - 3 * d_first - d_frame;
       d_last = d_len_nt - 1 - 3 * d_last - d_frame - 2;
@@ -1182,13 +1182,13 @@ auto count_align(long i,
   
   if (symtype == 0)
   {
-    if (q_strand)
+    if (q_strand != 0)
     {
       q_first = q_len - 1 - q_first;
       q_last = q_len - 1 - q_last;
     }
 
-    if (d_strand)
+    if (d_strand != 0)
     {
       d_first = d_len - 1 - d_first;
       d_last = d_len - 1 - d_last;
@@ -1197,7 +1197,7 @@ auto count_align(long i,
   
   if ((symtype == 2) || (symtype == 4))
   {
-    if (q_strand)
+    if (q_strand != 0)
     {
       q_first = query.nt[0].len - 1 - 3 * q_first - q_frame;
       q_last = query.nt[0].len - 1 - 3 * q_last - q_frame - 2;
@@ -1211,7 +1211,7 @@ auto count_align(long i,
   
   if ((symtype == 3) || (symtype == 4))
   {
-    if (d_strand)
+    if (d_strand != 0)
     {
       d_first = d_len_nt - 1 - 3 * d_first - d_frame;
       d_last = d_len_nt - 1 - 3 * d_last - d_frame - 2;
@@ -1309,30 +1309,30 @@ auto make_anchor(char * anchor, long size, long symbol_type, long query_index, l
     snprintf(anchor, size, "%ld_%ld__%c__+",
 	     query_index,
 	     hits_list[i].seqno,
-	     hits_list[i].dstrand ? '-' : '+');
+	     (hits_list[i].dstrand != 0) ? '-' : '+');
     break;
   case 2:
     snprintf(anchor, size, "%ld_%ld_%ld_%c__",
 	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].qframe+1,
-	     hits_list[i].qstrand ? '-' : '+');
+	     (hits_list[i].qstrand != 0) ? '-' : '+');
     break;
   case 3:
     snprintf(anchor, size, "%ld_%ld___%ld_%c",
 	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].dframe+1,
-	     hits_list[i].dstrand ? '-' : '+');
+	     (hits_list[i].dstrand != 0) ? '-' : '+');
     break;
   case 4:
     snprintf(anchor, size, "%ld_%ld_%ld_%c_%ld_%c",
 	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].qframe+1,
-	     hits_list[i].qstrand ? '-' : '+',
+	     (hits_list[i].qstrand != 0) ? '-' : '+',
 	     hits_list[i].dframe+1,
-	     hits_list[i].dstrand ? '-' : '+');
+	     (hits_list[i].dstrand != 0) ? '-' : '+');
     break;
   default:
     snprintf(anchor, size, "%ld_%ld____",
@@ -1363,7 +1363,7 @@ auto hits_defline_split(char * defline,
     p++;
   
   char * r = strchr(p, ' ');
-  if (r)
+  if (r != nullptr)
   {
     *linklen = r - p;
     *link = p;
@@ -1561,7 +1561,7 @@ auto hits_show_xml_paralign(long showalignments,
 
     fprintf(out, "\t\t\t<shortVersionHit>\n");
     fprintf(out, "\t\t\t\t<shortVersionAnchor>%s</shortVersionAnchor>\n", anchor);
-    if (gi)
+    if (gi != 0)
       {
     fprintf(out, "\t\t\t\t<shortVersionLink>\n");
     fprintf(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=%s&amp;list_uids=%ld&amp;dopt=%s</shortVersionLinkDestination>\n", ncbidb, gi, ncbiopt);
@@ -1581,26 +1581,26 @@ auto hits_show_xml_paralign(long showalignments,
     fprintf(out, "</shortVersionName>\n");
     if (symtype == 0)
     {
-      fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", hits_list[i].dstrand ? '-' : '+');
+      fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
     }
     else if (symtype == 2)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
-	     hits_list[i].qstrand ? '-' : '+', 
+	     (hits_list[i].qstrand != 0) ? '-' : '+', 
 	     hits_list[i].qframe+1);
     }
     else if (symtype == 3)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
-	     hits_list[i].dstrand ? '-' : '+', 
+	     (hits_list[i].dstrand != 0) ? '-' : '+', 
 	     hits_list[i].dframe+1);
     }
     else if (symtype == 4)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld/%c%ld</shortVersionFrame>\n", 
-	     hits_list[i].qstrand ? '-' : '+', 
+	     (hits_list[i].qstrand != 0) ? '-' : '+', 
 	     hits_list[i].qframe+1,
-	     hits_list[i].dstrand ? '-' : '+', 
+	     (hits_list[i].dstrand != 0) ? '-' : '+', 
 	     hits_list[i].dframe+1);
     }
     fprintf(out, "\t\t\t\t<shortVersionScore>%ld</shortVersionScore>\n", score);
@@ -1614,7 +1614,7 @@ auto hits_show_xml_paralign(long showalignments,
 
   fprintf(out, "\t\t</shortVersionHits>\n");
 
-  if (showalignments)
+  if (showalignments != 0)
   {
     fprintf(out, "\t\t<longVersionHits>\n");
     
@@ -1644,7 +1644,7 @@ auto hits_show_xml_paralign(long showalignments,
 			   & link, & linklen,
 			   & title);
   
-        if (gi)
+        if (gi != 0)
 	{
           fprintf(out, "\t\t\t\t\t<longVersionLink>\n");
 	  fprintf(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=%s&amp;list_uids=%ld&amp;dopt=%s</longVersionLinkDestination>\n", ncbidb, gi, ncbiopt);
@@ -1684,7 +1684,7 @@ auto hits_show_xml_paralign(long showalignments,
       
       if (symtype == 0)
       {
-	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", hits_list[i].dstrand ? "Matches on complementary strands." : "Matches on same strands.");
+	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", (hits_list[i].dstrand != 0) ? "Matches on complementary strands." : "Matches on same strands.");
       }
       else if ((symtype>=2) && (symtype<=4))
       {
@@ -1693,7 +1693,7 @@ auto hits_show_xml_paralign(long showalignments,
 	if ((symtype == 2) || (symtype == 4))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionQueryFrame>\n");
-	  fprintf(out, "\t\t\t\t\t\t<queryStrand>%c</queryStrand>\n", hits_list[i].qstrand ? '-' : '+');
+	  fprintf(out, "\t\t\t\t\t\t<queryStrand>%c</queryStrand>\n", (hits_list[i].qstrand != 0) ? '-' : '+');
 	  fprintf(out, "\t\t\t\t\t\t<queryFrame>%ld</queryFrame>\n", hits_list[i].qframe+1);
 	  fprintf(out, "\t\t\t\t\t</longVersionQueryFrame>\n");
 	}
@@ -1701,7 +1701,7 @@ auto hits_show_xml_paralign(long showalignments,
 	if ((symtype == 3) || (symtype == 4))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionDatabaseFrame>\n");
-	  fprintf(out, "\t\t\t\t\t\t<databaseStrand>%c</databaseStrand>\n", hits_list[i].dstrand ? '-' : '+');
+	  fprintf(out, "\t\t\t\t\t\t<databaseStrand>%c</databaseStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
 	  fprintf(out, "\t\t\t\t\t\t<databaseFrame>%ld</databaseFrame>\n", hits_list[i].dframe+1);
 	  fprintf(out, "\t\t\t\t\t</longVersionDatabaseFrame>\n");
 	}
@@ -1883,12 +1883,12 @@ auto hits_show_tsv(long showalignments,
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   
-  if (showcomments)
+  if (showcomments != 0)
     {
       fprintf(out, "# %s - %s\n", title, ref);
       fprintf(out, "# Query: %s\n", query.description);
       fprintf(out, "# Database: %s\n", databasename);
-      if (stats_available)
+      if (stats_available != 0)
 	fprintf(out, "# Fields: Query id, Subject id, %% identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, e-value, bit score\n");
       else
 	fprintf(out, "# Fields: Query id, Subject id, %% identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, score\n");
@@ -1922,7 +1922,7 @@ auto hits_show_tsv(long showalignments,
 	    d_first,
 	    d_last);
     
-    if (stats_available)
+    if (stats_available != 0)
     {
       double expect_value = Kmn * exp(- lambda * score);
       fprintf(out, "\t%.2g", expect_value);
@@ -1949,7 +1949,7 @@ auto hits_show_plain(long show_gis,
     }
     else
     {
-      if (stats_available)
+      if (stats_available != 0)
       {
 	fprintf(out, "                                                                 Score    E\n");
 	fprintf(out, "Sequences producing significant alignments:                      (bits) Value\n\n");
@@ -1977,21 +1977,21 @@ auto hits_show_plain(long show_gis,
 	long score = hits_list[i].score;
 	      
 	if (symtype == 0)
-	  fprintf(out, " %c", hits_list[i].dstrand ? '-' : '+');
+	  fprintf(out, " %c", (hits_list[i].dstrand != 0) ? '-' : '+');
 	else if (symtype == 2)
-	  fprintf(out, " %c%ld", hits_list[i].qstrand ? '-' : '+',
+	  fprintf(out, " %c%ld", (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1);
 	else if (symtype == 3)
-	  fprintf(out, " %c%ld", hits_list[i].dstrand ? '-' : '+',
+	  fprintf(out, " %c%ld", (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
 	else if (symtype == 4)
 	  fprintf(out, " %c%ld/%c%ld", 
-		 hits_list[i].qstrand ? '-' : '+',
+		 (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1,
-		 hits_list[i].dstrand ? '-' : '+',
+		 (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
 	      
-	if (stats_available)
+	if (stats_available != 0)
 	{
 	  long bits = (long) floor(lambda_d_log2 * score - logK_d_log2 + 0.5);
 	  double expect_value = Kmn * exp(- lambda * score);
@@ -2028,7 +2028,7 @@ auto hits_show_plain(long show_gis,
 	      
 	long score = hits_list[i].score;
 
-	if (stats_available)
+	if (stats_available != 0)
 	{
 	  double bits = lambda_d_log2 * score - logK_d_log2;
 	  double expect_value = Kmn * exp(- lambda * score);
@@ -2056,21 +2056,21 @@ auto hits_show_plain(long show_gis,
 	if (symtype > 0)
 	  fprintf(out, ", Positives = %ld/%ld (%ld%%)",
 		 positives, aligned, positives * 100 / aligned);
-	if (indels)
+	if (indels != 0)
 	  fprintf(out, ", Gaps = %ld/%ld (%ld%%)", indels, aligned, indels * 100 / aligned);
 	fprintf(out, "\n");
 
 	if (symtype == 0)
-	  fprintf(out, " Strand = %s\n", hits_list[i].dstrand ? "Plus / Minus" : "Plus / Plus");
+	  fprintf(out, " Strand = %s\n", (hits_list[i].dstrand != 0) ? "Plus / Minus" : "Plus / Plus");
 	else if (symtype == 2)
-	  fprintf(out, " Frame = %c%ld\n", hits_list[i].qstrand ? '-':'+', hits_list[i].qframe+1);
+	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].qstrand != 0) ? '-':'+', hits_list[i].qframe+1);
 	else if (symtype == 3)
-	  fprintf(out, " Frame = %c%ld\n", hits_list[i].dstrand ? '-':'+', hits_list[i].dframe+1);
+	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].dstrand != 0) ? '-':'+', hits_list[i].dframe+1);
 	else if (symtype == 4)
 	  fprintf(out, " Frame = %c%ld / %c%ld\n", 
-		 hits_list[i].qstrand ? '-' : '+',
+		 (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1,
-		 hits_list[i].dstrand ? '-' : '+',
+		 (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
 
 #if 0
@@ -2171,7 +2171,7 @@ auto hits_show(long view, long show_gis) -> void
   }
   else if ((view==8)||(view==9))
   {
-    hits_show_tsv(showalignments, view == 9, t);
+    hits_show_tsv(showalignments, static_cast<long>(view == 9), t);
   }
   else if (view==99)
   {

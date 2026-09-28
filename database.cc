@@ -183,7 +183,7 @@ auto db_map_create() -> mapp
 
 auto db_map_destruct(mapp m) -> void
 {
-  if (m->map_address)
+  if (m->map_address != nullptr)
     munmap(m->map_address, m->map_length);
   free(m);
 }
@@ -213,11 +213,11 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
   db_map_destruct(t->map_hdr);
   for(int c=0; c<16; c++)
   {
-    if (t->ntbuffer[c])
+    if (t->ntbuffer[c] != nullptr)
       free(t->ntbuffer[c]);
     t->ntbuffersize[c] = 0;
     t->ntbuffer[c] = nullptr;
-    if (t->xxbuffer[c])
+    if (t->xxbuffer[c] != nullptr)
       free(t->xxbuffer[c]);
     t->xxbuffersize[c] = 0;
     t->xxbuffer[c] = nullptr;
@@ -358,7 +358,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 
   free(filename);
 
-  if (not db_file_xal)
+  if (db_file_xal == nullptr)
     return nullptr;  // no alias file
 
   // al file exists
@@ -376,7 +376,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
   al_info->memb_bit = 0;
 
   char line[10000];
-  while (fgets(line, 10000, db_file_xal))
+  while (fgets(line, 10000, db_file_xal) != nullptr)
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
@@ -428,7 +428,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
     }
   }
 
-  if (!al_info->title)
+  if (al_info->title == nullptr)
     al_info->title = strdup(basename);
 
   fclose(db_file_xal);
@@ -440,19 +440,19 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 
 auto db_close_al(al_info_t * a) -> void
 {
-  if (a->title)
+  if (a->title != nullptr)
   {
     free(a->title);
     a->title = nullptr;
   }
-  if (a->dblist)
+  if (a->dblist != nullptr)
   {
     for (long i=0; i<a->dblist_len; i++)
       free(a->dblist[i]);
     free(a->dblist);
     a->dblist = nullptr;
   }
-  if (a->oidlist)
+  if (a->oidlist != nullptr)
   {
     for (long i=0; i<a->oidlist_len; i++)
       free(a->oidlist[i]);
@@ -588,11 +588,11 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   strncpy(volume->time, p, datelen);
   volume->time[datelen] = 0;
   p += datelen;
-  if ((long)p & 3)
+  if (((long)p & 3) != 0)
     p++;
-  if ((long)p & 3)
+  if (((long)p & 3) != 0)
     p++;
-  if ((long)p & 3)
+  if (((long)p & 3) != 0)
     p++;
   check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
@@ -733,7 +733,7 @@ auto db_check_msk(long seqno) -> long
   db_volume_t * v;
   
   long member = 1;
-  if (db_main.memb_bit)
+  if (db_main.memb_bit != 0)
   {
     member = 0;
     seqno_volume(seqno, & s, & v);
@@ -763,7 +763,7 @@ auto db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile) -> void
 auto db_check_taxid(long taxid) -> long
 {
 
-  if (db_main.taxid_bitmap_address)
+  if (db_main.taxid_bitmap_address != nullptr)
   {
     long byteno = taxid / 8;
     long bitno = taxid & 7;
@@ -831,7 +831,7 @@ auto db_read_taxid_file(char * filename) -> void
 {
   db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
-  if (!db_main.taxid_file)
+  if (db_main.taxid_file == nullptr)
     fatal(std::string("Unable to open taxid file ") + filename + ".");
 
   db_main.taxid_bitmap_size = 64*1024;
@@ -886,7 +886,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
 
   long vol = 0;
 
-  if ((ai = db_read_alias(symbol_type, basename)))
+  if ((ai = db_read_alias(symbol_type, basename)) != nullptr)
   {
     db_main.title = strdup(ai->title);
     db_main.memb_bit = ai->memb_bit;
@@ -897,9 +897,9 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
       
       char * basename2 = addpath(db_main.path, ai->dblist[i]);
       
-      if ((ai2 = db_read_alias(symbol_type, basename2)))
+      if ((ai2 = db_read_alias(symbol_type, basename2)) != nullptr)
       {
-	if (ai->memb_bit)
+	if (ai->memb_bit != 0)
 	{
 	  if ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1))
 	    fatal("Illegal alias file (2).");
@@ -912,7 +912,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
 	  db_volume_init(db_volume + vol);
 	  db_open_xin(symbol_type, basename3, db_volume + vol);
 	  
-	  if (ai->memb_bit)
+	  if (ai->memb_bit != 0)
 	  {
 	    db_set_masked_info(db_volume + vol, ai2, ai2->oidlist[j]);
 	    db_open_msk(db_volume + vol);
@@ -945,7 +945,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
             db_main.memb_bit = 0;
           }
 
-	if (ai->memb_bit)
+	if (ai->memb_bit != 0)
 	{
 	  if ((ai->oidlist_len != 1) || (ai->dblist_len != 1))
 	    fatal("Illegal alias file (1).");
@@ -954,7 +954,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
 	db_volume_init(db_volume + vol);
 	db_open_xin(symbol_type, basename2, db_volume+vol);
 	
-	if (ai->memb_bit)
+	if (ai->memb_bit != 0)
 	{
 	  db_set_masked_info(db_volume + vol, ai, ai->oidlist[i]);
 	  db_open_msk(db_volume + vol);
@@ -1000,7 +1000,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
   db_main.version  = db_volume[0].version;
   db_main.time     = strdup(db_volume[0].time);
   
-  if(!db_main.memb_bit)
+  if(db_main.memb_bit == 0)
   {
     db_main.masked_seqcount = db_main.seqcount;
     db_main.masked_symcount = db_main.symcount;
@@ -1017,7 +1017,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
     decompress_nt[b] = unpacked;
   }
 
-  if (taxidfilename)
+  if (taxidfilename != nullptr)
     db_read_taxid_file(taxidfilename);
 }
 
@@ -1025,27 +1025,27 @@ namespace {
 
 auto db_volume_close(db_volume_t * v) -> void
 {
-  if(v->basename)
+  if(v->basename != nullptr)
   {
     free(v->basename);
     v->basename = nullptr;
   }
-  if(v->title)
+  if(v->title != nullptr)
   {
     free(v->title);
     v->title = nullptr;
   }
-  if(v->time)
+  if(v->time != nullptr)
   {
     free(v->time);
     v->time = nullptr;
   }
-  if(v->masked_title)
+  if(v->masked_title != nullptr)
   {
     free(v->masked_title);
     v->masked_title = nullptr;
   }
-  if(v->masked_mskfile)
+  if(v->masked_mskfile != nullptr)
   {
     free(v->masked_mskfile);
     v->masked_mskfile = nullptr;
@@ -1053,19 +1053,19 @@ auto db_volume_close(db_volume_t * v) -> void
 
   munmap(v->adr_xin, v->len_xin);
 
-  if (v->fd_msk)
+  if (v->fd_msk != 0)
   {
     munmap(v->adr_msk, v->len_msk);
     close(v->fd_msk);
   }
 
-  if (v->map_seq_address)
+  if (v->map_seq_address != nullptr)
   {
     munmap(v->map_seq_address, v->map_seq_length);
     v->map_seq_address = nullptr;
   }
 
-  if (v->map_hdr_address)
+  if (v->map_hdr_address != nullptr)
   {
     munmap(v->map_hdr_address, v->map_hdr_length);
     v->map_hdr_address = nullptr;
@@ -1084,29 +1084,29 @@ auto db_close() -> void
   {
     db_volume_close(db_volume + i);
   }
-  if (db_main.path)
+  if (db_main.path != nullptr)
   {
     free(db_main.path);
     db_main.path = nullptr;
   }
-  if (db_main.basename)
+  if (db_main.basename != nullptr)
   {
     free(db_main.basename);
     db_main.basename = nullptr;
   }
-  if (db_main.title)
+  if (db_main.title != nullptr)
   {
     free(db_main.title);
     db_main.title = nullptr;
   }
-  if (db_main.time)
+  if (db_main.time != nullptr)
   {
     free(db_main.time);
     db_main.time = nullptr;
   }
-  if (db_main.taxid_bitmap_address)
+  if (db_main.taxid_bitmap_address != nullptr)
     free(db_main.taxid_bitmap_address);
-  if (db_main.taxid_filename)
+  if (db_main.taxid_filename != nullptr)
     free(db_main.taxid_filename);
 }
 
@@ -1121,7 +1121,7 @@ auto db_getbasename() -> char *;
 
 auto db_ismasked() -> long
 {
-  return db_main.memb_bit > 0;
+  return static_cast<long>(db_main.memb_bit > 0);
 }
 
 auto db_getvolumecount() -> long
@@ -1146,7 +1146,7 @@ auto db_getseqcount_volume_masked(long v) -> long
 
 auto db_getseqcount_masked() -> long
 {
-  if (db_main.memb_bit)
+  if (db_main.memb_bit != 0)
     return db_main.masked_seqcount;
   return db_main.seqcount;
 }
@@ -1158,7 +1158,7 @@ auto db_getsymcount() -> long
 
 auto db_getsymcount_masked() -> long
 {
-  if (db_main.memb_bit)
+  if (db_main.memb_bit != 0)
     return db_main.masked_symcount;
   return db_main.symcount;
 }
@@ -1186,7 +1186,7 @@ auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   mapp m = t->map_seq;
 
-  if (m->map_address)
+  if (m->map_address != nullptr)
     munmap(m->map_address, m->map_length);
   
   long s1;
@@ -1237,7 +1237,7 @@ auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   mapp m = t->map_hdr;
 
-  if (m->map_address)
+  if (m->map_address != nullptr)
     munmap(m->map_address, m->map_length);
   
   long s1;
@@ -1381,7 +1381,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       ambp = std::next(ambp, sizeof(UINT32));
       unsigned long big_table = (amb_entries >> 31);
     
-      if (big_table)
+      if (big_table != 0u)
       {
 	unsigned long entries = (amb_bytes - 4) / 8;
 	char const * ambp64 = std::next(address, aoff + 4);
@@ -1418,7 +1418,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     
     if (db_main.symtype == 0)
     {
-      if (strand)
+      if (strand != 0)
       {
 	/* reverse-complement */
 
@@ -1571,15 +1571,15 @@ auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
 
 auto db_check_inclusion(db_thread_t * t, long seqno) -> long
 {
-  if (db_main.memb_bit)
+  if (db_main.memb_bit != 0)
   {
-    if (! db_check_msk(seqno))
+    if (db_check_msk(seqno) == 0)
     {
       return 0;
     }
   }
   
-  if (db_main.taxid_bitmap_address)
+  if (db_main.taxid_bitmap_address != nullptr)
   {
     long ok = db_check_taxid_seqno(t, seqno);
     return ok;
@@ -1611,20 +1611,20 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
   db_parse_header(t, address, length, 1,
 		  & deflines, & deflinetable);
   
-  if (deflines)
+  if (deflines != 0)
   {
     db_mapsequences(t, seqno, seqno);
 
     for(long i=0; i<deflines; i++)
     {
-      if (split)
+      if (split != 0)
       {
 	fprintf(out, ">%s\n", deflinetable[i]);
 	db_print_seq(t, seqno, strand, frame);
       }
       else
       {
-	if(i)
+	if(i != 0)
 	  fprintf(out, " ");
 	fprintf(out, ">%s", deflinetable[i]);
 	if (i==deflines-1)

@@ -353,7 +353,7 @@ auto score_matrix_read_file(const char * matrix) -> void
 
   FILE * fp = fopen(matrix, "r");
 
-  if (!fp)
+  if (fp == nullptr)
     fatal("Cannot open score matrix file.");
   
   if (symtype == 5)
@@ -386,7 +386,7 @@ auto score_matrix_read_file(const char * matrix) -> void
 	  
 	  q = order;
 
-	  while ((c = *p++))
+	  while ((c = *p++) != 0)
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
@@ -437,7 +437,7 @@ auto score_matrix_read_string(const char * matrix) -> void
 
   char const * s = matrix;
 
-  if (!s)
+  if (s == nullptr)
     fatal("Cannot read score matrix string.");
   
   if (symtype == 5)
@@ -447,11 +447,11 @@ auto score_matrix_read_string(const char * matrix) -> void
   
   symbols = 0;
 
-  while(*s)
+  while((*s) != 0)
     {
       char const * nextline = strchr(s, '\n');
       int linelen;
-      if (nextline)
+      if (nextline != nullptr)
 	linelen = nextline - s;
       else
 	linelen = strlen(s);
@@ -480,7 +480,7 @@ auto score_matrix_read_string(const char * matrix) -> void
 	  
 	  q = order;
 
-	  while ((c = *p++))
+	  while ((c = *p++) != 0)
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
@@ -509,7 +509,7 @@ auto score_matrix_read_string(const char * matrix) -> void
 	  break;
 	}
 
-      if (nextline)
+      if (nextline != nullptr)
 	s = nextline + 1;
       else
 	s = s + strlen(s);

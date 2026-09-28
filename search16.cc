@@ -406,7 +406,7 @@ auto search16(WORD * * q_start,
 
   while(true)
   {
-    if (easy)
+    if (easy != 0)
     {
       for(int c=0; c<CHANNELS; c++)
       {
@@ -429,7 +429,7 @@ auto search16(WORD * * q_start,
       
       int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
       for(int c=0; c<CHANNELS; c++)
-	if (mask & (3 << 2*c))
+	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];
 
 #ifdef DEBUG
@@ -542,7 +542,7 @@ auto search16(WORD * * q_start,
       SL = _mm_adds_epi16(SL, M);
       int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
       for(int c=0; c<CHANNELS; c++)
-	if (mask & (3 << 2*c))
+	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];
 
 #ifdef DEBUG

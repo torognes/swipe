@@ -216,7 +216,7 @@ auto query_init(const char * query_filename, long symbol_type, long strands) -> 
   else
     query_fp = fopen(query_filename, "r");
   
-  if (!query_fp)
+  if (query_fp == nullptr)
     fatal("Cannot open query file.");
   
   query.description = nullptr;
@@ -265,21 +265,21 @@ namespace {
 
 auto query_free() -> void
 {
-  if (query.description)
+  if (query.description != nullptr)
     free(query.description);
   query.description = nullptr;
   query.dlen = 0;
 
   for(long s=0; s<2; s++)
   {
-    if (query.nt[s].seq)
+    if (query.nt[s].seq != nullptr)
       free(query.nt[s].seq);
     query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      if (query.aa[3*s+f].seq)
+      if (query.aa[3*s+f].seq != nullptr)
 	free(query.aa[3*s+f].seq);
       query.aa[3*s+f].seq = nullptr;
       query.aa[3*s+f].len = 0;
@@ -369,7 +369,7 @@ auto query_read() -> int
     query.nt[0].seq = query_sequence;
     query.nt[0].len = query_length;
 
-    if (query.strands & 2)
+    if ((query.strands & 2) != 0)
     {
       //      printf("Reverse complement.\n");
       query.nt[1].seq = revcompl(query.nt[0].seq, query.nt[0].len);
@@ -380,7 +380,7 @@ auto query_read() -> int
     {
       for(long s=0; s<2; s++)
       {
-	if ((s+1) & query.strands)
+	if (((s+1) & query.strands) != 0)
 	{
 	  for(long f=0; f<3; f++)
 	  {
@@ -424,7 +424,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	  for(long j=0; j<4; j++)
 	    for(long k=0; k<4; k++)
 	    {
-	      if ((a & (1<<i)) && (b & (1<<j)) && (c & (1<<k)))
+	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
 	      {
 		long codon = remap[i]*16 + remap[j]*4 + remap[k];
 		char x = code[tableno-1][codon];
