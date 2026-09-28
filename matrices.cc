@@ -319,17 +319,11 @@ d  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  5\n";
 
 long SCORELIMIT_7;
-long SCORELIMIT_8;
 long SCORELIMIT_16;
-long SCORELIMIT_32;
-long SCORELIMIT_63;
-char BIAS;
 
 char * score_matrix_7 = nullptr;
 char * score_matrix_7t = nullptr;
-unsigned char * score_matrix_8 = nullptr;
 short * score_matrix_16 = nullptr;
-unsigned int * score_matrix_32 = nullptr;
 long * score_matrix_63 = nullptr;
 
 // anonymous namespace: limit visibility and usage to this translation unit
@@ -559,9 +553,7 @@ auto score_matrix_read() -> void
   
   score_matrix_7 = static_cast<char *>(xmalloc(32*32*sizeof(char)));
   score_matrix_7t = static_cast<char *>(xmalloc(32*32*sizeof(char)));
-  score_matrix_8 = static_cast<unsigned char *>(xmalloc(32*32*sizeof(char)));
   score_matrix_16 = static_cast<short *>(xmalloc(32*32*sizeof(short)));
-  score_matrix_32 = static_cast<unsigned int *>(xmalloc(32*32*sizeof(unsigned int)));
   score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
   memset(score_matrix_63, -1, 32*32*8);
   
@@ -629,9 +621,7 @@ auto score_matrix_read() -> void
       }
   }
 
-  BIAS = - lo;
   SCORELIMIT_7  = 128 - hi;
-  SCORELIMIT_8  = 256 - hi;
   SCORELIMIT_16 = 65536 - hi;
 
   // the 16-bit engine uses signed 16-bit scores and gap penalties:
@@ -644,7 +634,6 @@ auto score_matrix_read() -> void
   {
     SCORELIMIT_16 = 0;
   }
-  SCORELIMIT_32 = 4294967296 - hi;
 
   for (a = 0; a < 32; a++)
   {
@@ -661,8 +650,6 @@ auto score_matrix_read() -> void
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
       score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
       score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
-      score_matrix_8 [(a<<5) + b] = static_cast<unsigned char>(BIAS + sc);
-      score_matrix_32[(a<<5) + b] = static_cast<unsigned int>(sc);
       score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
     }
   }
@@ -681,12 +668,8 @@ auto score_matrix_free() -> void
   score_matrix_7 = nullptr;
   free(score_matrix_7t);
   score_matrix_7t = nullptr;
-  free(score_matrix_8);
-  score_matrix_8 = nullptr;
   free(score_matrix_16);
   score_matrix_16 = nullptr;
-  free(score_matrix_32);
-  score_matrix_32 = nullptr;
   free(score_matrix_63);
   score_matrix_63 = nullptr;
 }

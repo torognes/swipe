@@ -111,8 +111,6 @@ inline auto searches_strand(QueryStrands const strands, long const strand) -> bo
   return ((strand + 1) & static_cast<long>(strands)) != 0;
 }
 
-extern char BIAS;
-
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
 
@@ -169,16 +167,11 @@ extern char const mat_pam70[];
 extern char const mat_pam250[];
 
 extern long SCORELIMIT_7;
-extern long SCORELIMIT_8;
 extern long SCORELIMIT_16;
-extern long SCORELIMIT_32;
-extern long SCORELIMIT_63;
 
 extern char * score_matrix_7;
 extern char * score_matrix_7t;
-extern unsigned char * score_matrix_8;
 extern short * score_matrix_16;
-extern unsigned int * score_matrix_32;
 
 struct sequence
 {
