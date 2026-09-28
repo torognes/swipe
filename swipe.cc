@@ -54,7 +54,7 @@ constexpr long default_show_gis = 0;
 constexpr long default_show_taxid = 0;
 constexpr double default_expect = 10.0;
 constexpr double default_minexpect = 0.0;
-constexpr long default_querystrands = 3;
+constexpr QueryStrands default_querystrands = QueryStrands::both;
 constexpr long default_query_gencode = 1;
 constexpr long default_db_gencode = 1;
 constexpr long default_subalignments = 1;
@@ -77,7 +77,7 @@ long show_taxid;
 long matchscore;
 long mismatchscore;
 long gapopenextend;
-long querystrands;
+QueryStrands querystrands;
 long effdbsize;
 
 /* Other variables */
@@ -226,7 +226,7 @@ auto align_init(struct search_data * sdp) -> void
   {
     for (int s = 0; s < 2; s++)
     {
-      if (((s+1) & querystrands) != 0)
+      if (searches_strand(querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -254,7 +254,7 @@ auto align_init(struct search_data * sdp) -> void
   {
     for (int s = 0; s < 2; s++)
     {
-      if (((s + 1) & querystrands) != 0)
+      if (searches_strand(querystrands, s))
       {
 	for(int f=0; f<3; f++)
 	{
@@ -289,9 +289,9 @@ auto align_init(struct search_data * sdp) -> void
 
   if (symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -301,9 +301,9 @@ auto align_init(struct search_data * sdp) -> void
   }
   else if (symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -325,9 +325,9 @@ auto align_init(struct search_data * sdp) -> void
   }
   else if (symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -726,13 +726,13 @@ auto args_show() -> void
 	fprintf(out, "Query strands:     ");
 	switch (querystrands)
 	{
-	case 1:
+	case QueryStrands::plus:
 	  fprintf(out, "Plus");
 	  break;
-	case 2:
+	case QueryStrands::minus:
 	  fprintf(out, "Minus");
 	  break;
-	case 3:
+	case QueryStrands::both:
 	  fprintf(out, "Plus and minus");
 	  break;
 	default:
@@ -1120,19 +1120,19 @@ auto args_init(int argc, char * const * argv) -> void
 	case 'S':
 	  if (strcmp(optarg, "plus") == 0)
 	  {
-	    querystrands = 1;
+	    querystrands = QueryStrands::plus;
 	  }
 	  else if (strcmp(optarg, "minus") == 0)
 	  {
-	    querystrands = 2;
+	    querystrands = QueryStrands::minus;
 	  }
 	  else if (strcmp(optarg, "both") == 0)
 	  {
-	    querystrands = 3;
+	    querystrands = QueryStrands::both;
 	  }
 	  else
 	  {
-	    querystrands = parse_long(optarg, "Illegal query strands specified.");
+	    querystrands = static_cast<QueryStrands>(parse_long(optarg, "Illegal query strands specified."));
 	  }
 	  break;
 
@@ -1253,12 +1253,12 @@ auto args_init(int argc, char * const * argv) -> void
     fatal("Illegal gap penalties.");
   }
 
-  if ((querystrands < 1) || (querystrands > 3))
+  if ((querystrands < QueryStrands::plus) || (querystrands > QueryStrands::both))
   {
     fatal("Illegal query strands specified.");
   }
 
-  if ((querystrands == 2) && ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn)))
+  if ((querystrands == QueryStrands::minus) && ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn)))
   {
     fatal("Illegal strand specified for protein query.");
   }
@@ -1337,7 +1337,7 @@ auto search_init(struct search_data * sdp) -> void
   {
     for (int s = 0; s < 2; s++)
     {
-      if (((s+1) & querystrands) != 0)
+      if (searches_strand(querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -1365,7 +1365,7 @@ auto search_init(struct search_data * sdp) -> void
   {
     for (int s = 0; s < 2; s++)
     {
-      if (((s + 1) & querystrands) != 0)
+      if (searches_strand(querystrands, s))
       {
 	for(int f=0; f<3; f++)
 	{
@@ -1401,9 +1401,9 @@ auto search_init(struct search_data * sdp) -> void
 
   if (symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -1413,9 +1413,9 @@ auto search_init(struct search_data * sdp) -> void
   }
   else if (symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1437,9 +1437,9 @@ auto search_init(struct search_data * sdp) -> void
   }
   else if (symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1887,7 +1887,7 @@ auto clock_stop(struct time_info * tip) -> void
   if (symtype == SymbolType::blastn)
   {
     speed *= query.nt[0].len;
-    if (querystrands == 3)
+    if (querystrands == QueryStrands::both)
     {
       speed *= 2;
     }
@@ -1900,7 +1900,7 @@ auto clock_stop(struct time_info * tip) -> void
   else if (symtype == SymbolType::blastx)
   {
     speed *= query.nt[0].len;
-    if (querystrands == 3)
+    if (querystrands == QueryStrands::both)
     {
       speed *= 2;
     }
@@ -1914,7 +1914,7 @@ auto clock_stop(struct time_info * tip) -> void
   {
     speed *= 2;
     speed *= query.nt[0].len;
-    if (querystrands == 3)
+    if (querystrands == QueryStrands::both)
     {
       speed *= 2;
     }

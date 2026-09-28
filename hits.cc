@@ -343,14 +343,14 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   long maxhits = db_getseqcount_masked();
   if (symtype == SymbolType::blastn)
     {
-      if (querystrands == 3)
+      if (querystrands == QueryStrands::both)
       {
 	maxhits *= 2;
       }
     }
   else if (symtype == SymbolType::blastx)
     {
-      if (querystrands == 3)
+      if (querystrands == QueryStrands::both)
       {
 	maxhits *= 6;
       }
@@ -365,7 +365,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
     }
   else if (symtype == SymbolType::tblastx)
     {
-      if (querystrands == 3)
+      if (querystrands == QueryStrands::both)
       {
 	maxhits *= 36;
       }
@@ -1517,13 +1517,13 @@ auto hits_show_xml_paralign(long showalignments,
   char const * strands = "";
   switch(querystrands)
   {
-  case 1:
+  case QueryStrands::plus:
     strands = "Plus";
     break;
-  case 2:
+  case QueryStrands::minus:
     strands = "Minus";
     break;
-  case 3:
+  case QueryStrands::both:
     strands = "Both";
     break;
   default:

@@ -220,7 +220,7 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
 
 }  // anonymous namespace
 
-auto query_init(char const * query_filename, SymbolType symbol_type, long strands) -> void
+auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void
 {
   if (strcmp(query_filename, "-") == 0)
   {
@@ -408,7 +408,7 @@ auto query_read() -> int
     query.nt[0].seq = query_sequence;
     query.nt[0].len = query_length;
 
-    if ((query.strands & 2) != 0)
+    if (searches_strand(query.strands, 1))
     {
       //      printf("Reverse complement.\n");
       query.nt[1].seq = revcompl(query.nt[0].seq, query.nt[0].len);
@@ -419,7 +419,7 @@ auto query_read() -> int
     {
       for(long s=0; s<2; s++)
       {
-	if (((s+1) & query.strands) != 0)
+	if (searches_strand(query.strands, s))
 	{
 	  for(long f=0; f<3; f++)
 	  {

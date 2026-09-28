@@ -95,6 +95,22 @@ enum struct OutputFormat : long
   paralign_xml = 99           // ParAlign XML
 };
 
+// query strands to search (option -S, --strand): a bit mask of the
+// plus (1) and minus (2) strands
+enum struct QueryStrands : long
+{
+  plus = 1,
+  minus = 2,
+  both = 3
+};
+
+// true when the query strand of index strand (0: plus, 1: minus) is
+// searched
+inline auto searches_strand(QueryStrands const strands, long const strand) -> bool
+{
+  return ((strand + 1) & static_cast<long>(strands)) != 0;
+}
+
 extern char BIAS;
 
 auto xmalloc(size_t size) -> void *;
@@ -115,7 +131,7 @@ extern long matchscore;
 extern long mismatchscore;
 extern long totalhits;
 extern char const * gencode_names[];
-extern long querystrands;
+extern QueryStrands querystrands;
 extern double minexpect;
 extern double expect;
 extern long maxmatches;
@@ -177,7 +193,7 @@ struct query_s
   char * description;
   long dlen;
   SymbolType symtype;
-  long strands;
+  QueryStrands strands;
   char * map;
   char const * sym;
 };
@@ -281,7 +297,7 @@ auto align(char * a_seq,
 	   char ** alignment,
 	   long * s) -> void;
 
-auto query_init(char const * query_filename, SymbolType symbol_type, long strands) -> void;
+auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;
 auto query_exit() -> void;
 auto query_read() -> int;
 auto query_show() -> void;
