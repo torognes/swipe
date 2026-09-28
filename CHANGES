@@ -4,6 +4,10 @@
           exits with status 0
         * Fix: --help exited with status 1: it now exits with status 0,
           as other GNU-style programs (KI-2)
+        * Fix: with tblastn and tblastx (-p 3, -p 4), the simple XML output
+          (-m 7) reported the length of the translated database sequence
+          (<len>, in amino acids), whereas the other outputs report its
+          length in nucleotides. It is now in nucleotides too (KI-36)
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2

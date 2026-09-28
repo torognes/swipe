@@ -1815,7 +1815,10 @@ void hits_show_xml(long show_gis,
   {
     long seqno = hits_list[i].seqno;
     long score = hits_list[i].score;
-    long dlen = hits_list[i].dlen;
+    // the database sequence length in nucleotides for tblastn and
+    // tblastx, as in the other outputs (KI-36)
+    long dlen = ((symtype == 3) || (symtype == 4)) ?
+      hits_list[i].dlennt : hits_list[i].dlen;
     
     fprintf(out, "    <hit>\n");
     fprintf(out, "      <hitno>%ld</hitno>\n", i+1);
