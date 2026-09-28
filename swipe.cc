@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
+#include <cstddef>  // std::size_t
 #include <cstdlib>  // std::strtol, std::strtod
 #include <iterator>  // std::begin, std::end
 #include <limits>
@@ -231,7 +232,7 @@ auto align_init(struct search_data * sdp) -> void
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
 	  sdp->qtable[3*s][i] = sdp->dprofile + (16*query.nt[s].seq[i]);
@@ -244,7 +245,7 @@ auto align_init(struct search_data * sdp) -> void
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
       sdp->qtable[0][i] = sdp->dprofile + (16*query.aa[0].seq[i]);
@@ -261,7 +262,7 @@ auto align_init(struct search_data * sdp) -> void
 	{
 	  qlen = query.aa[(3*s)+f].len;
 	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
 	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (16*query.aa[(3*s)+f].seq[i]);
@@ -274,9 +275,9 @@ auto align_init(struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
+  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  long const listsize = maxchunksize * sizeof(long);
+  auto const listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
@@ -399,9 +400,11 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	    rounds32++;
 	  }
 	
+	  // the 16-bit penalties are only used when they fit (KI-13:
+	  // otherwise no 16-bit result is accepted)
 	  search16s(reinterpret_cast<WORD**>(qtable),
-		    gapopenextend,
-		    gapextend,
+		    static_cast<WORD>(gapopenextend),
+		    static_cast<WORD>(gapextend),
 		    reinterpret_cast<WORD*>(score_matrix_16),
 		    reinterpret_cast<WORD*>(sdp->dprofile),
 		    reinterpret_cast<WORD*>(sdp->hearray),
@@ -411,7 +414,7 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 		    sdp->scores,
 		    sdp->bestpos,
 		    sdp->bestq,
-		    qlen);
+		    static_cast<int>(qlen));
 	
 	  for (int i=0; i<sdp->start_count; i++)
 	  {
@@ -477,11 +480,12 @@ auto calc_chunks(long volcount,
 {
 
   long volsused = 0;
-  std::vector<long> chunksizes(volcount);
+  auto const volumes = static_cast<std::size_t>(volcount);
+  std::vector<long> chunksizes(volumes);
   long totalseqs = 0;
   long biggest_chunk_size = 0;
-  long vv = 0;
-  for(long v = 0; v < volcount; v++)
+  std::size_t vv = 0;
+  for(std::size_t v = 0; v < volumes; v++)
   {
     if (volume_sequences[v] != 0)
     {
@@ -505,7 +509,7 @@ auto calc_chunks(long volcount,
   long upper = channels;
   if (totalseqs >= 4 * channels * par)
   {
-    upper *= static_cast<long>(floor(sqrt((1.0 * totalseqs) / (channels * par))));
+    upper *= static_cast<long>(floor(sqrt((1.0 * static_cast<double>(totalseqs)) / static_cast<double>(channels * par))));
   }
 
   long chunks = volsused;
@@ -519,7 +523,7 @@ auto calc_chunks(long volcount,
 
     biggest_chunk_size = 0;
     vv = 0;
-    for(long v=0; v < volcount; v++)
+    for(std::size_t v = 0; v < volumes; v++)
     {
       if (chunksizes[v] > biggest_chunk_size)
       {
@@ -1342,7 +1346,7 @@ auto search_init(struct search_data * sdp) -> void
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
 	  sdp->qtable[3*s][i] = sdp->dprofile + (64*query.nt[s].seq[i]);
@@ -1355,7 +1359,7 @@ auto search_init(struct search_data * sdp) -> void
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
       sdp->qtable[0][i] = sdp->dprofile + (64*query.aa[0].seq[i]);
@@ -1372,7 +1376,7 @@ auto search_init(struct search_data * sdp) -> void
 	{
 	  qlen = query.aa[(3*s)+f].len;
 	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
 	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (64*query.aa[(3*s)+f].seq[i]);
@@ -1385,9 +1389,9 @@ auto search_init(struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
+  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  long listsize = maxchunksize * sizeof(long);
+  auto listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
   if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
   {
     listsize *= 6;
@@ -1583,7 +1587,7 @@ auto search_chunk(struct search_data * sdp) -> void
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
       sdp->out_count = sdp->start_count;
-      memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
+      memcpy(sdp->out_list, sdp->start_list, static_cast<std::size_t>(sdp->start_count) * sizeof(long));
       
       BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
       long const qlen = sdp->qlen[(3*qstrand)+qframe];
@@ -1672,9 +1676,11 @@ auto search_chunk(struct search_data * sdp) -> void
 	  rounds16++;
 	}
 	  
+	// the 16-bit penalties are only used when they fit (KI-13:
+	// otherwise no 16-bit result is accepted)
 	search16(reinterpret_cast<WORD**>(qtable),
-		 gapopenextend,
-		 gapextend,
+		 static_cast<WORD>(gapopenextend),
+		 static_cast<WORD>(gapextend),
 		 reinterpret_cast<WORD*>(score_matrix_16),
 		 reinterpret_cast<WORD*>(sdp->dprofile),
 		 reinterpret_cast<WORD*>(sdp->hearray),
@@ -1683,7 +1689,7 @@ auto search_chunk(struct search_data * sdp) -> void
 		 sdp->in_list,
 		 sdp->scores,
 		 sdp->bestpos,
-		 qlen);
+		 static_cast<int>(qlen));
     
 	sdp->out_count = 0;
     
@@ -1875,7 +1881,7 @@ auto clock_stop(struct time_info * tip) -> void
 
   if (symtype == SymbolType::blastn)
   {
-    speed *= query.nt[0].len;
+    speed *= static_cast<double>(query.nt[0].len);
     if (querystrands == QueryStrands::both)
     {
       speed *= 2;
@@ -1884,11 +1890,11 @@ auto clock_stop(struct time_info * tip) -> void
   else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::sound))
   {
     /* sound queries are stored as amino acid queries (KI-33) */
-    speed *= query.aa[0].len;
+    speed *= static_cast<double>(query.aa[0].len);
   }
   else if (symtype == SymbolType::blastx)
   {
-    speed *= query.nt[0].len;
+    speed *= static_cast<double>(query.nt[0].len);
     if (querystrands == QueryStrands::both)
     {
       speed *= 2;
@@ -1897,12 +1903,12 @@ auto clock_stop(struct time_info * tip) -> void
   else if (symtype == SymbolType::tblastn)
   {
     speed *= 2;
-    speed *= query.aa[0].len;
+    speed *= static_cast<double>(query.aa[0].len);
   }
   else if (symtype == SymbolType::tblastx)
   {
     speed *= 2;
-    speed *= query.nt[0].len;
+    speed *= static_cast<double>(query.nt[0].len);
     if (querystrands == QueryStrands::both)
     {
       speed *= 2;
@@ -1993,8 +1999,8 @@ auto main(int argc, char**argv) -> int
 
   db_open(symtype, databasename, taxidfilename);
   
-  volchunks = static_cast<long*>(xmalloc(db_getvolumecount() * sizeof(long)));
-  volseqs   = static_cast<long*>(xmalloc(db_getvolumecount() * sizeof(long)));
+  volchunks = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
+  volseqs   = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
 
   if(dump != 0)
   {
