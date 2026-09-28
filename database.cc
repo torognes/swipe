@@ -159,7 +159,7 @@ namespace {
 
 auto db_print_seq_map(char const * address, long length, char const * map) -> void
 {
-  long linelength = 80;
+  long const linelength = 80;
   long i = 0;
   while (i<length)
   {
@@ -312,11 +312,11 @@ auto getnames(char * line, char * * * names) -> long
 
   long namecount = 0;
 
-  char * p = line;
+  char const * p = line;
   while (true)
   {
-    long wslen = strspn(p, ws);
-    long namelen = strcspn(p + wslen, ws);
+    long const wslen = strspn(p, ws);
+    long const namelen = strcspn(p + wslen, ws);
     if (namelen > 0)
     {
       namecount++;
@@ -330,8 +330,8 @@ auto getnames(char * line, char * * * names) -> long
 
   while (n < namecount)
   {
-    long wslen = strspn(line, ws);
-    long namelen = strcspn(line + wslen, ws);
+    long const wslen = strspn(line, ws);
+    long const namelen = strcspn(line + wslen, ws);
     char * name = static_cast<char*>(xmalloc(namelen + 1));
     strncpy(name, line+wslen, namelen);
     name[namelen] = 0;
@@ -384,8 +384,8 @@ auto db_read_alias(long symbol_type, char const * basename) -> al_info_t *
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
-      long start = strspn(line+6, " \t");
-      long titlelen = strcspn(line+6+start, "\r\n");
+      long const start = strspn(line+6, " \t");
+      long const titlelen = strcspn(line+6+start, "\r\n");
       al_info->title = static_cast<char*>(xmalloc(titlelen + 1));
       strncpy(al_info->title, line+6+start, titlelen);
       al_info->title[titlelen] = 0;
@@ -552,7 +552,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
         fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     };
 
-  char * p = volume->adr_xin;
+  char const * p = volume->adr_xin;
   check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
@@ -571,7 +571,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
     check_xin_room(p, 8);
     p += 4;  // volume number
   }
-  long titlelen = load_uint32_be(p);
+  long const titlelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, titlelen + 4);
   volume->title = static_cast<char*>(xmalloc(titlelen+1));
@@ -585,7 +585,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
     check_xin_room(p, lmdb_name_length + 4);
     p += lmdb_name_length;  // LMDB file name
   }
-  unsigned datelen = load_uint32_be(p);
+  unsigned const datelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, datelen);
   volume->time = static_cast<char*>(xmalloc(datelen+1));
@@ -656,7 +656,7 @@ auto get_path(char const * basename) -> char *
   char * path;
   long pathlen = 0;
 
-  while (char c = *p++)
+  while (char const c = *p++)
     if (c == '/')
       pathlen = p - basename;
   
@@ -666,10 +666,10 @@ auto get_path(char const * basename) -> char *
   return path;
 }
 
-auto addpath(char * path, char * base) -> char *
+auto addpath(char const * path, char const * base) -> char *
 {
-  long pathlen = strlen(path);
-  long baselen = strlen(base);
+  long const pathlen = strlen(path);
+  long const baselen = strlen(base);
 
   char * both = static_cast<char*>(xmalloc(pathlen + baselen + 1));
   strcpy(both, path);
@@ -684,7 +684,7 @@ auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
 
   long s = seqno;
   db_volume_t * v = db_volume;
-  db_volume_t * e = v + db_main.volumecount;
+  db_volume_t const * e = v + db_main.volumecount;
   
   while(v < e)
   {
@@ -743,16 +743,16 @@ auto db_check_msk(long seqno) -> long
     seqno_volume(seqno, & s, & v);
     if (s <= v->masked_maxoid)
     {
-      long byteno = s >> 3;
-      long bitno = s & 7;
-      long byte = *(v->adr_msk + 4 + byteno);
+      long const byteno = s >> 3;
+      long const bitno = s & 7;
+      long const byte = *(v->adr_msk + 4 + byteno);
       member = (byte >> (7-bitno)) & 1;
     }
   }
   return member;
 }
 
-auto db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile) -> void
+auto db_set_masked_info(db_volume_t * v, al_info_t const * ai, char * mskfile) -> void
 {
   v->masked_mskfile  = addpath(db_main.path, mskfile);
   v->masked_title    = strdup(ai->title);
@@ -769,8 +769,8 @@ auto db_check_taxid(long taxid) -> long
 
   if (db_main.taxid_bitmap_address != nullptr)
   {
-    long byteno = taxid / 8;
-    long bitno = taxid & 7;
+    long const byteno = taxid / 8;
+    long const bitno = taxid & 7;
     
     if (byteno < db_main.taxid_bitmap_size)
       return (db_main.taxid_bitmap_address[byteno] >> bitno) & 1;
@@ -814,23 +814,23 @@ auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
-  long byteno = taxid / 8;
-  long bitno = taxid & 7;
+  long const byteno = taxid / 8;
+  long const bitno = taxid & 7;
     
   if (byteno >= db_main.taxid_bitmap_size)
   {
-    long old = db_main.taxid_bitmap_size;
+    long const old = db_main.taxid_bitmap_size;
     db_main.taxid_bitmap_size = byteno+1;
     db_main.taxid_bitmap_address = static_cast<unsigned char *>(xrealloc(db_main.taxid_bitmap_address, 
                db_main.taxid_bitmap_size));
     memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
   }
     
-  unsigned char v = db_main.taxid_bitmap_address[byteno];
+  unsigned char const v = db_main.taxid_bitmap_address[byteno];
   db_main.taxid_bitmap_address[byteno] = static_cast<unsigned char>(v | (1 << bitno));
 }
 
-auto db_read_taxid_file(char * filename) -> void
+auto db_read_taxid_file(char const * filename) -> void
 {
   db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
@@ -1175,7 +1175,7 @@ auto db_gettime() -> char*
   return db_main.time;
 }
 
-auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
+auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> void
 {
   //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
 
@@ -1202,13 +1202,13 @@ auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   // find new map area
   
-  long offset1 = bswap_32(((unsigned int*)v1->adr_xin)
+  long const offset1 = bswap_32(((unsigned int*)v1->adr_xin)
 			  [v1->offset_xsq / 4 + s1]);
-  long offset2 = bswap_32(((unsigned int*)v1->adr_xin)
+  long const offset2 = bswap_32(((unsigned int*)v1->adr_xin)
 			  [v1->offset_xsq / 4 + s2 + 1]);
-  long pagesize = getpagesize();
-  long offset = offset1 - (offset1 % pagesize);
-  long length = offset2 - offset;
+  long const pagesize = getpagesize();
+  long const offset = offset1 - (offset1 % pagesize);
+  long const length = offset2 - offset;
   
   // map it
   
@@ -1228,7 +1228,7 @@ auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
   m->map_length = length;
 }
 
-auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
+auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> void
 {
   // unmap if some map exist
   
@@ -1253,13 +1253,13 @@ auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   // find new map area
   
-  long offset1 = bswap_32(((unsigned int*)v1->adr_xin)
+  long const offset1 = bswap_32(((unsigned int*)v1->adr_xin)
 			  [v1->offset_xhr / 4 + s1]);
-  long offset2 = bswap_32(((unsigned int*)v1->adr_xin)
+  long const offset2 = bswap_32(((unsigned int*)v1->adr_xin)
 			  [v1->offset_xhr / 4 + s2 + 1]);
-  long pagesize = getpagesize();
-  long offset = offset1 - (offset1 % pagesize);
-  long length = offset2 - offset;
+  long const pagesize = getpagesize();
+  long const offset = offset1 - (offset1 % pagesize);
+  long const length = offset2 - offset;
   
   // map it
   
@@ -1288,7 +1288,7 @@ auto db_translate(char const * dna, long dlen,
   long pos;
   long c;
   long ppos = 0;
-  long plen = (dlen - frame) / 3;
+  long const plen = (dlen - frame) / 3;
 
   if (strand == 0)
   {
@@ -1331,22 +1331,22 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long s;
   seqno_volume(seqno, &s, &v);
 
-  long offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s]);
-  long offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s + 1]);
-  long length = offset2 - offset1;
+  long const offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s]);
+  long const offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s + 1]);
+  long const length = offset2 - offset1;
   char * address = t->map_seq->map_address + (offset1 - t->map_seq->map_offset);
 
   if ((db_main.symtype==0)||(db_main.symtype==3)||(db_main.symtype==4))
   {
     /* decompress nucleotide sequence */
 
-    long offset3 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_amb / 4 + s]);
-    long aoff = offset3 - offset1;
+    long const offset3 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_amb / 4 + s]);
+    long const aoff = offset3 - offset1;
 
-    long amb_bytes = length - aoff;
+    long const amb_bytes = length - aoff;
 
-    unsigned char last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
-    long nt_length = (4 * (aoff - 1)) + (last & 3);
+    unsigned char const last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
+    long const nt_length = (4 * (aoff - 1)) + (last & 3);
   
     if (t->ntbuffersize[c] < nt_length + 1)
     {
@@ -1358,13 +1358,13 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
     for(long j=0; j < nt_length/4; j++)
     {
-      unsigned char b = address[j];
+      unsigned char const b = address[j];
       *((reinterpret_cast<unsigned int*>(t->ntbuffer[c]))+j) = decompress_nt[b];
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)
     {
-      unsigned char b = address[i/4];
+      unsigned char const b = address[i/4];
       t->ntbuffer[c][i] = static_cast<char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     }
     t->ntbuffer[c][nt_length] = 0;
@@ -1374,22 +1374,22 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       //    printf("#number of ambiguity fixup bytes: %ld\n", amb_bytes);
     
       char const * ambp = std::next(address, aoff);
-      unsigned long amb_entries = load_uint32_be(ambp);
+      unsigned long const amb_entries = load_uint32_be(ambp);
       ambp = std::next(ambp, sizeof(UINT32));
-      unsigned long big_table = (amb_entries >> 31);
+      unsigned long const big_table = (amb_entries >> 31);
     
       if (big_table != 0U)
       {
-	unsigned long entries = (amb_bytes - 4) / 8;
+	unsigned long const entries = (amb_bytes - 4) / 8;
 	char const * ambp64 = std::next(address, aoff + 4);
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned long e = load_uint64_be(ambp64);
+	  unsigned long const e = load_uint64_be(ambp64);
 	  ambp64 = std::next(ambp64, sizeof(std::uint64_t));
-	  unsigned long n = e >> 60;
-	  unsigned long r = ((e >> 48) & 0xfff) + 1;
-	  unsigned long o = e & 0x0000fffffffffff;
+	  unsigned long const n = e >> 60;
+	  unsigned long const r = ((e >> 48) & 0xfff) + 1;
+	  unsigned long const o = e & 0x0000fffffffffff;
 	
 	  for(unsigned long rr = 0; rr < r ; rr++)
 	    t->ntbuffer[c][o+rr] = n;
@@ -1397,15 +1397,15 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       }
       else
       {
-	unsigned long entries = (amb_bytes - 4) / 4;
+	unsigned long const entries = (amb_bytes - 4) / 4;
 
 	for(unsigned long i=0; i < entries; i++)
 	{
-	  unsigned int e = load_uint32_be(ambp);
+	  unsigned int const e = load_uint32_be(ambp);
 	  ambp = std::next(ambp, sizeof(UINT32));
-	  unsigned int n = e >> 28;
-	  unsigned int r = ((e >> 24) & 0xf) + 1;
-	  unsigned int o = e & 0x00ffffff;
+	  unsigned int const n = e >> 28;
+	  unsigned int const r = ((e >> 24) & 0xf) + 1;
+	  unsigned int const o = e & 0x00ffffff;
 	
 	  for(unsigned int rr = 0; rr < r ; rr++)
 	    t->ntbuffer[c][o+rr] = static_cast<char>(n);
@@ -1453,7 +1453,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     {
       /* translation */
 
-      long plen = (nt_length - frame) / 3;
+      long const plen = (nt_length - frame) / 3;
       
       if (t->xxbuffersize[c] < plen + 1)
       {
@@ -1492,19 +1492,19 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   }
 }
 
-auto db_getheader(db_thread_t * t, long seqno, char ** address, long * length) -> void
+auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * length) -> void
 {
   long s;
   db_volume_t * v;
   seqno_volume(seqno, &s, &v);
 
-  long offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s]);
-  long offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s + 1]);
+  long const offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s]);
+  long const offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s + 1]);
   *length = offset2 - offset1;
   *address = t->map_hdr->map_address + (offset1 - t->map_hdr->map_offset);
 }
 
-auto db_parse_header(db_thread_t * t, char * address, long length, 
+auto db_parse_header(db_thread_t const * t, char * address, long length, 
 		     long show_gis, 
 		     long * deflines, char *** deflinetable) -> void
 {
@@ -1513,7 +1513,7 @@ auto db_parse_header(db_thread_t * t, char * address, long length,
 		    deflines, deflinetable);
 }
 
-auto db_showheader(struct db_thread_s * t, char * address, long length, 
+auto db_showheader(struct db_thread_s const * t, char * address, long length, 
 		   long show_gis, long indent,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
 		   Escaping const escaping) -> void
@@ -1575,7 +1575,7 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
   
   if (db_main.taxid_bitmap_address != nullptr)
   {
-    long ok = db_check_taxid_seqno(t, seqno);
+    long const ok = db_check_taxid_seqno(t, seqno);
     return ok;
   }
   return 1;

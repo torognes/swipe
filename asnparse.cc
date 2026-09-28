@@ -156,7 +156,7 @@ auto parse_integer(apt p) -> void
 
   p->parsed_integer = 0;
 
-  unsigned long length = p->len;
+  unsigned long const length = p->len;
 
   //  match_obj(0x02);
 
@@ -595,7 +595,7 @@ auto parse_date_std(apt p) -> void
 
 auto parse_date(apt p) -> void
 {
-  unsigned char object = p->obj;
+  unsigned char const object = p->obj;
   match_obj(p,object);
   switch(object)
   {
@@ -690,7 +690,7 @@ auto show_seq_id(apt p, char const * dbi) -> void
     set_id(p, std::string(db) + "|" + p->accession + "|" + p->name);
 }
 
-auto show_id_int(apt p, char * db) -> void
+auto show_id_int(apt p, char const * db) -> void
 {
   set_id(p, std::string(db) + "|" + std::to_string(p->parsed_integer));
 }
@@ -719,7 +719,7 @@ auto parse_seq_id(apt p) -> void
   printf("seq_id ");
 #endif
 
-  unsigned char object = p->obj;
+  unsigned char const object = p->obj;
   match_obj(p,object);
   
   char db[4] = "";
@@ -938,7 +938,7 @@ auto parse_blast_def_line(apt p) -> void
   if ((strlen(p->defline) != 0U) && (strlen(p->title) != 0U))
     strcat(p->defline, " ");
 
-  long zzz = strlen(p->defline) + strlen(p->title);
+  long const zzz = strlen(p->defline) + strlen(p->title);
   if (zzz >= MAXDEFLINESTRING)
     fatal("Error: defline too long");
 
@@ -991,7 +991,7 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 
 	while((pos < show) && (col < p->linelen))
 	{
-	  char c = defline[pos];
+	  char const c = defline[pos];
 	  if ((p->show_descr == 0) && (c == ' '))
 	  {
 	    pos = show;
@@ -1106,7 +1106,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   nextobj(p);
 
   char ** deflinetable;
-  long deflines = parse_blast_def_line_set_new(p, & deflinetable);
+  long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
 
   *deflinetablep = deflinetable;
   *deflinesp = deflines;
@@ -1136,8 +1136,8 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   nextobj(p);
 
   char ** deflinetable;
-  long deflines = parse_blast_def_line_set_new(p, & deflinetable);
-  long deflines2 = show_deflines(p, deflines, deflinetable);
+  long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
+  long const deflines2 = show_deflines(p, deflines, deflinetable);
   return deflines2;
 }
 

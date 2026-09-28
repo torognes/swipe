@@ -313,7 +313,7 @@ auto query_read() -> int
     header.pop_back();
   if ((not header.empty()) and (header.back() == '\r'))
     header.pop_back();
-  int len = static_cast<int>(header.size());
+  int const len = static_cast<int>(header.size());
 
   if (header[0] == '>')
   {
@@ -426,8 +426,8 @@ auto translate_createtable(long tableno, char * table) -> void
 	    {
 	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
 	      {
-		long codon = (remap[i]*16) + (remap[j]*4) + remap[k];
-		char x = code[tableno-1][codon];
+		long const codon = (remap[i]*16) + (remap[j]*4) + remap[k];
+		char const x = code[tableno-1][codon];
 		if (aa == '-')
 		{
 		  aa = x;
@@ -510,7 +510,7 @@ auto translate(char const * dna, long dlen,
   long pos;
   long c;
   long ppos = 0;
-  long plen = (dlen - frame) / 3;
+  long const plen = (dlen - frame) / 3;
   char * prot = static_cast<char*>(xmalloc(1+plen));
 
   if (strand == 0)
@@ -548,7 +548,7 @@ auto translate(char const * dna, long dlen,
 
 auto query_show() -> void
 {
-  int linewidth = 60;
+  int const linewidth = 60;
   for (unsigned i=0; i<strlen(query.description); i+=linewidth)
   {
     if (i==0)

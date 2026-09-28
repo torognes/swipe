@@ -194,8 +194,8 @@ auto push(struct aligner_info * aip) -> void
   {
     while (true)
     {
-      long rest = aip->size - aip->length;
-      int n = snprintf(aip->alignment + aip->length,
+      long const rest = aip->size - aip->length;
+      int const n = snprintf(aip->alignment + aip->length,
 		       rest,
 		       "%c%ld", aip->op, aip->count);
       if ((n < 0) || (n >= rest))
@@ -336,7 +336,7 @@ auto diff(struct aligner_info * aip,
   else
     {
 
-      long I = M/2;
+      long const I = M/2;
       long i;
       long j;
       long t;
@@ -430,7 +430,7 @@ auto diff(struct aligner_info * aip,
 
       for (j=0; j <= N; j++)
 	{
-	  long Score = HH[j] + XX[N-j];
+	  long const Score = HH[j] + XX[N-j];
 	  if (Score > MaxScore)
 	    {
 	      MaxScore = Score;
@@ -444,7 +444,7 @@ auto diff(struct aligner_info * aip,
 
       for (j=0; j <= N; j++)
 	{
-	  long Score = EE[j] + YY[N-j] + q;
+	  long const Score = EE[j] + YY[N-j] + q;
 	  if (Score >= MaxScore)
 	    {
 	      MaxScore = Score;

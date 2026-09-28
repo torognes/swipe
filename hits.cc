@@ -96,8 +96,8 @@ auto hits_compare(void const * a, void const * b) -> int
 {
   auto const index_a = *static_cast<long const *>(a);
   auto const index_b = *static_cast<long const *>(b);
-  struct hits_entry * ap = hits_list + index_a;
-  struct hits_entry * bp = hits_list + index_b;
+  struct hits_entry const * ap = hits_list + index_a;
+  struct hits_entry const * bp = hits_list + index_b;
   
   if ( static_cast<int>(index_a >= opt_alignments) < static_cast<int>(index_b >= opt_alignments) )
   {
@@ -213,7 +213,7 @@ auto hits_enter(long seqno, long score, long qstrand, long qframe,
   
   // move entries down
   
-  long move = (hits_count < keephits ? hits_count : keephits - 1) - place;
+  long const move = (hits_count < keephits ? hits_count : keephits - 1) - place;
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
@@ -252,7 +252,7 @@ auto hits_gethit(long i, long * seqno, long * score,
 		 long * qstrand, long * qframe,
 		 long * dstrand, long * dframe) -> void
 {
-  struct hits_entry * h = hits_list + i;
+  struct hits_entry const * h = hits_list + i;
   *seqno = h->seqno;
   *score = h->score;
   *qstrand = h->qstrand;
@@ -261,7 +261,7 @@ auto hits_gethit(long i, long * seqno, long * score,
   *dframe = h->dframe;
 }
 
-auto hits_enter_seq(long hitno, char* seq, long seq_len) -> void
+auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void
 {
   hits_list[hitno].dseq = static_cast<char*>(xmalloc(seq_len));
   memcpy(hits_list[hitno].dseq, seq, seq_len);
@@ -288,14 +288,14 @@ auto hits_enter_align_coord(long i,
   hits_list[i].dlennt = dlennt;
 }
 
-auto hits_enter_header(long i, char * header, long header_len) -> void
+auto hits_enter_header(long i, char const * header, long header_len) -> void
 {
   hits_list[i].header_address = static_cast<char*>(xmalloc(header_len));
   memcpy(hits_list[i].header_address, header, header_len);
   hits_list[i].header_length = header_len;
 }
 
-auto hits_enter_align_string(long hitno, char * align, long align_len) -> void
+auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void
 {
   hits_list[hitno].alignment = static_cast<char*>(xmalloc(align_len));
   memcpy(hits_list[hitno].alignment, align, align_len);
@@ -414,7 +414,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       
       lenadj = 0;
       
-      long qlen = query.nt[0].len;
+      long const qlen = query.nt[0].len;
 
       long dlen;
       if (effdbsize > 0)
@@ -546,13 +546,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   
   if (stats_available != 0)
   {
-    long minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
+    long const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
     if (minscore_expect > minscore)
       scorethreshold = minscore_expect;
     
     if (min_expect > 0.0)
     {
-      long maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
+      long const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
 	upperscorethreshold = maxscore_expect;
     }
@@ -823,8 +823,8 @@ auto putalignop(char c, long len) -> void
 
 auto show_align(long i) -> void
 {
-  long q_align_start = hits_list[i].align_q_start;
-  long d_align_start = hits_list[i].align_d_start;
+  long const q_align_start = hits_list[i].align_q_start;
+  long const d_align_start = hits_list[i].align_d_start;
   q_strand = hits_list[i].qstrand;
   q_frame = hits_list[i].qframe;
   d_strand = hits_list[i].dstrand;
@@ -858,12 +858,12 @@ auto show_align(long i) -> void
   q_pos = q_align_start;
   d_pos = d_align_start;
   
-  char * p = alignment;
-  char * e = alignment + strlen(alignment);
+  char const * p = alignment;
+  char const * e = alignment + strlen(alignment);
   
   while(p < e)
   {
-    char op = *p++;
+    char const op = *p++;
     long len;
     int n;
     sscanf(p, "%ld%n", & len, & n);
@@ -887,7 +887,7 @@ auto whole_align(long i,
 
   long al = 0;
   char * alignment = hits_list[i].alignment;
-  char * p = alignment;
+  char const * p = alignment;
   while((*p) != 0)
   {
     long len;
@@ -905,8 +905,8 @@ auto whole_align(long i,
   *aline = alinep;
   *dline = dlinep;
 
-  long q_align_start = hits_list[i].align_q_start;
-  long d_align_start = hits_list[i].align_d_start;
+  long const q_align_start = hits_list[i].align_q_start;
+  long const d_align_start = hits_list[i].align_d_start;
 
   d_strand = hits_list[i].dstrand;
   d_frame = hits_list[i].dframe;
@@ -950,7 +950,7 @@ auto whole_align(long i,
 
   while((*p) != 0)
   {
-    char op = *p++;
+    char const op = *p++;
     long len;
     int n;
     sscanf(p, "%ld%n", & len, & n);
@@ -961,7 +961,7 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char qs = q_seq[q_pos++];
+	char const qs = q_seq[q_pos++];
 	*qlinep++ = sym[static_cast<int>(qs)];
 	*alinep++ = ' ';
 	*dlinep++ = '-';
@@ -973,7 +973,7 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char ds = d_seq[d_pos++];
+	char const ds = d_seq[d_pos++];
 	*qlinep++ = '-';
 	*alinep++ = ' ';
 	*dlinep++ = sym[static_cast<int>(ds)];
@@ -985,8 +985,8 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char qs = q_seq[q_pos++];
-	char ds = d_seq[d_pos++];
+	char const qs = q_seq[q_pos++];
+	char const ds = d_seq[d_pos++];
 	*qlinep++ = sym[static_cast<int>(qs)];
 	if (qs == ds)
 	{
@@ -1069,8 +1069,8 @@ auto whole_align(long i,
   d_first++;
   d_last++;
 
-  long maxqpos = q_first > q_last ? q_first : q_last; 
-  long maxdpos = d_first > d_last ? d_first : d_last; 
+  long const maxqpos = q_first > q_last ? q_first : q_last; 
+  long const maxdpos = d_first > d_last ? d_first : d_last; 
   long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
   poswidth = 1;
   while (maxpos > 9)
@@ -1087,8 +1087,8 @@ auto count_align(long i,
 		 long * aligned,
 		 long * gaps) -> void
 {
-  long q_align_start = hits_list[i].align_q_start;
-  long d_align_start = hits_list[i].align_d_start;
+  long const q_align_start = hits_list[i].align_q_start;
+  long const d_align_start = hits_list[i].align_d_start;
   char * alignment = hits_list[i].alignment;
 
   d_strand = hits_list[i].dstrand;
@@ -1129,12 +1129,12 @@ auto count_align(long i,
   q_pos = q_align_start;
   d_pos = d_align_start;
   
-  char * p = alignment;
-  char * e = alignment + strlen(alignment);
+  char const * p = alignment;
+  char const * e = alignment + strlen(alignment);
 
   while(p < e)
   {
-    char op = *p++;
+    char const op = *p++;
     long len;
     int n;
     sscanf(p, "%ld%n", & len, & n);
@@ -1157,8 +1157,8 @@ auto count_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char qs = q_seq[q_pos++];
-	char ds = d_seq[d_pos++];
+	char const qs = q_seq[q_pos++];
+	char const ds = d_seq[d_pos++];
 	if (qs == ds)
 	{
 	  (*identities)++;
@@ -1225,8 +1225,8 @@ auto count_align(long i,
   d_first++;
   d_last++;
 
-  long maxqpos = q_first > q_last ? q_first : q_last; 
-  long maxdpos = d_first > d_last ? d_first : d_last; 
+  long const maxqpos = q_first > q_last ? q_first : q_last; 
+  long const maxdpos = d_first > d_last ? d_first : d_last; 
   long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
   poswidth = 1;
   while (maxpos > 9)
@@ -1351,7 +1351,7 @@ auto hits_defline_split(char * defline,
   *linklen = 0;
   *rest = nullptr;
   
-  int m = sscanf(p, "gi|%ld%n", gi, & len);
+  int const m = sscanf(p, "gi|%ld%n", gi, & len);
   if (m > 0)
     //  if (len > 0)
     p += len;
@@ -1537,8 +1537,8 @@ auto hits_show_xml_paralign(long showalignments,
   
   for(long i=0; i<showhits; i++)
   {
-    long score = hits_list[i].score;
-    double e = Kmn * exp(- lambda * score);
+    long const score = hits_list[i].score;
+    double const e = Kmn * exp(- lambda * score);
 
     char anchor[200];
     make_anchor(anchor, 200, query.symtype, queryno, i);
@@ -1669,8 +1669,8 @@ auto hits_show_xml_paralign(long showalignments,
         
       fprintf(out, "\t\t\t\t</linkContainer>\n");
     
-      long dlen = hits_list[i].dlen;
-      long dlennt = hits_list[i].dlennt;
+      long const dlen = hits_list[i].dlen;
+      long const dlennt = hits_list[i].dlennt;
 
       if (symtype == 0)
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlen);
@@ -1706,8 +1706,8 @@ auto hits_show_xml_paralign(long showalignments,
 	fprintf(out, "\t\t\t\t</longVersionFrames>\n");
       }
 
-      long score = hits_list[i].score;
-      double e = Kmn * exp(- lambda * score);
+      long const score = hits_list[i].score;
+      double const e = Kmn * exp(- lambda * score);
 
       long identities;
       long positives;
@@ -1816,11 +1816,11 @@ auto hits_show_xml(long show_gis,
   
   for(long i=0; i<showhits; i++)
   {
-    long seqno = hits_list[i].seqno;
-    long score = hits_list[i].score;
+    long const seqno = hits_list[i].seqno;
+    long const score = hits_list[i].score;
     // the database sequence length in nucleotides for tblastn and
     // tblastx, as in the other outputs (KI-36)
-    long dlen = ((symtype == 3) || (symtype == 4)) ?
+    long const dlen = ((symtype == 3) || (symtype == 4)) ?
       hits_list[i].dlennt : hits_list[i].dlen;
     
     fprintf(out, "    <hit>\n");
@@ -1907,7 +1907,7 @@ auto hits_show_tsv(long showalignments,
     
     count_align(i, & identities, & positives, & indels, & aligned, & gaps);
     
-    long score = hits_list[i].score;
+    long const score = hits_list[i].score;
     
     fprintf(out, "\t%.2f\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld", 
 	    100.0 * identities / aligned,
@@ -1921,9 +1921,9 @@ auto hits_show_tsv(long showalignments,
     
     if (stats_available != 0)
     {
-      double expect_value = Kmn * exp(- lambda * score);
+      double const expect_value = Kmn * exp(- lambda * score);
       fprintf(out, "\t%.2g", expect_value);
-      double bits = (lambda_d_log2 * score) - logK_d_log2;
+      double const bits = (lambda_d_log2 * score) - logK_d_log2;
       fprintf(out, "\t%.1f", bits);
     }
     else
@@ -1971,7 +1971,7 @@ auto hits_show_plain(long show_gis,
 		      hits_list[i].header_length, 
 		      show_gis, 0, headerlen, headerlen, 1, 1);
 
-	long score = hits_list[i].score;
+	long const score = hits_list[i].score;
 	      
 	if (symtype == 0)
 	  fprintf(out, " %c", (hits_list[i].dstrand != 0) ? '-' : '+');
@@ -1990,8 +1990,8 @@ auto hits_show_plain(long show_gis,
 	      
 	if (stats_available != 0)
 	{
-	  long bits = static_cast<long>(floor((lambda_d_log2 * score) - logK_d_log2 + 0.5));
-	  double expect_value = Kmn * exp(- lambda * score);
+	  long const bits = static_cast<long>(floor((lambda_d_log2 * score) - logK_d_log2 + 0.5));
+	  double const expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " %5ld", bits);
 		
@@ -2023,12 +2023,12 @@ auto hits_show_plain(long show_gis,
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlen);
 	fprintf(out, "\n");
 	      
-	long score = hits_list[i].score;
+	long const score = hits_list[i].score;
 
 	if (stats_available != 0)
 	{
-	  double bits = (lambda_d_log2 * score) - logK_d_log2;
-	  double expect_value = Kmn * exp(- lambda * score);
+	  double const bits = (lambda_d_log2 * score) - logK_d_log2;
+	  double const expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " Score = %.1lf bits (%ld), Expect = ", bits, score);
 	  hits_show_expect(expect_value);

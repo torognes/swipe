@@ -93,13 +93,13 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
   "        pmaxsw  " H ", %%xmm12      \n"	\
   "        pmaxsw  " H ", " F "        \n"
 
-inline auto donormal16(volatile __m128i * Sm,  /* r9  */
-		       __m128i * hep, /* rdi */
-		       __m128i ** qp, /* rsi */
-		       __m128i * Qm,  /* rdx */
-		       __m128i * Rm,  /* rcx */
+inline auto donormal16(volatile __m128i const * Sm,  /* r9  */
+		       __m128i const * hep, /* rdi */
+		       __m128i * const * qp, /* rsi */
+		       __m128i const * Qm,  /* rdx */
+		       __m128i const * Rm,  /* rcx */
 		       long ql,       /* r8  */
-		       __m128i * Zm) -> void
+		       __m128i const * Zm) -> void
 {
   __asm__
     __volatile__
@@ -157,14 +157,14 @@ inline auto donormal16(volatile __m128i * Sm,  /* r9  */
       );
 }
 
-inline auto domasked16(volatile __m128i * Sm,
-		       __m128i * hep,
-		       __m128i ** qp,
-		       __m128i * Qm, 
-		       __m128i * Rm, 
+inline auto domasked16(volatile __m128i const * Sm,
+		       __m128i const * hep,
+		       __m128i * const * qp,
+		       __m128i const * Qm, 
+		       __m128i const * Rm, 
 		       long ql,      
-		       __m128i * Zm,
-		       __m128i * Mm) -> void
+		       __m128i const * Zm,
+		       __m128i const * Mm) -> void
 {
   __asm__
     __volatile__
@@ -427,7 +427,7 @@ auto search16(WORD * * q_start,
 
       /* save column address if new highscore */
       
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       for(int c=0; c<CHANNELS; c++)
 	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];
@@ -474,11 +474,11 @@ auto search16(WORD * * q_start,
 	{
 	  M = _mm_xor_si128(M, T);
 		  
-	  long cand_id = seq_id[c];
+	  long const cand_id = seq_id[c];
 		  
 	  if (cand_id >= 0)
 	  {
-	    long score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
+	    long const score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];
 	    done++;
@@ -487,14 +487,14 @@ auto search16(WORD * * q_start,
 	  if (next_id < sequences)
 	  {
 	    seq_id[c] = next_id;
-	    long seqnosf = seqnos[next_id];
+	    long const seqnosf = seqnos[next_id];
 	    char* address;
 	    long length;
 	    long ntlen;
 
-	    long strand = (seqnosf >> 2) & 1;
-	    long frame = seqnosf & 3;
-	    long seqno = seqnosf >> 3;
+	    long const strand = (seqnosf >> 2) & 1;
+	    long const frame = seqnosf & 3;
+	    long const seqno = seqnosf >> 3;
 
 	    db_getsequence(dbt, seqno, strand, frame, 
 			   & address, & length, & ntlen, c);
@@ -540,7 +540,7 @@ auto search16(WORD * * q_start,
       
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       for(int c=0; c<CHANNELS; c++)
 	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];

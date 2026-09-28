@@ -266,7 +266,7 @@ auto align_init(struct search_data * sdp) -> void
 
   sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
 
-  long listsize = maxchunksize * sizeof(long);
+  long const listsize = maxchunksize * sizeof(long);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
@@ -352,7 +352,7 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
-	  long hs = hits_sorted[hitno];
+	  long const hs = hits_sorted[hitno];
 	  long seqno;
 	  long score;
 	  long hqstrand;
@@ -378,7 +378,7 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 
 
 	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
-	  long qlen = sdp->qlen[(3*qstrand)+qframe];
+	  long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
@@ -403,12 +403,12 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	
 	  for (int i=0; i<sdp->start_count; i++)
 	  {
-	    long pos = sdp->bestpos[i];
-	    long bestq = sdp->bestq[i];
+	    long const pos = sdp->bestpos[i];
+	    long const bestq = sdp->bestq[i];
 	  
 	    //	  fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 	  
-	    long hitno = sdp->start_hits[i];
+	    long const hitno = sdp->start_hits[i];
 	  
 	    if (sdp->scores[i] < SCORELIMIT_16)
 	      hits_enter_align_hint(hitno, bestq, pos);
@@ -490,7 +490,7 @@ auto calc_chunks(long volcount,
     upper *= static_cast<long>(floor(sqrt((1.0 * totalseqs) / (channels * par))));
 
   long chunks = volsused;
-  long minchunks = totalseqs < par ? totalseqs : par;
+  long const minchunks = totalseqs < par ? totalseqs : par;
 
   while((biggest_chunk_size > upper) || (chunks < minchunks))
   {
@@ -532,11 +532,11 @@ auto calc_chunks(long volcount,
 
 auto align_threads_init() -> void
 {
-  long hits = hits_getcount();
+  long const hits = hits_getcount();
 
   hits_sorted = hits_sort();
 
-  long bins = 7;
+  long const bins = 7;
 
   align_volseqs = static_cast<long*>(xmalloc(bins*sizeof(long)));
   align_volchunks = static_cast<long*>(xmalloc(bins*sizeof(long)));
@@ -592,15 +592,15 @@ auto align_threads_done() -> void
 auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long bins = 7;
-  long volcount = bins;
+  long const bins = 7;
+  long const volcount = bins;
 
   pthread_mutex_lock(&workmutex);
   if (align_volnext < volcount)
   {
-    long seqcount = align_volseqs[align_volnext];
-    long chunks = align_volchunks[align_volnext];
-    long chunksize = ((seqcount+chunks-1) / chunks);
+    long const seqcount = align_volseqs[align_volnext];
+    long const chunks = align_volchunks[align_volnext];
+    long const chunksize = ((seqcount+chunks-1) / chunks);
 
     * first = alignedhits;
     * last = alignedhits + chunksize - 1;
@@ -860,7 +860,7 @@ auto parse_dbsize(char const * const text) -> long
   return static_cast<long>(value);
 }
 
-auto args_init(int argc, char **argv) -> void
+auto args_init(int argc, char * const * argv) -> void
 {
   /* Set defaults */
   gapopen = DEFAULT_GAPOPEN;
@@ -1240,13 +1240,13 @@ auto args_init(int argc, char **argv) -> void
 }  // anonymous namespace
 
 
-auto vector_print(BYTE * vector) -> void
+auto vector_print(BYTE const * vector) -> void
 {
   for(int i=0; i<16; i++)
     fprintf(out, " %02x", vector[i]);
 }
 
-auto vector_print_word(WORD * vector) -> void
+auto vector_print_word(WORD const * vector) -> void
 {
   for(int i=0; i<8; i++)
     fprintf(out, " %04x", vector[i]);
@@ -1407,14 +1407,14 @@ auto search_done(struct search_data * sdp) -> void
 auto search_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long volcount = db_getvolumecount();
+  long const volcount = db_getvolumecount();
   
   pthread_mutex_lock(&workmutex);
   if (volnext < volcount)
   {
-    long seqcount = volseqs[volnext];
-    long chunks = volchunks[volnext];
-    long chunksize = ((seqcount+chunks-1) / chunks);
+    long const seqcount = volseqs[volnext];
+    long const chunks = volchunks[volnext];
+    long const chunksize = ((seqcount+chunks-1) / chunks);
 
     * first = seqnext;
     * last = seqnext + chunksize - 1;
@@ -1473,8 +1473,8 @@ auto search_chunk(struct search_data * sdp) -> void
   if (sdp->start_count == 0)
     return;
   
-  long s1 = sdp->start_list[0] >> 3;
-  long s2 = sdp->start_list[sdp->start_count-1] >> 3;
+  long const s1 = sdp->start_list[0] >> 3;
+  long const s2 = sdp->start_list[sdp->start_count-1] >> 3;
   
   // fprintf(out, "Mapping seqnos %ld to %ld\n", s1, s2);
 
@@ -1490,7 +1490,7 @@ auto search_chunk(struct search_data * sdp) -> void
       memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
       
       BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
-      long qlen = sdp->qlen[(3*qstrand)+qframe];
+      long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
 #if 1
       
@@ -1539,12 +1539,12 @@ auto search_chunk(struct search_data * sdp) -> void
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long score = sdp->scores[i];
+	  long const seqnosf = sdp->in_list[i];
+	  long const score = sdp->scores[i];
       
 	  if (score < SCORELIMIT_7)
 	  {
-	    long seqno = seqnosf >> 3;
+	    long const seqno = seqnosf >> 3;
 	    dstrand = (seqnosf >> 2) & 1;
 	    dframe = seqnosf & 3;
 
@@ -1594,15 +1594,15 @@ auto search_chunk(struct search_data * sdp) -> void
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long score = sdp->scores[i];
+	  long const seqnosf = sdp->in_list[i];
+	  long const score = sdp->scores[i];
 	  if (score < SCORELIMIT_16)
 	  {
-	    long seqno = seqnosf >> 3;
+	    long const seqno = seqnosf >> 3;
 	    dstrand = (seqnosf >> 2) & 1;
 	    dframe = seqnosf & 3;
 		
-	    long pos = sdp->bestpos[i];
+	    long const pos = sdp->bestpos[i];
 	    
 	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
@@ -1637,8 +1637,8 @@ auto search_chunk(struct search_data * sdp) -> void
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long seqno = seqnosf >> 3;
+	  long const seqnosf = sdp->in_list[i];
+	  long const seqno = seqnosf >> 3;
 	  dstrand = (seqnosf >> 2) & 1;
 	  dframe = seqnosf & 3;
       
@@ -1648,7 +1648,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  db_getsequence(sdp->dbt, seqno, dstrand, dframe, 
 			 & address, & length, & ntlen, 0);
 	  char * dbegin = address;
-	  char * dend = address + length - 1;
+	  char const * dend = address + length - 1;
       
 	  char * q;
 	  if (symtype == 0)
@@ -1656,7 +1656,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  else
 	    q = query.aa[(3*qstrand)+qframe].seq;
 
-	  long score = fullsw(dbegin,
+	  long const score = fullsw(dbegin,
 			      dend,
 			      q, 
 			      q + qlen,
@@ -1697,7 +1697,7 @@ auto prepare_search(long par) -> void
 
 #if 1
 
-  long volcount = db_getvolumecount();
+  long const volcount = db_getvolumecount();
   for(long v = 0; v < volcount; v++)
     volseqs[v] = db_getseqcount_volume(v);
 
@@ -1961,7 +1961,7 @@ auto main(int argc, char**argv) -> int
   if(dump != 0)
   {
     struct db_thread_s * t = db_thread_create();
-    long seqcount = db_getseqcount();
+    long const seqcount = db_getseqcount();
     for (long i=0; i < seqcount; i++)
       db_show_fasta(t, i, 0, 0, dump-1);
     db_thread_destruct(t);

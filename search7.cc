@@ -588,13 +588,13 @@ inline auto dprofile_fill7(BYTE * dprofile,
   "        pmaxub  " H ", %%xmm12     \n"               \
   "        pmaxub  " H ", " F "       \n"
 
-inline auto donormal7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i ** qp,
-		      __m128i * Qm,
-		      __m128i * Rm,
+inline auto donormal7(__m128i const * Sm,
+		      __m128i const * hep,
+		      __m128i * const * qp,
+		      __m128i const * Qm,
+		      __m128i const * Rm,
 		      long ql,
-		      __m128i * Zm) -> void
+		      __m128i const * Zm) -> void
 {
 #ifdef DEBUG
   printf("donormal\n");
@@ -662,14 +662,14 @@ inline auto donormal7(__m128i * Sm,
      );
 }
 
-inline auto domasked7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i ** qp,
-		      __m128i * Qm, 
-		      __m128i * Rm, 
+inline auto domasked7(__m128i const * Sm,
+		      __m128i const * hep,
+		      __m128i * const * qp,
+		      __m128i const * Qm, 
+		      __m128i const * Rm, 
 		      long ql,      
-		      __m128i * Zm,
-		      __m128i * Mm) -> void
+		      __m128i const * Zm,
+		      __m128i const * Mm) -> void
 {
   
 #ifdef DEBUG
@@ -886,12 +886,12 @@ search7
 
 	  M = _mm_xor_si128(M, T);
 
-	  long cand_id = seq_id[c];
+	  long const cand_id = seq_id[c];
 		  
 	  if (cand_id >= 0)
 	  {
 	    // save score
-	    long score = (reinterpret_cast<BYTE*>(&S))[c] - 0x80;
+	    long const score = (reinterpret_cast<BYTE*>(&S))[c] - 0x80;
 	    scores[cand_id] = score;
 	    done++;
 	  }
@@ -900,14 +900,14 @@ search7
 	  {
 	    // get next sequence
 	    seq_id[c] = next_id;
-	    long seqnosf = seqnos[next_id];
+	    long const seqnosf = seqnos[next_id];
 
 	    char* address;
 	    long length;
 	    long ntlen;
-	    long strand = (seqnosf >> 2) & 1;
-	    long frame = seqnosf & 3;
-	    long seqno = seqnosf >> 3;
+	    long const strand = (seqnosf >> 2) & 1;
+	    long const frame = seqnosf & 3;
+	    long const seqno = seqnosf >> 3;
 
 	    db_getsequence(dbt, seqno, strand, frame, 
 			   & address, & length, &ntlen, c);

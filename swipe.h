@@ -93,8 +93,8 @@ extern char BIAS;
 #define ZERO 0x80
 #endif
 
-auto vector_print(BYTE * vector) -> void;
-auto vector_print_word(WORD * vector) -> void;
+auto vector_print(BYTE const * vector) -> void;
+auto vector_print_word(WORD const * vector) -> void;
 
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
@@ -249,7 +249,7 @@ auto search16s(WORD * * q_start,
 	       WORD * score_matrix,
 	       WORD * dprofile,
 	       WORD * hearray,
-	       struct db_thread_s * * dbta,
+	       struct db_thread_s * const * dbta,
 	       long sequences,
 	       long const * seqnos,
 	       long * scores,
@@ -338,11 +338,11 @@ auto db_thread_destruct(struct db_thread_s * t) -> void;
 
 auto db_check_taxid(long taxid) -> long;
 
-auto db_parse_header(struct db_thread_s * t, char * address, long length,
+auto db_parse_header(struct db_thread_s const * t, char * address, long length,
 		     long show_gis,
 		     long * deflines, char *** deflinetable) -> void;
 
-auto db_showheader(struct db_thread_s * t, char * address, long length, 
+auto db_showheader(struct db_thread_s const * t, char * address, long length, 
 		   long show_gis, long indent,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
 		   Escaping escaping = Escaping::none) -> void;
@@ -355,15 +355,15 @@ auto db_show_fasta(struct db_thread_s * t, long seqno,
 
 auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
-auto db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno) -> void;
-auto db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno) -> void;
+auto db_mapsequences(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
+auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
 
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
 		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void;
-auto db_getheader(struct db_thread_s * t, long seqno, char ** address, 
+auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
 		  long * length) -> void;
 
 auto hits_init(long descriptions, long max_alignments, long minscore, 
@@ -392,15 +392,15 @@ auto hits_getfull(long i,
 		  char ** seq, long * seq_len,
 		  char ** align, long * align_len) -> void;
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
-auto hits_enter_header(long i, char * header, long header_len) -> void;
-auto hits_enter_seq(long hitno, char* seq, long seq_len) -> void;
+auto hits_enter_header(long i, char const * header, long header_len) -> void;
+auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void;
 auto hits_enter_align_coord(long i,
 			    long align_q_start,
 			    long align_q_end,
 			    long align_d_start,
 			    long align_d_end,
 			    long dlennt) -> void;
-auto hits_enter_align_string(long hitno, char * align, long align_len) -> void;
+auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void;
 
 
 auto stats_getparams_nt(long match_score,
