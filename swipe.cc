@@ -621,7 +621,7 @@ auto align_getwork(long * first, long * last) -> int
   return status;
 }
 
-auto align_worker(void *) -> void *
+auto align_worker(void * /*unused*/) -> void *
 {
   search_data sd;
   align_init(&sd);
@@ -1683,7 +1683,7 @@ auto search_chunk(struct search_data * sdp) -> void
 }
 
 
-auto worker(void *) -> void *
+auto worker(void * /*unused*/) -> void *
 {
   struct search_data sd;
   search_init(&sd);
