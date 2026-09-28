@@ -78,6 +78,23 @@ double logK;
 double lambda_d_log2;
 double logK_d_log2;
 
+// E-value and bit score of a raw score, and a percentage (the same
+// expressions as at their former call sites: identical results)
+auto expect_value_of(long const score) -> double
+{
+  return Kmn * exp(- lambda * static_cast<double>(score));
+}
+
+auto bit_score_of(long const score) -> double
+{
+  return (lambda_d_log2 * static_cast<double>(score)) - logK_d_log2;
+}
+
+auto percentage(long const part, long const whole) -> double
+{
+  return 100.0 * static_cast<double>(part) / static_cast<double>(whole);
+}
+
 struct hits_entry
 {
   char * alignment;
@@ -167,14 +184,14 @@ auto hits_compare(void const * a, void const * b) -> int
 
 auto hits_sort() -> long *
 {
-  long * hits_sorted = static_cast<long *>(xmalloc(hits_count * sizeof(long)));
+  long * hits_sorted = static_cast<long *>(xmalloc(static_cast<std::size_t>(hits_count) * sizeof(long)));
 
   for (long i = 0; i < hits_count; i++)
   {
     hits_sorted[i] = i;
   }
 
-  qsort(hits_sorted, hits_count, sizeof(long), hits_compare);
+  qsort(hits_sorted, static_cast<std::size_t>(hits_count), sizeof(long), hits_compare);
 
   return hits_sorted;
 }
@@ -272,8 +289,8 @@ auto hits_gethit(long i, long * seqno, long * score,
 
 auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void
 {
-  hits_list[hitno].dseq = static_cast<char*>(xmalloc(seq_len));
-  memcpy(hits_list[hitno].dseq, seq, seq_len);
+  hits_list[hitno].dseq = static_cast<char*>(xmalloc(static_cast<std::size_t>(seq_len)));
+  memcpy(hits_list[hitno].dseq, seq, static_cast<std::size_t>(seq_len));
   hits_list[hitno].dlen = seq_len;
 }
 
@@ -299,15 +316,15 @@ auto hits_enter_align_coord(long i,
 
 auto hits_enter_header(long i, char const * header, long header_len) -> void
 {
-  hits_list[i].header_address = static_cast<char*>(xmalloc(header_len));
-  memcpy(hits_list[i].header_address, header, header_len);
+  hits_list[i].header_address = static_cast<char*>(xmalloc(static_cast<std::size_t>(header_len)));
+  memcpy(hits_list[i].header_address, header, static_cast<std::size_t>(header_len));
   hits_list[i].header_length = header_len;
 }
 
 auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void
 {
-  hits_list[hitno].alignment = static_cast<char*>(xmalloc(align_len));
-  memcpy(hits_list[hitno].alignment, align, align_len);
+  hits_list[hitno].alignment = static_cast<char*>(xmalloc(static_cast<std::size_t>(align_len)));
+  memcpy(hits_list[hitno].alignment, align, static_cast<std::size_t>(align_len));
   //  hits_list[hitno].alignment[align_len] = 0;
 }
 
@@ -379,7 +396,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
   obvious = 0;
   hits_count = 0;
-  hits_list = static_cast<struct hits_entry *>(xmalloc(keephits * sizeof(struct hits_entry)));
+  hits_list = static_cast<struct hits_entry *>(xmalloc(static_cast<std::size_t>(keephits) * sizeof(struct hits_entry)));
 
   for(int i=0; i<keephits; i++)
   {
@@ -395,12 +412,12 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
   if (db_ismasked() != 0)
   {
-    seqcount = db_getseqcount_masked();
+    seqcount = static_cast<int>(db_getseqcount_masked());
     symcount = db_getsymcount_masked();
   }
   else
   {
-    seqcount = db_getseqcount();
+    seqcount = static_cast<int>(db_getseqcount());
     symcount = db_getsymcount();
   }
 
@@ -452,7 +469,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 				   logK,
 				   alpha / lambda,
 				   beta,
-				   qlen,
+				   static_cast<Int4>(qlen),
 				   dlen,
 				   seqcount,
 				   & lenadj);
@@ -535,7 +552,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 				   logK,
 				   alpha / lambda,
 				   beta,
-				   qlen,
+				   static_cast<Int4>(qlen),
 				   dlen,
 				   seqcount,
 				   & lenadj);
@@ -654,8 +671,8 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
   db_getheader(t, h->seqno, & address, & length);
   h->header_length = length;
-  h->header_address = static_cast<char*>(xmalloc(length));
-  memcpy(h->header_address, address, length);
+  h->header_address = static_cast<char*>(xmalloc(static_cast<std::size_t>(length)));
+  memcpy(h->header_address, address, static_cast<std::size_t>(length));
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
   // KI-37), the sequence itself only for hits with an alignment
@@ -668,8 +685,8 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
   if (i < opt_alignments)
   {
-    h->dseq = static_cast<char*>(xmalloc(h->dlen));
-    memcpy(h->dseq, address, h->dlen);
+    h->dseq = static_cast<char*>(xmalloc(static_cast<std::size_t>(h->dlen)));
+    memcpy(h->dseq, address, static_cast<std::size_t>(h->dlen));
     
     char * qseq = nullptr;
     long qlen = 0;
@@ -1030,9 +1047,9 @@ auto whole_align(AlignedHit const & hit,
     al += len;
   }
 
-  char * qlinep = static_cast<char*>(xmalloc(al+1));
-  char * alinep = static_cast<char*>(xmalloc(al+1));
-  char * dlinep = static_cast<char*>(xmalloc(al+1));
+  char * qlinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
+  char * alinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
+  char * dlinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
 
   *qline = qlinep;
   *aline = alinep;
@@ -1252,7 +1269,7 @@ auto xml_print(char const * const text,
   }
 }
 
-auto make_anchor(char * anchor, long size, SymbolType symbol_type, long query_index, long i) -> void
+auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, long query_index, long i) -> void
 {
   switch(symbol_type)
   {
@@ -1297,7 +1314,7 @@ auto make_anchor(char * anchor, long size, SymbolType symbol_type, long query_in
 
 auto hits_defline_split(char * defline, 
 			long * gi,
-			char ** link, int * linklen, 
+			char ** link, std::size_t * linklen, 
 			char ** rest) -> void
 {
   char * p = defline;
@@ -1322,7 +1339,7 @@ auto hits_defline_split(char * defline,
   char * r = strchr(p, ' ');
   if (r != nullptr)
   {
-    *linklen = r - p;
+    *linklen = static_cast<std::size_t>(r - p);
     *link = p;
     *rest = r+1;
   }
@@ -1508,7 +1525,7 @@ auto hits_show_xml_paralign(long showalignments,
   for(long i=0; i<showhits; i++)
   {
     long const score = hits_list[i].score;
-    double const e = Kmn * exp(- lambda * score);
+    double const e = expect_value_of(score);
 
     char anchor[200];
     make_anchor(anchor, 200, query.symtype, queryno, i);
@@ -1518,7 +1535,7 @@ auto hits_show_xml_paralign(long showalignments,
     long gi = 0;
     char * link = nullptr;
     char * title = nullptr;
-    int linklen = 0;
+    std::size_t linklen = 0;
     db_parse_header(t, hits_list[i].header_address, hits_list[i].header_length,
 		    1, & deflines, & deflinetable);
     hits_defline_split(deflinetable[0], 
@@ -1601,7 +1618,7 @@ auto hits_show_xml_paralign(long showalignments,
       long gi = 0;
       char * link = nullptr;
       char * title = nullptr;
-      int linklen = 0;
+      std::size_t linklen = 0;
       db_parse_header(t, hits_list[i].header_address, hits_list[i].header_length,
 		      1, & deflines, & deflinetable);
       fprintf(out, "\t\t\t\t<linkContainer>\n");
@@ -1685,7 +1702,7 @@ auto hits_show_xml_paralign(long showalignments,
       }
 
       long const score = hits_list[i].score;
-      double const e = Kmn * exp(- lambda * score);
+      double const e = expect_value_of(score);
 
       long identities = 0;
       long positives = 0;
@@ -1708,7 +1725,7 @@ auto hits_show_xml_paralign(long showalignments,
       fprintf(out, "\t\t\t\t\t\t<identical>\n");
       fprintf(out, "\t\t\t\t\t\t\t<identicalNominator>%ld</identicalNominator>\n", identities);
       fprintf(out, "\t\t\t\t\t\t\t<identicalDenominator>%ld</identicalDenominator>\n", aligned);
-      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", 100.0*identities/aligned);
+      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(identities, aligned));
       fprintf(out, "\t\t\t\t\t\t</identical>\n");
 
       if (symtype != SymbolType::blastn)
@@ -1716,14 +1733,14 @@ auto hits_show_xml_paralign(long showalignments,
 	fprintf(out, "\t\t\t\t\t\t<positive>\n");
 	fprintf(out, "\t\t\t\t\t\t\t<positiveNominator>%ld</positiveNominator>\n", positives);
 	fprintf(out, "\t\t\t\t\t\t\t<positiveDenominator>%ld</positiveDenominator>\n", aligned);
-	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", 100.0*positives/aligned);
+	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(positives, aligned));
 	fprintf(out, "\t\t\t\t\t\t</positive>\n");
       }
 
       fprintf(out, "\t\t\t\t\t\t<indels>\n");
       fprintf(out, "\t\t\t\t\t\t\t<indelsNominator>%ld</indelsNominator>\n", indels);
       fprintf(out, "\t\t\t\t\t\t\t<indelsDenominator>%ld</indelsDenominator>\n", aligned);
-      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", 100.0*indels/aligned);
+      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(indels, aligned));
       fprintf(out, "\t\t\t\t\t\t</indels>\n");
       fprintf(out, "\t\t\t\t\t\t<gaps>%ld</gaps>\n", gaps);
       fprintf(out, "\t\t\t\t\t\t<alignmentQuery>\n");
@@ -1901,7 +1918,7 @@ auto hits_show_tsv(long showalignments,
     long const score = hits_list[i].score;
     
     fprintf(out, "\t%.2f\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld", 
-	    100.0 * identities / aligned,
+	    percentage(identities, aligned),
 	    aligned,
 	    aligned - identities - indels,
 	    gaps,
@@ -1912,9 +1929,9 @@ auto hits_show_tsv(long showalignments,
     
     if (stats_available != 0)
     {
-      double const expect_value = Kmn * exp(- lambda * score);
+      double const expect_value = expect_value_of(score);
       fprintf(out, "\t%.2g", expect_value);
-      double const bits = (lambda_d_log2 * score) - logK_d_log2;
+      double const bits = bit_score_of(score);
       fprintf(out, "\t%.1f", bits);
     }
     else
@@ -1998,8 +2015,8 @@ auto hits_show_plain(long show_gis,
 
 	if (stats_available != 0)
 	{
-	  long const bits = static_cast<long>(floor((lambda_d_log2 * score) - logK_d_log2 + 0.5));
-	  double const expect_value = Kmn * exp(- lambda * score);
+	  long const bits = static_cast<long>(floor(bit_score_of(score) + 0.5));
+	  double const expect_value = expect_value_of(score);
 		
 	  fprintf(out, " %5ld", bits);
 		
@@ -2039,8 +2056,8 @@ auto hits_show_plain(long show_gis,
 
 	if (stats_available != 0)
 	{
-	  double const bits = (lambda_d_log2 * score) - logK_d_log2;
-	  double const expect_value = Kmn * exp(- lambda * score);
+	  double const bits = bit_score_of(score);
+	  double const expect_value = expect_value_of(score);
 		
 	  fprintf(out, " Score = %.1lf bits (%ld), Expect = ", bits, score);
 	  hits_show_expect(expect_value);
