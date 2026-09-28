@@ -118,7 +118,7 @@ auto append_bounded(char * const dst, std::size_t const size,
 auto nextch(apt p) -> void
 {
   if (p->header_p < p->header_end)
-    p->ch = *(p->header_p)++;
+    p->ch = *p->header_p++;
   else
     p->ch = 0;
 }
@@ -757,7 +757,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xA0:
     parse_object_id(p);
-    if ((*(p->gnl_id_string)) != 0)
+    if ((*p->gnl_id_string) != 0)
       set_id(p, std::string(db) + "|" + p->gnl_id_string);
     else
       set_id(p, std::string(db) + "|" + std::to_string(p->gnl_id_integer));
@@ -775,7 +775,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xAA:
     parse_dbtag(p);
-    if ((*(p->gnl_id_string)) != 0)
+    if ((*p->gnl_id_string) != 0)
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
     else
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" +
@@ -1049,7 +1049,7 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
     {
       p->defline[0] = 0;
       parse_blast_def_line(p);
-      if (((p->f_checktaxid(p->taxid)) != 0) && ((p->memberships & p->memb) == p->memb))
+      if ((p->f_checktaxid(p->taxid) != 0) && ((p->memberships & p->memb) == p->memb))
       {
 	if (deflinetable != nullptr)
 	{

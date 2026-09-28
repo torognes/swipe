@@ -645,7 +645,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
     // give hint of alignment end
 
-    if ((h->bestq > 0) && ((h->align_hint) != 0))
+    if ((h->bestq > 0) && (h->align_hint != 0))
     {
       h->score_align = h->score;
       h->align_q_end = h->bestq;
