@@ -77,7 +77,7 @@ inline void dprofile_shuffle7(BYTE * dprofile,
   __m128i m0, m1, m2, m3, t0, t1, t2, t3, t4;
 #endif
 
-  __m128i * dseq = (__m128i*) dseq_byte;
+  auto * dseq = (__m128i*) dseq_byte;
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions

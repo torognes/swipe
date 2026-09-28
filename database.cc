@@ -192,7 +192,7 @@ void db_map_destruct(mapp m)
 
 db_thread_t * db_thread_create()
 {
-  struct db_thread_s * t = (struct db_thread_s *) xmalloc(sizeof(struct db_thread_s));
+  auto * t = (struct db_thread_s *) xmalloc(sizeof(struct db_thread_s));
   t->map_seq = db_map_create();
   t->map_hdr = db_map_create();
   t->parser = parser_create();
@@ -363,7 +363,7 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
 
   // al file exists
 
-  al_info_t * al_info = (al_info_t *) xmalloc(sizeof(al_info_t));
+  auto * al_info = (al_info_t *) xmalloc(sizeof(al_info_t));
 
   al_info->dblist_len = 0;
   al_info->oidlist_len = 0;
