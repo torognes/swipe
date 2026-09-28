@@ -24,11 +24,12 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::min
+#include <algorithm>  // std::fill, std::generate, std::min
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
 #include <cstdlib>  // std::strtol, std::strtod
+#include <iterator>  // std::begin, std::end
 #include <limits>
 #include <string>  // std::string (fatal)
 #include <vector>
@@ -210,17 +211,13 @@ auto align_init(struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
 
-  for(int i=0; i<8; i++)
-    sdp->dbta[i] = db_thread_create();
+  std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
 
   sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
   
-  for(int i = 0; i < 6; i++)
-  {
-    sdp->qtable[i] = nullptr;
-  }
+  std::fill(std::begin(sdp->qtable), std::end(sdp->qtable), nullptr);
 
   if (symtype == 0)
   {
@@ -427,10 +424,10 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 
 auto align_done(struct search_data * sdp) -> void
 {
-  for(int i = 0; i < 6; i++)
+  for(auto * query_table : sdp->qtable)
   {
-    if (sdp->qtable[i] != nullptr)
-      free(sdp->qtable[i]);
+    if (query_table != nullptr)
+      free(query_table);
   }
 
   free(sdp->dprofile);
@@ -443,8 +440,8 @@ auto align_done(struct search_data * sdp) -> void
   free(sdp->in_list);
   free(sdp->out_list);
   
-  for(int i=0; i<8; i++)
-    db_thread_destruct(sdp->dbta[i]);
+  for(auto * db_thread : sdp->dbta)
+    db_thread_destruct(db_thread);
 
   db_thread_destruct(sdp->dbt);
 }
@@ -1265,10 +1262,7 @@ auto search_init(struct search_data * sdp) -> void
   long qlen = 0;
   long hearraylen = 0;
   
-  for(int i = 0; i < 6; i++)
-  {
-    sdp->qtable[i] = nullptr;
-  }
+  std::fill(std::begin(sdp->qtable), std::end(sdp->qtable), nullptr);
 
   if (symtype == 0)
   {
@@ -1393,10 +1387,10 @@ auto search_init(struct search_data * sdp) -> void
 
 auto search_done(struct search_data * sdp) -> void
 {
-  for(int i = 0; i < 6; i++)
+  for(auto * query_table : sdp->qtable)
   {
-    if (sdp->qtable[i] != nullptr)
-      free(sdp->qtable[i]);
+    if (query_table != nullptr)
+      free(query_table);
   }
 
   free(sdp->dprofile);
