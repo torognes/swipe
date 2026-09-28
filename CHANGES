@@ -20,6 +20,12 @@
           (-m 7) reported the length of the translated database sequence
           (<len>, in amino acids), whereas the other outputs report its
           length in nucleotides. It is now in nucleotides too (KI-36)
+        * The name BLOSUM62_20 no longer selects statistical parameters
+          and default gap penalties: swipe has no built-in BLOSUM62_20
+          matrix, and none is distributed by NCBI, so -M BLOSUM62_20 used
+          to fail with "Cannot open score matrix file." unless such a file
+          existed. BLOSUM62_20 is now an unknown matrix name, like any
+          other file name (KI-15)
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2

@@ -194,11 +194,6 @@ long stats_getparams(const char * matrix,
     mat = blosum62_values;
     val = BLOSUM62_VALUES_MAX;
   }
-  else if (strcasecmp(matrix, "BLOSUM62_20") == 0)
-  {
-    mat = blosum62_20_values;
-    val = BLOSUM62_20_VALUES_MAX;
-  }
   else if (strcasecmp(matrix, "BLOSUM80") == 0)
   {
     mat = blosum80_values;
@@ -272,12 +267,6 @@ long stats_getprefs(const char * matrix,
     mat = blosum62_values;
     val = BLOSUM62_VALUES_MAX;
     prefs = blosum62_prefs;
-  }
-  else if (strcasecmp(matrix, "BLOSUM62_20") == 0)
-  {
-    mat = blosum62_20_values;
-    val = BLOSUM62_20_VALUES_MAX;
-    prefs = blosum62_20_prefs;
   }
   else if (strcasecmp(matrix, "BLOSUM80") == 0)
   {
