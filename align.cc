@@ -88,12 +88,9 @@ auto region(char const * a_seq,
 	
 	h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 	
-	if (h < 0)
-	  h = 0;
-	if (f > h)
-	  h = f;
-	if (EE[j] > h)
-	  h = EE[j];
+	h = std::max<long>(h, 0);
+	h = std::max(f, h);
+	h = std::max(EE[j], h);
 	
 	p = HH[j];
 	
@@ -135,10 +132,8 @@ auto region(char const * a_seq,
 
 	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 
-	  if (f > h)
-	    h = f;
-	  if (EE[j] > h)
-	    h = EE[j];
+	  h = std::max(f, h);
+	  h = std::max(EE[j], h);
 
 
 	  p = HH[j];
@@ -366,10 +361,8 @@ auto diff(struct aligner_info * aip,
 
 	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[static_cast<int>(a_seq[a_pos+i-1])];
 
-	      if (f > h)
-		h = f;
-	      if (EE[j] > h)
-		h = EE[j];
+	      h = std::max(f, h);
+	      h = std::max(EE[j], h);
 	      p = HH[j];
 	      HH[j] = h;
 	    }
@@ -407,10 +400,8 @@ auto diff(struct aligner_info * aip,
 
 	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[static_cast<int>(a_seq[a_pos+M-i])];
 
-	      if (f > h)
-		h = f;
-	      if (YY[j] > h)
-		h = YY[j];
+	      h = std::max(f, h);
+	      h = std::max(YY[j], h);
 	      p = XX[j];
 	      XX[j] = h;
 	    }

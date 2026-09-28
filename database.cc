@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::all_of
+#include <algorithm>  // std::all_of, std::max, std::min
 #include <cctype>  // std::isdigit, std::isspace
 #include <cstdint>  // std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoul
@@ -168,8 +168,7 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
   while (i<length)
   {
     long end = i + linelength;
-    if (length < end)
-      end = length;
+    end = std::min(length, end);
     while(i<end)
     {
       putc(map[static_cast<int>(address[i])], out);
@@ -928,8 +927,7 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
 	  db_main.masked_seqcount += db_volume[vol].masked_nseq;
 	  db_main.masked_symcount += db_volume[vol].masked_length;
 	  
-	  if ( db_volume[vol].longest > db_main.longest )
-	    db_main.longest = db_volume[vol].longest;
+	  db_main.longest = std::max(db_volume[vol].longest, db_main.longest);
 	  
 	  vol++;
 	  
@@ -967,8 +965,7 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
 	db_main.masked_seqcount += db_volume[vol].masked_nseq;
 	db_main.masked_symcount += db_volume[vol].masked_length;
 	
-	if ( db_volume[vol].longest > db_main.longest )
-	  db_main.longest = db_volume[vol].longest;
+	db_main.longest = std::max(db_volume[vol].longest, db_main.longest);
 	
 	vol++;
       }

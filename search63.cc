@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::max
 
 auto fullsw(char * dseq,
 	    char const * dend,
@@ -62,24 +63,18 @@ auto fullsw(char * dseq,
           e = *(hep+1);
           h += sp[static_cast<int>(*qp)];
 
-          if (e > h)
-            h = e;
-          if (f > h)
-            h = f;
-          if (h < 0)
-            h = 0;
-          if (h > s)
-            s = h;
+          h = std::max(e, h);
+          h = std::max(f, h);
+          h = std::max<long>(h, 0);
+          s = std::max(h, s);
 
           *hep = h;
           e -= gap_extend;
           f -= gap_extend;
           h -= gap_open_extend;
 
-          if (h > e)
-            e = h;
-          if (h > f)
-            f = h;
+          e = std::max(h, e);
+          f = std::max(h, f);
 
           *(hep+1) = e;
           h = n;

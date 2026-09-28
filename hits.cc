@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::min
 #include <cassert>
 #include <cctype>  // std::isspace
 #include <cmath>  // std::isnan
@@ -361,8 +362,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 	maxhits *= 18;
     }
 
-  if (keephits > maxhits)
-    keephits = maxhits;
+  keephits = std::min(keephits, maxhits);
 
   obvious = 0;
   hits_count = 0;

@@ -568,10 +568,8 @@ auto score_matrix_read() -> void
     for(b=0;b<32;b++)
       {
 	sc = score_matrix_63[(a<<5) + b];
-	if (sc < lo)
-	  lo = sc;
-	if (sc > hi)
-	  hi = sc;
+	lo = std::min(sc, lo);
+	hi = std::max(sc, hi);
       }
   
 
