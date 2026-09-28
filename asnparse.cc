@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include <algorithm>  // std::min
 #include <cassert>
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstring>  // std::memcpy, std::strlen
 #include <iterator>  // std::next
 #include <string>
@@ -104,8 +105,8 @@ auto append_bounded(char * const dst, std::size_t const size,
   auto const used = std::strlen(dst);
   assert(used < size);
   auto const count = std::min(std::strlen(src), size - used - 1);
-  std::memcpy(std::next(dst, used), src, count);
-  *std::next(dst, used + count) = '\0';
+  std::memcpy(std::next(dst, static_cast<std::ptrdiff_t>(used)), src, count);
+  *std::next(dst, static_cast<std::ptrdiff_t>(used + count)) = '\0';
 }
 
 auto nextch(apt p) -> void
@@ -221,7 +222,7 @@ auto parse_visiblestring(apt p) -> void
       //      printf("%02x ", ch);
       if (p->parsed_string_length < MAXSTRING)
 	{
-	  p->parsed_string[p->parsed_string_length] = p->ch;
+	  p->parsed_string[p->parsed_string_length] = static_cast<char>(p->ch);
 	  p->parsed_string_length++;
 	}
       nextch(p);
@@ -427,14 +428,14 @@ auto parse_date_std(apt p) -> void
 
   match_obj(p,0xA0);
   parse_integer(p); // year
-  year = p->parsed_integer;
+  year = static_cast<long>(p->parsed_integer);
   match_obj(p,0);
 
   if (p->obj == 0xA1)
   {
     match_obj(p,0xA1);
     parse_integer(p);
-    month = p->parsed_integer;
+    month = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -442,7 +443,7 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA2);
     parse_integer(p);
-    day = p->parsed_integer;
+    day = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -458,7 +459,7 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    hour = p->parsed_integer;
+    hour = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -466,7 +467,7 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    min = p->parsed_integer;
+    min = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -474,7 +475,7 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA6);
     parse_integer(p);
-    sec = p->parsed_integer;
+    sec = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -554,7 +555,7 @@ auto parse_pdb_seq_id(apt p) -> void
   {
     match_obj(p,0xA1);
     parse_integer(p); // default = 32 = @
-    p->pdb_chain = p->parsed_integer;
+    p->pdb_chain = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -840,7 +841,7 @@ auto parse_blast_def_line(apt p) -> void
       strcat(p->defline, " ");
     }
 
-  long const zzz = strlen(p->defline) + strlen(p->title);
+  long const zzz = static_cast<long>(strlen(p->defline) + strlen(p->title));
   if (zzz >= MAXDEFLINESTRING)
   {
     fatal("Error: defline too long");
@@ -955,21 +956,21 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
   if (deflinetable != nullptr)
   {
     size = 8;
-    table = static_cast<char**>(xmalloc(size * sizeof(char*)));
+    table = static_cast<char**>(xmalloc(static_cast<std::size_t>(size) * sizeof(char*)));
   }
     
   while (p->obj != 0U)
     {
       p->defline[0] = 0;
       parse_blast_def_line(p);
-      if ((p->f_checktaxid(p->taxid) != 0) && ((p->memberships & p->memb) == p->memb))
+      if ((p->f_checktaxid(static_cast<long>(p->taxid)) != 0) && ((p->memberships & p->memb) == p->memb))
       {
 	if (deflinetable != nullptr)
 	{
 	  if (deflines >= size)
 	  {
 	    size += 8;
-	    table = static_cast<char**>(xrealloc(table, size * sizeof(char*)));
+	    table = static_cast<char**>(xrealloc(table, static_cast<std::size_t>(size) * sizeof(char*)));
 	  }
 	  
 	  char * newdefline = static_cast<char*>(xmalloc(strlen(p->defline)+1));
@@ -1007,7 +1008,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   p->show_gis = show_gis;
   p->indent = 0;
   p->maxlen = 0;
-  p->memb = memb;
+  p->memb = static_cast<unsigned long>(memb);
   p->f_checktaxid = f_checktaxid;
   p->linelen = LONG_MAX;
   p->maxdeflines = LONG_MAX;
@@ -1034,8 +1035,9 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   p->escaping = layout.escaping;
   p->show_gis = layout.show_gis;
   p->indent = layout.indent;
-  p->maxlen = layout.maxlen;
-  p->memb = memb;
+  assert(layout.maxlen >= 0);
+  p->maxlen = static_cast<unsigned long>(layout.maxlen);
+  p->memb = static_cast<unsigned long>(memb);
   p->f_checktaxid = f_checktaxid;
   p->linelen = layout.linelen;
   p->maxdeflines = layout.maxdeflines;
@@ -1059,7 +1061,7 @@ auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
 			   long memb, long(*f_checktaxid)(long)) -> long
 {
   p->show_gis = 0;
-  p->memb = memb;
+  p->memb = static_cast<unsigned long>(memb);
   p->f_checktaxid = f_checktaxid;
 
   p->header_p = buf;
