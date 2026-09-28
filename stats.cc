@@ -42,7 +42,7 @@ typedef double array_of_8[8];
 
 #include "blastkar_partial.c"
 
-long stats_getparams_nt(long match_score,
+auto stats_getparams_nt(long match_score,
 			long mismatch_score, 
 			long gopen,
 			long gextend,
@@ -50,7 +50,7 @@ long stats_getparams_nt(long match_score,
 			double * K,
 			double * H,
 			double * alpha,
-			double * beta)
+			double * beta) -> long
 {
   const array_of_8 * bv;
   long bm;
@@ -167,14 +167,14 @@ long stats_getparams_nt(long match_score,
   return 0;
 }
 
-long stats_getparams(const char * matrix,
+auto stats_getparams(const char * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
 		     double * K,
 		     double * H,
 		     double * alpha,
-		     double * beta)
+		     double * beta) -> long
 {
   double (*mat)[8]; 
   long val;
@@ -242,9 +242,9 @@ long stats_getparams(const char * matrix,
   return 0;
 }
 
-long stats_getprefs(const char * matrix,
+auto stats_getprefs(const char * matrix,
 		    long * gopen,
-		    long * gextend)
+		    long * gextend) -> long
 {
   double (*mat)[8]; 
   long val;

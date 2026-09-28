@@ -96,8 +96,8 @@ extern char BIAS;
 void vector_print(BYTE * vector);
 void vector_print_word(WORD * vector);
 
-void * xmalloc(size_t size);
-void * xrealloc(void *ptr, size_t size);
+auto xmalloc(size_t size) -> void *;
+auto xrealloc(void *ptr, size_t size) -> void *;
 
 
 extern long cpu_feature_ssse3;
@@ -259,14 +259,14 @@ void search16s(WORD * * q_start,
 	       long * bestq,
 	       int qlen);
 
-long fullsw(char * dseq,
+auto fullsw(char * dseq,
 	    char * dend,
 	    char * qseq,
 	    char * qend,
 	    long * hearray, 
 	    long * score_matrix,
 	    long gap_open_penalty,
-	    long gap_extend_penalty);
+	    long gap_extend_penalty) -> long;
 
 void align(char * a_seq,
 	   char * b_seq,
@@ -284,14 +284,14 @@ void align(char * a_seq,
 
 void query_init(const char * queryname, long symtype, long strands);
 void query_exit();
-int query_read();
+auto query_read() -> int;
 void query_show();
 
 void score_matrix_init();
 void score_matrix_free();
 
 void translate_init(long qtableno, long dtableno);
-char * revcompl(char * seq, long len);
+auto revcompl(char * seq, long len) -> char *;
 void translate(char * dna, long dlen,
                long strand, long frame, long table,
                char ** protp, long * plenp);
@@ -299,7 +299,7 @@ void translate(char * dna, long dlen,
 struct asnparse_info;
 using apt = asnparse_info *;
 
-apt parser_create();
+auto parser_create() -> apt;
 void parser_destruct(apt p);
 
 // XML outputs: the five special characters are escaped (KI-27)
@@ -308,37 +308,37 @@ enum struct Escaping : int { none, xml };
 // print a character to out, escaped as XML (&amp; &lt; &gt; &quot; &apos;)
 auto xml_putc(char symbol) noexcept -> void;
 
-long parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
+auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
 		  long show_gis, long indent, long maxlen, 
 		  long linelen, long maxdeflines, long show_descr,
-		  Escaping escaping = Escaping::none);
+		  Escaping escaping = Escaping::none) -> long;
 
 void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable);
 
-long parse_getdeflinecount(apt p, unsigned char * buf, long len,
-                           long memb, long(*f_checktaxid)(long));
+auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+                           long memb, long(*f_checktaxid)(long)) -> long;
 
 void db_open(long symtype, const char * basename, char * taxidfilename);
 void db_close();
-long db_getseqcount();
-long db_getseqcount_masked();
-long db_getsymcount();
-long db_getsymcount_masked();
-long db_getlongest();
-char* db_gettitle();
-char* db_gettime();
-long db_getvolumecount();
-long db_getseqcount_volume(long v);
-long db_getseqcount_volume_masked(long v);
-long db_ismasked();
-long db_getversion();
+auto db_getseqcount() -> long;
+auto db_getseqcount_masked() -> long;
+auto db_getsymcount() -> long;
+auto db_getsymcount_masked() -> long;
+auto db_getlongest() -> long;
+auto db_gettitle() -> char*;
+auto db_gettime() -> char*;
+auto db_getvolumecount() -> long;
+auto db_getseqcount_volume(long v) -> long;
+auto db_getseqcount_volume_masked(long v) -> long;
+auto db_ismasked() -> long;
+auto db_getversion() -> long;
 
-long db_getvolume(long seqno);
+auto db_getvolume(long seqno) -> long;
 
-struct db_thread_s * db_thread_create();
+auto db_thread_create() -> struct db_thread_s *;
 void db_thread_destruct(struct db_thread_s * t);
 
-long db_check_taxid(long taxid);
+auto db_check_taxid(long taxid) -> long;
 
 void db_parse_header(struct db_thread_s * t, char * address, long length,
 		     long show_gis,
@@ -355,7 +355,7 @@ void db_getshowheader(struct db_thread_s * t, long seqno,
 void db_show_fasta(struct db_thread_s * t, long seqno,
 		   long strand, long frame, long split);
 
-long db_check_inclusion(struct db_thread_s * t, long seqno);
+auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
 void db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno);
 void db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno);
@@ -372,8 +372,8 @@ void hits_init(long descriptions, long alignments, long minscore,
 	       long maxscore, double minexpect, double expect, int show_nostats);
 void hits_enter(long seqno, long score, long qstrand, long qframe,
 		long dstrand, long dframe, long align_hint, long bestq);
-long * hits_sort();
-long hits_getcount();
+auto hits_sort() -> long *;
+auto hits_getcount() -> long;
 void hits_align(struct db_thread_s * t, long i);
 void hits_show_begin(long view);
 void hits_show_end(long view);
@@ -405,7 +405,7 @@ void hits_enter_align_coord(long i,
 void hits_enter_align_string(long hitno, char * align, long align_len);
 
 
-long stats_getparams_nt(long matchscore,
+auto stats_getparams_nt(long matchscore,
 			long mismatchscore, 
 			long gopen,
 			long gextend,
@@ -413,20 +413,20 @@ long stats_getparams_nt(long matchscore,
 			double * K,
 			double * H,
 			double * alpha,
-			double * beta);
+			double * beta) -> long;
 
-long stats_getparams(const char * matrix,
+auto stats_getparams(const char * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
 		     double * K,
 		     double * H,
 		     double * alpha,
-		     double * beta);
+		     double * beta) -> long;
 
-long stats_getprefs(const char * matrix,
+auto stats_getprefs(const char * matrix,
 		    long * gopen,
-		    long * gextend);
+		    long * gextend) -> long;
 
 
 using Int4 = int;

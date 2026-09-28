@@ -172,7 +172,7 @@ void fatal(std::string const & message)
   fatal(message.c_str());
 }
 
-void * xmalloc(size_t size)
+auto xmalloc(size_t size) -> void *
 {
   const size_t alignment = 16;
   void * t = nullptr;
@@ -185,7 +185,7 @@ void * xmalloc(size_t size)
   return t;
 }
 
-void * xrealloc(void *ptr, size_t size)
+auto xrealloc(void *ptr, size_t size) -> void *
 {
   void * t = realloc(ptr, size);
   if (!t)
@@ -592,7 +592,7 @@ void align_threads_done()
   free(align_volseqs);
 }
 
-int align_getwork(long * first, long * last)
+auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
   long bins = 7;
@@ -621,7 +621,7 @@ int align_getwork(long * first, long * last)
   return status;
 }
 
-void * align_worker(void *)
+auto align_worker(void *) -> void *
 {
   search_data sd;
   align_init(&sd);
@@ -1410,7 +1410,7 @@ void search_done(struct search_data * sdp)
   db_thread_destruct(sdp->dbt);
 }
 
-int search_getwork(long * first, long * last)
+auto search_getwork(long * first, long * last) -> int
 {
   int status = 0;
   long volcount = db_getvolumecount();
@@ -1683,7 +1683,7 @@ void search_chunk(struct search_data * sdp)
 }
 
 
-void * worker(void *)
+auto worker(void *) -> void *
 {
   struct search_data sd;
   search_init(&sd);
@@ -1949,7 +1949,7 @@ void work()
 
 }  // anonymous namespace
 
-int main(int argc, char**argv)
+auto main(int argc, char**argv) -> int
 {
 
   cpu_features();

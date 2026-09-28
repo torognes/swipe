@@ -25,14 +25,14 @@
 
 #include "swipe.h"
 
-long fullsw(char * dseq,
+auto fullsw(char * dseq,
 	    char * dend,
 	    char * qseq,
 	    char * qend,
 	    long * hearray,
 	    long * score_matrix,
 	    long gap_open_extend,
-	    long gap_extend)
+	    long gap_extend) -> long
 {
   long h;
   long n;

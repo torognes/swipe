@@ -171,7 +171,7 @@ void db_print_seq_map(char * address, long length, const char * map)
   }
 }
 
-mapp db_map_create()
+auto db_map_create() -> mapp
 {
   mapp m = (mapp) xmalloc(sizeof(struct db_map_s));
   m->map_volume = nullptr;
@@ -190,7 +190,7 @@ void db_map_destruct(mapp m)
 
 }  // anonymous namespace
 
-db_thread_t * db_thread_create()
+auto db_thread_create() -> db_thread_t *
 {
   auto * t = (struct db_thread_s *) xmalloc(sizeof(struct db_thread_s));
   t->map_seq = db_map_create();
@@ -301,7 +301,7 @@ void db_init(db_main_t * v)
 }
 
 
-long getnames(char * line, char * * * names)
+auto getnames(char * line, char * * * names) -> long
 {
   char ws[] = " \t\r\n\"";
   long n = 0;
@@ -346,7 +346,7 @@ long getnames(char * line, char * * * names)
 
 namespace {
 
-al_info_t * db_read_alias(long symbol_type, const char * basename)
+auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 {
   // open an alias file and read contents
 
@@ -487,7 +487,7 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
   return value;
 }
 
-long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
+auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) -> long
 {
   db_volume_init(volume);
 
@@ -542,7 +542,7 @@ long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
      the offsets must stay within the header and sequence files: a
      truncated or corrupted file was read beyond its end (KI-23) */
   char const * const xin_end = std::next(volume->adr_xin, volume->len_xin);
-  auto const check_xin_room = [&](char const * const position, long const size)
+  auto const check_xin_room = [&](char const * const position, long const size) -> void
     {
       if ((size < 0) or (std::distance(position, xin_end) < size))
         fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
@@ -646,7 +646,7 @@ long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
   return 1;
 }
 
-char * get_path(const char * basename)
+auto get_path(const char * basename) -> char *
 {
   const char * p = basename;
   char * path;
@@ -662,7 +662,7 @@ char * get_path(const char * basename)
   return path;
 }
 
-char * addpath(char * path, char * base)
+auto addpath(char * path, char * base) -> char *
 {
   long pathlen = strlen(path);
   long baselen = strlen(base);
@@ -700,7 +700,7 @@ void seqno_volume(long seqno, long * sp, db_volume_t * * vp)
 
 }  // anonymous namespace
 
-long db_getvolume(long seqno)
+auto db_getvolume(long seqno) -> long
 {
   long dummy;
   db_volume_t * vp;
@@ -727,7 +727,7 @@ void db_open_msk(db_volume_t * v)
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
 }
 
-long db_check_msk(long seqno)
+auto db_check_msk(long seqno) -> long
 {
   long s;
   db_volume_t * v;
@@ -760,7 +760,7 @@ void db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile)
 
 }  // anonymous namespace
 
-long db_check_taxid(long taxid)
+auto db_check_taxid(long taxid) -> long
 {
 
   if (db_main.taxid_bitmap_address)
@@ -1110,70 +1110,70 @@ void db_close()
     free(db_main.taxid_filename);
 }
 
-long db_getsymtype();
+auto db_getsymtype() -> long;
 
-long db_getversion()
+auto db_getversion() -> long
 {
   return db_main.version;
 }
 
-char * db_getbasename();
+auto db_getbasename() -> char *;
 
-long db_ismasked()
+auto db_ismasked() -> long
 {
   return db_main.memb_bit > 0;
 }
 
-long db_getvolumecount()
+auto db_getvolumecount() -> long
 {
   return db_main.volumecount;
 }
 
-long db_getseqcount()
+auto db_getseqcount() -> long
 {
   return db_main.seqcount;
 }
 
-long db_getseqcount_volume(long v)
+auto db_getseqcount_volume(long v) -> long
 {
   return db_volume[v].seqcount;
 }
 
-long db_getseqcount_volume_masked(long v)
+auto db_getseqcount_volume_masked(long v) -> long
 {
   return db_volume[v].masked_nseq;
 }
 
-long db_getseqcount_masked()
+auto db_getseqcount_masked() -> long
 {
   if (db_main.memb_bit)
     return db_main.masked_seqcount;
   return db_main.seqcount;
 }
 
-long db_getsymcount()
+auto db_getsymcount() -> long
 {
   return db_main.symcount;
 }
 
-long db_getsymcount_masked()
+auto db_getsymcount_masked() -> long
 {
   if (db_main.memb_bit)
     return db_main.masked_symcount;
   return db_main.symcount;
 }
 
-long db_getlongest()
+auto db_getlongest() -> long
 {
   return db_main.longest;
 }
 
-char* db_gettitle()
+auto db_gettitle() -> char*
 {
   return db_main.title;
 }
 
-char* db_gettime()
+auto db_gettime() -> char*
 {
   return db_main.time;
 }
@@ -1559,7 +1559,7 @@ void db_print_seq(db_thread_t * t, long seqno, long strand, long frame)
     db_print_seq_map(address, length-1, sym_sound);
 }
 
-long db_check_taxid_seqno(db_thread_t * t, long seqno)
+auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
 {
   char * address;
   long length;
@@ -1569,7 +1569,7 @@ long db_check_taxid_seqno(db_thread_t * t, long seqno)
 
 }  // anonymous namespace
 
-long db_check_inclusion(db_thread_t * t, long seqno)
+auto db_check_inclusion(db_thread_t * t, long seqno) -> long
 {
   if (db_main.memb_bit)
   {

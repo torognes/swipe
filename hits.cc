@@ -92,7 +92,7 @@ pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-int hits_compare(const void * a, const void * b)
+auto hits_compare(const void * a, const void * b) -> int
 {
   auto const index_a = *static_cast<long const *>(a);
   auto const index_b = *static_cast<long const *>(b);
@@ -153,7 +153,7 @@ int hits_compare(const void * a, const void * b)
 
 }  // anonymous namespace
 
-long * hits_sort()
+auto hits_sort() -> long *
 {
   long * hits_sorted = (long *) xmalloc(hits_count * sizeof(long));
   
@@ -243,7 +243,7 @@ void hits_enter(long seqno, long score, long qstrand, long qframe,
   pthread_mutex_unlock(&hitsmutex);
 }
 
-long hits_getcount()
+auto hits_getcount() -> long
 {
   return hits_count;
 }

@@ -945,7 +945,7 @@ void parse_blast_def_line(apt p)
   append_bounded(p->defline, sizeof(p->defline), p->title);
 }
 
-long show_deflines(apt p, long deflines, char ** deflinetable)
+auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 {
   for(long x=0; x<deflines; x++)
   {
@@ -1032,7 +1032,7 @@ long show_deflines(apt p, long deflines, char ** deflinetable)
   return deflines;
 }
 
-long parse_blast_def_line_set_new(apt p, char *** deflinetable)
+auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 {
   match_obj(p,0x30);
   long deflines = 0;
@@ -1077,7 +1077,7 @@ long parse_blast_def_line_set_new(apt p, char *** deflinetable)
 
 }  // anonymous namespace
 
-apt parser_create()
+auto parser_create() -> apt
 {
   return (apt) xmalloc(sizeof(struct asnparse_info));
 }
@@ -1113,10 +1113,10 @@ void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   *deflinesp = deflines;
 }
 
-long parse_header(apt p, unsigned char * buf, long len, long memb, 
+auto parse_header(apt p, unsigned char * buf, long len, long memb, 
 		  long (*f_checktaxid)(long), long show_gis, long indent, 
 		  long maxlen, long linelen, long maxdeflines, long show_descr,
-		  Escaping const escaping)
+		  Escaping const escaping) -> long
 {
   p->escaping = escaping;
   p->show_gis = show_gis;
@@ -1142,8 +1142,8 @@ long parse_header(apt p, unsigned char * buf, long len, long memb,
   return deflines2;
 }
 
-long parse_getdeflinecount(apt p, unsigned char * buf, long len,
-			   long memb, long(*f_checktaxid)(long))
+auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+			   long memb, long(*f_checktaxid)(long)) -> long
 {
   p->show_gis = 0;
   p->memb = memb;

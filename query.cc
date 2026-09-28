@@ -297,7 +297,7 @@ void query_exit()
   query_free();
 }
 
-int query_read()
+auto query_read() -> int
 {
   if (query_line.empty())
     return 0;
@@ -400,7 +400,7 @@ int query_read()
   return 1;
 }
 
-char * revcompl(char * seq, long len)
+auto revcompl(char * seq, long len) -> char *
 {
   char * rc = (char *) xmalloc(len+1);
   for(long i=0; i<len; i++)
