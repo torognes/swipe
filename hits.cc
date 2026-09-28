@@ -1434,7 +1434,7 @@ auto hits_defline_split(char * defline,
 
 auto hits_show_xml_paralign(long showalignments,
 			    long showhits,
-			    struct db_thread_s * t) -> void
+			    struct db_thread_s const * t) -> void
 {
   /* ParAlign XML */
   
@@ -1884,7 +1884,7 @@ auto show_description_xml(char const * const desc) -> void
 auto hits_show_xml(long show_gis,
 		   long showalignments,
 		   long showhits,
-		   struct db_thread_s * t) -> void
+		   struct db_thread_s const * t) -> void
 {
   /* Simple XML */
   
@@ -1957,7 +1957,7 @@ auto hits_show_xml(long show_gis,
 
 auto hits_show_tsv(long showalignments,
 		   long showcomments,
-		   struct db_thread_s * t) -> void
+		   struct db_thread_s const * t) -> void
 {
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
@@ -2026,7 +2026,7 @@ auto hits_show_tsv(long showalignments,
 auto hits_show_plain(long show_gis,
 		     long showalignments,
 		     long showhits,
-		     struct db_thread_s * t) -> void
+		     struct db_thread_s const * t) -> void
 {
     if (hits_count == 0)
     {
