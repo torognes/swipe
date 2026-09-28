@@ -25,8 +25,8 @@
 
 #include "swipe.h"
 
-#define CHANNELS 16
-#define CDEPTH 4
+constexpr int CHANNELS = 16;
+constexpr int CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
 // fit in a signed char, -128 has the same bits)

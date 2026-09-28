@@ -25,8 +25,8 @@
 
 #include "swipe.h"
 
-#define CHANNELS 8
-#define CDEPTH 1
+constexpr int CHANNELS = 8;
+constexpr int CDEPTH = 1;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
