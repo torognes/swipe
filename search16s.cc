@@ -348,7 +348,7 @@ void search16s(WORD * * q_start,
 
   int easy = 0;
 
-  while(1)
+  while(true)
   {
     if (easy)
     {

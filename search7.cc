@@ -780,7 +780,7 @@ search7
 
   int easy = 0;
 
-  while(1)
+  while(true)
   {
     if (easy)
     {

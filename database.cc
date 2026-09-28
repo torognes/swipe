@@ -309,7 +309,7 @@ long getnames(char * line, char * * * names)
   long namecount = 0;
 
   char * p = line;
-  while (1)
+  while (true)
   {
     long wslen = strspn(p, ws);
     long namelen = strcspn(p + wslen, ws);

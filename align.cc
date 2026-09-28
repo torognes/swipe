@@ -191,7 +191,7 @@ void push(struct aligner_info * aip)
 {
   if (aip->count > 0)
   {
-    while (1)
+    while (true)
     {
       long rest = aip->size - aip->length;
       int n = snprintf(aip->alignment + aip->length,

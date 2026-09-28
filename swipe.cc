@@ -936,7 +936,7 @@ void args_init(int argc, char **argv)
   auto gapopen_given = false;
   auto gapextend_given = false;
   
-  while (1)
+  while (true)
     {
       c = getopt_long(argc, argv, short_options, long_options, &option_index);
       if (c == -1)
