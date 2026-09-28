@@ -30,6 +30,7 @@
 #include <cmath>  // std::floor, std::isfinite
 #include <cstdlib>  // std::strtol, std::strtod
 #include <limits>
+#include <string>  // std::string (fatal)
 #include <vector>
 
 /* ARGUMENTS AND THEIR DEFAULTS */
@@ -166,11 +167,9 @@ void fatal(const char * message)
   exit(1);
 }
 
-void fatal(const char * format, const char * message)
+void fatal(std::string const & message)
 {
-  fprintf(stderr, format, message);
-  fprintf(stderr, "\n");
-  exit(1);
+  fatal(message.c_str());
 }
 
 void * xmalloc(size_t size)

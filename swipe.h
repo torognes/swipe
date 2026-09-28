@@ -40,6 +40,7 @@
 #include <array>
 #include <chrono>
 #include <ctime>
+#include <string>
 
 
 #ifdef __APPLE__
@@ -195,7 +196,7 @@ struct time_info
 extern struct time_info ti;
 
 void fatal(const char * message);
-void fatal(const char * format, const char * message);
+void fatal(std::string const & message);
 
 void search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,

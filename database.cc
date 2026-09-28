@@ -376,7 +376,7 @@ void show_db_info(db_main_t * vol)
   fprintf(stderr, "masked_seqcount: %ld\n", vol->masked_seqcount);
   fprintf(stderr, "masked_symcount: %ld\n", vol->masked_symcount);
   fprintf(stderr, "taxid_filename: %s\n", vol->taxid_filename);
-  fprintf(stderr, "taxid_file: %p\n", vol->taxid_file);
+  fprintf(stderr, "taxid_file: %p\n", static_cast<void *>(vol->taxid_file));
   fprintf(stderr, "taxid_bitmap_address: %p\n", vol->taxid_bitmap_address);
   fprintf(stderr, "taxid_bitmap_size: %ld\n", vol->taxid_bitmap_size);
   fprintf(stderr, "\n");
@@ -575,24 +575,24 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 
   volume->fd_xin = open(name_pin, O_RDONLY);
   if (volume->fd_xin < 0)
-    fatal("Unable to open file %s.", name_pin);
+    fatal(std::string("Unable to open file ") + name_pin + ".");
   
   volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
   volume->adr_xin = (char *) mmap(0, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0);
 
   if (volume->adr_xin == MAP_FAILED)
-    fatal("Unable to map file %s in memory. It may be empty or too large.", name_pin);
+    fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
 
   volume->fd_xhr = open(name_phr, O_RDONLY);
   if (volume->fd_xhr < 0)
-    fatal("Unable to open file %s.", name_phr);
+    fatal(std::string("Unable to open file ") + name_phr + ".");
 
   volume->len_xhr = lseek(volume->fd_xhr, 0, SEEK_END);
 
 
   volume->fd_xsq = open(name_psq, O_RDONLY, 0);
   if (volume->fd_xsq < 0)
-    fatal("Unable to open file %s.", name_psq);
+    fatal(std::string("Unable to open file ") + name_psq + ".");
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
@@ -603,7 +603,7 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   auto const check_xin_room = [&](char const * const position, long const size)
     {
       if ((size < 0) or (std::distance(position, xin_end) < size))
-        fatal("Database index file %s is truncated or corrupted.", name_pin);
+        fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     };
 
   char * p = (char*) volume->adr_xin;
@@ -662,24 +662,24 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   for (long seqno = 0; seqno < volume->seqcount; ++seqno)
   {
     if (offset_at(volume->offset_xhr, seqno) > offset_at(volume->offset_xhr, seqno + 1))
-      fatal("Database index file %s is truncated or corrupted.", name_pin);
+      fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     long const seq_start = offset_at(volume->offset_xsq, seqno);
     long const seq_end = offset_at(volume->offset_xsq, seqno + 1);
     if (seq_start > seq_end)
-      fatal("Database index file %s is truncated or corrupted.", name_pin);
+      fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     if (not is_nucleotide)
       continue;
     /* the packed nucleotides use at least one byte, before the
        ambiguity table of the sequence */
     long const amb_start = offset_at(volume->offset_amb, seqno);
     if ((amb_start <= seq_start) or (amb_start > seq_end))
-      fatal("Database index file %s is truncated or corrupted.", name_pin);
+      fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
   }
 
   if (offset_at(volume->offset_xhr, volume->seqcount) > volume->len_xhr)
-    fatal("Database header file %s is truncated or corrupted.", name_phr);
+    fatal(std::string("Database header file ") + name_phr + " is truncated or corrupted.");
   if (offset_at(volume->offset_xsq, volume->seqcount) > volume->len_xsq)
-    fatal("Database sequence file %s is truncated or corrupted.", name_psq);
+    fatal(std::string("Database sequence file ") + name_psq + " is truncated or corrupted.");
 
   free(name_pin);
   free(name_phr);
@@ -756,13 +756,13 @@ void db_open_msk(db_volume_t * v)
   v->fd_msk = open(v->masked_mskfile, O_RDONLY);
 
   if (v->fd_msk < 0)
-    fatal("Unable to open msk file %s.", v->masked_mskfile);
+    fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
 
   v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
   v->adr_msk = (unsigned char *) mmap(0, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0);
   
   if (v->adr_msk == MAP_FAILED)
-    fatal("Unable to mmap msk file %s.", v->masked_mskfile);
+    fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
 }
 
 long db_check_msk(long seqno)
@@ -868,7 +868,7 @@ void db_read_taxid_file(char * filename)
   db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
   if (!db_main.taxid_file)
-    fatal("Unable to open taxid file %s.", filename);
+    fatal(std::string("Unable to open taxid file ") + filename + ".");
 
   db_main.taxid_bitmap_size = 64*1024;
   db_main.taxid_bitmap_address = (unsigned char*) xmalloc(db_main.taxid_bitmap_size);
