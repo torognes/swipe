@@ -358,87 +358,83 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
 
   free(filename);
 
-  if (db_file_xal)
+  if (not db_file_xal)
+    return nullptr;  // no alias file
+
+  // al file exists
+
+  al_info_t * al_info = (al_info_t *) xmalloc(sizeof(al_info_t));
+
+  al_info->dblist_len = 0;
+  al_info->oidlist_len = 0;
+  al_info->title = nullptr;
+  al_info->dblist = nullptr;
+  al_info->oidlist = nullptr;
+  al_info->length = 0;
+  al_info->nseq = 0;
+  al_info->maxoid = 0;
+  al_info->memb_bit = 0;
+
+  char line[10000];
+  while (fgets(line, 10000, db_file_xal))
   {
-    // al file exists
-    
-    al_info_t * al_info = (al_info_t *) xmalloc(sizeof(al_info_t));
-    
-    al_info->dblist_len = 0;
-    al_info->oidlist_len = 0;
-    al_info->title = nullptr;
-    al_info->dblist = nullptr;
-    al_info->oidlist = nullptr;
-    al_info->length = 0;
-    al_info->nseq = 0;
-    al_info->maxoid = 0;
-    al_info->memb_bit = 0;
-    
-    char line[10000];
-    while (fgets(line, 10000, db_file_xal))
+    if (strncmp(line, "TITLE ", 6)== 0)
     {
-      if (strncmp(line, "TITLE ", 6)== 0)
-      {
-	long start = strspn(line+6, " \t");
-	long titlelen = strcspn(line+6+start, "\r\n");
-	al_info->title = (char*) xmalloc(titlelen + 1);
-	strncpy(al_info->title, line+6+start, titlelen);
-	al_info->title[titlelen] = 0;
-      }
-      else if (strncmp(line, "DBLIST", 6) == 0)
-      {
-	al_info->dblist_len = getnames(line+6, & al_info->dblist);
-      }
-      else if (strncmp(line, "OIDLIST", 7) == 0)
-      {
-	al_info->oidlist_len = getnames(line+7, & al_info->oidlist);
-      }
-      else if (strncmp(line, "GILIST", 6) == 0)
-      {
-	// not implemented
-	fatal("GILIST in database alias files not implemented.");
-      }
-      else if (strncmp(line, "TAXIDLIST", 9) == 0)
-      {
-	// written by blastdb_aliastool -taxidlist: not implemented, and
-	// ignoring it would search the whole database (KI-39)
-	fatal("TAXIDLIST in database alias files not implemented.");
-      }
-      else if (strncmp(line, "SEQIDLIST", 9) == 0)
-      {
-	// written by blastdb_aliastool -seqidlist: not implemented (KI-39)
-	fatal("SEQIDLIST in database alias files not implemented.");
-      }
-      else if (strncmp(line, "LENGTH ", 7) == 0)
-      {
-	al_info->length = atol(line+7);
-      }
-      else if (strncmp(line, "NSEQ ", 5) == 0)
-      {
-	al_info->nseq = atol(line+5);
-      }
-      else if (strncmp(line, "MAXOID ", 7) == 0)
-      {
-	al_info->maxoid = atol(line+7);
-      }
-      else if (strncmp(line, "MEMB_BIT ", 9) == 0)
-      {
-	al_info->memb_bit = atol(line+9);
-      }
+      long start = strspn(line+6, " \t");
+      long titlelen = strcspn(line+6+start, "\r\n");
+      al_info->title = (char*) xmalloc(titlelen + 1);
+      strncpy(al_info->title, line+6+start, titlelen);
+      al_info->title[titlelen] = 0;
     }
-
-    if (!al_info->title)
-      al_info->title = strdup(basename);
-
-    fclose(db_file_xal);
-
-    
-    return al_info;
+    else if (strncmp(line, "DBLIST", 6) == 0)
+    {
+      al_info->dblist_len = getnames(line+6, & al_info->dblist);
+    }
+    else if (strncmp(line, "OIDLIST", 7) == 0)
+    {
+      al_info->oidlist_len = getnames(line+7, & al_info->oidlist);
+    }
+    else if (strncmp(line, "GILIST", 6) == 0)
+    {
+      // not implemented
+      fatal("GILIST in database alias files not implemented.");
+    }
+    else if (strncmp(line, "TAXIDLIST", 9) == 0)
+    {
+      // written by blastdb_aliastool -taxidlist: not implemented, and
+      // ignoring it would search the whole database (KI-39)
+      fatal("TAXIDLIST in database alias files not implemented.");
+    }
+    else if (strncmp(line, "SEQIDLIST", 9) == 0)
+    {
+      // written by blastdb_aliastool -seqidlist: not implemented (KI-39)
+      fatal("SEQIDLIST in database alias files not implemented.");
+    }
+    else if (strncmp(line, "LENGTH ", 7) == 0)
+    {
+      al_info->length = atol(line+7);
+    }
+    else if (strncmp(line, "NSEQ ", 5) == 0)
+    {
+      al_info->nseq = atol(line+5);
+    }
+    else if (strncmp(line, "MAXOID ", 7) == 0)
+    {
+      al_info->maxoid = atol(line+7);
+    }
+    else if (strncmp(line, "MEMB_BIT ", 9) == 0)
+    {
+      al_info->memb_bit = atol(line+9);
+    }
   }
-  else
-  {
-    return nullptr;
-  }
+
+  if (!al_info->title)
+    al_info->title = strdup(basename);
+
+  fclose(db_file_xal);
+
+
+  return al_info;
 }
 
 
@@ -774,11 +770,9 @@ long db_check_taxid(long taxid)
     
     if (byteno < db_main.taxid_bitmap_size)
       return (db_main.taxid_bitmap_address[byteno] >> bitno) & 1;
-    else
-      return 0;
+    return 0;
   }
-  else
-    return 1;
+  return 1;
 }
 
 // NCBI taxids are below 2^31; values above would also make the taxid
@@ -1154,8 +1148,7 @@ long db_getseqcount_masked()
 {
   if (db_main.memb_bit)
     return db_main.masked_seqcount;
-  else
-    return db_main.seqcount;
+  return db_main.seqcount;
 }
 
 long db_getsymcount()
@@ -1167,8 +1160,7 @@ long db_getsymcount_masked()
 {
   if (db_main.memb_bit)
     return db_main.masked_symcount;
-  else
-    return db_main.symcount;
+  return db_main.symcount;
 }
 
 long db_getlongest()

@@ -103,47 +103,47 @@ int hits_compare(const void * a, const void * b)
   {
     return -1;
   }
-  else if ( (index_a >= opt_alignments) > (index_b >= opt_alignments) )
+  if ( (index_a >= opt_alignments) > (index_b >= opt_alignments) )
   {
     return +1;
   }
-  else if (ap->qstrand < bp->qstrand)
+  if (ap->qstrand < bp->qstrand)
   {
     return -1;
   }
-  else if (ap->qstrand > bp->qstrand)
+  if (ap->qstrand > bp->qstrand)
   {
     return +1;
   }
-  else if (ap->qframe < bp->qframe)
+  if (ap->qframe < bp->qframe)
   {
     return -1;
   }
-  else if (ap->qframe > bp->qframe)
+  if (ap->qframe > bp->qframe)
   {
     return +1;
   }
-  else if (ap->seqno < bp->seqno)
+  if (ap->seqno < bp->seqno)
   {
     return -1;
   }
-  else if (ap->seqno > bp->seqno)
+  if (ap->seqno > bp->seqno)
   {
     return +1;
   }
-  else if (ap->dstrand < bp->dstrand)
+  if (ap->dstrand < bp->dstrand)
   {
     return -1;
   }
-  else if (ap->dstrand > bp->dstrand)
+  if (ap->dstrand > bp->dstrand)
   {
     return +1;
   }
-  else if (ap->dframe < bp->dframe)
+  if (ap->dframe < bp->dframe)
   {
     return -1;
   }
-  else if (ap->dframe > bp->dframe)
+  if (ap->dframe > bp->dframe)
   {
     return +1;
   }
