@@ -351,23 +351,31 @@ auto threshold_to_long(double const value) -> long
 
 }  // anonymous namespace
 
-auto hits_init(long descriptions, long max_alignments, long minscore, long maxscore, double min_expect, double max_expect, int show_nostats) -> void
+auto hits_init(Parameters const & parameters) -> void
 {
+  long const descriptions = parameters.maxmatches;
+  long const max_alignments = parameters.alignments;
+  long const minscore = parameters.minscore;
+  long const maxscore = parameters.maxscore;
+  double const min_expect = parameters.minexpect;
+  double const max_expect = parameters.expect;
+  int const show_nostats = static_cast<int>(parameters.view == OutputFormat::plain);
+
   opt_descriptions = descriptions;
   opt_alignments = max_alignments;
   keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
   long maxhits = db_getseqcount_masked();
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
     {
-      if (querystrands == QueryStrands::both)
+      if (parameters.querystrands == QueryStrands::both)
       {
 	maxhits *= 2;
       }
     }
-  else if (symtype == SymbolType::blastx)
+  else if (parameters.symtype == SymbolType::blastx)
     {
-      if (querystrands == QueryStrands::both)
+      if (parameters.querystrands == QueryStrands::both)
       {
 	maxhits *= 6;
       }
@@ -376,13 +384,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 	maxhits *= 3;
       }
     }
-  else if (symtype == SymbolType::tblastn)
+  else if (parameters.symtype == SymbolType::tblastn)
     {
       maxhits *= 6;
     }
-  else if (symtype == SymbolType::tblastx)
+  else if (parameters.symtype == SymbolType::tblastx)
     {
-      if (querystrands == QueryStrands::both)
+      if (parameters.querystrands == QueryStrands::both)
       {
 	maxhits *= 36;
       }
@@ -428,12 +436,12 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   long m = 0;
   long n = 0;
   int lenadj = 0;
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    if (stats_getparams_nt(matchscore,
-			   mismatchscore,
-			   gapopen,
-			   gapextend,
+    if (stats_getparams_nt(parameters.matchscore,
+			   parameters.mismatchscore,
+			   parameters.gapopen,
+			   parameters.gapextend,
 			   & lambda,
 			   & K,
 			   & H,
@@ -456,9 +464,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       long const qlen = query.nt[0].len;
 
       long dlen = 0;
-      if (effdbsize > 0)
+      if (parameters.effdbsize > 0)
       {
-	dlen = effdbsize;
+	dlen = parameters.effdbsize;
       }
       else
       {
@@ -478,9 +486,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
       m = qlen - lenadj;
 
-      if (effdbsize > 0)
+      if (parameters.effdbsize > 0)
       {
-	n = effdbsize;
+	n = parameters.effdbsize;
       }
       else
       {
@@ -490,11 +498,11 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
-  else if (symtype < SymbolType::sound)
+  else if (parameters.symtype < SymbolType::sound)
   {
-    if (symtype == SymbolType::tblastx)
+    if (parameters.symtype == SymbolType::tblastx)
     {
-      stats_available = stats_getparams(matrixname,
+      stats_available = stats_getparams(parameters.matrixname,
 					32767,
 					32767,
 					& lambda,
@@ -505,9 +513,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
     }
     else
     {
-      stats_available = stats_getparams(matrixname,
-					gapopen,
-					gapextend,
+      stats_available = stats_getparams(parameters.matrixname,
+					parameters.gapopen,
+					parameters.gapextend,
 					& lambda,
 					& K,
 					& H,
@@ -526,19 +534,19 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       lenadj = 0;
       
       long qlen = query.aa[0].len;
-      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+      if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
 	qlen = query.nt[0].len / 3;
       }
 
       long dlen = 0;
-      if (effdbsize > 0)
+      if (parameters.effdbsize > 0)
       {
-	dlen = effdbsize;
+	dlen = parameters.effdbsize;
       }
       else
       {
-	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  dlen = symcount / 3;
 	}
@@ -559,9 +567,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
       m = qlen - lenadj;
 
-      if (effdbsize > 0)
+      if (parameters.effdbsize > 0)
       {
-	n = effdbsize;
+	n = parameters.effdbsize;
       }
       else
       {
@@ -580,15 +588,15 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   ungapped_H = H;
   double ungapped_alpha = 0;
   double ungapped_beta = 0;
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    stats_getparams_nt(matchscore, mismatchscore, 0, 0,
+    stats_getparams_nt(parameters.matchscore, parameters.mismatchscore, 0, 0,
                        & ungapped_lambda, & ungapped_K, & ungapped_H,
                        & ungapped_alpha, & ungapped_beta);
   }
-  else if (symtype < SymbolType::sound)
+  else if (parameters.symtype < SymbolType::sound)
   {
-    stats_getparams(matrixname, ungapped_penalty, ungapped_penalty,
+    stats_getparams(parameters.matrixname, ungapped_penalty, ungapped_penalty,
 		    &ungapped_lambda, &ungapped_K, &ungapped_H,
 		    &ungapped_alpha, &ungapped_beta);
   }
@@ -659,7 +667,7 @@ auto hits_exit() -> void
   hits_list = nullptr;
 }
 
-auto hits_align(struct db_thread_s * t, long i) -> void
+auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void
 {
   char * address = nullptr;
   long length = 0;
@@ -690,7 +698,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
     
     char * qseq = nullptr;
     long qlen = 0;
-    if (symtype == SymbolType::blastn)
+    if (parameters.symtype == SymbolType::blastn)
     {
       qseq = query.nt[0].seq;
       qlen = query.nt[0].len;
@@ -721,8 +729,8 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 	  qlen,
 	  h->dlen,
 	  score_matrix_63,
-	  gapopen,
-	  gapextend,
+	  parameters.gapopen,
+	  parameters.gapextend,
 	  & h->align_q_start,
 	  & h->align_d_start,
 	  & h->align_q_end,
@@ -742,6 +750,7 @@ namespace {
 // displayed (1-based, in nucleotides for translated sequences)
 struct AlignedHit
 {
+  SymbolType symtype = default_symtype;
   char const * alignment = nullptr;
   char const * sym = nullptr;
   char const * q_seq = nullptr;
@@ -763,10 +772,11 @@ struct AlignedHit
   int poswidth = 1;
 };
 
-auto aligned_hit(long const i) -> AlignedHit
+auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
 {
   struct hits_entry const & entry = hits_list[i];
   AlignedHit hit;
+  hit.symtype = parameters.symtype;
   hit.alignment = entry.alignment;
   hit.q_align_start = entry.align_q_start;
   hit.d_align_start = entry.align_d_start;
@@ -775,7 +785,7 @@ auto aligned_hit(long const i) -> AlignedHit
   hit.d_strand = entry.dstrand;
   hit.d_frame = entry.dframe;
   
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     // hits of the reverse complement of the query are entered on the
     // reverse strand of the database sequence (reported_strands())
@@ -784,7 +794,7 @@ auto aligned_hit(long const i) -> AlignedHit
     hit.q_seq = query.nt[hit.q_strand].seq;
     hit.q_len = query.nt[hit.q_strand].len;
   }
-  else if (symtype == SymbolType::sound)
+  else if (parameters.symtype == SymbolType::sound)
   {
     hit.sym = sym_sound;
     hit.q_seq = query.aa[0].seq;
@@ -809,7 +819,7 @@ auto aligned_hit(long const i) -> AlignedHit
   hit.d_first = entry.align_d_start;
   hit.d_last = entry.align_d_end;
   
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     if (hit.q_strand != 0)
     {
@@ -824,7 +834,7 @@ auto aligned_hit(long const i) -> AlignedHit
     }
   }
   
-  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
     if (hit.q_strand != 0)
     {
@@ -838,7 +848,7 @@ auto aligned_hit(long const i) -> AlignedHit
     }
   }
   
-  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+  if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
     if (hit.d_strand != 0)
     {
@@ -912,7 +922,7 @@ auto AlignmentLines::putalignop(char c, long len) -> void
       qs = hit.q_seq[q_pos++];
       ds = hit.d_seq[d_pos++];
       q_line[line_pos] = hit.sym[static_cast<int>(qs)];
-      if (symtype == SymbolType::blastn)
+      if (hit.symtype == SymbolType::blastn)
       {
 	a_line[line_pos] = (qs == ds) ? '|' : ' ';
       }
@@ -958,13 +968,13 @@ auto AlignmentLines::putalignop(char c, long len) -> void
       long d1 = d_start + 1;
       long d2 = d_pos;
 
-      if ((symtype == SymbolType::blastn) && (hit.d_strand != 0))
+      if ((hit.symtype == SymbolType::blastn) && (hit.d_strand != 0))
       {
 	d1 = hit.d_len - d1 + 1;
 	d2 = hit.d_len - d2 + 1;
       }
 
-      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+      if ((hit.symtype == SymbolType::blastx) || (hit.symtype == SymbolType::tblastx))
       {
 	if (hit.q_strand != 0)
 	{
@@ -978,7 +988,7 @@ auto AlignmentLines::putalignop(char c, long len) -> void
 	}
       }
       
-      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+      if ((hit.symtype == SymbolType::tblastn) || (hit.symtype == SymbolType::tblastx))
       {
 	if (hit.d_strand != 0)
 	{
@@ -1349,7 +1359,8 @@ auto hits_defline_split(char * defline,
   }
 }
 
-auto hits_show_xml_paralign(long showalignments,
+auto hits_show_xml_paralign(Parameters const & parameters,
+			    long showalignments,
 			    long showhits,
 			    struct db_thread_s const * t) -> void
 {
@@ -1378,7 +1389,7 @@ auto hits_show_xml_paralign(long showalignments,
   
   fprintf(out, "\t\t<queryInformation>\n");
   fprintf(out, "\t\t\t<queryFilename>");
-  xml_print(queryname);
+  xml_print(parameters.queryname);
   fprintf(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
   fprintf(out, "\t\t\t<queryDescription>");
@@ -1416,7 +1427,7 @@ auto hits_show_xml_paralign(long showalignments,
   }
   fprintf(out, "\t\t<databaseInformation>\n");
   fprintf(out, "\t\t\t<databaseFilename>");
-  xml_print(databasename);
+  xml_print(parameters.databasename);
   fprintf(out, "</databaseFilename>\n");
   fprintf(out, "\t\t\t<databaseSequencetype>%s</databaseSequencetype>\n", dbseqtypedescr);
   fprintf(out, "\t\t\t<databaseDescription>");
@@ -1432,7 +1443,7 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t</databaseInformation>\n");
   
   char const * strands = "";
-  switch(querystrands)
+  switch(parameters.querystrands)
   {
   case QueryStrands::plus:
     strands = "Plus";
@@ -1450,25 +1461,25 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t<options>\n");
   fprintf(out, "\t\t\t<algorithm>Smith-Waterman</algorithm>\n");
 
-  if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
     fprintf(out, "\t\t\t<queryStrands>%s</queryStrands>\n", strands);
   }
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     fprintf(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
   }
   else
   {
     fprintf(out, "\t\t\t<scoreMatrix>");
-    xml_print(matrixname);
+    xml_print(parameters.matrixname);
     fprintf(out, "</scoreMatrix>\n");
   }
 
   fprintf(out, "\t\t\t<gapPenalties>\n");
-  fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", gapopen);
-  fprintf(out, "\t\t\t\t<gapPenaltyExtension>%ld</gapPenaltyExtension>\n", gapextend);
+  fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", parameters.gapopen);
+  fprintf(out, "\t\t\t\t<gapPenaltyExtension>%ld</gapPenaltyExtension>\n", parameters.gapextend);
   fprintf(out, "\t\t\t\t<ungapped>\n");
   fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
   fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
@@ -1482,15 +1493,15 @@ auto hits_show_xml_paralign(long showalignments,
 
   fprintf(out, "\t\t\t</gapPenalties>\n");
   fprintf(out, "\t\t\t<expectRange>\n");
-  fprintf(out, "\t\t\t\t<expectRangeFrom>%.2g</expectRangeFrom>\n", minexpect);
-  fprintf(out, "\t\t\t\t<expectRangeTo>%.2g</expectRangeTo>\n", expect);
+  fprintf(out, "\t\t\t\t<expectRangeFrom>%.2g</expectRangeFrom>\n", parameters.minexpect);
+  fprintf(out, "\t\t\t\t<expectRangeTo>%.2g</expectRangeTo>\n", parameters.expect);
   fprintf(out, "\t\t\t</expectRange>\n");
   fprintf(out, "\t\t\t<displayLimits>\n");
-  fprintf(out, "\t\t\t\t<hitLimit>%ld</hitLimit>\n", maxmatches);
-  fprintf(out, "\t\t\t\t<alignmentLimit>%ld</alignmentLimit>\n", alignments);
+  fprintf(out, "\t\t\t\t<hitLimit>%ld</hitLimit>\n", parameters.maxmatches);
+  fprintf(out, "\t\t\t\t<alignmentLimit>%ld</alignmentLimit>\n", parameters.alignments);
   fprintf(out, "\t\t\t\t<subalignmentLimit>%ld</subalignmentLimit>\n", static_cast<long>(1));
   fprintf(out, "\t\t\t</displayLimits>\n");
-  fprintf(out, "\t\t\t<threads>%ld</threads>\n", threads);
+  fprintf(out, "\t\t\t<threads>%ld</threads>\n", parameters.threads);
   fprintf(out, "\t\t</options>\n");
 
   fprintf(out, "\t\t\t<searchInformation>\n");
@@ -1563,23 +1574,23 @@ auto hits_show_xml_paralign(long showalignments,
     fprintf(out, "\t\t\t\t<shortVersionName>");
     xml_print(title, 35);
     fprintf(out, "</shortVersionName>\n");
-    if (symtype == SymbolType::blastn)
+    if (parameters.symtype == SymbolType::blastn)
     {
       fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
     }
-    else if (symtype == SymbolType::blastx)
+    else if (parameters.symtype == SymbolType::blastx)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].qstrand != 0) ? '-' : '+', 
 	     hits_list[i].qframe+1);
     }
-    else if (symtype == SymbolType::tblastn)
+    else if (parameters.symtype == SymbolType::tblastn)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].dstrand != 0) ? '-' : '+', 
 	     hits_list[i].dframe+1);
     }
-    else if (symtype == SymbolType::tblastx)
+    else if (parameters.symtype == SymbolType::tblastx)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld/%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].qstrand != 0) ? '-' : '+', 
@@ -1661,11 +1672,11 @@ auto hits_show_xml_paralign(long showalignments,
       long const dlen = hits_list[i].dlen;
       long const dlennt = hits_list[i].dlennt;
 
-      if (symtype == SymbolType::blastn)
+      if (parameters.symtype == SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlen);
       }
-      else if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+      else if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlennt);
       }
@@ -1674,15 +1685,15 @@ auto hits_show_xml_paralign(long showalignments,
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld aa</databaseSequenceLength>\n", dlen);
       }
 
-      if (symtype == SymbolType::blastn)
+      if (parameters.symtype == SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", (hits_list[i].dstrand != 0) ? "Matches on complementary strands." : "Matches on same strands.");
       }
-      else if ((symtype>=SymbolType::blastx) && (symtype<=SymbolType::tblastx))
+      else if ((parameters.symtype>=SymbolType::blastx) && (parameters.symtype<=SymbolType::tblastx))
       {
 	fprintf(out, "\t\t\t\t<longVersionFrames>\n");
 
-	if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+	if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionQueryFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<queryStrand>%c</queryStrand>\n", (hits_list[i].qstrand != 0) ? '-' : '+');
@@ -1690,7 +1701,7 @@ auto hits_show_xml_paralign(long showalignments,
 	  fprintf(out, "\t\t\t\t\t</longVersionQueryFrame>\n");
 	}
 	
-	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionDatabaseFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<databaseStrand>%c</databaseStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
@@ -1714,7 +1725,7 @@ auto hits_show_xml_paralign(long showalignments,
       char *aline = nullptr;
       char *dline = nullptr;
         
-      AlignedHit const hit = aligned_hit(i);
+      AlignedHit const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
 
@@ -1728,7 +1739,7 @@ auto hits_show_xml_paralign(long showalignments,
       fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(identities, aligned));
       fprintf(out, "\t\t\t\t\t\t</identical>\n");
 
-      if (symtype != SymbolType::blastn)
+      if (parameters.symtype != SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t\t\t<positive>\n");
 	fprintf(out, "\t\t\t\t\t\t\t<positiveNominator>%ld</positiveNominator>\n", positives);
@@ -1799,7 +1810,8 @@ auto show_description_xml(char const * const desc) -> void
   }
 }
 
-auto hits_show_xml(long show_gis,
+auto hits_show_xml(Parameters const & parameters,
+		   long show_gis,
 		   long showalignments,
 		   long showhits,
 		   struct db_thread_s const * t) -> void
@@ -1818,7 +1830,7 @@ auto hits_show_xml(long show_gis,
     long const score = hits_list[i].score;
     // the database sequence length in nucleotides for tblastn and
     // tblastx, as in the other outputs (KI-36)
-    long const dlen = ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx)) ?
+    long const dlen = ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx)) ?
       hits_list[i].dlennt : hits_list[i].dlen;
     
     fprintf(out, "    <hit>\n");
@@ -1849,7 +1861,7 @@ auto hits_show_xml(long show_gis,
       char *aline = nullptr;
       char *dline = nullptr;
         
-      AlignedHit const hit = aligned_hit(i);
+      AlignedHit const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
 
@@ -1874,7 +1886,8 @@ auto hits_show_xml(long show_gis,
   fprintf(out, "</result>\n");
 }
 
-auto hits_show_tsv(long showalignments,
+auto hits_show_tsv(Parameters const & parameters,
+		   long showalignments,
 		   long showcomments,
 		   struct db_thread_s const * t) -> void
 {
@@ -1885,7 +1898,7 @@ auto hits_show_tsv(long showalignments,
     {
       fprintf(out, "# %s - %s\n", title, ref);
       fprintf(out, "# Query: %s\n", query.description);
-      fprintf(out, "# Database: %s\n", databasename);
+      fprintf(out, "# Database: %s\n", parameters.databasename);
       if (stats_available != 0)
       {
 	fprintf(out, "# Fields: Query id, Subject id, %% identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, e-value, bit score\n");
@@ -1912,7 +1925,7 @@ auto hits_show_tsv(long showalignments,
     long aligned = 0;
     long indels = 0;
     
-    AlignedHit const hit = aligned_hit(i);
+    AlignedHit const hit = aligned_hit(parameters, i);
     count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
     
     long const score = hits_list[i].score;
@@ -1943,7 +1956,8 @@ auto hits_show_tsv(long showalignments,
   }
 }
 
-auto hits_show_plain(long show_gis,
+auto hits_show_plain(Parameters const & parameters,
+		     long show_gis,
 		     long showalignments,
 		     long showhits,
 		     struct db_thread_s const * t) -> void
@@ -1967,15 +1981,15 @@ auto hits_show_plain(long show_gis,
       for(long i=0; i<showhits; i++)
       {
 	long headerlen = 67;
-	if (symtype == SymbolType::blastn)
+	if (parameters.symtype == SymbolType::blastn)
 	{
 	  headerlen = 65;
 	}
-	else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastn))
+	else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastn))
 	{
 	  headerlen = 64;
 	}
-	else if (symtype == SymbolType::tblastx)
+	else if (parameters.symtype == SymbolType::tblastx)
 	{
 	  headerlen = 61;
 	}
@@ -1990,21 +2004,21 @@ auto hits_show_plain(long show_gis,
 
 	long const score = hits_list[i].score;
 
-	if (symtype == SymbolType::blastn)
+	if (parameters.symtype == SymbolType::blastn)
 	{
 	  fprintf(out, " %c", (hits_list[i].dstrand != 0) ? '-' : '+');
 	}
-	else if (symtype == SymbolType::blastx)
+	else if (parameters.symtype == SymbolType::blastx)
 	{
 	  fprintf(out, " %c%ld", (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1);
 	}
-	else if (symtype == SymbolType::tblastn)
+	else if (parameters.symtype == SymbolType::tblastn)
 	{
 	  fprintf(out, " %c%ld", (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
 	}
-	else if (symtype == SymbolType::tblastx)
+	else if (parameters.symtype == SymbolType::tblastx)
 	{
 	  fprintf(out, " %c%ld/%c%ld",
 		  (hits_list[i].qstrand != 0) ? '-' : '+',
@@ -2042,7 +2056,7 @@ auto hits_show_plain(long show_gis,
 	layout.maxdeflines = LONG_MAX;
 	db_showheader(t, hits_list[i].header_address,
 		      hits_list[i].header_length, layout);
-	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlennt);
 	}
@@ -2075,12 +2089,12 @@ auto hits_show_plain(long show_gis,
 	long aligned = 0;
 	long indels = 0;
 
-	AlignedHit const hit = aligned_hit(i);
+	AlignedHit const hit = aligned_hit(parameters, i);
 	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
 	      
 	fprintf(out, " Identities = %ld/%ld (%ld%%)",
 	       identities, aligned, identities * 100 / aligned);
-	if (symtype > SymbolType::blastn)
+	if (parameters.symtype > SymbolType::blastn)
 	{
 	  fprintf(out, ", Positives = %ld/%ld (%ld%%)",
 		  positives, aligned, positives * 100 / aligned);
@@ -2091,19 +2105,19 @@ auto hits_show_plain(long show_gis,
 	}
 	fprintf(out, "\n");
 
-	if (symtype == SymbolType::blastn)
+	if (parameters.symtype == SymbolType::blastn)
 	{
 	  fprintf(out, " Strand = %s\n", (hits_list[i].dstrand != 0) ? "Plus / Minus" : "Plus / Plus");
 	}
-	else if (symtype == SymbolType::blastx)
+	else if (parameters.symtype == SymbolType::blastx)
 	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].qstrand != 0) ? '-':'+', hits_list[i].qframe+1);
 	}
-	else if (symtype == SymbolType::tblastn)
+	else if (parameters.symtype == SymbolType::tblastn)
 	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].dstrand != 0) ? '-':'+', hits_list[i].dframe+1);
 	}
-	else if (symtype == SymbolType::tblastx)
+	else if (parameters.symtype == SymbolType::tblastx)
 	{
 	  fprintf(out, " Frame = %c%ld / %c%ld\n",
 		  (hits_list[i].qstrand != 0) ? '-' : '+',
@@ -2168,8 +2182,11 @@ auto hits_show_end(OutputFormat view) -> void
   }
 }
 
-auto hits_show(OutputFormat view, long show_gis) -> void
+auto hits_show(Parameters const & parameters) -> void
 {
+  OutputFormat const view = parameters.view;
+  long const show_gis = parameters.show_gis;
+
   // compute number of hits and alignments to actually show
 
   long showalignments = 0;
@@ -2197,19 +2214,19 @@ auto hits_show(OutputFormat view, long show_gis) -> void
 
   if(view == OutputFormat::plain)
   {
-    hits_show_plain(show_gis, showalignments, showhits, t);
+    hits_show_plain(parameters, show_gis, showalignments, showhits, t);
   }
   else if (view==OutputFormat::xml)
   {
-    hits_show_xml(show_gis, showalignments, showhits, t);
+    hits_show_xml(parameters, show_gis, showalignments, showhits, t);
   }
   else if ((view==OutputFormat::tabular)||(view==OutputFormat::tabular_with_comments))
   {
-    hits_show_tsv(showalignments, static_cast<long>(view == OutputFormat::tabular_with_comments), t);
+    hits_show_tsv(parameters, showalignments, static_cast<long>(view == OutputFormat::tabular_with_comments), t);
   }
   else if (view==OutputFormat::paralign_xml)
   {
-    hits_show_xml_paralign(showalignments, showhits, t);
+    hits_show_xml_paralign(parameters, showalignments, showhits, t);
   }
   db_thread_destruct(t);
 }

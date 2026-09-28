@@ -407,7 +407,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(sdp->dbt, hits_sorted[hitno]);
+    hits_align(parameters, sdp->dbt, hits_sorted[hitno]);
   }
 }
 
@@ -1913,7 +1913,7 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
 auto work(Parameters const & parameters) -> void
 {
   args_show(parameters);
-  hits_init(parameters.maxmatches, parameters.alignments, parameters.minscore, parameters.maxscore, parameters.minexpect, parameters.expect, static_cast<int>(parameters.view==OutputFormat::plain));
+  hits_init(parameters);
 
   compute7 = 0;
   compute16 = 0;
@@ -1953,7 +1953,7 @@ auto work(Parameters const & parameters) -> void
   //  if (view == 0)
   //    clock_stop(&ti);
 
-  hits_show(parameters.view, parameters.show_gis);
+  hits_show(parameters);
   hits_exit();
 }
 

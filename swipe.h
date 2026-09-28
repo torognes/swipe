@@ -450,8 +450,7 @@ auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
 auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
 		  long * length) -> void;
 
-auto hits_init(long descriptions, long max_alignments, long minscore, 
-	       long maxscore, double min_expect, double max_expect, int show_nostats) -> void;
+auto hits_init(Parameters const & parameters) -> void;
 // strands and frames of a hit: query and database sequence
 struct HitStrands
 {
@@ -464,10 +463,10 @@ struct HitStrands
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> long *;
 auto hits_getcount() -> long;
-auto hits_align(struct db_thread_s * t, long i) -> void;
+auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;
 auto hits_show_end(OutputFormat view) -> void;
-auto hits_show(OutputFormat view, long show_gis) -> void;
+auto hits_show(Parameters const & parameters) -> void;
 auto hits_empty() -> void;
 auto hits_exit() -> void;
 auto hits_gethit(long i, long * seqno, long * score, 
