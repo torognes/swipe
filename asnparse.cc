@@ -135,9 +135,6 @@ auto nextobj(apt p) -> void
 
 auto match_obj(apt p, unsigned short x) -> void
 {
-#ifdef DEBUG
-  printf("%02x%02x ", p->obj, p->len);
-#endif
 
   if (p->obj != x)
     {
@@ -149,12 +146,6 @@ auto match_obj(apt p, unsigned short x) -> void
 
 auto parse_integer(apt p) -> void
 {
-#ifdef SHOW
-  printf("integer ");
-#endif
-#ifdef DEBUG
-  printf("%02x%02x ", p->obj, p->len);
-#endif
 
   p->parsed_integer = 0;
 
@@ -176,46 +167,24 @@ auto parse_integer(apt p) -> void
       fprintf(stderr, "Illegal length of integer object (%02x).\n", p->len);
       fatal("Error parsing binary ASN.1 in database sequence definition.");
     }
-#ifdef SHOW
-  printf("[%lu] ", p->parsed_integer);
-#endif
   nextobj(p);
 }
 
 auto parse_visiblestring(apt p) -> void
 {
-  //#define SHOW 1
-  //#define DEBUG 1
-#ifdef SHOW
-  printf("\n");
-  printf("string ");
-#endif
-#ifdef DEBUG
-  printf("%02x%02x ", p->obj, p->len);
-#endif
 
   unsigned long length = p->len;
 
   if (length == 0x81)
     {
-#ifdef DEBUG
-      printf("%02x ", p->ch);
-#endif
       length = p->ch;
       nextch(p);
     }
   else if (p->len == 0x82)
     {
-#ifdef DEBUG
-      printf("%02x ", p->ch);
-#endif
 
       length = p->ch;
       nextch(p);
-
-#ifdef DEBUG
-      printf("%02x ", p->ch);
-#endif
 
       length = (length << 8) | p->ch;
       nextch(p);
@@ -268,12 +237,7 @@ auto parse_visiblestring(apt p) -> void
 
   //  printf("(len=%lu, psl=%lu) ", length, parsed_string_length);
 
-#ifdef SHOW
-  printf("[%s] ", p->parsed_string);
-#endif
   nextobj(p);
-  //#undef SHOW
-  //#undef DEBUG
 }
 
 auto parse_object_id(apt p) -> void
@@ -394,15 +358,9 @@ auto parse_textseq_id(apt p) -> void
   p->release[0] = 0;
   p->version = 0;
 
-#ifdef SHOW
-  printf("textseq_id ");
-#endif
   match_obj(p,p->obj);
   if (p->obj == 0xA0)
   {
-#ifdef SHOW
-    printf("name ");
-#endif
     match_obj(p,0xA0);
     parse_visiblestring(p);
     strcpy(p->name, p->parsed_string);
@@ -410,9 +368,6 @@ auto parse_textseq_id(apt p) -> void
   }
   if (p->obj == 0xA1)
   {
-#ifdef SHOW
-    printf("accession ");
-#endif
     match_obj(p,0xA1);
     parse_visiblestring(p);
     strcpy(p->accession, p->parsed_string);
@@ -420,9 +375,6 @@ auto parse_textseq_id(apt p) -> void
   }
   if (p->obj == 0xA2)
   {
-#ifdef SHOW
-    printf("release ");
-#endif
     match_obj(p,0xA2);
     parse_visiblestring(p);
     strcpy(p->release, p->parsed_string);
@@ -430,9 +382,6 @@ auto parse_textseq_id(apt p) -> void
   }
   if (p->obj == 0xA3)
   {
-#ifdef SHOW
-    printf("version ");
-#endif
     match_obj(p,0xA3);
     parse_integer(p);
     p->version = p->parsed_integer;
@@ -481,9 +430,6 @@ auto parse_date_std(apt p) -> void
 
   match_obj(p,0x30);
 
-#ifdef SHOW
-  printf("year ");
-#endif
   match_obj(p,0xA0);
   parse_integer(p); // year
   year = p->parsed_integer;
@@ -491,9 +437,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA1)
   {
-#ifdef SHOW
-    printf("month ");
-#endif
     match_obj(p,0xA1);
     parse_integer(p);
     month = p->parsed_integer;
@@ -502,9 +445,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA2)
   {
-#ifdef SHOW
-    printf("day ");
-#endif
     match_obj(p,0xA2);
     parse_integer(p);
     day = p->parsed_integer;
@@ -513,9 +453,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA3)
   {
-#ifdef SHOW
-    printf("season ");
-#endif
     match_obj(p,0xA3);
     parse_visiblestring(p);
     strcpy(season, p->parsed_string);
@@ -524,9 +461,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA4)
   {
-#ifdef SHOW
-    printf("hour ");
-#endif
     match_obj(p,0xA5);
     parse_integer(p);
     hour = p->parsed_integer;
@@ -535,9 +469,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA5)
   {
-#ifdef SHOW
-    printf("minute ");
-#endif
     match_obj(p,0xA5);
     parse_integer(p);
     min = p->parsed_integer;
@@ -546,9 +477,6 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA6)
   {
-#ifdef SHOW
-    printf("second ");
-#endif
     match_obj(p,0xA6);
     parse_integer(p);
     sec = p->parsed_integer;
@@ -602,15 +530,9 @@ auto parse_date(apt p) -> void
   switch(object)
   {
   case 0xA0:
-#ifdef SHOW
-    printf("date string ");
-#endif
     parse_visiblestring(p);
     break;
   case 0xA1:
-#ifdef SHOW
-    printf("structured date ");
-#endif
     parse_date_std(p);
     break;
   default:
@@ -628,9 +550,6 @@ auto parse_pdb_seq_id(apt p) -> void
 
   match_obj(p,0x30);
 
-#ifdef SHOW
-  printf("molid ");
-#endif
   match_obj(p,0xA0);
   parse_visiblestring(p);
   strcpy(p->pdb_molid, p->parsed_string);
@@ -638,9 +557,6 @@ auto parse_pdb_seq_id(apt p) -> void
 
   if (p->obj == 0xA1)
   {
-#ifdef SHOW
-    printf("chain ");
-#endif
     match_obj(p,0xA1);
     parse_integer(p); // default = 32 = @
     p->pdb_chain = p->parsed_integer;
@@ -649,9 +565,6 @@ auto parse_pdb_seq_id(apt p) -> void
 
   if (p->obj == 0xA2)
   {
-#ifdef SHOW
-    printf("date ");
-#endif
     match_obj(p,0xA2);
     parse_date(p);
     match_obj(p,0);
@@ -661,9 +574,6 @@ auto parse_pdb_seq_id(apt p) -> void
   // and case, written by current versions of makeblastdb (KI-22)
   if (p->obj == 0xA3)
   {
-#ifdef SHOW
-    printf("chain-id ");
-#endif
     match_obj(p,0xA3);
     parse_visiblestring(p);
     strcpy(p->pdb_chain_id, p->parsed_string);
@@ -723,10 +633,6 @@ auto parse_seq_id(apt p) -> void
   p->accession[0] = 0;
   p->version = 0;
 
-#ifdef SHOW
-  printf("seq_id ");
-#endif
-
   unsigned char const object = p->obj;
   match_obj(p,object);
   
@@ -734,9 +640,6 @@ auto parse_seq_id(apt p) -> void
   if ((object >= 0xA0) && (object <= 0xB3))
   {
     strcpy(db, dbstr[object-0xA0]);
-#ifdef SHOW
-    printf("%s ", db);
-#endif
   }
   
   switch(object)
@@ -833,10 +736,6 @@ auto parse_seq_id(apt p) -> void
 
 auto parse_blast_def_line(apt p) -> void
 {
-#ifdef SHOW
-  printf("\n");
-  printf("def_line ");
-#endif
   match_obj(p,0x30);
 
   if (p->obj == 0x00)
@@ -855,9 +754,6 @@ auto parse_blast_def_line(apt p) -> void
 
   if (p->obj == 0xA0)
     {
-#ifdef SHOW
-      printf("title ");
-#endif
       match_obj(p,0xA0);
       parse_visiblestring(p);
       strcpy(p->title, p->parsed_string);
@@ -866,9 +762,6 @@ auto parse_blast_def_line(apt p) -> void
 
   if (p->obj == 0xA1)
     {
-#ifdef SHOW
-      printf("seqidlist ");
-#endif
       match_obj(p,0xA1);
       match_obj(p,0x30);
       while(p->obj != 0U)
@@ -886,9 +779,6 @@ auto parse_blast_def_line(apt p) -> void
 
   if (p->obj == 0xA2)
     {
-#ifdef SHOW
-      printf("taxid ");
-#endif
       match_obj(p,0xA2);
       parse_integer(p);
       p->taxid = p->parsed_integer;
@@ -896,9 +786,6 @@ auto parse_blast_def_line(apt p) -> void
     }
   if (p->obj == 0xA3)
     {
-#ifdef SHOW
-      printf("memb ");
-#endif
       match_obj(p,0xA3);
       match_obj(p,0x30);
       while(p->obj != 0U)
@@ -911,9 +798,6 @@ auto parse_blast_def_line(apt p) -> void
     }
   if (p->obj == 0xA4)
     {
-#ifdef SHOW
-      printf("links ");
-#endif
       match_obj(p,0xA4);
       match_obj(p,0x30);
       while(p->obj != 0U)
@@ -926,9 +810,6 @@ auto parse_blast_def_line(apt p) -> void
     }
   if (p->obj == 0xA5)
     {
-#ifdef SHOW
-      printf("other ");
-#endif
       match_obj(p,0xA5);
       match_obj(p,0x30);
       while (p->obj != 0U)

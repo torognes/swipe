@@ -25,8 +25,6 @@
 
 #include "swipe.h"
 
-// #define DEBUG
-
 #define CHANNELS 16
 #define CDEPTH 4
 
@@ -598,16 +596,6 @@ inline auto donormal7(__m128i const * Sm,
 		      long ql,
 		      __m128i const * Zm) -> void
 {
-#ifdef DEBUG
-  printf("donormal\n");
-  printf("Sm=%p\n", Sm);
-  printf("hep=%p\n", hep);
-  printf("qp=%p\n", qp);
-  printf("Qm=%p\n", Qm);
-  printf("Rm=%p\n", Rm);
-  printf("qlen=%ld\n", ql);
-  printf("Zm=%p\n", Zm);
-#endif
   
   __asm__
     __volatile__
@@ -673,18 +661,6 @@ inline auto domasked7(__m128i const * Sm,
 		      __m128i const * Zm,
 		      __m128i const * Mm) -> void
 {
-  
-#ifdef DEBUG
-  printf("domasked\n");
-  printf("Sm=%p\n", Sm);
-  printf("hep=%p\n", hep);
-  printf("qp=%p\n", qp);
-  printf("Qm=%p\n", Qm);
-  printf("Rm=%p\n", Rm);
-  printf("qlen=%ld\n", ql);
-  printf("Zm=%p\n", Zm);
-  printf("Mm=%p\n", Mm);
-#endif
   
   __asm__
     __volatile__
@@ -815,10 +791,6 @@ search7
 
   hep = reinterpret_cast<__m128i*>(hearray);
   qp = reinterpret_cast<__m128i**>(q_start);
-
-#ifdef DEBUG
-  //  printf("Searching %ld sequences...\n", sequences);
-#endif
 
   for (int c=0; c<CHANNELS; c++)
   {

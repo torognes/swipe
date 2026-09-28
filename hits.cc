@@ -517,11 +517,6 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
     if (stats_available != 0)
     {
       
-#ifdef DEBUG
-      fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
-	      lambda, K, H, alpha, beta);
-#endif
-
       logK = log(K);
       lambda_d_log2 = lambda / log(2.0);
       logK_d_log2 = logK / log(2.0);
@@ -574,10 +569,6 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
-
-#ifdef DEBUG
-  fprintf(out, "lenadj=%d m=%ld n=%ld mn=%.1f\n", lenadj, m, n, (double)m * (double)n);
-#endif
 
   /* ungapped statistical parameters (-m 99): the (0, 0) rows of the
      nucleotide tables, the ungapped rows of the matrix tables; the

@@ -474,9 +474,6 @@ auto calc_chunks(long volcount,
 		 long * totalchunks,
 		 long * biggestchunk) -> void
 {
-#ifdef DEBUG
-  fprintf(out, "Calculating chunk distribution among volumes\n");
-#endif
 
   long volsused = 0;
   std::vector<long> chunksizes(volcount);
@@ -530,22 +527,6 @@ auto calc_chunks(long volcount,
       }
     }
   }
-  
-#ifdef DEBUG
-  {
-    fprintf(out, "\n");
-    fprintf(out, "Chunk distribution:\n");
-    fprintf(out, "Total seqs: %ld\n", totalseqs);
-    fprintf(out, "Total chunks: %ld  Upper size limit: %ld\n", chunks, upper);
-    fprintf(out, "Vol Sequences Chunks Maxchunksize\n");
-    for(long v = 0; v < volcount; v++)
-    {
-      fprintf(out, "%3ld %9ld %6ld %12ld\n",
-	      v, volume_sequences[v], volume_chunks[v], chunksizes[v]);
-    }
-    fprintf(out, "\n");
-  }
-#endif
   
   *biggestchunk = biggest_chunk_size;
   *totalchunks = chunks;
@@ -2195,18 +2176,12 @@ auto main(int argc, char**argv) -> int
     
     query_exit();
 
-#ifdef DEBUG
-    fprintf(out, "Freeing score matrix\n");
-#endif
     score_matrix_free();
   }
   
   free(volchunks);
   free(volseqs);
 
-#ifdef DEBUG
-  fprintf(out, "Closing db\n");
-#endif
   db_close();
 
   if (outfile != nullptr)
