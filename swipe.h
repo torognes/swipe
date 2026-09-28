@@ -180,27 +180,11 @@ auto xrealloc(void *ptr, size_t size) -> void *;
 extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
-extern char const * queryname;
-extern char const * matrixname;
-extern long gapopen;
-extern long gapextend;
-extern long gapopenextend;
 extern long * score_matrix_63;
-extern SymbolType symtype;
-extern long matchscore;
-extern long mismatchscore;
 extern long totalhits;
 extern char const * gencode_names[];
-extern QueryStrands querystrands;
-extern double minexpect;
-extern double expect;
-extern long maxmatches;
-extern long threads;
-extern char const * databasename;
-extern long alignments;
 extern long queryno;
 extern long compute7;
-extern long effdbsize;
 
 extern char map_ncbi_nt4[];
 extern char map_ncbi_nt16[];

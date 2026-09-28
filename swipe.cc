@@ -37,24 +37,6 @@
 #include <vector>
 
 
-char const * matrixname;
-char const * databasename;
-char const * queryname;
-
-double expect;
-double minexpect;
-long alignments;
-long maxmatches;
-long gapopen;
-long gapextend;
-long threads;
-SymbolType symtype;
-long matchscore;
-long mismatchscore;
-long gapopenextend;
-QueryStrands querystrands;
-long effdbsize;
-
 /* Other variables */
 
 long queryno;
@@ -1279,28 +1261,6 @@ auto args_init(int argc, char * const * argv) -> Parameters
   return parameters;
 }
 
-// hand-over to the option globals, until every file takes the
-// parameters by reference (track C step 5, decision Q35)
-auto set_option_globals(Parameters const & parameters) -> void
-{
-  matrixname = parameters.matrixname;
-  databasename = parameters.databasename;
-  queryname = parameters.queryname;
-  expect = parameters.expect;
-  minexpect = parameters.minexpect;
-  alignments = parameters.alignments;
-  maxmatches = parameters.maxmatches;
-  gapopen = parameters.gapopen;
-  gapextend = parameters.gapextend;
-  gapopenextend = parameters.gapopenextend;
-  matchscore = parameters.matchscore;
-  mismatchscore = parameters.mismatchscore;
-  threads = parameters.threads;
-  symtype = parameters.symtype;
-  querystrands = parameters.querystrands;
-  effdbsize = parameters.effdbsize;
-}
-
 auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
@@ -1968,7 +1928,6 @@ auto main(int argc, char**argv) -> int
   }
 
   auto const parameters = args_init(argc, argv);
-  set_option_globals(parameters);
 
   db_open(parameters);
   
