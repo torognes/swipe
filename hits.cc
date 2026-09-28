@@ -353,10 +353,10 @@ void hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   for(int i=0; i<keephits; i++)
   {
     struct hits_entry * h = hits_list + i;
-    h->header_address = 0;
+    h->header_address = nullptr;
     h->header_length = 0;
-    h->dseq = 0;
-    h->alignment = 0;
+    h->dseq = nullptr;
+    h->alignment = nullptr;
   }
 
   int seqcount;
@@ -568,19 +568,19 @@ void hits_empty()
     if (h->header_address)
     {
       free(h->header_address);
-      h->header_address = 0;
+      h->header_address = nullptr;
     }
     
     if (h->dseq)
     {
       free(h->dseq);
-      h->dseq = 0;
+      h->dseq = nullptr;
     }
 
     if (h->alignment)
     {
       free(h->alignment);
-      h->alignment = 0;
+      h->alignment = nullptr;
     }
   }
 }
@@ -589,7 +589,7 @@ void hits_exit()
 {
   hits_empty();
   free(hits_list);
-  hits_list = 0;
+  hits_list = nullptr;
 }
 
 void hits_align(struct db_thread_s * t, long i)
@@ -1350,9 +1350,9 @@ void hits_defline_split(char * defline,
   char * p = defline;
   int len;
 
-  *link = 0;
+  *link = nullptr;
   *linklen = 0;
-  *rest = 0;
+  *rest = nullptr;
   
   int m = sscanf(p, "gi|%ld%n", gi, & len);
   if (m > 0)

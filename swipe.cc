@@ -216,7 +216,7 @@ void align_init(struct search_data * sdp)
   
   for(int i = 0; i < 6; i++)
   {
-    sdp->qtable[i] = 0;
+    sdp->qtable[i] = nullptr;
   }
 
   if (symtype == 0)
@@ -623,7 +623,7 @@ void * align_worker(void *)
     align_chunk(&sd, i, j);
   
   align_done(&sd);
-  return 0;
+  return nullptr;
 }
 
 void align_threads()
@@ -635,7 +635,7 @@ void align_threads()
   
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, 0, align_worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, align_worker, (void *)t))
 	fatal("Cannot create thread.");
     }
   
@@ -937,7 +937,7 @@ void args_init(int argc, char **argv)
     {"show_taxid",       no_argument,       NULL, 'H' },
     {"help",             no_argument,       NULL, 'h' },
     {"version",          no_argument,       NULL, 'V' },
-    { 0, 0, 0, 0 }
+    { nullptr, 0, nullptr, 0 }
   };
   
   int option_index = 0;
@@ -1275,7 +1275,7 @@ void search_init(struct search_data * sdp)
   
   for(int i = 0; i < 6; i++)
   {
-    sdp->qtable[i] = 0;
+    sdp->qtable[i] = nullptr;
   }
 
   if (symtype == 0)
@@ -1699,7 +1699,7 @@ void * worker(void *)
     search_chunk(&sd);
 
   search_done(&sd);
-  return 0;
+  return nullptr;
 }
 
 
@@ -1782,7 +1782,7 @@ void run_threads()
 
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, 0, worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, worker, (void *)t))
 	fatal("Cannot create thread.");
     }
   

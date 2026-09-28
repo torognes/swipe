@@ -171,9 +171,9 @@ void db_print_seq_map(char * address, long length, const char * map)
 mapp db_map_create()
 {
   mapp m = (mapp) xmalloc(sizeof(struct db_map_s));
-  m->map_volume = 0;
+  m->map_volume = nullptr;
   m->map_offset = 0;
-  m->map_address = 0;
+  m->map_address = nullptr;
   m->map_length = 0;
   return m;
 }
@@ -194,9 +194,9 @@ db_thread_t * db_thread_create()
   for(int c=0; c<16; c++)
   {
     t->ntbuffersize[c] = 0;
-    t->ntbuffer[c] = 0;
+    t->ntbuffer[c] = nullptr;
     t->xxbuffersize[c] = 0;
-    t->xxbuffer[c] = 0;
+    t->xxbuffer[c] = nullptr;
   }
   return t;
 }
@@ -211,11 +211,11 @@ void db_thread_destruct(struct db_thread_s * t)
     if (t->ntbuffer[c])
       free(t->ntbuffer[c]);
     t->ntbuffersize[c] = 0;
-    t->ntbuffer[c] = 0;
+    t->ntbuffer[c] = nullptr;
     if (t->xxbuffer[c])
       free(t->xxbuffer[c]);
     t->xxbuffersize[c] = 0;
-    t->xxbuffer[c] = 0;
+    t->xxbuffer[c] = nullptr;
   }
   free(t);
 }
@@ -264,11 +264,11 @@ void db_volume_init(db_volume_t * v)
   v->adr_xin = NULL;
   v->adr_msk = NULL;
 
-  v->map_seq_address = 0;
+  v->map_seq_address = nullptr;
   v->map_seq_length = 0;
   v->map_seq_offset = 0;
 
-  v->map_hdr_address = 0;
+  v->map_hdr_address = nullptr;
   v->map_hdr_length = 0;
   v->map_hdr_offset = 0;
 }
@@ -287,10 +287,10 @@ void db_init(db_main_t * v)
   v->longest = 0;
   v->symcount = 0;
 
-  v->taxid_bitmap_address = 0;
+  v->taxid_bitmap_address = nullptr;
   v->taxid_bitmap_size = 0;
-  v->taxid_filename = 0;
-  v->taxid_file = 0;
+  v->taxid_filename = nullptr;
+  v->taxid_file = nullptr;
 }
 
 
@@ -578,7 +578,7 @@ long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
     fatal(std::string("Unable to open file ") + name_pin + ".");
   
   volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
-  volume->adr_xin = (char *) mmap(0, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0);
+  volume->adr_xin = (char *) mmap(nullptr, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0);
 
   if (volume->adr_xin == MAP_FAILED)
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
@@ -735,7 +735,7 @@ void seqno_volume(long seqno, long * sp, db_volume_t * * vp)
     s -= v->seqcount;
     v++;
   }
-  *vp = 0;
+  *vp = nullptr;
   *sp = 0;
   fatal("Cant find database volume.");
 }
@@ -759,7 +759,7 @@ void db_open_msk(db_volume_t * v)
     fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
 
   v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
-  v->adr_msk = (unsigned char *) mmap(0, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0);
+  v->adr_msk = (unsigned char *) mmap(nullptr, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0);
   
   if (v->adr_msk == MAP_FAILED)
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
@@ -1249,7 +1249,7 @@ void db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno)
   
   // map it
   
-  char * start = (char *) mmap(0, length, PROT_READ, MAP_SHARED, 
+  char * start = (char *) mmap(nullptr, length, PROT_READ, MAP_SHARED, 
 			       v1->fd_xsq, offset);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
@@ -1298,7 +1298,7 @@ void db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno)
   
   // map it
   
-  char * start = (char *) mmap(0, length, PROT_READ, MAP_SHARED, 
+  char * start = (char *) mmap(nullptr, length, PROT_READ, MAP_SHARED, 
 			       v1->fd_xhr, offset);
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);

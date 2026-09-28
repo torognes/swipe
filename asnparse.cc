@@ -1037,7 +1037,7 @@ long parse_blast_def_line_set_new(apt p, char *** deflinetable)
   match_obj(p,0x30);
   long deflines = 0;
   long size;
-  char * * table = 0;
+  char * * table = nullptr;
 
   if (deflinetable)
   {

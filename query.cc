@@ -214,7 +214,7 @@ void query_init(const char * query_filename, long symbol_type, long strands)
   if (!query_fp)
     fatal("Cannot open query file.");
   
-  query.description = 0;
+  query.description = nullptr;
   query.dlen = 0;
   query.symtype = symbol_type;
   query.strands = strands;
@@ -237,12 +237,12 @@ void query_init(const char * query_filename, long symbol_type, long strands)
 
   for(long s=0; s<2; s++)
   {
-    query.nt[s].seq = 0;
+    query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      query.aa[3*s+f].seq = 0;
+      query.aa[3*s+f].seq = nullptr;
       query.aa[3*s+f].len = 0;
     }
   }
@@ -260,21 +260,21 @@ void query_free()
 {
   if (query.description)
     free(query.description);
-  query.description = 0;
+  query.description = nullptr;
   query.dlen = 0;
 
   for(long s=0; s<2; s++)
   {
     if (query.nt[s].seq)
       free(query.nt[s].seq);
-    query.nt[s].seq = 0;
+    query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
       if (query.aa[3*s+f].seq)
 	free(query.aa[3*s+f].seq);
-      query.aa[3*s+f].seq = 0;
+      query.aa[3*s+f].seq = nullptr;
       query.aa[3*s+f].len = 0;
     }
   }
