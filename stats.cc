@@ -152,8 +152,8 @@ auto stats_getparams_nt(long match_score,
 
   for(long i = 0; i < bm; i++)
   {
-    if ( (fabs(bv[i][0] - ((double) gopen)) < 0.1) &&
-	 (fabs(bv[i][1] - ((double) gextend)) < 0.1) )
+    if ( (fabs(bv[i][0] - (static_cast<double>(gopen))) < 0.1) &&
+	 (fabs(bv[i][1] - (static_cast<double>(gextend))) < 0.1) )
     {
       * lambda = bv[i][2];
       * K = bv[i][3];
@@ -224,8 +224,8 @@ auto stats_getparams(const char * matrix,
 
   for (long i=0; i<val; i++)
   {
-    if ( (fabs(mat[i][0] - ((double) gopen)) < 0.1) &&
-	 (fabs(mat[i][1] - ((double) gextend)) < 0.1) )
+    if ( (fabs(mat[i][0] - (static_cast<double>(gopen))) < 0.1) &&
+	 (fabs(mat[i][1] - (static_cast<double>(gextend))) < 0.1) )
     {
       * lambda = mat[i][3];
       * K = mat[i][4];
@@ -305,8 +305,8 @@ auto stats_getprefs(const char * matrix,
   {
     if (prefs[i] != 0)
     {
-      * gopen = (long) mat[i][0];
-      * gextend = (long) mat[i][1];
+      * gopen = static_cast<long>(mat[i][0]);
+      * gextend = static_cast<long>(mat[i][1]);
       return 1;
     }
   }

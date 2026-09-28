@@ -213,7 +213,7 @@ auto align_init(struct search_data * sdp) -> void
   for(int i=0; i<8; i++)
     sdp->dbta[i] = db_thread_create();
 
-  sdp->dprofile = (BYTE*) xmalloc(4*16*32);
+  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
   
@@ -229,7 +229,7 @@ auto align_init(struct search_data * sdp) -> void
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
 	  sdp->qtable[3*s][i] = sdp->dprofile + 16*query.nt[s].seq[i];
@@ -241,7 +241,7 @@ auto align_init(struct search_data * sdp) -> void
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
       sdp->qtable[0][i] = sdp->dprofile + 16*query.aa[0].seq[i];
@@ -256,7 +256,7 @@ auto align_init(struct search_data * sdp) -> void
 	{
 	  qlen = query.aa[3*s+f].len;
 	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	  sdp->qtable[3*s+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
 	    sdp->qtable[3*s+f][i] = sdp->dprofile + 16*query.aa[3*s+f].seq[i];
@@ -267,19 +267,19 @@ auto align_init(struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = (BYTE*) xmalloc(hearraylen*32);
+  sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
 
   long listsize = maxchunksize * sizeof(long);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
-  sdp->start_list = (long*) xmalloc(listsize);
-  sdp->start_hits = (long*) xmalloc(listsize);
-  sdp->in_list = (long*) xmalloc(listsize);
-  sdp->out_list = (long*) xmalloc(listsize);
-  sdp->scores = (long*) xmalloc(listsize);
-  sdp->bestpos = (long*) xmalloc(listsize);
-  sdp->bestq = (long*) xmalloc(listsize);
+  sdp->start_list = static_cast<long*>(xmalloc(listsize));
+  sdp->start_hits = static_cast<long*>(xmalloc(listsize));
+  sdp->in_list = static_cast<long*>(xmalloc(listsize));
+  sdp->out_list = static_cast<long*>(xmalloc(listsize));
+  sdp->scores = static_cast<long*>(xmalloc(listsize));
+  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
+  sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
   if (symtype == 0)
   {
@@ -390,12 +390,12 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	  rounds32++;
 	  pthread_mutex_unlock(&countmutex);
 	
-	  search16s((WORD**)qtable,
+	  search16s(reinterpret_cast<WORD**>(qtable),
 		    gapopenextend,
 		    gapextend,
-		    (WORD*)(score_matrix_16),
-		    (WORD*)(sdp->dprofile),
-		    (WORD*)(sdp->hearray),
+		    reinterpret_cast<WORD*>(score_matrix_16),
+		    reinterpret_cast<WORD*>(sdp->dprofile),
+		    reinterpret_cast<WORD*>(sdp->hearray),
 		    sdp->dbta,
 		    sdp->start_count,
 		    sdp->start_list,
@@ -490,7 +490,7 @@ auto calc_chunks(long volcount,
 
   long upper = channels;
   if (totalseqs >= 4 * channels * par)
-    upper *= (long) (floor(sqrt((1.0 * totalseqs) / (channels * par))));
+    upper *= static_cast<long>(floor(sqrt((1.0 * totalseqs) / (channels * par))));
 
   long chunks = volsused;
   long minchunks = totalseqs < par ? totalseqs : par;
@@ -541,8 +541,8 @@ auto align_threads_init() -> void
 
   long bins = 7;
 
-  align_volseqs = (long*) xmalloc(bins*sizeof(long));
-  align_volchunks = (long*) xmalloc(bins*sizeof(long));
+  align_volseqs = static_cast<long*>(xmalloc(bins*sizeof(long)));
+  align_volchunks = static_cast<long*>(xmalloc(bins*sizeof(long)));
 
   for(long i = 0; i<bins; i++)
     align_volseqs[i] = 0;
@@ -1261,7 +1261,7 @@ namespace {
 auto search_init(struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
-  sdp->dprofile = (BYTE*) xmalloc(4*16*32);
+  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
   
@@ -1277,7 +1277,7 @@ auto search_init(struct search_data * sdp) -> void
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
 	  sdp->qtable[3*s][i] = sdp->dprofile + 64*query.nt[s].seq[i];
@@ -1289,7 +1289,7 @@ auto search_init(struct search_data * sdp) -> void
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
       sdp->qtable[0][i] = sdp->dprofile + 64*query.aa[0].seq[i];
@@ -1304,7 +1304,7 @@ auto search_init(struct search_data * sdp) -> void
 	{
 	  qlen = query.aa[3*s+f].len;
 	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	  sdp->qtable[3*s+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
 	    sdp->qtable[3*s+f][i] = sdp->dprofile + 64*query.aa[3*s+f].seq[i];
@@ -1315,18 +1315,18 @@ auto search_init(struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = (BYTE*) xmalloc(hearraylen*32);
+  sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
 
   long listsize = maxchunksize * sizeof(long);
   if ((symtype == 3) || (symtype == 4))
     listsize *= 6;
 
-  sdp->start_list = (long*) xmalloc(listsize);
-  sdp->in_list = (long*) xmalloc(listsize);
-  sdp->out_list = (long*) xmalloc(listsize);
-  sdp->scores = (long*) xmalloc(listsize);
-  sdp->bestpos = (long*) xmalloc(listsize);
-  sdp->bestq = (long*) xmalloc(listsize);
+  sdp->start_list = static_cast<long*>(xmalloc(listsize));
+  sdp->in_list = static_cast<long*>(xmalloc(listsize));
+  sdp->out_list = static_cast<long*>(xmalloc(listsize));
+  sdp->scores = static_cast<long*>(xmalloc(listsize));
+  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
+  sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
   if (symtype == 0)
   {
@@ -1520,7 +1520,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
-			(BYTE*) score_matrix_7t,
+			reinterpret_cast<BYTE*>(score_matrix_7t),
 			sdp->dprofile,
 			sdp->hearray,
 			sdp->dbt,
@@ -1532,7 +1532,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  search7(qtable,
 		  gapopenextend_7,
 		  gapextend_7,
-		  (BYTE*) score_matrix_7,
+		  reinterpret_cast<BYTE*>(score_matrix_7),
 		  sdp->dprofile,
 		  sdp->hearray,
 		  sdp->dbt,
@@ -1583,12 +1583,12 @@ auto search_chunk(struct search_data * sdp) -> void
 	rounds16++;
 	pthread_mutex_unlock(&countmutex);
 	  
-	search16((WORD**)qtable,
+	search16(reinterpret_cast<WORD**>(qtable),
 		 gapopenextend,
 		 gapextend,
-		 (WORD*)(score_matrix_16),
-		 (WORD*)(sdp->dprofile),
-		 (WORD*)(sdp->hearray),
+		 reinterpret_cast<WORD*>(score_matrix_16),
+		 reinterpret_cast<WORD*>(sdp->dprofile),
+		 reinterpret_cast<WORD*>(sdp->hearray),
 		 sdp->dbt,
 		 sdp->in_count,
 		 sdp->in_list,
@@ -1664,9 +1664,9 @@ auto search_chunk(struct search_data * sdp) -> void
 
 	  long score = fullsw(dbegin,
 			      dend,
-			      (char*) q, 
-			      (char*) q + qlen,
-			      (long*) sdp->hearray,
+			      q, 
+			      q + qlen,
+			      reinterpret_cast<long*>(sdp->hearray),
 			      score_matrix_63,
 			      gapopenextend,
 			      gapextend);
@@ -1827,7 +1827,7 @@ auto clock_stop(struct time_info * tip) -> void
 
   tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
   
-  double speed = ((double)db_getsymcount_masked());
+  double speed = (static_cast<double>(db_getsymcount_masked()));
 
   if (symtype == 0)
   {
@@ -1961,8 +1961,8 @@ auto main(int argc, char**argv) -> int
 
   db_open(symtype, databasename, taxidfilename);
   
-  volchunks = (long*) xmalloc(db_getvolumecount() * sizeof(long));
-  volseqs   = (long*) xmalloc(db_getvolumecount() * sizeof(long));
+  volchunks = static_cast<long*>(xmalloc(db_getvolumecount() * sizeof(long)));
+  volseqs   = static_cast<long*>(xmalloc(db_getvolumecount() * sizeof(long)));
 
   if(dump != 0)
   {

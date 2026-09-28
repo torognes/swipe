@@ -1042,7 +1042,7 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
   if (deflinetable != nullptr)
   {
     size = 8;
-    table = (char**) xmalloc(size * sizeof(char*));
+    table = static_cast<char**>(xmalloc(size * sizeof(char*)));
   }
     
   while (p->obj != 0u)
@@ -1056,10 +1056,10 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 	  if (deflines >= size)
 	  {
 	    size += 8;
-	    table = (char**) xrealloc(table, size * sizeof(char*));
+	    table = static_cast<char**>(xrealloc(table, size * sizeof(char*)));
 	  }
 	  
-	  char * newdefline = (char*) xmalloc(strlen(p->defline)+1);
+	  char * newdefline = static_cast<char*>(xmalloc(strlen(p->defline)+1));
 	  strcpy(newdefline, p->defline);
 	  table[deflines] = newdefline;
 	}
@@ -1079,7 +1079,7 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 
 auto parser_create() -> apt
 {
-  return (apt) xmalloc(sizeof(struct asnparse_info));
+  return static_cast<apt>(xmalloc(sizeof(struct asnparse_info)));
 }
 
 auto parser_destruct(apt p) -> void

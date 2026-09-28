@@ -317,20 +317,20 @@ auto query_read() -> int
 
   if (header[0] == '>')
   {
-    query.description = (char*) xmalloc(len);
+    query.description = static_cast<char*>(xmalloc(len));
     std::strcpy(query.description, header.c_str() + 1);
     query.dlen = len-1;
     read_line(query_fp, query_line);
   }
   else
   {
-    query.description = (char*) xmalloc(1);
+    query.description = static_cast<char*>(xmalloc(1));
     query.description[0] = 0;
     query.dlen = 0;
   }
 
   int size = LINE_MAX;
-  char * query_sequence = (char *) xmalloc(size);
+  char * query_sequence = static_cast<char *>(xmalloc(size));
   query_sequence[0] = 0;
   long query_length = 0;
  
@@ -355,7 +355,7 @@ auto query_read() -> int
 	if (query_length + 1 >= size)
 	{
 	  size += LINE_MAX;
-	  query_sequence = (char*) xrealloc(query_sequence, size);
+	  query_sequence = static_cast<char*>(xrealloc(query_sequence, size));
 	}
 	query_sequence[query_length++] = m;
       }
@@ -402,9 +402,9 @@ auto query_read() -> int
 
 auto revcompl(char * seq, long len) -> char *
 {
-  char * rc = (char *) xmalloc(len+1);
+  char * rc = static_cast<char *>(xmalloc(len+1));
   for(long i=0; i<len; i++)
-    rc[i] = ntcompl[(int)(seq[len-1-i])];
+    rc[i] = ntcompl[static_cast<int>(seq[len-1-i])];
   rc[len] = 0;
   return rc;
 }
@@ -467,7 +467,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	if (aa == '-')
 	  aa = 'X';
 
-	table[256*a+16*b+c] = map_ncbi_aa[(int)aa];
+	table[256*a+16*b+c] = map_ncbi_aa[static_cast<int>(aa)];
       }
 
 #if 0
@@ -511,7 +511,7 @@ auto translate(char * dna, long dlen,
   long c;
   long ppos = 0;
   long plen = (dlen - frame) / 3;
-  char * prot = (char*) xmalloc(1+plen);
+  char * prot = static_cast<char*>(xmalloc(1+plen));
 
   if (strand == 0)
   {
@@ -531,11 +531,11 @@ auto translate(char * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[(int)(dna[pos--])];
+      c = ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       prot[ppos++] = ttable[c];
     }
   }

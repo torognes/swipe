@@ -51,8 +51,8 @@ auto region(char * a_seq,
 	    long * s) -> void
 {
   
-  long * HH = (long *) xmalloc(N * sizeof(long));
-  long * EE = (long *) xmalloc(N * sizeof(long));
+  long * HH = static_cast<long *>(xmalloc(N * sizeof(long)));
+  long * EE = static_cast<long *>(xmalloc(N * sizeof(long)));
 
   long i;
   long j;
@@ -86,7 +86,7 @@ auto region(char * a_seq,
 	f = std::max(f, h - q) - r;
 	EE[j] = std::max(EE[j], HH[j] - q) - r;
 	
-	h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
+	h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 	
 	if (h < 0)
 	  h = 0;
@@ -133,7 +133,7 @@ auto region(char * a_seq,
 	  f = std::max(f, h - q) - r;
 	  EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	  h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
+	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 
 	  if (f > h)
 	    h = f;
@@ -184,7 +184,7 @@ auto init(struct aligner_info * aip) -> void
   aip->op = 0;
   aip->count = 0;
   aip->size = 64;
-  aip->alignment = (char*) xmalloc(aip->size);
+  aip->alignment = static_cast<char*>(xmalloc(aip->size));
   aip->length = 0;
 }
 
@@ -201,7 +201,7 @@ auto push(struct aligner_info * aip) -> void
       if ((n < 0) || (n >= rest))
       {
 	aip->size += 64;
-	aip->alignment = (char*) xrealloc(aip->alignment, aip->size);
+	aip->alignment = static_cast<char*>(xrealloc(aip->alignment, aip->size));
 	//	fprintf(stderr, "Reallocating memory for alignment: %ld\n", aip->size);
       }
       else
@@ -300,7 +300,7 @@ auto diff(struct aligner_info * aip,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[(int)(a_seq[a_pos])] - r * (N-1);
+	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - r * (N-1);
 
 	  if (j > 0)
 	    Score -= q;
@@ -343,8 +343,8 @@ auto diff(struct aligner_info * aip,
 
       // Compute HH & EE in forward phase with tb
 
-      long * HH = (long *) xmalloc((N+1) * sizeof(long));
-      long * EE = (long *) xmalloc((N+1) * sizeof(long));
+      long * HH = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
+      long * EE = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
 
       HH[0] = 0;
       t = -q;
@@ -368,7 +368,7 @@ auto diff(struct aligner_info * aip,
 	      f = std::max(f, h - q) - r;
 	      EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[(int)(a_seq[a_pos+i-1])];
+	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[static_cast<int>(a_seq[a_pos+i-1])];
 
 	      if (f > h)
 		h = f;
@@ -383,8 +383,8 @@ auto diff(struct aligner_info * aip,
 
       // Compute XX & YY in reverse phase with te
 
-      long * XX = (long *) xmalloc((N+1) * sizeof(long));
-      long * YY = (long *) xmalloc((N+1) * sizeof(long));
+      long * XX = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
+      long * YY = static_cast<long *>(xmalloc((N+1) * sizeof(long)));
 
       XX[0] = 0;
       t = -q;
@@ -409,7 +409,7 @@ auto diff(struct aligner_info * aip,
 	      f = std::max(f, h - q) - r;
 	      YY[j] = std::max(YY[j], XX[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[(int)(a_seq[a_pos+M-i])];
+	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[static_cast<int>(a_seq[a_pos+M-i])];
 
 	      if (f > h)
 		h = f;

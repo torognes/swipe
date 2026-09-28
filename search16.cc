@@ -281,14 +281,14 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     //      for(int i=0; i<24; i += 8)
     for(int i=0; i<32; i += 8)
     {
-      xmm0  = _mm_load_si128((__m128i*)(score_matrix_word + d[0] + i));
-      xmm1  = _mm_load_si128((__m128i*)(score_matrix_word + d[1] + i));
-      xmm2  = _mm_load_si128((__m128i*)(score_matrix_word + d[2] + i));
-      xmm3  = _mm_load_si128((__m128i*)(score_matrix_word + d[3] + i));
-      xmm4  = _mm_load_si128((__m128i*)(score_matrix_word + d[4] + i));
-      xmm5  = _mm_load_si128((__m128i*)(score_matrix_word + d[5] + i));
-      xmm6  = _mm_load_si128((__m128i*)(score_matrix_word + d[6] + i));
-      xmm7  = _mm_load_si128((__m128i*)(score_matrix_word + d[7] + i));
+      xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
+      xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
+      xmm2  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
+      xmm3  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
+      xmm4  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
+      xmm5  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
+      xmm6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
+      xmm7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
       
       xmm8  = _mm_unpacklo_epi16(xmm0,  xmm1);
       xmm9  = _mm_unpackhi_epi16(xmm0,  xmm1);
@@ -317,14 +317,14 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       xmm30 = _mm_unpacklo_epi64(xmm21, xmm23);
       xmm31 = _mm_unpackhi_epi64(xmm21, xmm23);
       
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+0) + CHANNELS*j), xmm24);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+1) + CHANNELS*j), xmm25);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+2) + CHANNELS*j), xmm26);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+3) + CHANNELS*j), xmm27);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+4) + CHANNELS*j), xmm28);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+5) + CHANNELS*j), xmm29);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+6) + CHANNELS*j), xmm30);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+7) + CHANNELS*j), xmm31);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+0) + CHANNELS*j), xmm24);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+1) + CHANNELS*j), xmm25);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+2) + CHANNELS*j), xmm26);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+3) + CHANNELS*j), xmm27);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+4) + CHANNELS*j), xmm28);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+5) + CHANNELS*j), xmm29);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+6) + CHANNELS*j), xmm30);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+7) + CHANNELS*j), xmm31);
     }
   }
 }
@@ -360,7 +360,7 @@ auto search16(WORD * * q_start,
 
   __m128i dseqalloc[CDEPTH];
 
-  BYTE * dseq = (BYTE *) & dseqalloc;
+  BYTE * dseq = reinterpret_cast<BYTE *>(& dseqalloc);
   BYTE zero;
 
   long seq_id[CHANNELS];
@@ -384,8 +384,8 @@ auto search16(WORD * * q_start,
   S = Z;
   SL = Z;
   
-  hep = (__m128i*) hearray;
-  qp = (__m128i**) q_start;
+  hep = reinterpret_cast<__m128i*>(hearray);
+  qp = reinterpret_cast<__m128i**>(q_start);
       
   for(int a=0; a < qlen; a++)
   {
@@ -427,7 +427,7 @@ auto search16(WORD * * q_start,
 
       /* save column address if new highscore */
       
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
+      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       for(int c=0; c<CHANNELS; c++)
 	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];
@@ -444,7 +444,7 @@ auto search16(WORD * * q_start,
       printf("\n");
 #endif
       
-      SL = (__m128i)S;
+      SL = S;
     }	  
     else
     {
@@ -499,10 +499,10 @@ auto search16(WORD * * q_start,
 	    db_getsequence(dbt, seqno, strand, frame, 
 			   & address, & length, & ntlen, c);
 		      
-	    d_begin[c] = (unsigned char*) address;
+	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
-	    d_end[c] = (unsigned char*) address + length - 1;
+	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
 	    next_id++;
 		      
 	    for(int j=0; j<CDEPTH; j++)
@@ -540,7 +540,7 @@ auto search16(WORD * * q_start,
       
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
+      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       for(int c=0; c<CHANNELS; c++)
 	if ((mask & (3 << 2*c)) != 0)
 	  d_best[c] = d_pos[c];
@@ -560,7 +560,7 @@ auto search16(WORD * * q_start,
       printf("\n");
 #endif
       
-      SL = (__m128i)S;
+      SL = S;
     }
   }
 }

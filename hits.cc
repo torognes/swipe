@@ -155,7 +155,7 @@ auto hits_compare(const void * a, const void * b) -> int
 
 auto hits_sort() -> long *
 {
-  long * hits_sorted = (long *) xmalloc(hits_count * sizeof(long));
+  long * hits_sorted = static_cast<long *>(xmalloc(hits_count * sizeof(long)));
   
   for(long i=0; i<hits_count; i++)
     hits_sorted[i] = i;
@@ -263,7 +263,7 @@ auto hits_gethit(long i, long * seqno, long * score,
 
 auto hits_enter_seq(long i, char* seq, long seq_len) -> void
 {
-  hits_list[i].dseq = (char*) xmalloc(seq_len);
+  hits_list[i].dseq = static_cast<char*>(xmalloc(seq_len));
   memcpy(hits_list[i].dseq, seq, seq_len);
   hits_list[i].dlen = seq_len;
 }
@@ -290,14 +290,14 @@ auto hits_enter_align_coord(long i,
 
 auto hits_enter_header(long i, char * header, long header_len) -> void
 {
-  hits_list[i].header_address = (char*) xmalloc(header_len);
+  hits_list[i].header_address = static_cast<char*>(xmalloc(header_len));
   memcpy(hits_list[i].header_address, header, header_len);
   hits_list[i].header_length = header_len;
 }
 
 auto hits_enter_align_string(long i, char * align, long align_len) -> void
 {
-  hits_list[i].alignment = (char*) xmalloc(align_len);
+  hits_list[i].alignment = static_cast<char*>(xmalloc(align_len));
   memcpy(hits_list[i].alignment, align, align_len);
   //  hits_list[i].alignment[align_len] = 0;
 }
@@ -357,7 +357,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
   obvious = 0;
   hits_count = 0;
-  hits_list = (struct hits_entry *) xmalloc(keephits * sizeof(struct hits_entry));
+  hits_list = static_cast<struct hits_entry *>(xmalloc(keephits * sizeof(struct hits_entry)));
 
   for(int i=0; i<keephits; i++)
   {
@@ -440,7 +440,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       else
 	n = dlen - seqcount * lenadj;
 
-      Kmn = K * (double)m * (double)n;
+      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
   else if (symtype < 5)
@@ -516,7 +516,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       else
 	n = dlen - seqcount * lenadj;
 
-      Kmn = K * (double)m * (double)n;
+      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
 
@@ -613,7 +613,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
   db_getheader(t, h->seqno, & address, & length);
   h->header_length = length;
-  h->header_address = (char*) xmalloc(length);
+  h->header_address = static_cast<char*>(xmalloc(length));
   memcpy(h->header_address, address, length);
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
@@ -627,7 +627,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
   if (i < opt_alignments)
   {
-    h->dseq = (char*)xmalloc(h->dlen);
+    h->dseq = static_cast<char*>(xmalloc(h->dlen));
     memcpy(h->dseq, address, h->dlen);
     
     char * qseq;
@@ -727,23 +727,23 @@ auto putalignop(char c, long len) -> void
     case 'M':
       qs = q_seq[q_pos++];
       ds = d_seq[d_pos++];
-      q_line[line_pos] = sym[(int)(qs)];
+      q_line[line_pos] = sym[static_cast<int>(qs)];
       if (symtype == 0)
       {
 	a_line[line_pos] = (qs == ds) ? '|' : ' ';
       }
       else
       {
-	a_line[line_pos] = (qs == ds) ? sym[(int)(qs)] : 
+	a_line[line_pos] = (qs == ds) ? sym[static_cast<int>(qs)] : 
 	  (score_matrix_63[32*qs+ds] > 0 ? '+' : ' ');
       }
-      d_line[line_pos] = sym[(int)(ds)];
+      d_line[line_pos] = sym[static_cast<int>(ds)];
       line_pos++;
       break;
 
     case 'D':
       qs = q_seq[q_pos++];
-      q_line[line_pos] = sym[(int)(qs)];
+      q_line[line_pos] = sym[static_cast<int>(qs)];
       a_line[line_pos] = ' ';
       d_line[line_pos] = '-';
       line_pos++;
@@ -753,7 +753,7 @@ auto putalignop(char c, long len) -> void
       ds = d_seq[d_pos++];
       q_line[line_pos] = '-';
       a_line[line_pos] = ' ';
-      d_line[line_pos] = sym[(int)(ds)];
+      d_line[line_pos] = sym[static_cast<int>(ds)];
       line_pos++;
       break;
     default:
@@ -900,9 +900,9 @@ auto whole_align(long i,
     al += len;
   }
 
-  char * qlinep = (char*) xmalloc(al+1);
-  char * alinep = (char*) xmalloc(al+1);
-  char * dlinep = (char*) xmalloc(al+1);
+  char * qlinep = static_cast<char*>(xmalloc(al+1));
+  char * alinep = static_cast<char*>(xmalloc(al+1));
+  char * dlinep = static_cast<char*>(xmalloc(al+1));
 
   *qline = qlinep;
   *aline = alinep;
@@ -965,7 +965,7 @@ auto whole_align(long i,
       for(long j=0; j<len; j++)
       {
 	char qs = q_seq[q_pos++];
-	*qlinep++ = sym[(int)(qs)];
+	*qlinep++ = sym[static_cast<int>(qs)];
 	*alinep++ = ' ';
 	*dlinep++ = '-';
       }
@@ -979,7 +979,7 @@ auto whole_align(long i,
 	char ds = d_seq[d_pos++];
 	*qlinep++ = '-';
 	*alinep++ = ' ';
-	*dlinep++ = sym[(int)(ds)];
+	*dlinep++ = sym[static_cast<int>(ds)];
       }
       *gaps += 1;
       *indels += len;
@@ -990,7 +990,7 @@ auto whole_align(long i,
       {
 	char qs = q_seq[q_pos++];
 	char ds = d_seq[d_pos++];
-	*qlinep++ = sym[(int)(qs)];
+	*qlinep++ = sym[static_cast<int>(qs)];
 	if (qs == ds)
 	{
 	  *alinep++ = '|';
@@ -1006,7 +1006,7 @@ auto whole_align(long i,
 	{
 	  *alinep++ = ' ';
 	}
-	*dlinep++ = sym[(int)(ds)];
+	*dlinep++ = sym[static_cast<int>(ds)];
       }
     }
     else
@@ -1413,7 +1413,7 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
   fprintf(out, "\t\t\t<querySequence>");
   for(int i=0; i<q.len; i++)
-    putc(query.sym[(int)(q.seq[i])], out);
+    putc(query.sym[static_cast<int>(q.seq[i])], out);
   fprintf(out, "</querySequence>\n");
   fprintf(out, "\t\t</queryInformation>\n");
   
@@ -1508,7 +1508,7 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t<displayLimits>\n");
   fprintf(out, "\t\t\t\t<hitLimit>%ld</hitLimit>\n", maxmatches);
   fprintf(out, "\t\t\t\t<alignmentLimit>%ld</alignmentLimit>\n", alignments);
-  fprintf(out, "\t\t\t\t<subalignmentLimit>%ld</subalignmentLimit>\n", (long)1);
+  fprintf(out, "\t\t\t\t<subalignmentLimit>%ld</subalignmentLimit>\n", static_cast<long>(1));
   fprintf(out, "\t\t\t</displayLimits>\n");
   fprintf(out, "\t\t\t<threads>%ld</threads>\n", threads);
   fprintf(out, "\t\t</options>\n");
@@ -1993,7 +1993,7 @@ auto hits_show_plain(long show_gis,
 	      
 	if (stats_available != 0)
 	{
-	  long bits = (long) floor(lambda_d_log2 * score - logK_d_log2 + 0.5);
+	  long bits = static_cast<long>(floor(lambda_d_log2 * score - logK_d_log2 + 0.5));
 	  double expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " %5ld", bits);

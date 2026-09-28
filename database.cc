@@ -164,7 +164,7 @@ auto db_print_seq_map(char * address, long length, const char * map) -> void
       end = length;
     while(i<end)
     {
-      putc(map[(int)(address[i])], out);
+      putc(map[static_cast<int>(address[i])], out);
       i++;
     }
     fprintf(out, "\n");
@@ -173,7 +173,7 @@ auto db_print_seq_map(char * address, long length, const char * map) -> void
 
 auto db_map_create() -> mapp
 {
-  mapp m = (mapp) xmalloc(sizeof(struct db_map_s));
+  mapp m = static_cast<mapp>(xmalloc(sizeof(struct db_map_s)));
   m->map_volume = nullptr;
   m->map_offset = 0;
   m->map_address = nullptr;
@@ -192,7 +192,7 @@ auto db_map_destruct(mapp m) -> void
 
 auto db_thread_create() -> db_thread_t *
 {
-  auto * t = (struct db_thread_s *) xmalloc(sizeof(struct db_thread_s));
+  auto * t = static_cast<struct db_thread_s *>(xmalloc(sizeof(struct db_thread_s)));
   t->map_seq = db_map_create();
   t->map_hdr = db_map_create();
   t->parser = parser_create();
@@ -322,13 +322,13 @@ auto getnames(char * line, char * * * names) -> long
       break;
   }
   
-  * names = (char**) xmalloc(namecount * sizeof(char*));
+  * names = static_cast<char**>(xmalloc(namecount * sizeof(char*)));
 
   while (n < namecount)
   {
     long wslen = strspn(line, ws);
     long namelen = strcspn(line + wslen, ws);
-    char * name = (char*) xmalloc(namelen + 1);
+    char * name = static_cast<char*>(xmalloc(namelen + 1));
     strncpy(name, line+wslen, namelen);
     name[namelen] = 0;
     (*names)[n] = name;
@@ -350,7 +350,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 {
   // open an alias file and read contents
 
-  char * filename = (char*)xmalloc(strlen(basename)+5);
+  char * filename = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(filename, basename);
   strcat(filename, ((symbol_type==1)||(symbol_type==2)||(symbol_type==5)) ? ".pal" : ".nal");
   
@@ -363,7 +363,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 
   // al file exists
 
-  auto * al_info = (al_info_t *) xmalloc(sizeof(al_info_t));
+  auto * al_info = static_cast<al_info_t *>(xmalloc(sizeof(al_info_t)));
 
   al_info->dblist_len = 0;
   al_info->oidlist_len = 0;
@@ -382,7 +382,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
     {
       long start = strspn(line+6, " \t");
       long titlelen = strcspn(line+6+start, "\r\n");
-      al_info->title = (char*) xmalloc(titlelen + 1);
+      al_info->title = static_cast<char*>(xmalloc(titlelen + 1));
       strncpy(al_info->title, line+6+start, titlelen);
       al_info->title[titlelen] = 0;
     }
@@ -493,13 +493,13 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
 
   volume->basename = strdup(basename);
 
-  char * name_pin = (char*)xmalloc(strlen(basename)+5);
+  char * name_pin = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(name_pin, basename);
 
-  char * name_phr = (char*)xmalloc(strlen(basename)+5);
+  char * name_phr = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(name_phr, basename);
 
-  char * name_psq = (char*)xmalloc(strlen(basename)+5);
+  char * name_psq = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(name_psq, basename);
 
   if ((symbol_type==1)||(symbol_type==2)||(symbol_type==5))
@@ -520,7 +520,7 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
     fatal(std::string("Unable to open file ") + name_pin + ".");
   
   volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
-  volume->adr_xin = (char *) mmap(nullptr, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0);
+  volume->adr_xin = static_cast<char *>(mmap(nullptr, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0));
 
   if (volume->adr_xin == MAP_FAILED)
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
@@ -548,7 +548,7 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
         fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     };
 
-  char * p = (char*) volume->adr_xin;
+  char * p = volume->adr_xin;
   check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
@@ -570,7 +570,7 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   long titlelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, titlelen + 4);
-  volume->title = (char*) xmalloc(titlelen+1);
+  volume->title = static_cast<char*>(xmalloc(titlelen+1));
   strncpy(volume->title, p, titlelen);
   volume->title[titlelen] = 0;
   p += titlelen;
@@ -584,7 +584,7 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   unsigned datelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, datelen);
-  volume->time = (char*) xmalloc(datelen+1);
+  volume->time = static_cast<char*>(xmalloc(datelen+1));
   strncpy(volume->time, p, datelen);
   volume->time[datelen] = 0;
   p += datelen;
@@ -601,7 +601,7 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   p += 8;
   volume->longest = load_uint32_be(p);
   p += 4;
-  volume->offset_xhr = p - (char*)volume->adr_xin;
+  volume->offset_xhr = p - volume->adr_xin;
   volume->offset_xsq = volume->offset_xhr + 4 * (volume->seqcount + 1);
   volume->offset_amb = volume->offset_xsq + 4 * (volume->seqcount + 1);
 
@@ -656,7 +656,7 @@ auto get_path(const char * basename) -> char *
     if (c == '/')
       pathlen = p - basename;
   
-  path = (char*) xmalloc(pathlen + 1);
+  path = static_cast<char*>(xmalloc(pathlen + 1));
   strncpy(path, basename, pathlen);
   path[pathlen] = 0;
   return path;
@@ -667,7 +667,7 @@ auto addpath(char * path, char * base) -> char *
   long pathlen = strlen(path);
   long baselen = strlen(base);
 
-  char * both = (char*) xmalloc(pathlen + baselen + 1);
+  char * both = static_cast<char*>(xmalloc(pathlen + baselen + 1));
   strcpy(both, path);
   strcat(both, base);
   return both;
@@ -721,7 +721,7 @@ auto db_open_msk(db_volume_t * v) -> void
     fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
 
   v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
-  v->adr_msk = (unsigned char *) mmap(nullptr, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0);
+  v->adr_msk = static_cast<unsigned char *>(mmap(nullptr, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0));
   
   if (v->adr_msk == MAP_FAILED)
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
@@ -817,14 +817,13 @@ auto db_add_taxid(unsigned long const taxid) -> void
   {
     long old = db_main.taxid_bitmap_size;
     db_main.taxid_bitmap_size = byteno+1;
-    db_main.taxid_bitmap_address = (unsigned char *)
-      xrealloc(db_main.taxid_bitmap_address, 
-               db_main.taxid_bitmap_size);
+    db_main.taxid_bitmap_address = static_cast<unsigned char *>(xrealloc(db_main.taxid_bitmap_address, 
+               db_main.taxid_bitmap_size));
     memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
   }
     
   unsigned char v = db_main.taxid_bitmap_address[byteno];
-  db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
+  db_main.taxid_bitmap_address[byteno] = static_cast<unsigned char>(v | (1 << bitno));
 }
 
 auto db_read_taxid_file(char * filename) -> void
@@ -835,7 +834,7 @@ auto db_read_taxid_file(char * filename) -> void
     fatal(std::string("Unable to open taxid file ") + filename + ".");
 
   db_main.taxid_bitmap_size = 64*1024;
-  db_main.taxid_bitmap_address = (unsigned char*) xmalloc(db_main.taxid_bitmap_size);
+  db_main.taxid_bitmap_address = static_cast<unsigned char*>(xmalloc(db_main.taxid_bitmap_size));
   memset(db_main.taxid_bitmap_address, 0, db_main.taxid_bitmap_size);
 
   /* taxids are separated by whitespace (usually one per line) */
@@ -1013,7 +1012,7 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
   {
     unsigned int unpacked;
     for(long i=0; i<4; i++)
-      ((unsigned char*)(&unpacked))[i] = (unsigned char)(1 << ((b >> ((3-(i&3))<<1)) & 3));
+      (reinterpret_cast<unsigned char*>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     decompress_nt[b] = unpacked;
   }
 
@@ -1215,8 +1214,8 @@ auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   // map it
   
-  char * start = (char *) mmap(nullptr, length, PROT_READ, MAP_SHARED, 
-			       v1->fd_xsq, offset);
+  char * start = static_cast<char *>(mmap(nullptr, length, PROT_READ, MAP_SHARED, 
+			       v1->fd_xsq, offset));
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1266,8 +1265,8 @@ auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
   
   // map it
   
-  char * start = (char *) mmap(nullptr, length, PROT_READ, MAP_SHARED, 
-			       v1->fd_xhr, offset);
+  char * start = static_cast<char *>(mmap(nullptr, length, PROT_READ, MAP_SHARED, 
+			       v1->fd_xhr, offset));
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1311,11 +1310,11 @@ auto db_translate(char * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[(int)(dna[pos--])];
+      c = ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       prot[ppos++] = d_translate[c];
     }
   }
@@ -1348,13 +1347,13 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
     long amb_bytes = length - aoff;
 
-    unsigned char last = ((unsigned char*) address)[aoff-1];
+    unsigned char last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
     long nt_length = 4 * (aoff - 1) + (last & 3);
   
     if (t->ntbuffersize[c] < nt_length + 1)
     {
       t->ntbuffersize[c] = nt_length+1;
-      t->ntbuffer[c] = (char*) xrealloc(t->ntbuffer[c], t->ntbuffersize[c]);
+      t->ntbuffer[c] = static_cast<char*>(xrealloc(t->ntbuffer[c], t->ntbuffersize[c]));
       //      printf("Reallocating large buffer (%ld) for channel %d\n", 
       //	     t->ntbuffersize[c], c);
     }
@@ -1362,13 +1361,13 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     for(long j=0; j < nt_length/4; j++)
     {
       unsigned char b = address[j];
-      *(((unsigned int*)(t->ntbuffer[c]))+j) = decompress_nt[b];
+      *((reinterpret_cast<unsigned int*>(t->ntbuffer[c]))+j) = decompress_nt[b];
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)
     {
       unsigned char b = address[i/4];
-      t->ntbuffer[c][i] = (char)(1 << ((b >> ((3-(i&3))<<1)) & 3));
+      t->ntbuffer[c][i] = static_cast<char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     }
     t->ntbuffer[c][nt_length] = 0;
     
@@ -1411,7 +1410,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  unsigned int o = e & 0x00ffffff;
 	
 	  for(unsigned int rr = 0; rr < r ; rr++)
-	    t->ntbuffer[c][o+rr] = (char) n;
+	    t->ntbuffer[c][o+rr] = static_cast<char>(n);
 	}
       }
     }
@@ -1425,11 +1424,11 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	if (t->xxbuffersize[c] < nt_length + 1)
 	{
 	  t->xxbuffersize[c] = nt_length+1;
-	  t->xxbuffer[c] = (char*) xrealloc(t->xxbuffer[c], t->xxbuffersize[c]);
+	  t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], t->xxbuffersize[c]));
 	}
 
 	for(long i=0; i<nt_length; i++)
-	  t->xxbuffer[c][i] = ntcompl[(int)(t->ntbuffer[c][nt_length-1-i])];
+	  t->xxbuffer[c][i] = ntcompl[static_cast<int>(t->ntbuffer[c][nt_length-1-i])];
 	t->xxbuffer[c][nt_length] = 0;
 
 	/* deallocate ntbuffer if big */
@@ -1461,7 +1460,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       if (t->xxbuffersize[c] < plen + 1)
       {
 	t->xxbuffersize[c] = plen + 1;
-	t->xxbuffer[c] = (char*) xrealloc(t->xxbuffer[c], t->xxbuffersize[c]);
+	t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], t->xxbuffersize[c]));
       }
       
       db_translate(t->ntbuffer[c], nt_length, strand, frame, t->xxbuffer[c]);
@@ -1511,7 +1510,7 @@ auto db_parse_header(db_thread_t * t, char * address, long length,
 		     long show_gis, 
 		     long * deflines, char *** deflinetable) -> void
 {
-  parse_getdeflines(t->parser, (unsigned char*) address, length,
+  parse_getdeflines(t->parser, reinterpret_cast<unsigned char*>(address), length,
 		    db_main.memb_bit, & db_check_taxid, show_gis,
 		    deflines, deflinetable);
 }
@@ -1521,7 +1520,7 @@ auto db_showheader(struct db_thread_s * t, char * address, long length,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
 		   Escaping const escaping) -> void
 {
-  parse_header(t->parser, (unsigned char*) address, length,
+  parse_header(t->parser, reinterpret_cast<unsigned char*>(address), length,
 	       db_main.memb_bit, db_check_taxid, show_gis,
 	       indent, maxlen, linelen, maxdeflines, show_descr, escaping);
 }
@@ -1564,7 +1563,7 @@ auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
   char * address;
   long length;
   db_getheader(t, seqno, & address, & length);
-  return parse_getdeflinecount(t->parser, (unsigned char*) address, length, db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(t->parser, reinterpret_cast<unsigned char*>(address), length, db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace

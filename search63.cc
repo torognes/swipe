@@ -60,7 +60,7 @@ auto fullsw(char * dseq,
         {
           n = *hep;
           e = *(hep+1);
-          h += sp[(int)(*qp)];
+          h += sp[static_cast<int>(*qp)];
 
           if (e > h)
             h = e;

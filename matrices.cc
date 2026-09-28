@@ -526,12 +526,12 @@ auto score_matrix_read() -> void
   long lo;
   long hi; 
   
-  score_matrix_7 = (char *) xmalloc(32*32*sizeof(char));
-  score_matrix_7t = (char *) xmalloc(32*32*sizeof(char));
-  score_matrix_8 = (unsigned char *) xmalloc(32*32*sizeof(char));
-  score_matrix_16 = (short *) xmalloc(32*32*sizeof(short));
-  score_matrix_32 = (unsigned int *) xmalloc(32*32*sizeof(unsigned int));
-  score_matrix_63 = (long *) xmalloc(32*32*sizeof(long));
+  score_matrix_7 = static_cast<char *>(xmalloc(32*32*sizeof(char)));
+  score_matrix_7t = static_cast<char *>(xmalloc(32*32*sizeof(char)));
+  score_matrix_8 = static_cast<unsigned char *>(xmalloc(32*32*sizeof(char)));
+  score_matrix_16 = static_cast<short *>(xmalloc(32*32*sizeof(short)));
+  score_matrix_32 = static_cast<unsigned int *>(xmalloc(32*32*sizeof(unsigned int)));
+  score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
   memset(score_matrix_63, -1, 32*32*8);
   
   if (symtype == 0)
@@ -604,9 +604,9 @@ auto score_matrix_read() -> void
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
       score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
       score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
-      score_matrix_8 [(a<<5) + b] = (unsigned char) (BIAS + sc);
-      score_matrix_32[(a<<5) + b] = (unsigned int) sc;
-      score_matrix_16[(a<<5) + b] = (short) sc;
+      score_matrix_8 [(a<<5) + b] = static_cast<unsigned char>(BIAS + sc);
+      score_matrix_32[(a<<5) + b] = static_cast<unsigned int>(sc);
+      score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
     }
 }
 
