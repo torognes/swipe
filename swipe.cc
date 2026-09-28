@@ -62,73 +62,72 @@
 #define DEFAULT_OUT stdout
 #define DEFAULT_EFFDBSIZE 0
 
-char * progname;
 char const * matrixname;
 char const * databasename;
 char const * queryname;
-char * taxidfilename;
-char * outfile = nullptr;
 
 double expect;
 double minexpect;
-long minscore;
-long maxscore;
 long alignments;
 long maxmatches;
 long gapopen;
 long gapextend;
 long threads;
-long view;
 long symtype;
-long show_gis;
 long show_taxid;
 long matchscore;
 long mismatchscore;
 long gapopenextend;
 long querystrands;
-long query_gencode;
-long db_gencode;
-long subalignments;
-long dump;
 long effdbsize;
 
 /* Other variables */
 
 long queryno;
 
-long cpu_feature_sse2;
 long cpu_feature_ssse3;
 long cpu_feature_sse41;
 
 #define MAX_THREADS 256
 
-pthread_mutex_t countmutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_t pthread_id[MAX_THREADS];
-
-
-long maxchunksize;
-long volnext;
-long seqnext;
-long * volchunks;
-long * volseqs;
-
 long compute7;
-long compute16;
-long compute32;
-long compute63;
-
-long rounds7;
-long rounds16;
-long rounds32;
-long rounds63;
 
 long totalhits;
 
 FILE * out = DEFAULT_OUT;
 
 struct time_info ti;
+
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
+char * progname;
+char * taxidfilename;
+char * outfile = nullptr;
+long minscore;
+long maxscore;
+long view;
+long show_gis;
+long query_gencode;
+long db_gencode;
+long subalignments;
+long dump;
+long cpu_feature_sse2;
+pthread_mutex_t countmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_t pthread_id[MAX_THREADS];
+long maxchunksize;
+long volnext;
+long seqnext;
+long * volchunks;
+long * volseqs;
+long compute16;
+long compute32;
+long compute63;
+long rounds7;
+long rounds16;
+long rounds32;
+long rounds63;
 
 struct search_data
 {
@@ -160,6 +159,8 @@ struct search_data
   long qstrand1, qstrand2, qframe1, qframe2;
   long dstrand1, dstrand2, dframe1, dframe2;
 };
+
+}  // anonymous namespace
 
 auto fatal(char const * message) -> void
 {
@@ -194,6 +195,8 @@ auto xrealloc(void *ptr, size_t size) -> void *
   return t;
 }
 
+namespace {
+
 long alignedhits;
 long * hits_sorted;
 
@@ -201,9 +204,6 @@ long align_volnext;
 
 long * align_volseqs;
 long * align_volchunks;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
 
 auto align_init(struct search_data * sdp) -> void
 {

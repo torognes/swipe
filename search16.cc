@@ -93,6 +93,9 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
   "        pmaxsw  " H ", %%xmm12      \n"	\
   "        pmaxsw  " H ", " F "        \n"
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 inline auto donormal16(volatile __m128i const * Sm,  /* r9  */
 		       __m128i const * hep, /* rdi */
 		       __m128i * const * qp, /* rsi */
@@ -328,6 +331,8 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     }
   }
 }
+
+}  // anonymous namespace
 
 auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,

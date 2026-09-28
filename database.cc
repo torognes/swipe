@@ -34,6 +34,9 @@
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 unsigned int decompress_nt[256];
 
 struct al_info
@@ -137,6 +140,9 @@ struct db_map_s
   long map_offset;    // offset in file of the mapped region
   long map_length;    // size of memory mapped region
 };
+
+}  // anonymous namespace
+
 using db_map_t = db_map_s;
 
 using mapp = db_map_t *;
@@ -153,7 +159,6 @@ struct db_thread_s
 };
 using db_thread_t = db_thread_s;
 
-// anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
 auto db_print_seq_map(char const * address, long length, char const * map) -> void
@@ -230,11 +235,11 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
 
 #define MAXVOLUMES 256
 
+namespace {
+
 db_main_t db_main;
 
 db_volume_t db_volume[MAXVOLUMES];
-
-namespace {
 
 auto db_volume_init(db_volume_t * v) -> void
 {

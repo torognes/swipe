@@ -114,7 +114,13 @@ char map_ncbi_nt16[256] =
 
 char ntcompl[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 char q_translate[16*16*16];
+
+}  // anonymous namespace
+
 char d_translate[16*16*16];
 
 char const * gencode_names[23] = 
@@ -144,6 +150,8 @@ char const * gencode_names[23] =
     "Thraustochytrium Mitochondrial Code",
   };
 
+namespace {
+
 char const * code[23] =
   { 
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
@@ -172,6 +180,8 @@ char const * code[23] =
   };
   
 char remap[] = { 2, 1, 3, 0 };
+
+}  // anonymous namespace
   
 //                       00000000001111111111222222222233
 //                       01234567890123456789012345678901
@@ -183,14 +193,13 @@ char const * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
 
+namespace {
+
 FILE * query_fp;
 
 // next line of the query file, with its end-of-line character (an
 // empty string means the end of the file)
 std::string query_line;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
 
 // read the next line of fp into line, whatever its length (KI-16,
 // KI-17), including its end-of-line character; line is empty at the

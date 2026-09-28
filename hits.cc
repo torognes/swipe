@@ -30,6 +30,9 @@
 #include <cstddef>  // std::size_t
 #include <limits>
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 long keephits;
 long scorethreshold;
 long upperscorethreshold;
@@ -40,7 +43,11 @@ long obvious;
 long opt_descriptions;
 long opt_alignments;
 
+}  // anonymous namespace
+
 /* parameters for bit scores and expect values */
+
+namespace {
 
 long stats_available = 0;
 
@@ -56,9 +63,14 @@ double ungapped_lambda = 0;
 double ungapped_K = 0;
 double ungapped_H = 0;
 
+}  // anonymous namespace
+
 /* gap penalties of the ungapped rows of the NCBI score matrix tables
    (INT2_MAX, see blastkar_partial.c) */
 constexpr long ungapped_penalty = 32767;
+
+namespace {
+
 double logK;
 double lambda_d_log2;
 double logK_d_log2;
@@ -88,9 +100,6 @@ struct hits_entry
 
 
 pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
 
 auto hits_compare(void const * a, void const * b) -> int
 {
@@ -680,6 +689,9 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 
 
 #define ALIGNLEN 60
+
+namespace {
+
 long line_pos;
 long q_start;
 long d_start;
@@ -704,8 +716,6 @@ char a_line[ALIGNLEN+1];
 char d_line[ALIGNLEN+1];
 char const * sym;
 int poswidth;
-
-namespace {
 
 auto putalignop(char c, long len) -> void
 {

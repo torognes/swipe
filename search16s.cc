@@ -88,6 +88,9 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
   "        pmaxsw  " H ", " F "        \n"
 
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 inline auto donormal16s(volatile __m128i const * Sm,  /* r9  */
 			__m128i const * hep, /* rdi */
 			__m128i * const * qp, /* rsi */
@@ -142,8 +145,12 @@ inline auto donormal16s(volatile __m128i const * Sm,  /* r9  */
      );
 }
 
+}  // anonymous namespace
+
 /* not used: 1 2 3 5 6 7 9 10 11 */
 /* used 0 (H0) 4 (F0) 8 (N0) 12 (E) 13 (S) 14 (Q) 15 (R) */
+
+namespace {
 
 inline auto domasked16s(volatile __m128i const * Sm,
 			__m128i const * hep,
@@ -305,6 +312,8 @@ inline auto dprofile_fill16s(WORD * dprofile_word,
     }
   }
 }
+
+}  // anonymous namespace
 
 auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
