@@ -37,11 +37,11 @@ COMMON=-g -pthread
 # supported compiler (GCC 4.8.5 and later, clang), and swipe builds
 # without any of them: once a warning of the DEBUG set below is fixed
 # everywhere, its option moves here, so that it cannot come back
-COMPILEOPT=-Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wdouble-promotion \
-	-Wfloat-equal -Wformat=2 -Wnon-virtual-dtor -Woverloaded-virtual \
-	-Wmissing-declarations -Wredundant-decls -Wshadow -Wswitch-default \
-	-Wold-style-cast -Wuninitialized -Wunused -Wunused-macros -Wvla \
-	-Wzero-as-null-pointer-constant
+COMPILEOPT=-Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wconversion \
+	-Wdouble-promotion -Wfloat-equal -Wformat=2 -Wnon-virtual-dtor \
+	-Woverloaded-virtual -Wmissing-declarations -Wredundant-decls -Wshadow \
+	-Wsign-conversion -Wswitch-default -Wold-style-cast -Wuninitialized \
+	-Wunused -Wunused-macros -Wvla -Wzero-as-null-pointer-constant
 
 # "make WERROR=1": warnings are errors (used by the CI; off by default,
 # so that a compiler with new warnings can still build swipe)
@@ -65,8 +65,8 @@ IS_CLANG := $(shell $(CXX) -x c++ -E -dM - < /dev/null 2>/dev/null | grep -c '__
 
 # Extra warnings of the DEBUG recipe (current GCC and clang only: the
 # oldest supported GCC rejects some of these options)
-DEBUG_WARNINGS_COMMON=-Wconversion -Wdate-time -Wextra-semi \
-	-Wimplicit-fallthrough -Wnull-dereference -Wsign-conversion
+DEBUG_WARNINGS_COMMON=-Wdate-time -Wextra-semi -Wimplicit-fallthrough \
+	-Wnull-dereference
 DEBUG_WARNINGS_GCC=-Wduplicated-branches -Wduplicated-cond \
 	-Wformat-overflow -Wlogical-op -Wuseless-cast
 DEBUG_WARNINGS_CLANG=-Wcomma -Wassign-enum -Wover-aligned
