@@ -555,15 +555,15 @@ void parse_date_std(apt p)
 
   match_obj(p,0);
 
-  sprintf(p->date, "%04ld", year);
+  snprintf(p->date, sizeof(p->date), "%04ld", year);
   if (month > 0)
   {
-    sprintf(temp, "-%02ld", month);
+    snprintf(temp, sizeof(temp), "-%02ld", month);
     append_bounded(p->date, sizeof(p->date), temp);
 
     if (day > 0)
     {
-      sprintf(temp, "-%02ld", day);
+      snprintf(temp, sizeof(temp), "-%02ld", day);
       append_bounded(p->date, sizeof(p->date), temp);
     }
   }
@@ -574,17 +574,17 @@ void parse_date_std(apt p)
   }
   if (hour >= 0)
   {
-    sprintf(temp, " %02ld", hour);
+    snprintf(temp, sizeof(temp), " %02ld", hour);
     append_bounded(p->date, sizeof(p->date), temp);
 
     if (min >= 0)
     {
-      sprintf(temp, ":%02ld", min);
+      snprintf(temp, sizeof(temp), ":%02ld", min);
       append_bounded(p->date, sizeof(p->date), temp);
 
       if (sec >= 0)
       {
-	sprintf(temp, ":%02ld", sec);
+	snprintf(temp, sizeof(temp), ":%02ld", sec);
 	append_bounded(p->date, sizeof(p->date), temp);
       }
     }
@@ -710,8 +710,6 @@ void parse_seq_id(apt p)
     { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
       "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat" };
 
-  char chain[3] = "";
-
   p->id[0] = 0;
   p->name[0] = 0;
   p->accession[0] = 0;
@@ -798,11 +796,14 @@ void parse_seq_id(apt p)
       set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + p->pdb_chain_id);
       break;
     }
-    if (p->pdb_chain > 95)
-      sprintf(chain, "%c%c", (char) p->pdb_chain-32, (char) p->pdb_chain-32);
-    else
-      sprintf(chain, "%c", (char) p->pdb_chain);
-    set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
+    {
+      // a lowercase chain letter is shown as two uppercase letters
+      // (e.g. chain 'a' -> "AA")
+      auto const chain = (p->pdb_chain > 95) ?
+        std::string(2, static_cast<char>(p->pdb_chain - 32)) :
+        std::string(1, static_cast<char>(p->pdb_chain));
+      set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
+    }
     break;
 
   default:
@@ -920,21 +921,17 @@ void parse_blast_def_line(apt p)
   
   if (show_taxid)
     {
-      char temp[MAXSTRING];
       if (p->taxid)
 	{
-	  sprintf(temp, "|taxid|%lu", p->taxid);
-	  strcat(p->defline, temp);
+	  strcat(p->defline, ("|taxid|" + std::to_string(p->taxid)).c_str());
 	}
       if (p->links)
 	{
-	  sprintf(temp, "|link|%lu", p->links);
-	  strcat(p->defline, temp);
+	  strcat(p->defline, ("|link|" + std::to_string(p->links)).c_str());
 	}
       if (p->memberships)
 	{
-	  sprintf(temp, "|memb|%lu", p->memberships);
-	  strcat(p->defline, temp);
+	  strcat(p->defline, ("|memb|" + std::to_string(p->memberships)).c_str());
 	}
     }
 

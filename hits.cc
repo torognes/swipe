@@ -1245,7 +1245,7 @@ void hits_show_expect(double expect_value)
     fprintf(out, "0.0  ");
   else if (expect_value < 9.5e-100)
   {
-    sprintf(temp, "%-6.0e", expect_value);
+    snprintf(temp, sizeof(temp), "%-6.0e", expect_value);
     fputs(temp+1, out);
   }
   else if (expect_value < 0.00095)
