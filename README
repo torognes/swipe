@@ -45,6 +45,7 @@ with inter-sequence SIMD parallelisation. BMC Bioinformatics 12, 221.
 
 Usage: ./[mpi]swipe [OPTIONS]
   -h, --help                 show help
+      --version              show version
   -d, --db=FILE              sequence database base name (required)
   -i, --query=FILE           query sequence filename (stdin)
   -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)

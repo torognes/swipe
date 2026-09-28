@@ -796,6 +796,7 @@ void args_usage()
 
   fprintf(out, "Usage: %s [OPTIONS]\n", progname);
   fprintf(out, "  -h, --help                 show help\n");
+  fprintf(out, "      --version              show version\n");
   fprintf(out, "  -d, --db=FILE              sequence database base name (required)\n");
   fprintf(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
   fprintf(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
@@ -823,11 +824,17 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
-void args_help()
+void args_version()
 {
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s\n\n%s\n\n", title, ref);
+  fprintf(out, "%s\n\n%s\n", title, ref);
+}
+
+void args_help()
+{
+  args_version();
+  fprintf(out, "\n");
 #ifdef MPISWIPE
   fprintf(out, "Note: mpiswipe is deprecated, and will be removed in SWIPE 2.2.0.\n\n");
 #endif
@@ -939,6 +946,7 @@ void args_init(int argc, char **argv)
     {"show_gis",         no_argument,       NULL, 'I' },
     {"show_taxid",       no_argument,       NULL, 'H' },
     {"help",             no_argument,       NULL, 'h' },
+    {"version",          no_argument,       NULL, 'V' },
     { 0, 0, 0, 0 }
   };
   
@@ -1007,7 +1015,13 @@ void args_init(int argc, char **argv)
 	  
 	case 'h':
 	  args_help();
-	  exit(1);
+	  exit(0);
+	  break;
+
+	case 'V':
+	  /* long option only: -v is --num_descriptions */
+	  args_version();
+	  exit(0);
 	  break;
 	  
 	case 'H':
