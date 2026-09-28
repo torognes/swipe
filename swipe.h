@@ -156,14 +156,12 @@ extern long SCORELIMIT_8;
 extern long SCORELIMIT_16;
 extern long SCORELIMIT_32;
 extern long SCORELIMIT_63;
-extern char BIAS;
 
 extern char * score_matrix_7;
 extern char * score_matrix_7t;
 extern unsigned char * score_matrix_8;
 extern short * score_matrix_16;
 extern unsigned int * score_matrix_32;
-extern long * score_matrix_63;
 
 struct sequence
 {
