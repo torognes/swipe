@@ -855,14 +855,16 @@ auto aligned_hit(long const i) -> AlignedHit
 }
 
 // show_align(): the alignment of a hit, in lines of ALIGNLEN columns
-struct AlignmentLines
+class AlignmentLines
 {
+public:
   explicit AlignmentLines(AlignedHit const & aligned) :
     hit(aligned), q_pos(aligned.q_align_start), d_pos(aligned.d_align_start) {}
 
   auto putalignop(char c, long len) -> void;
 
-  AlignedHit const & hit;
+private:
+  AlignedHit hit;
   std::size_t line_pos = 0;
   long q_start = 0;
   long d_start = 0;
