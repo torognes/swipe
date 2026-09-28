@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include <algorithm>  // std::all_of, std::max, std::min
 #include <cctype>  // std::isdigit, std::isspace
+#include <cstddef>  // std::size_t
 #include <cstdint>  // std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoul
 #include <cstring>  // std::memcpy
@@ -192,7 +193,7 @@ auto db_map_destruct(mapp m) -> void
 {
   if (m->map_address != nullptr)
   {
-    munmap(m->map_address, m->map_length);
+    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
   }
   free(m);
 }
@@ -326,8 +327,8 @@ auto getnames(char * line, char * * * names) -> long
   char const * p = line;
   while (true)
   {
-    long const wslen = strspn(p, ws);
-    long const namelen = strcspn(p + wslen, ws);
+    auto const wslen = strspn(p, ws);
+    auto const namelen = strcspn(p + wslen, ws);
     if (namelen > 0)
     {
       namecount++;
@@ -339,12 +340,12 @@ auto getnames(char * line, char * * * names) -> long
     }
   }
   
-  * names = static_cast<char**>(xmalloc(namecount * sizeof(char*)));
+  * names = static_cast<char**>(xmalloc(static_cast<std::size_t>(namecount) * sizeof(char*)));
 
   while (n < namecount)
   {
-    long const wslen = strspn(line, ws);
-    long const namelen = strcspn(line + wslen, ws);
+    auto const wslen = strspn(line, ws);
+    auto const namelen = strcspn(line + wslen, ws);
     char * name = static_cast<char*>(xmalloc(namelen + 1));
     strncpy(name, line+wslen, namelen);
     name[namelen] = 0;
@@ -399,8 +400,8 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
-      long const start = strspn(line+6, " \t");
-      long const titlelen = strcspn(line+6+start, "\r\n");
+      auto const start = strspn(line+6, " \t");
+      auto const titlelen = strcspn(line+6+start, "\r\n");
       al_info->title = static_cast<char*>(xmalloc(titlelen + 1));
       strncpy(al_info->title, line+6+start, titlelen);
       al_info->title[titlelen] = 0;
@@ -547,7 +548,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   }
 
   volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
-  volume->adr_xin = static_cast<char *>(mmap(nullptr, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0));
+  volume->adr_xin = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(volume->len_xin), PROT_READ, MAP_SHARED, volume->fd_xin, 0));
 
   if (volume->adr_xin == MAP_FAILED)
   {
@@ -607,8 +608,8 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   long const titlelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, titlelen + 4);
-  volume->title = static_cast<char*>(xmalloc(titlelen+1));
-  strncpy(volume->title, p, titlelen);
+  volume->title = static_cast<char*>(xmalloc(static_cast<std::size_t>(titlelen) + 1));
+  strncpy(volume->title, p, static_cast<std::size_t>(titlelen));
   volume->title[titlelen] = 0;
   p += titlelen;
   if (volume->version == 5)
@@ -715,16 +716,16 @@ auto get_path(char const * basename) -> char *
     }
   }
 
-  path = static_cast<char*>(xmalloc(pathlen + 1));
-  strncpy(path, basename, pathlen);
+  path = static_cast<char*>(xmalloc(static_cast<std::size_t>(pathlen) + 1));
+  strncpy(path, basename, static_cast<std::size_t>(pathlen));
   path[pathlen] = 0;
   return path;
 }
 
 auto addpath(char const * path, char const * base) -> char *
 {
-  long const pathlen = strlen(path);
-  long const baselen = strlen(base);
+  auto const pathlen = strlen(path);
+  auto const baselen = strlen(base);
 
   char * both = static_cast<char*>(xmalloc(pathlen + baselen + 1));
   strcpy(both, path);
@@ -782,7 +783,7 @@ auto db_open_msk(db_volume_t * v) -> void
   }
 
   v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
-  v->adr_msk = static_cast<unsigned char *>(mmap(nullptr, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0));
+  v->adr_msk = static_cast<unsigned char *>(mmap(nullptr, static_cast<std::size_t>(v->len_msk), PROT_READ, MAP_SHARED, v->fd_msk, 0));
 
   if (v->adr_msk == MAP_FAILED)
   {
@@ -875,7 +876,7 @@ auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
-  long const byteno = taxid / 8;
+  auto const byteno = static_cast<long>(taxid / 8);
   long const bitno = taxid & 7;
     
   if (byteno >= db_main.taxid_bitmap_size)
@@ -883,8 +884,8 @@ auto db_add_taxid(unsigned long const taxid) -> void
     long const old = db_main.taxid_bitmap_size;
     db_main.taxid_bitmap_size = byteno+1;
     db_main.taxid_bitmap_address = static_cast<unsigned char *>(xrealloc(db_main.taxid_bitmap_address, 
-               db_main.taxid_bitmap_size));
-    memset(db_main.taxid_bitmap_address+old, 0, db_main.taxid_bitmap_size-old);
+               static_cast<std::size_t>(db_main.taxid_bitmap_size)));
+    memset(db_main.taxid_bitmap_address+old, 0, static_cast<std::size_t>(db_main.taxid_bitmap_size - old));
   }
     
   unsigned char const v = db_main.taxid_bitmap_address[byteno];
@@ -901,8 +902,8 @@ auto db_read_taxid_file(char const * filename) -> void
   }
 
   db_main.taxid_bitmap_size = 64*1024;
-  db_main.taxid_bitmap_address = static_cast<unsigned char*>(xmalloc(db_main.taxid_bitmap_size));
-  memset(db_main.taxid_bitmap_address, 0, db_main.taxid_bitmap_size);
+  db_main.taxid_bitmap_address = static_cast<unsigned char*>(xmalloc(static_cast<std::size_t>(db_main.taxid_bitmap_size)));
+  memset(db_main.taxid_bitmap_address, 0, static_cast<std::size_t>(db_main.taxid_bitmap_size));
 
   /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;
@@ -1119,23 +1120,23 @@ auto db_volume_close(db_volume_t * v) -> void
     v->masked_mskfile = nullptr;
   }
 
-  munmap(v->adr_xin, v->len_xin);
+  munmap(v->adr_xin, static_cast<std::size_t>(v->len_xin));
 
   if (v->fd_msk != 0)
   {
-    munmap(v->adr_msk, v->len_msk);
+    munmap(v->adr_msk, static_cast<std::size_t>(v->len_msk));
     close(v->fd_msk);
   }
 
   if (v->map_seq_address != nullptr)
   {
-    munmap(v->map_seq_address, v->map_seq_length);
+    munmap(v->map_seq_address, static_cast<std::size_t>(v->map_seq_length));
     v->map_seq_address = nullptr;
   }
 
   if (v->map_hdr_address != nullptr)
   {
-    munmap(v->map_hdr_address, v->map_hdr_length);
+    munmap(v->map_hdr_address, static_cast<std::size_t>(v->map_hdr_length));
     v->map_hdr_address = nullptr;
   }
 
@@ -1264,7 +1265,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
 
   if (m->map_address != nullptr)
   {
-    munmap(m->map_address, m->map_length);
+    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
   }
 
   long s1 = 0;
@@ -1293,7 +1294,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   
   // map it
   
-  char * start = static_cast<char *>(mmap(nullptr, length, PROT_READ, MAP_SHARED, 
+  char * start = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(length), PROT_READ, MAP_SHARED, 
 			       v1->fd_xsq, offset));
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
@@ -1319,7 +1320,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 
   if (m->map_address != nullptr)
   {
-    munmap(m->map_address, m->map_length);
+    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
   }
 
   long s1 = 0;
@@ -1348,7 +1349,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   
   // map it
   
-  char * start = static_cast<char *>(mmap(nullptr, length, PROT_READ, MAP_SHARED, 
+  char * start = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(length), PROT_READ, MAP_SHARED, 
 			       v1->fd_xhr, offset));
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
@@ -1438,20 +1439,20 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     if (t->ntbuffersize[c] < nt_length + 1)
     {
       t->ntbuffersize[c] = nt_length+1;
-      t->ntbuffer[c] = static_cast<char*>(xrealloc(t->ntbuffer[c], t->ntbuffersize[c]));
+      t->ntbuffer[c] = static_cast<char*>(xrealloc(t->ntbuffer[c], static_cast<std::size_t>(t->ntbuffersize[c])));
       //      printf("Reallocating large buffer (%ld) for channel %d\n", 
       //	     t->ntbuffersize[c], c);
     }
 
     for(long j=0; j < nt_length/4; j++)
     {
-      unsigned char const b = address[j];
+      auto const b = static_cast<unsigned char>(address[j]);
       *((reinterpret_cast<unsigned int*>(t->ntbuffer[c]))+j) = decompress_nt[b];
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)
     {
-      unsigned char const b = address[i/4];
+      auto const b = static_cast<unsigned char>(address[i/4]);
       t->ntbuffer[c][i] = static_cast<char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     }
     t->ntbuffer[c][nt_length] = 0;
@@ -1467,7 +1468,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     
       if (big_table != 0U)
       {
-	unsigned long const entries = (amb_bytes - 4) / 8;
+	auto const entries = static_cast<unsigned long>((amb_bytes - 4) / 8);
 	char const * ambp64 = std::next(address, aoff + 4);
 
 	for(unsigned long i=0; i < entries; i++)
@@ -1480,13 +1481,13 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	  for (unsigned long rr = 0; rr < r; rr++)
 	  {
-	    t->ntbuffer[c][o + rr] = n;
+	    t->ntbuffer[c][o + rr] = static_cast<char>(n);
 	  }
 	}
       }
       else
       {
-	unsigned long const entries = (amb_bytes - 4) / 4;
+	auto const entries = static_cast<unsigned long>((amb_bytes - 4) / 4);
 
 	for(unsigned long i=0; i < entries; i++)
 	{
@@ -1513,7 +1514,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	if (t->xxbuffersize[c] < nt_length + 1)
 	{
 	  t->xxbuffersize[c] = nt_length+1;
-	  t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], t->xxbuffersize[c]));
+	  t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], static_cast<std::size_t>(t->xxbuffersize[c])));
 	}
 
 	for (long i = 0; i < nt_length; i++)
@@ -1551,7 +1552,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       if (t->xxbuffersize[c] < plen + 1)
       {
 	t->xxbuffersize[c] = plen + 1;
-	t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], t->xxbuffersize[c]));
+	t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], static_cast<std::size_t>(t->xxbuffersize[c])));
       }
       
       db_translate(t->ntbuffer[c], nt_length, strand, frame, t->xxbuffer[c]);
