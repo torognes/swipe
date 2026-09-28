@@ -122,9 +122,13 @@ auto region(char const * a_seq,
       long f = -1;
       long p = 0;
       if (i == *a_end)
+      {
 	p = 0;
+      }
       else
+      {
 	p = -1;
+      }
       for (j = *b_end; j >= 0; j--)
 	{
 	  f = std::max(f, h - q) - r;
@@ -146,7 +150,9 @@ auto region(char const * a_seq,
 	      *a_begin = i;
 	      *b_begin = j;
 	      if (Cost >= score)
+	      {
 		goto Found;
+	      }
 	    }
 	}
     }
@@ -207,13 +213,15 @@ auto push(struct aligner_info * aip) -> void
 auto newop(struct aligner_info * aip, char op, long len) -> void
 {
   if (aip->op == op)
+  {
     aip->count += len;
+  }
   else
-    {
-      push(aip);
-      aip->op = op;
-      aip->count = len;
-    }
+  {
+    push(aip);
+    aip->op = op;
+    aip->count = len;
+  }
 }
 
 auto delete_a(struct aligner_info * aip, long len) -> void
@@ -249,7 +257,9 @@ auto diff(struct aligner_info * aip,
   if (N == 0)
     {
       if (M > 0)
+      {
 	delete_a(aip, M);
+      }
     }
   else if (M == 0)
     {
@@ -294,9 +304,13 @@ auto diff(struct aligner_info * aip,
 	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - (r * (N-1));
 
 	  if (j > 0)
+	  {
 	    Score -= q;
-	  if (j < N-1)
+	  }
+	  if (j < N - 1)
+	  {
 	    Score -= q;
+	  }
 
 	  if (Score > MaxScore)
 	    {
@@ -318,10 +332,14 @@ auto diff(struct aligner_info * aip,
       else
 	{
 	  if (J > 0)
+	  {
 	    insert_b(aip, J);
+	  }
 	  match(aip);
-	  if (J < N-1)
-	    insert_b(aip, N-1-J);
+	  if (J < N - 1)
+	  {
+	    insert_b(aip, N - 1 - J);
+	  }
 	}
     }
   else

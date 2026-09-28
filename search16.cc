@@ -278,9 +278,11 @@ inline auto dprofile_fill16(WORD * dprofile_word,
   for (int j=0; j<CDEPTH; j++)
   {
     int d[CHANNELS];
-    for(int z=0; z<CHANNELS; z++)
-      d[z] = dseq[(j*CHANNELS)+z] << 5;
-      
+    for (int z = 0; z < CHANNELS; z++)
+    {
+      d[z] = dseq[(j * CHANNELS) + z] << 5;
+    }
+
     //      for(int i=0; i<24; i += 8)
     for(int i=0; i<32; i += 8)
     {
@@ -418,12 +420,18 @@ auto search16(WORD * * q_start,
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_pos[c] < d_end[c])
+	  {
 	    dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	  }
 	  else
-	    dseq[(CHANNELS*j)+c] = 0;
+	  {
+	    dseq[(CHANNELS * j) + c] = 0;
+	  }
 	}
 	if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
+	{
 	  easy = 0;
+	}
       }
 	
       dprofile_fill16(dprofile, score_matrix, dseq);
@@ -433,9 +441,13 @@ auto search16(WORD * * q_start,
       /* save column address if new highscore */
       
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
-      for(int c=0; c<CHANNELS; c++)
-	if ((mask & (3 << 2*c)) != 0)
+      for (int c = 0; c < CHANNELS; c++)
+      {
+	if ((mask & (3 << 2 * c)) != 0)
+	{
 	  d_best[c] = d_pos[c];
+	}
+      }
 
 #ifdef DEBUG
       printf("E mask=%04x\n", mask);
@@ -466,14 +478,19 @@ auto search16(WORD * * q_start,
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_pos[c] < d_end[c])
+	    {
 	      dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	    }
 	    else
-	      dseq[(CHANNELS*j)+c] = 0;
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
-		  
+
 	  if (d_pos[c] == d_end[c])
+	  {
 	    easy = 0;
-		  
+	  }
 	}
 	else
 	{
@@ -513,12 +530,18 @@ auto search16(WORD * * q_start,
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_pos[c] < d_end[c])
+	      {
 		dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	      }
 	      else
-		dseq[(CHANNELS*j)+c] = 0;
+	      {
+		dseq[(CHANNELS * j) + c] = 0;
+	      }
 	    }
 	    if (d_pos[c] == d_end[c])
+	    {
 	      easy = 0;
+	    }
 	  }
 	  else
 	  {
@@ -527,16 +550,20 @@ auto search16(WORD * * q_start,
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
 	    d_end[c] = d_begin[c];
-	    for (int j=0; j<CDEPTH; j++)
-	      dseq[(CHANNELS*j)+c] = 0;
+	    for (int j = 0; j < CDEPTH; j++)
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 	}
 	T = _mm_slli_si128(T, 2);
       }
 
       if (done == sequences)
+      {
 	break;
-      
+      }
+
       dprofile_fill16(dprofile, score_matrix, dseq);
       	  
       domasked16(&S, hep, qp, &Q, &R, qlen, &Z, &M);
@@ -546,9 +573,13 @@ auto search16(WORD * * q_start,
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
-      for(int c=0; c<CHANNELS; c++)
-	if ((mask & (3 << 2*c)) != 0)
+      for (int c = 0; c < CHANNELS; c++)
+      {
+	if ((mask & (3 << 2 * c)) != 0)
+	{
 	  d_best[c] = d_pos[c];
+	}
+      }
 
 #ifdef DEBUG
       printf("H mask=%04x\n", mask);

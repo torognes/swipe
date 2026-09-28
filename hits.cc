@@ -166,10 +166,12 @@ auto hits_compare(void const * a, void const * b) -> int
 auto hits_sort() -> long *
 {
   long * hits_sorted = static_cast<long *>(xmalloc(hits_count * sizeof(long)));
-  
-  for(long i=0; i<hits_count; i++)
+
+  for (long i = 0; i < hits_count; i++)
+  {
     hits_sorted[i] = i;
-  
+  }
+
   qsort(hits_sorted, hits_count, sizeof(long), hits_compare);
 
 #if 0
@@ -203,10 +205,14 @@ auto hits_enter(long seqno, long score, long qstrand, long qframe,
   pthread_mutex_lock(&hitsmutex);
 
   if (score > upperscorethreshold)
+  {
     obvious++;
-  
+  }
+
   if (score >= init_threshold)
+  {
     totalhits++;
+  }
 
   if ((score < scorethreshold) || (score > upperscorethreshold))
   {
@@ -216,20 +222,24 @@ auto hits_enter(long seqno, long score, long qstrand, long qframe,
 
   long place = hits_count;
 
-  while ((place > 0) && ((score > hits_list[place-1].score) || 
-			 ((score == hits_list[place-1].score) && 
+  while ((place > 0) && ((score > hits_list[place-1].score) ||
+			 ((score == hits_list[place-1].score) &&
 			  (seqno > hits_list[place-1].seqno))))
+  {
     place--;
-  
+  }
+
   // move entries down
   
   long const move = (hits_count < keephits ? hits_count : keephits - 1) - place;
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
-  for (long j=move; j>0; j--)
-    hits_list[place+j] = hits_list[place+j-1];
-  
+  for (long j = move; j > 0; j--)
+  {
+    hits_list[place + j] = hits_list[place + j - 1];
+  }
+
   // fill new entry
 
   if (place < keephits)
@@ -243,13 +253,17 @@ auto hits_enter(long seqno, long score, long qstrand, long qframe,
     hits_list[place].align_hint = align_hint;
     hits_list[place].bestq = bestq;
     if (hits_count < keephits)
+    {
       hits_count++;
+    }
   }
   
   // no hit is kept with -v 0 -b 0: the list is empty (KI-10)
   if ((keephits > 0) and (hits_count == keephits))
-    scorethreshold = hits_list[keephits-1].score;
-  
+  {
+    scorethreshold = hits_list[keephits - 1].score;
+  }
+
   pthread_mutex_unlock(&hitsmutex);
 }
 
@@ -323,9 +337,13 @@ auto threshold_to_long(double const value) -> long
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
   constexpr auto lower_limit = static_cast<double>(std::numeric_limits<long>::min());
   if (value >= upper_limit)
+  {
     return std::numeric_limits<long>::max();
+  }
   if (value <= lower_limit)
+  {
     return std::numeric_limits<long>::min();
+  }
   return static_cast<long>(value);
 }
 
@@ -341,14 +359,20 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   if (symtype == 0)
     {
       if (querystrands == 3)
+      {
 	maxhits *= 2;
+      }
     }
   else if (symtype == 2)
     {
       if (querystrands == 3)
+      {
 	maxhits *= 6;
+      }
       else
+      {
 	maxhits *= 3;
+      }
     }
   else if (symtype == 3)
     {
@@ -357,9 +381,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   else if (symtype == 4)
     {
       if (querystrands == 3)
+      {
 	maxhits *= 36;
+      }
       else
+      {
 	maxhits *= 18;
+      }
     }
 
   keephits = std::min(keephits, maxhits);
@@ -427,9 +455,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 
       long dlen = 0;
       if (effdbsize > 0)
+      {
 	dlen = effdbsize;
+      }
       else
+      {
 	dlen = symcount;
+      }
 
       BlastComputeLengthAdjustment(K,
 				   logK,
@@ -445,9 +477,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       m = qlen - lenadj;
 
       if (effdbsize > 0)
+      {
 	n = effdbsize;
+      }
       else
+      {
 	n = dlen - (seqcount * lenadj);
+      }
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -494,7 +530,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       
       long qlen = query.aa[0].len;
       if ((symtype == 2) || (symtype == 4))
+      {
 	qlen = query.nt[0].len / 3;
+      }
 
       long dlen = 0;
       if (effdbsize > 0)
@@ -504,9 +542,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       else
       {
 	if ((symtype == 3) || (symtype == 4))
+	{
 	  dlen = symcount / 3;
+	}
 	else
+	{
 	  dlen = symcount;
+	}
       }
 
       BlastComputeLengthAdjustment(K,
@@ -521,9 +563,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       m = qlen - lenadj;
 
       if (effdbsize > 0)
+      {
 	n = effdbsize;
+      }
       else
+      {
 	n = dlen - (seqcount * lenadj);
+      }
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -542,13 +588,17 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   double ungapped_alpha = 0;
   double ungapped_beta = 0;
   if (symtype == 0)
+  {
     stats_getparams_nt(matchscore, mismatchscore, 0, 0,
                        & ungapped_lambda, & ungapped_K, & ungapped_H,
                        & ungapped_alpha, & ungapped_beta);
+  }
   else if (symtype < 5)
+  {
     stats_getparams(matrixname, ungapped_penalty, ungapped_penalty,
-                    & ungapped_lambda, & ungapped_K, & ungapped_H,
-                    & ungapped_alpha, & ungapped_beta);
+		    &ungapped_lambda, &ungapped_K, &ungapped_H,
+		    &ungapped_alpha, &ungapped_beta);
+  }
 
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
@@ -557,19 +607,25 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   {
     long const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
     if (minscore_expect > minscore)
+    {
       scorethreshold = minscore_expect;
-    
+    }
+
     if (min_expect > 0.0)
     {
       long const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
+      {
 	upperscorethreshold = maxscore_expect;
+      }
     }
   }
   else
   {
     if (show_nostats != 0)
+    {
       fprintf(out, "Statistical parameters are not available for the scoring system specified.\nBit scores and E-values will not be computed.\n\n");
+    }
   }
 
   init_threshold = scorethreshold;
@@ -1017,7 +1073,9 @@ auto whole_align(long i,
       }
     }
     else
+    {
       fatal("Illegal alignment string.");
+    }
   }
 
   *qlinep = 0;
@@ -1174,8 +1232,10 @@ auto count_align(long i,
 	  (*identities)++;
 	  (*positives)++;
 	}
-	else if (score_matrix_63[(32*qs)+ds] > 0)
+	else if (score_matrix_63[(32 * qs) + ds] > 0)
+	{
 	  (*positives)++;
+	}
       }
     }
   }
@@ -1250,22 +1310,34 @@ auto hits_show_expect(double expect_value) -> void
 {
   char temp[10];
   if (expect_value < 1e-180)
+  {
     fprintf(out, "0.0  ");
+  }
   else if (expect_value < 9.5e-100)
   {
     snprintf(temp, sizeof(temp), "%-6.0e", expect_value);
     fputs(temp+1, out);
   }
   else if (expect_value < 0.00095)
+  {
     fprintf(out, "%-5.0e", expect_value);
+  }
   else if (expect_value < 0.0995)
+  {
     fprintf(out, "%-5.3f", expect_value);
+  }
   else if (expect_value < 0.95)
+  {
     fprintf(out, "%-5.2f", expect_value);
+  }
   else if (expect_value < 9.5)
+  {
     fprintf(out, "%-5.1f", expect_value);
+  }
   else
+  {
     fprintf(out, "%5.0f", expect_value);
+  }
 }
 
 }  // anonymous namespace
@@ -1303,7 +1375,9 @@ auto xml_print(char const * const text,
                std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
 {
   for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
+  {
     xml_putc(text[i]);
+  }
 }
 
 auto make_anchor(char * anchor, long size, long symbol_type, long query_index, long i) -> void
@@ -1363,12 +1437,16 @@ auto hits_defline_split(char * defline,
   
   int const m = sscanf(p, "gi|%ld%n", gi, & len);
   if (m > 0)
+  {
     //  if (len > 0)
     p += len;
-  
+  }
+
   if (*p == '|')
+  {
     p++;
-  
+  }
+
   char * r = strchr(p, ' ');
   if (r != nullptr)
   {
@@ -1419,8 +1497,10 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "</queryDescription>\n");
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
   fprintf(out, "\t\t\t<querySequence>");
-  for(int i=0; i<q.len; i++)
+  for (int i = 0; i < q.len; i++)
+  {
     putc(query.sym[static_cast<int>(q.seq[i])], out);
+  }
   fprintf(out, "</querySequence>\n");
   fprintf(out, "\t\t</queryInformation>\n");
   
@@ -1442,7 +1522,9 @@ auto hits_show_xml_paralign(long showalignments,
 
   /* sound databases are stored as amino acid databases (KI-30) */
   if (query.symtype == 5)
+  {
     dbseqtypedescr = "Sound";
+  }
   fprintf(out, "\t\t<databaseInformation>\n");
   fprintf(out, "\t\t\t<databaseFilename>");
   xml_print(databasename);
@@ -1485,7 +1567,9 @@ auto hits_show_xml_paralign(long showalignments,
   }
 
   if (symtype == 0)
+  {
     fprintf(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
+  }
   else
   {
     fprintf(out, "\t\t\t<scoreMatrix>");
@@ -1525,9 +1609,13 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t\t<searchCompleted>%s</searchCompleted>\n", ti.endtime.data());
   fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
   if (ti.elapsed > 0.0)
+  {
     fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+  }
   else
+  {
     fprintf(out, "\t\t\t\t<searchSpeed>n/a</searchSpeed>\n");
+  }
   fprintf(out, "\t\t\t\t<searchSWAlignments>\n");
   fprintf(out, "\t\t\t\t\t<SWAbsolute>%ld</SWAbsolute>\n", compute7);
   fprintf(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
@@ -1614,8 +1702,10 @@ auto hits_show_xml_paralign(long showalignments,
     fprintf(out, "\t\t\t\t<shortVersionEValue>%.2g</shortVersionEValue>\n", e);
     fprintf(out, "\t\t\t</shortVersionHit>\n");
 
-    for (int d=0; d<deflines; d++)
+    for (int d = 0; d < deflines; d++)
+    {
       free(deflinetable[d]);
+    }
     free(deflinetable);
   }
 
@@ -1683,12 +1773,18 @@ auto hits_show_xml_paralign(long showalignments,
       long const dlennt = hits_list[i].dlennt;
 
       if (symtype == 0)
+      {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlen);
+      }
       else if ((symtype == 3) || (symtype == 4))
+      {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlennt);
+      }
       else
+      {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld aa</databaseSequenceLength>\n", dlen);
-      
+      }
+
       if (symtype == 0)
       {
 	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", (hits_list[i].dstrand != 0) ? "Matches on complementary strands." : "Matches on same strands.");
@@ -1808,7 +1904,9 @@ auto show_description(char const *desc) -> void
 auto show_description_xml(char const * const desc) -> void
 {
   for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
+  {
     xml_putc(*dptr);
+  }
 }
 
 auto hits_show_xml(long show_gis,
@@ -1896,9 +1994,13 @@ auto hits_show_tsv(long showalignments,
       fprintf(out, "# Query: %s\n", query.description);
       fprintf(out, "# Database: %s\n", databasename);
       if (stats_available != 0)
+      {
 	fprintf(out, "# Fields: Query id, Subject id, %% identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, e-value, bit score\n");
+      }
       else
+      {
 	fprintf(out, "# Fields: Query id, Subject id, %% identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, score\n");
+      }
     }
 
   for(long i=0; i<showalignments; i++)
@@ -1970,34 +2072,48 @@ auto hits_show_plain(long show_gis,
       {
 	long headerlen = 67;
 	if (symtype == 0)
+	{
 	  headerlen = 65;
+	}
 	else if ((symtype == 2) || (symtype == 3))
+	{
 	  headerlen = 64;
+	}
 	else if (symtype == 4)
+	{
 	  headerlen = 61;
-	      
+	}
+
 	db_showheader(t, 
 		      hits_list[i].header_address,
 		      hits_list[i].header_length, 
 		      show_gis, 0, headerlen, headerlen, 1, 1);
 
 	long const score = hits_list[i].score;
-	      
+
 	if (symtype == 0)
+	{
 	  fprintf(out, " %c", (hits_list[i].dstrand != 0) ? '-' : '+');
+	}
 	else if (symtype == 2)
+	{
 	  fprintf(out, " %c%ld", (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1);
+	}
 	else if (symtype == 3)
+	{
 	  fprintf(out, " %c%ld", (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
+	}
 	else if (symtype == 4)
-	  fprintf(out, " %c%ld/%c%ld", 
-		 (hits_list[i].qstrand != 0) ? '-' : '+',
-		 hits_list[i].qframe+1,
-		 (hits_list[i].dstrand != 0) ? '-' : '+',
-		 hits_list[i].dframe+1);
-	      
+	{
+	  fprintf(out, " %c%ld/%c%ld",
+		  (hits_list[i].qstrand != 0) ? '-' : '+',
+		  hits_list[i].qframe + 1,
+		  (hits_list[i].dstrand != 0) ? '-' : '+',
+		  hits_list[i].dframe + 1);
+	}
+
 	if (stats_available != 0)
 	{
 	  long const bits = static_cast<long>(floor((lambda_d_log2 * score) - logK_d_log2 + 0.5));
@@ -2010,7 +2126,9 @@ auto hits_show_plain(long show_gis,
 	  hits_show_expect(expect_value);
 	}
 	else
+	{
 	  fprintf(out, " %5ld", score);
+	}
 
 	putc('\n', out);
       }
@@ -2028,9 +2146,13 @@ auto hits_show_plain(long show_gis,
 		      hits_list[i].header_length,
 		      show_gis, 10, 0, 79, LONG_MAX, 1);
 	if ((symtype == 3) || (symtype == 4))
+	{
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlennt);
+	}
 	else
+	{
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlen);
+	}
 	fprintf(out, "\n");
 	      
 	long const score = hits_list[i].score;
@@ -2061,24 +2183,36 @@ auto hits_show_plain(long show_gis,
 	fprintf(out, " Identities = %ld/%ld (%ld%%)",
 	       identities, aligned, identities * 100 / aligned);
 	if (symtype > 0)
+	{
 	  fprintf(out, ", Positives = %ld/%ld (%ld%%)",
-		 positives, aligned, positives * 100 / aligned);
+		  positives, aligned, positives * 100 / aligned);
+	}
 	if (indels != 0)
+	{
 	  fprintf(out, ", Gaps = %ld/%ld (%ld%%)", indels, aligned, indels * 100 / aligned);
+	}
 	fprintf(out, "\n");
 
 	if (symtype == 0)
+	{
 	  fprintf(out, " Strand = %s\n", (hits_list[i].dstrand != 0) ? "Plus / Minus" : "Plus / Plus");
+	}
 	else if (symtype == 2)
+	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].qstrand != 0) ? '-':'+', hits_list[i].qframe+1);
+	}
 	else if (symtype == 3)
+	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].dstrand != 0) ? '-':'+', hits_list[i].dframe+1);
+	}
 	else if (symtype == 4)
-	  fprintf(out, " Frame = %c%ld / %c%ld\n", 
-		 (hits_list[i].qstrand != 0) ? '-' : '+',
-		 hits_list[i].qframe+1,
-		 (hits_list[i].dstrand != 0) ? '-' : '+',
-		 hits_list[i].dframe+1);
+	{
+	  fprintf(out, " Frame = %c%ld / %c%ld\n",
+		  (hits_list[i].qstrand != 0) ? '-' : '+',
+		  hits_list[i].qframe + 1,
+		  (hits_list[i].dstrand != 0) ? '-' : '+',
+		  hits_list[i].dframe + 1);
+	}
 
 #if 0
 	// fprintf(out, "String: %s\n", hits_list[i].alignment);
@@ -2157,15 +2291,23 @@ auto hits_show(long view, long show_gis) -> void
   long showhits = 0;
 
   if (hits_count < opt_descriptions)
+  {
     showhits = hits_count;
+  }
   else
+  {
     showhits = opt_descriptions;
+  }
 
   if (hits_count < opt_alignments)
+  {
     showalignments = hits_count;
+  }
   else
+  {
     showalignments = opt_alignments;
-  
+  }
+
   struct db_thread_s * t = db_thread_create();
 
   if(view == 0)

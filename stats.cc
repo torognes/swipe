@@ -139,7 +139,9 @@ auto stats_getparams_nt(long match_score,
     gemax = 10;
   }
   else
+  {
     return 0;
+  }
 
   if ((gopen >= gomax) && (gextend >= gemax))
   {
@@ -217,7 +219,9 @@ auto stats_getparams(char const * matrix,
     val = PAM250_VALUES_MAX;
   }
   else
+  {
     return 0;
+  }
 
   for (long i=0; i<val; i++)
   {
@@ -296,7 +300,9 @@ auto stats_getprefs(char const * matrix,
     prefs = pam250_prefs;
   }
   else
+  {
     return 0;
+  }
 
   for (long i=0; i<val; i++)
   {

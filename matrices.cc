@@ -354,13 +354,19 @@ auto score_matrix_read_file(char const * matrix) -> void
   FILE * fp = fopen(matrix, "r");
 
   if (fp == nullptr)
+  {
     fatal("Cannot open score matrix file.");
-  
+  }
+
   if (symtype == 5)
+  {
     map = map_sound;
+  }
   else
+  {
     map = map_ncbi_aa;
-  
+  }
+
   symbols = 0;
 
   while(fgets(line, LINE_MAX, fp) != nullptr)
@@ -387,11 +393,13 @@ auto score_matrix_read_file(char const * matrix) -> void
 	  q = order;
 
 	  while ((c = *p++) != 0)
+	  {
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
+	  }
 
 	  break;
 	  
@@ -402,14 +410,18 @@ auto score_matrix_read_file(char const * matrix) -> void
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
+	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
+	      {
 		fatal("Problem parsing score matrix file.");
-	  
+	      }
+
 	      b = order[i];
-	  
-	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
-		score_matrix_63[(a<<5) + b] = sc;
-	  
+
+	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      {
+		score_matrix_63[(a << 5) + b] = sc;
+	      }
+
 	      p += read;
 	    }
 	  break;
@@ -438,13 +450,19 @@ auto score_matrix_read_string(char const * matrix) -> void
   char const * s = matrix;
 
   if (s == nullptr)
+  {
     fatal("Cannot read score matrix string.");
-  
+  }
+
   if (symtype == 5)
+  {
     map = map_sound;
+  }
   else
+  {
     map = map_ncbi_aa;
-  
+  }
+
   symbols = 0;
 
   while((*s) != 0)
@@ -452,10 +470,14 @@ auto score_matrix_read_string(char const * matrix) -> void
       char const * nextline = strchr(s, '\n');
       int linelen = 0;
       if (nextline != nullptr)
+      {
 	linelen = nextline - s;
+      }
       else
+      {
 	linelen = strlen(s);
-      
+      }
+
       assert(linelen < LINE_MAX);
       std::memcpy(line, s, linelen);
       line[linelen] = 0;
@@ -481,11 +503,13 @@ auto score_matrix_read_string(char const * matrix) -> void
 	  q = order;
 
 	  while ((c = *p++) != 0)
+	  {
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
+	  }
 
 	  break;
 	  
@@ -496,24 +520,31 @@ auto score_matrix_read_string(char const * matrix) -> void
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
+	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
+	      {
 		fatal("Problem parsing score matrix file.");
-	  
+	      }
+
 	      b = order[i];
-	  
-	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
-		score_matrix_63[(a<<5) + b] = sc;
-	  
+
+	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      {
+		score_matrix_63[(a << 5) + b] = sc;
+	      }
+
 	      p += read;
 	    }
 	  break;
 	}
 
-      if (nextline != nullptr)
-	s = nextline + 1;
-      else
-	s = s + strlen(s);
-
+	if (nextline != nullptr)
+	{
+	  s = nextline + 1;
+	}
+	else
+	{
+	  s = s + strlen(s);
+	}
     }
 }
 
@@ -536,42 +567,67 @@ auto score_matrix_read() -> void
   
   if (symtype == 0)
   {
-    for(a=1;a<16;a++)
-      for(b=1;b<16;b++)
-	score_matrix_63[(a<<5) + b] = ((a==b) ? matchscore : mismatchscore);
+    for (a = 1; a < 16; a++)
+    {
+      for (b = 1; b < 16; b++)
+      {
+	score_matrix_63[(a << 5) + b] = ((a == b) ? matchscore : mismatchscore);
+      }
+    }
   }
-  else if (strcasecmp(matrixname, "blosum45")     == 0)
+  else if (strcasecmp(matrixname, "blosum45") == 0)
+  {
     score_matrix_read_string(mat_blosum45);
-  else if (strcasecmp(matrixname, "blosum50")     == 0)
+  }
+  else if (strcasecmp(matrixname, "blosum50") == 0)
+  {
     score_matrix_read_string(mat_blosum50);
-  else if (strcasecmp(matrixname, "blosum62")     == 0)
+  }
+  else if (strcasecmp(matrixname, "blosum62") == 0)
+  {
     score_matrix_read_string(mat_blosum62);
-  else if (strcasecmp(matrixname, "blosum80")     == 0)
+  }
+  else if (strcasecmp(matrixname, "blosum80") == 0)
+  {
     score_matrix_read_string(mat_blosum80);
-  else if (strcasecmp(matrixname, "blosum90")     == 0)
+  }
+  else if (strcasecmp(matrixname, "blosum90") == 0)
+  {
     score_matrix_read_string(mat_blosum90);
-  else if (strcasecmp(matrixname, "pam30")        == 0)
+  }
+  else if (strcasecmp(matrixname, "pam30") == 0)
+  {
     score_matrix_read_string(mat_pam30);
-  else if (strcasecmp(matrixname, "pam70")        == 0)
+  }
+  else if (strcasecmp(matrixname, "pam70") == 0)
+  {
     score_matrix_read_string(mat_pam70);
-  else if (strcasecmp(matrixname, "pam250")       == 0)
+  }
+  else if (strcasecmp(matrixname, "pam250") == 0)
+  {
     score_matrix_read_string(mat_pam250);
+  }
   else if (strcasecmp(matrixname, "identity_5_1") == 0)
+  {
     score_matrix_read_string(mat_identity_5_1);
+  }
   else
+  {
     score_matrix_read_file(matrixname);
+  }
 
   hi = -100;
   lo = 100;
 
-  for(a=0;a<32;a++)
+  for (a = 0; a < 32; a++)
+  {
     for(b=0;b<32;b++)
       {
 	sc = score_matrix_63[(a<<5) + b];
 	lo = std::min(sc, lo);
 	hi = std::max(sc, hi);
       }
-  
+  }
 
   BIAS = - lo;
   SCORELIMIT_7  = 128 - hi;
@@ -585,10 +641,13 @@ auto score_matrix_read() -> void
   long const max_16 = std::numeric_limits<short>::max();
   long const min_16 = std::numeric_limits<short>::min();
   if ((hi > max_16) or (lo < min_16) or (gapopenextend > max_16))
+  {
     SCORELIMIT_16 = 0;
+  }
   SCORELIMIT_32 = 4294967296 - hi;
-  
-  for(a=0;a<32;a++)
+
+  for (a = 0; a < 32; a++)
+  {
     for(b=0;b<32;b++)
     {
       sc = score_matrix_63[(a<<5) + b];
@@ -606,6 +665,7 @@ auto score_matrix_read() -> void
       score_matrix_32[(a<<5) + b] = static_cast<unsigned int>(sc);
       score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
     }
+  }
 }
 
 }  // anonymous namespace

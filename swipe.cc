@@ -165,7 +165,9 @@ struct search_data
 auto fatal(char const * message) -> void
 {
   if (message != nullptr)
+  {
     fprintf(stderr, "%s\n", message);
+  }
   exit(1);
 }
 
@@ -178,11 +180,15 @@ auto xmalloc(size_t size) -> void *
 {
   size_t const alignment = 16;
   void * t = nullptr;
-  if (posix_memalign(& t, alignment, size) != 0)
+  if (posix_memalign(&t, alignment, size) != 0)
+  {
     t = nullptr;
-  
-  if (t==nullptr)
+  }
+
+  if (t == nullptr)
+  {
     fatal("Unable to allocate enough memory.");
+  }
 
   return t;
 }
@@ -191,7 +197,9 @@ auto xrealloc(void *ptr, size_t size) -> void *
 {
   void * t = realloc(ptr, size);
   if (t == nullptr)
+  {
     fatal("Unable to allocate enough memory.");
+  }
   return t;
 }
 
@@ -217,7 +225,8 @@ auto align_init(struct search_data * sdp) -> void
 
   if (symtype == 0)
   {
-    for(int s=0; s<2; s++)
+    for (int s = 0; s < 2; s++)
+    {
       if (((s+1) & querystrands) != 0)
       {
 	qlen = query.nt[s].len;
@@ -229,6 +238,7 @@ auto align_init(struct search_data * sdp) -> void
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
+    }
   }
   else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
   {
@@ -243,8 +253,10 @@ auto align_init(struct search_data * sdp) -> void
   }
   else if ((symtype == 2) || (symtype == 4))
   {
-    for(int s=0; s<2; s++)
-      if (((s+1) & querystrands) != 0)
+    for (int s = 0; s < 2; s++)
+    {
+      if (((s + 1) & querystrands) != 0)
+      {
 	for(int f=0; f<3; f++)
 	{
 	  qlen = query.aa[(3*s)+f].len;
@@ -256,6 +268,8 @@ auto align_init(struct search_data * sdp) -> void
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
+      }
+    }
   }
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
@@ -342,6 +356,7 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
   {
 
     for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+    {
       for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
       {
 	sdp->start_count = 0;
@@ -405,17 +420,21 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	    //	  fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 	  
 	    long const hitno = sdp->start_hits[i];
-	  
+
 	    if (sdp->scores[i] < SCORELIMIT_16)
+	    {
 	      hits_enter_align_hint(hitno, bestq, pos);
+	    }
 	  }
 	}
       }
-
+    }
   }
 
-  for(long hitno = hitfirst; hitno <= hitlast; hitno++)
+  for (long hitno = hitfirst; hitno <= hitlast; hitno++)
+  {
     hits_align(sdp->dbt, hits_sorted[hitno]);
+  }
 }
 
 auto align_done(struct search_data * sdp) -> void
@@ -423,7 +442,9 @@ auto align_done(struct search_data * sdp) -> void
   for(auto * query_table : sdp->qtable)
   {
     if (query_table != nullptr)
+    {
       free(query_table);
+    }
   }
 
   free(sdp->dprofile);
@@ -435,9 +456,11 @@ auto align_done(struct search_data * sdp) -> void
   free(sdp->start_hits);
   free(sdp->in_list);
   free(sdp->out_list);
-  
-  for(auto * db_thread : sdp->dbta)
+
+  for (auto * db_thread : sdp->dbta)
+  {
     db_thread_destruct(db_thread);
+  }
 
   db_thread_destruct(sdp->dbt);
 }
@@ -483,7 +506,9 @@ auto calc_chunks(long volcount,
 
   long upper = channels;
   if (totalseqs >= 4 * channels * par)
+  {
     upper *= static_cast<long>(floor(sqrt((1.0 * totalseqs) / (channels * par))));
+  }
 
   long chunks = volsused;
   long const minchunks = totalseqs < par ? totalseqs : par;
@@ -537,8 +562,10 @@ auto align_threads_init() -> void
   align_volseqs = static_cast<long*>(xmalloc(bins*sizeof(long)));
   align_volchunks = static_cast<long*>(xmalloc(bins*sizeof(long)));
 
-  for(long i = 0; i<bins; i++)
+  for (long i = 0; i < bins; i++)
+  {
     align_volseqs[i] = 0;
+  }
 
   for(long i = 0; i<hits; i++)
   {
@@ -548,9 +575,11 @@ auto align_threads_init() -> void
     long qframe = 0;
     long dstrand = 0;
     long dframe = 0;
-    
-    if (i>=alignments)
+
+    if (i >= alignments)
+    {
       align_volseqs[6]++;
+    }
     else
     {
       hits_gethit(i, & seqno, & score,
@@ -575,7 +604,9 @@ auto align_threads_init() -> void
   align_volnext = 0;
 
   while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+  {
     align_volnext++;
+  }
 }
 
 auto align_threads_done() -> void
@@ -606,9 +637,11 @@ auto align_getwork(long * first, long * last) -> int
 
     align_volseqs[align_volnext] -= chunksize;
     align_volchunks[align_volnext]--;
-    
+
     while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+    {
       align_volnext++;
+    }
   }
   pthread_mutex_unlock(&workmutex);
   return status;
@@ -621,9 +654,11 @@ auto align_worker(void * /*unused*/) -> void *
 
   long i = 0;
   long j = 0;
-  while(align_getwork(&i, &j) != 0)
+  while (align_getwork(&i, &j) != 0)
+  {
     align_chunk(&sd, i, j);
-  
+  }
+
   align_done(&sd);
   return nullptr;
 }
@@ -638,12 +673,16 @@ auto align_threads() -> void
   for(t=0; t<threads; t++)
     {
       if (pthread_create(pthread_id + t, nullptr, align_worker, nullptr) != 0)
+      {
 	fatal("Cannot create thread.");
+      }
     }
   
   for(t=0; t<threads; t++) {
     if (pthread_join(pthread_id[t], &status) != 0)
+    {
       fatal("Cannot join thread.");
+    }
   }
 
   align_threads_done();
@@ -682,16 +721,22 @@ auto args_show() -> void
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
       if (effdbsize > 0)
+      {
 	fprintf(out, "Effective db size: %ld\n", effdbsize);
+      }
 
       fprintf(out, "Query file name:   %s\n", queryname);
 
       long qlen = 0;
       if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+      {
 	qlen = query.nt[0].len;
+      }
       else
+      {
 	qlen = query.aa[0].len;
-      
+      }
+
       fprintf(out, "Query length:      %ld residues\n", qlen);
 
       query_show();
@@ -731,10 +776,14 @@ auto args_show() -> void
       fprintf(out, "Threads:           %ld\n", threads);
       fprintf(out, "Symbol type:       %s\n", symtypestring[symtype]);
       if ((symtype == 2) || (symtype == 4))
-	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[query_gencode-1], query_gencode);
+      {
+	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[query_gencode - 1], query_gencode);
+      }
       if ((symtype == 3) || (symtype == 4))
-	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode-1], db_gencode);
-      
+      {
+	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode - 1], db_gencode);
+      }
+
 #if 0
       if ((symtype == 2) || (symtype == 4))
       {
@@ -763,7 +812,9 @@ auto args_show() -> void
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
       if (taxidfilename != nullptr)
+      {
 	fprintf(out, "Taxid filename:    %s\n", taxidfilename);
+      }
       fprintf(out, "\n");
     }
 }
@@ -828,7 +879,9 @@ auto parse_long(char const * const text, char const * const message) -> long
   errno = 0;
   auto const value = std::strtol(text, &end, 10);
   if ((end == text) or (*end != '\0') or (errno == ERANGE))
+  {
     fatal(message);
+  }
   return value;
 }
 
@@ -840,7 +893,9 @@ auto parse_double(char const * const text, char const * const message) -> double
   auto const value = std::strtod(text, &end);
   if ((end == text) or (*end != '\0') or (errno == ERANGE) or
       (not std::isfinite(value)))
+  {
     fatal(message);
+  }
   return value;
 }
 
@@ -852,7 +907,9 @@ auto parse_dbsize(char const * const text) -> long
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
   auto const value = parse_double(text, message);
   if ((value < 0.0) or (std::floor(value) < value) or (value >= upper_limit))
+  {
     fatal(message);
+  }
   return static_cast<long>(value);
 }
 
@@ -939,7 +996,9 @@ auto args_init(int argc, char * const * argv) -> void
     {
       c = getopt_long(argc, argv, short_options, long_options, &option_index);
       if (c == -1)
+      {
 	break;
+      }
 
       switch(c)
 	{
@@ -960,8 +1019,10 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'C':
 	  /* composition-based adjustments */
-	  if ( (strcasecmp(optarg, "F") != 0) && (strcmp(optarg, "0") != 0) )
+	  if ((strcasecmp(optarg, "F") != 0) && (strcmp(optarg, "0") != 0))
+	  {
 	    fatal("Composition-based score adjustments not supported.");
+	  }
 	  break;
 
 	case 'd':
@@ -987,8 +1048,10 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'F':
 	  /* filter */
-	  if ( (strlen(optarg) != 0) && (strcasecmp(optarg, "F") != 0) )
+	  if ((strlen(optarg) != 0) && (strcasecmp(optarg, "F") != 0))
+	  {
 	    fatal("Query sequence filtering not supported.");
+	  }
 	  break;
 	  
 	case 'G':
@@ -1056,19 +1119,33 @@ auto args_init(int argc, char * const * argv) -> void
 	case 'p':
 	  /* symtype */
 	  if (strcmp(optarg, "blastn") == 0)
+	  {
 	    symtype = 0;
+	  }
 	  else if (strcmp(optarg, "blastp") == 0)
+	  {
 	    symtype = 1;
+	  }
 	  else if (strcmp(optarg, "blastx") == 0)
+	  {
 	    symtype = 2;
+	  }
 	  else if (strcmp(optarg, "tblastn") == 0)
+	  {
 	    symtype = 3;
+	  }
 	  else if (strcmp(optarg, "tblastx") == 0)
+	  {
 	    symtype = 4;
+	  }
 	  else if (strcmp(optarg, "sound") == 0)
+	  {
 	    symtype = 5;
+	  }
 	  else
+	  {
 	    symtype = parse_long(optarg, "Illegal symbol type.");
+	  }
 	  break;
 	  
 	case 'q':
@@ -1088,13 +1165,21 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'S':
 	  if (strcmp(optarg, "plus") == 0)
+	  {
 	    querystrands = 1;
+	  }
 	  else if (strcmp(optarg, "minus") == 0)
+	  {
 	    querystrands = 2;
+	  }
 	  else if (strcmp(optarg, "both") == 0)
+	  {
 	    querystrands = 3;
+	  }
 	  else
+	  {
 	    querystrands = parse_long(optarg, "Illegal query strands specified.");
+	  }
 	  break;
 
 	case 'u':
@@ -1131,94 +1216,146 @@ auto args_init(int argc, char * const * argv) -> void
   if (symtype == 0)
   {
     if (not gapopen_given)
+    {
       gapopen = 5;
+    }
     if (not gapextend_given)
+    {
       gapextend = 2;
+    }
   }
   else if (symtype < 5)
   {
     if (strlen(matrixname) == 0)
+    {
       matrixname = DEFAULT_MATRIXNAME;
+    }
 
     if (stats_getprefs(matrixname, & gopen_default, & gextend_default) != 0)
     {
       if (not gapopen_given)
+      {
 	gapopen = gopen_default;
+      }
       if (not gapextend_given)
+      {
 	gapextend = gextend_default;
+      }
     }
     else
     {
       // no default for this matrix: a penalty not given is zero
       if ((not gapopen_given) && (not gapextend_given))
+      {
 	fatal("Unknown score matrix. Gap penalties must be specified (-G and -E).");
+      }
     }
   }
   else if (symtype == 5)
   {
     if (strlen(matrixname) == 0)
+    {
       matrixname = "IDENTITY_5_1";
+    }
     if (not gapopen_given)
+    {
       gapopen = 15;
+    }
     if (not gapextend_given)
+    {
       gapextend = 5;
+    }
   }
 
   gapopenextend = gapopen + gapextend;
 
   if (effdbsize < 0)
+  {
     fatal("Illegal effective db size specified");
+  }
 
   if ((threads < 1) || (threads > MAX_THREADS))
+  {
     fatal("Illegal number of threads specified");
+  }
 
   if (strlen(databasename) == 0)
+  {
     fatal("No database specified.");
-  
-  if (!((view==0)||(view==7)||(view==8)||(view==9)||(view==99)))
+  }
+
+  if (!((view == 0) || (view == 7) || (view == 8) || (view == 9) || (view == 99)))
+  {
     fatal("Illegal view type.");
-  
+  }
+
   if ((symtype < 0) || (symtype > 5))
+  {
     fatal("Illegal symbol type.");
+  }
 
   if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
+  {
     fatal("Illegal gap penalties.");
+  }
 
   if ((querystrands < 1) || (querystrands > 3))
+  {
     fatal("Illegal query strands specified.");
+  }
 
   if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
+  {
     fatal("Illegal strand specified for protein query.");
+  }
 
-  if ((query_gencode < 1)  || (query_gencode > 23) || (gencode_names[query_gencode-1] == nullptr))
+  if ((query_gencode < 1) || (query_gencode > 23) || (gencode_names[query_gencode - 1] == nullptr))
+  {
     fatal("Illegal query genetic code specified.");
+  }
 
-  if ((db_gencode < 1) || (db_gencode > 23) || (gencode_names[db_gencode-1] == nullptr))
+  if ((db_gencode < 1) || (db_gencode > 23) || (gencode_names[db_gencode - 1] == nullptr))
+  {
     fatal("Illegal database genetic code specified.");
+  }
 
-  if ((dump<0) || (dump>2))
+  if ((dump < 0) || (dump > 2))
+  {
     fatal("Illegal dump mode.");
+  }
 
   /* ranges of the result limits (KI-7, KI-9) */
   if (maxmatches < 0)
+  {
     fatal("Illegal number of descriptions specified.");
+  }
 
   if (alignments < 0)
+  {
     fatal("Illegal number of alignments specified.");
+  }
 
   /* scores below 1 are not alignments ("Internal error in align
      function.") */
   if (minscore < 1)
+  {
     fatal("Illegal minimum score specified.");
+  }
 
   if (maxscore < 0)
+  {
     fatal("Illegal maximum score specified.");
+  }
 
   if (expect <= 0.0)
+  {
     fatal("Illegal expect value specified.");
+  }
 
   if (minexpect < 0.0)
+  {
     fatal("Illegal minimum expect value specified.");
+  }
 
   /* the output file is opened (and truncated) only once all the
      options are checked (KI-8) */
@@ -1226,7 +1363,9 @@ auto args_init(int argc, char * const * argv) -> void
   {
     FILE * f = fopen(outfile, "w");
     if (f == nullptr)
+    {
       fatal("Unable to open output file for writing.");
+    }
     out = f;
   }
   
@@ -1238,14 +1377,18 @@ auto args_init(int argc, char * const * argv) -> void
 
 auto vector_print(BYTE const * vector) -> void
 {
-  for(int i=0; i<16; i++)
+  for (int i = 0; i < 16; i++)
+  {
     fprintf(out, " %02x", vector[i]);
+  }
 }
 
 auto vector_print_word(WORD const * vector) -> void
 {
-  for(int i=0; i<8; i++)
+  for (int i = 0; i < 8; i++)
+  {
     fprintf(out, " %04x", vector[i]);
+  }
 }
 
 
@@ -1260,7 +1403,8 @@ auto search_init(struct search_data * sdp) -> void
 
   if (symtype == 0)
   {
-    for(int s=0; s<2; s++)
+    for (int s = 0; s < 2; s++)
+    {
       if (((s+1) & querystrands) != 0)
       {
 	qlen = query.nt[s].len;
@@ -1272,6 +1416,7 @@ auto search_init(struct search_data * sdp) -> void
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
+    }
   }
   else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
   {
@@ -1286,8 +1431,10 @@ auto search_init(struct search_data * sdp) -> void
   }
   else if ((symtype == 2) || (symtype == 4))
   {
-    for(int s=0; s<2; s++)
-      if (((s+1) & querystrands) != 0)
+    for (int s = 0; s < 2; s++)
+    {
+      if (((s + 1) & querystrands) != 0)
+      {
 	for(int f=0; f<3; f++)
 	{
 	  qlen = query.aa[(3*s)+f].len;
@@ -1299,6 +1446,8 @@ auto search_init(struct search_data * sdp) -> void
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
+      }
+    }
   }
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
@@ -1307,7 +1456,9 @@ auto search_init(struct search_data * sdp) -> void
 
   long listsize = maxchunksize * sizeof(long);
   if ((symtype == 3) || (symtype == 4))
+  {
     listsize *= 6;
+  }
 
   sdp->start_list = static_cast<long*>(xmalloc(listsize));
   sdp->in_list = static_cast<long*>(xmalloc(listsize));
@@ -1384,7 +1535,9 @@ auto search_done(struct search_data * sdp) -> void
   for(auto * query_table : sdp->qtable)
   {
     if (query_table != nullptr)
+    {
       free(query_table);
+    }
   }
 
   free(sdp->dprofile);
@@ -1419,9 +1572,11 @@ auto search_getwork(long * first, long * last) -> int
 
     volseqs[volnext] -= chunksize;
     volchunks[volnext]--;
-    
+
     while ((volnext < volcount) && (volchunks[volnext] == 0))
+    {
       volnext++;
+    }
   }
   pthread_mutex_unlock(&workmutex);
   return status;
@@ -1439,10 +1594,12 @@ auto search_chunk(struct search_data * sdp) -> void
   BYTE const gapextend_7 = static_cast<BYTE>(std::min(gapextend, max_7));
 
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
-  
-  if(taxidfilename != nullptr)
+
+  if (taxidfilename != nullptr)
+  {
     db_mapheaders(sdp->dbt, sdp->seqfirst, sdp->seqlast);
-  
+  }
+
   sdp->start_count = 0;
   for(long seqno = sdp->seqfirst; seqno <= sdp->seqlast; seqno++)
   {
@@ -1450,12 +1607,14 @@ auto search_chunk(struct search_data * sdp) -> void
     {
       if ((symtype == 3) || (symtype == 4))
       {
-	for(long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
+	for (long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
+	{
 	  for(long dframe = sdp->dframe1; dframe <= sdp->dframe2; dframe++)
 	  {
 	    sdp->start_list[sdp->start_count++] =
 	      (seqno << 3) | (dstrand << 2) | dframe;
 	  }
+	}
       }
       else
       {
@@ -1463,10 +1622,12 @@ auto search_chunk(struct search_data * sdp) -> void
       }
     }
   }
-  
+
   if (sdp->start_count == 0)
+  {
     return;
-  
+  }
+
   long const s1 = sdp->start_list[0] >> 3;
   long const s2 = sdp->start_list[sdp->start_count-1] >> 3;
   
@@ -1475,6 +1636,7 @@ auto search_chunk(struct search_data * sdp) -> void
   db_mapsequences(sdp->dbt, s1, s2);
 
   for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+  {
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
       long dstrand = 0;
@@ -1503,8 +1665,9 @@ auto search_chunk(struct search_data * sdp) -> void
 	pthread_mutex_unlock(&countmutex);
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
-	    
+
 	if (cpu_feature_ssse3 != 0)
+	{
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
@@ -1516,11 +1679,13 @@ auto search_chunk(struct search_data * sdp) -> void
 			sdp->in_list,
 			sdp->scores,
 			qlen);
+	}
 	else
+	{
 	  search7(qtable,
 		  gapopenextend_7,
 		  gapextend_7,
-		  reinterpret_cast<BYTE*>(score_matrix_7),
+		  reinterpret_cast<BYTE *>(score_matrix_7),
 		  sdp->dprofile,
 		  sdp->hearray,
 		  sdp->dbt,
@@ -1528,7 +1693,8 @@ auto search_chunk(struct search_data * sdp) -> void
 		  sdp->in_list,
 		  sdp->scores,
 		  qlen);
-	
+	}
+
 	sdp->out_count = 0;
     
 	for (int i=0; i<sdp->in_count; i++)
@@ -1543,9 +1709,13 @@ auto search_chunk(struct search_data * sdp) -> void
 	    dframe = seqnosf & 3;
 
 	    if ((symtype == 0) && (qstrand != 0))
+	    {
 	      hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
+	    }
 	    else
+	    {
 	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
+	    }
 	  }
 	  else
 	  {
@@ -1601,9 +1771,13 @@ auto search_chunk(struct search_data * sdp) -> void
 	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
 	    if ((symtype == 0) && (qstrand != 0))
+	    {
 	      hits_enter(seqno, score, 0, 0, 1, 0, pos, -1);
+	    }
 	    else
+	    {
 	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, -1);
+	    }
 	  }
 	  else
 	  {
@@ -1646,9 +1820,13 @@ auto search_chunk(struct search_data * sdp) -> void
       
 	  char * q = nullptr;
 	  if (symtype == 0)
+	  {
 	    q = query.nt[qstrand].seq;
+	  }
 	  else
-	    q = query.aa[(3*qstrand)+qframe].seq;
+	  {
+	    q = query.aa[(3 * qstrand) + qframe].seq;
+	  }
 
 	  long const score = fullsw(dbegin,
 			      dend,
@@ -1660,14 +1838,19 @@ auto search_chunk(struct search_data * sdp) -> void
 			      gapextend);
 
 	  if ((symtype == 0) && (qstrand != 0))
+	  {
 	    hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
+	  }
 	  else
+	  {
 	    hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
+	  }
 	}
       }
   
 #endif
     }
+  }
 }
 
 
@@ -1676,8 +1859,10 @@ auto worker(void * /*unused*/) -> void *
   struct search_data sd;
   search_init(&sd);
 
-  while(search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
+  while (search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
+  {
     search_chunk(&sd);
+  }
 
   search_done(&sd);
   return nullptr;
@@ -1692,8 +1877,10 @@ auto prepare_search(long par) -> void
 #if 1
 
   long const volcount = db_getvolumecount();
-  for(long v = 0; v < volcount; v++)
+  for (long v = 0; v < volcount; v++)
+  {
     volseqs[v] = db_getseqcount_volume(v);
+  }
 
   long totalchunks = 0;
 
@@ -1706,8 +1893,10 @@ auto prepare_search(long par) -> void
 	      & maxchunksize);
 
   while ((volnext < volcount) && (volchunks[volnext] == 0))
+  {
     volnext++;
-  
+  }
+
 #else
   long seqcount = db_getseqcount();
 
@@ -1764,12 +1953,16 @@ auto run_threads() -> void
   for(t=0; t<threads; t++)
     {
       if (pthread_create(pthread_id + t, nullptr, worker, nullptr) != 0)
+      {
 	fatal("Cannot create thread.");
+      }
     }
   
   for(t=0; t<threads; t++) {
     if (pthread_join(pthread_id[t], &status) != 0)
+    {
       fatal("Cannot join thread.");
+    }
   }
 }
 
@@ -1821,7 +2014,9 @@ auto clock_stop(struct time_info * tip) -> void
   {
     speed *= query.nt[0].len;
     if (querystrands == 3)
+    {
       speed *= 2;
+    }
   }
   else if ((symtype == 1) || (symtype == 5))
   {
@@ -1832,7 +2027,9 @@ auto clock_stop(struct time_info * tip) -> void
   {
     speed *= query.nt[0].len;
     if (querystrands == 3)
+    {
       speed *= 2;
+    }
   }
   else if (symtype == 3)
   {
@@ -1844,7 +2041,9 @@ auto clock_stop(struct time_info * tip) -> void
     speed *= 2;
     speed *= query.nt[0].len;
     if (querystrands == 3)
+    {
       speed *= 2;
+    }
   }
   /* the speed is unknown when no time elapsed (KI-33) */
   tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
@@ -1855,9 +2054,13 @@ auto clock_stop(struct time_info * tip) -> void
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
+    {
       fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    }
     else
+    {
       fprintf(out, "Speed:             n/a\n");
+    }
     fprintf(out, "\n");
   }
 }
@@ -1894,7 +2097,9 @@ auto work() -> void
  
 #if 1
   if (view == 0)
+  {
     fprintf(out, "...............................................done\n\n");
+  }
 #endif
  
   clock_stop(&ti);
@@ -1943,7 +2148,9 @@ auto main(int argc, char**argv) -> int
   cpu_features();
 
   if (cpu_feature_sse2 == 0)
+  {
     fatal("This program requires a processor with SSE2.");
+  }
 
   args_init(argc,argv);
 
@@ -1956,8 +2163,10 @@ auto main(int argc, char**argv) -> int
   {
     struct db_thread_s * t = db_thread_create();
     long const seqcount = db_getseqcount();
-    for (long i=0; i < seqcount; i++)
-      db_show_fasta(t, i, 0, 0, dump-1);
+    for (long i = 0; i < seqcount; i++)
+    {
+      db_show_fasta(t, i, 0, 0, dump - 1);
+    }
     db_thread_destruct(t);
   }
   else
@@ -2000,7 +2209,8 @@ auto main(int argc, char**argv) -> int
 #endif
   db_close();
 
-  
   if (outfile != nullptr)
+  {
     fclose(out);
+  }
 }

@@ -232,9 +232,11 @@ inline auto dprofile_fill7(BYTE * dprofile,
   for(int j=0; j<CDEPTH; j++)
   {
     unsigned d[CHANNELS];
-    for(int i=0; i<CHANNELS; i++)
-      d[i] = dseq[(j*CHANNELS)+i] << 5;
-      
+    for (int i = 0; i < CHANNELS; i++)
+    {
+      d[i] = dseq[(j * CHANNELS) + i] << 5;
+    }
+
     xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
     xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[2] ));
     xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[4] ));
@@ -838,12 +840,18 @@ search7
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_begin[c] < d_end[c])
+	  {
 	    dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	  }
 	  else
-	    dseq[(CHANNELS*j)+c] = 0;
+	  {
+	    dseq[(CHANNELS * j) + c] = 0;
+	  }
 	}
 	if (d_begin[c] == d_end[c])
+	{
 	  easy = 0;
+	}
       }
 
 #ifdef SWIPE_SSSE3
@@ -872,12 +880,18 @@ search7
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_begin[c] < d_end[c])
+	    {
 	      dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	    }
 	    else
-	      dseq[(CHANNELS*j)+c] = 0;
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 	  if (d_begin[c] == d_end[c])
+	  {
 	    easy = 0;
+	  }
 	}
 	else
 	{
@@ -921,12 +935,18 @@ search7
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_begin[c] < d_end[c])
+	      {
 		dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	      }
 	      else
-		dseq[(CHANNELS*j)+c] = 0;
+	      {
+		dseq[(CHANNELS * j) + c] = 0;
+	      }
 	    }
 	    if (d_begin[c] == d_end[c])
+	    {
 	      easy = 0;
+	    }
 	  }
 	  else
 	  {
@@ -934,8 +954,10 @@ search7
 	    seq_id[c] = -1;
 	    d_begin[c] = &zero;
 	    d_end[c] = d_begin[c];
-	    for (int j=0; j<CDEPTH; j++)
-	      dseq[(CHANNELS*j)+c] = 0;
+	    for (int j = 0; j < CDEPTH; j++)
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 
 
@@ -945,8 +967,10 @@ search7
       }
 
       if (done == sequences)
+      {
 	break;
-	  
+      }
+
 #ifdef SWIPE_SSSE3
       dprofile_shuffle7(dprofile, score_matrix, dseq);
 #else

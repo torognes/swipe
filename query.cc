@@ -212,7 +212,9 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
     {
       line.push_back(static_cast<char>(symbol));
       if (symbol == '\n')
-        break;
+      {
+	break;
+      }
     }
 }
 
@@ -221,13 +223,19 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
 auto query_init(char const * query_filename, long symbol_type, long strands) -> void
 {
   if (strcmp(query_filename, "-") == 0)
+  {
     query_fp = stdin;
+  }
   else
+  {
     query_fp = fopen(query_filename, "r");
-  
+  }
+
   if (query_fp == nullptr)
+  {
     fatal("Cannot open query file.");
-  
+  }
+
   query.description = nullptr;
   query.dlen = 0;
   query.symtype = symbol_type;
@@ -267,7 +275,9 @@ auto query_init(char const * query_filename, long symbol_type, long strands) -> 
   // first line was read as an empty query, and the rest of the file
   // was ignored
   while ((query_line == "\n") or (query_line == "\r\n"))
+  {
     read_line(query_fp, query_line);
+  }
 }
 
 namespace {
@@ -275,21 +285,27 @@ namespace {
 auto query_free() -> void
 {
   if (query.description != nullptr)
+  {
     free(query.description);
+  }
   query.description = nullptr;
   query.dlen = 0;
 
   for(long s=0; s<2; s++)
   {
     if (query.nt[s].seq != nullptr)
+    {
       free(query.nt[s].seq);
+    }
     query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      if (query.aa[(3*s)+f].seq != nullptr)
-	free(query.aa[(3*s)+f].seq);
+      if (query.aa[(3 * s) + f].seq != nullptr)
+      {
+	free(query.aa[(3 * s) + f].seq);
+      }
       query.aa[(3*s)+f].seq = nullptr;
       query.aa[(3*s)+f].len = 0;
     }
@@ -301,7 +317,9 @@ auto query_free() -> void
 auto query_exit() -> void
 {
   if (query_fp != stdin)
+  {
     fclose(query_fp);
+  }
 
   query_free();
 }
@@ -309,7 +327,9 @@ auto query_exit() -> void
 auto query_read() -> int
 {
   if (query_line.empty())
+  {
     return 0;
+  }
 
   query_free();
 
@@ -319,9 +339,13 @@ auto query_read() -> int
   // (\n, or \r\n: KI-21)
   std::string header(query_line, 0, query_line.find('\0'));
   if ((not header.empty()) and (header.back() == '\n'))
+  {
     header.pop_back();
+  }
   if ((not header.empty()) and (header.back() == '\r'))
+  {
     header.pop_back();
+  }
   int const len = static_cast<int>(header.size());
 
   if (header[0] == '>')
@@ -346,11 +370,17 @@ auto query_read() -> int
   char * map = nullptr;
 
   if (symtype == 5)
+  {
     map = map_sound;
+  }
   else if ((symtype == 1) || (symtype == 3))
+  {
     map = map_ncbi_aa;
+  }
   else
+  {
     map = map_ncbi_nt16;
+  }
 
   while((not query_line.empty()) and (query_line[0] != '>'))
   {
@@ -412,8 +442,10 @@ auto query_read() -> int
 auto revcompl(char const * seq, long len) -> char *
 {
   char * rc = static_cast<char *>(xmalloc(len+1));
-  for(long i=0; i<len; i++)
-    rc[i] = ntcompl[static_cast<int>(seq[len-1-i])];
+  for (long i = 0; i < len; i++)
+  {
+    rc[i] = ntcompl[static_cast<int>(seq[len - 1 - i])];
+  }
   rc[len] = 0;
   return rc;
 }
@@ -424,13 +456,17 @@ auto translate_createtable(long tableno, char * table) -> void
 {
   /* initialize translation table */
 
-  for(long a=0; a<16; a++)
-    for(long b=0; b<16; b++)
+  for (long a = 0; a < 16; a++)
+  {
+    for (long b = 0; b < 16; b++)
+    {
       for(long c=0; c<16; c++)
       {
 	char aa = '-';
-	for(long i=0; i<4; i++)
-	  for(long j=0; j<4; j++)
+	for (long i = 0; i < 4; i++)
+	{
+	  for (long j = 0; j < 4; j++)
+	  {
 	    for(long k=0; k<4; k++)
 	    {
 	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
@@ -472,12 +508,18 @@ auto translate_createtable(long tableno, char * table) -> void
 		}
 	      }
 	    }
-	
+	  }
+	}
+
 	if (aa == '-')
+	{
 	  aa = 'X';
+	}
 
 	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<int>(aa)];
       }
+    }
+  }
 
 #if 0
   /* dump it */
@@ -512,9 +554,13 @@ auto translate(char const * dna, long dlen,
 
   char * ttable = nullptr;
   if (table == 0)
+  {
     ttable = q_translate;
+  }
   else
+  {
     ttable = d_translate;
+  }
 
   long pos = 0;
   long c = 0;
@@ -560,10 +606,14 @@ auto query_show() -> void
   int const linewidth = 60;
   for (unsigned i=0; i<strlen(query.description); i+=linewidth)
   {
-    if (i==0)
+    if (i == 0)
+    {
       fprintf(out, "Query description: %-60.60s\n", query.description+i);
+    }
     else
-      fprintf(out, "                   %-60.60s\n", query.description+i);
+    {
+      fprintf(out, "                   %-60.60s\n", query.description + i);
+    }
   }
 
 #if 0

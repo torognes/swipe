@@ -191,7 +191,9 @@ auto db_map_create() -> mapp
 auto db_map_destruct(mapp m) -> void
 {
   if (m->map_address != nullptr)
+  {
     munmap(m->map_address, m->map_length);
+  }
   free(m);
 }
 
@@ -221,11 +223,15 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
   for(int c=0; c<16; c++)
   {
     if (t->ntbuffer[c] != nullptr)
+    {
       free(t->ntbuffer[c]);
+    }
     t->ntbuffersize[c] = 0;
     t->ntbuffer[c] = nullptr;
     if (t->xxbuffer[c] != nullptr)
+    {
       free(t->xxbuffer[c]);
+    }
     t->xxbuffersize[c] = 0;
     t->xxbuffer[c] = nullptr;
   }
@@ -243,7 +249,9 @@ db_volume_t db_volume[MAXVOLUMES];
 auto db_volume_init(db_volume_t * v) -> void
 {
   if (v - db_volume >= MAXVOLUMES)
+  {
     fatal("Too many database volumes.");
+  }
 
   v->symtype = -1;
   v->version = 0;
@@ -326,7 +334,9 @@ auto getnames(char * line, char * * * names) -> long
       p += wslen + namelen;
     }
     else
+    {
       break;
+    }
   }
   
   * names = static_cast<char**>(xmalloc(namecount * sizeof(char*)));
@@ -366,7 +376,9 @@ auto db_read_alias(long symbol_type, char const * basename) -> al_info_t *
   free(filename);
 
   if (db_file_xal == nullptr)
-    return nullptr;  // no alias file
+  {
+    return nullptr; // no alias file
+  }
 
   // al file exists
 
@@ -436,7 +448,9 @@ auto db_read_alias(long symbol_type, char const * basename) -> al_info_t *
   }
 
   if (al_info->title == nullptr)
+  {
     al_info->title = strdup(basename);
+  }
 
   fclose(db_file_xal);
 
@@ -454,15 +468,19 @@ auto db_close_al(al_info_t * a) -> void
   }
   if (a->dblist != nullptr)
   {
-    for (long i=0; i<a->dblist_len; i++)
+    for (long i = 0; i < a->dblist_len; i++)
+    {
       free(a->dblist[i]);
+    }
     free(a->dblist);
     a->dblist = nullptr;
   }
   if (a->oidlist != nullptr)
   {
-    for (long i=0; i<a->oidlist_len; i++)
+    for (long i = 0; i < a->oidlist_len; i++)
+    {
       free(a->oidlist[i]);
+    }
     free(a->oidlist);
     a->oidlist = nullptr;
   }
@@ -524,24 +542,32 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
 
   volume->fd_xin = open(name_pin, O_RDONLY);
   if (volume->fd_xin < 0)
+  {
     fatal(std::string("Unable to open file ") + name_pin + ".");
-  
+  }
+
   volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
   volume->adr_xin = static_cast<char *>(mmap(nullptr, volume->len_xin, PROT_READ, MAP_SHARED, volume->fd_xin, 0));
 
   if (volume->adr_xin == MAP_FAILED)
+  {
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
+  }
 
   volume->fd_xhr = open(name_phr, O_RDONLY);
   if (volume->fd_xhr < 0)
+  {
     fatal(std::string("Unable to open file ") + name_phr + ".");
+  }
 
   volume->len_xhr = lseek(volume->fd_xhr, 0, SEEK_END);
 
 
   volume->fd_xsq = open(name_psq, O_RDONLY, 0);
   if (volume->fd_xsq < 0)
+  {
     fatal(std::string("Unable to open file ") + name_psq + ".");
+  }
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
 
@@ -550,10 +576,12 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
      truncated or corrupted file was read beyond its end (KI-23) */
   char const * const xin_end = std::next(volume->adr_xin, volume->len_xin);
   auto const check_xin_room = [&](char const * const position, long const size) -> void
+  {
+    if ((size < 0) or (std::distance(position, xin_end) < size))
     {
-      if ((size < 0) or (std::distance(position, xin_end) < size))
-        fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
-    };
+      fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
+    }
+  };
 
   char const * p = volume->adr_xin;
   check_xin_room(p, 12);
@@ -564,7 +592,9 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
   // after the symbol type, and the name of an LMDB file (accession
   // lookup, not needed by swipe) after the title
   if ((volume->version != 4) and (volume->version != 5))
+  {
     fatal("Illegal database version (must be 4 or 5).");
+  }
 
   p += 4;
   volume->symtype = load_uint32_be(p);
@@ -596,11 +626,17 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
   volume->time[datelen] = 0;
   p += datelen;
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
+  {
     p++;
+  }
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
+  {
     p++;
+  }
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
+  {
     p++;
+  }
   check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
   p += 4;
@@ -627,24 +663,36 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
   for (long seqno = 0; seqno < volume->seqcount; ++seqno)
   {
     if (offset_at(volume->offset_xhr, seqno) > offset_at(volume->offset_xhr, seqno + 1))
+    {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
+    }
     long const seq_start = offset_at(volume->offset_xsq, seqno);
     long const seq_end = offset_at(volume->offset_xsq, seqno + 1);
     if (seq_start > seq_end)
+    {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
+    }
     if (not is_nucleotide)
+    {
       continue;
+    }
     /* the packed nucleotides use at least one byte, before the
        ambiguity table of the sequence */
     long const amb_start = offset_at(volume->offset_amb, seqno);
     if ((amb_start <= seq_start) or (amb_start > seq_end))
+    {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
+    }
   }
 
   if (offset_at(volume->offset_xhr, volume->seqcount) > volume->len_xhr)
+  {
     fatal(std::string("Database header file ") + name_phr + " is truncated or corrupted.");
+  }
   if (offset_at(volume->offset_xsq, volume->seqcount) > volume->len_xsq)
+  {
     fatal(std::string("Database sequence file ") + name_psq + " is truncated or corrupted.");
+  }
 
   free(name_pin);
   free(name_phr);
@@ -660,9 +708,13 @@ auto get_path(char const * basename) -> char *
   long pathlen = 0;
 
   while (char const c = *p++)
+  {
     if (c == '/')
+    {
       pathlen = p - basename;
-  
+    }
+  }
+
   path = static_cast<char*>(xmalloc(pathlen + 1));
   strncpy(path, basename, pathlen);
   path[pathlen] = 0;
@@ -725,13 +777,17 @@ auto db_open_msk(db_volume_t * v) -> void
   v->fd_msk = open(v->masked_mskfile, O_RDONLY);
 
   if (v->fd_msk < 0)
+  {
     fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
+  }
 
   v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
   v->adr_msk = static_cast<unsigned char *>(mmap(nullptr, v->len_msk, PROT_READ, MAP_SHARED, v->fd_msk, 0));
-  
+
   if (v->adr_msk == MAP_FAILED)
+  {
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
+  }
 }
 
 auto db_check_msk(long seqno) -> long
@@ -774,9 +830,11 @@ auto db_check_taxid(long taxid) -> long
   {
     long const byteno = taxid / 8;
     long const bitno = taxid & 7;
-    
+
     if (byteno < db_main.taxid_bitmap_size)
+    {
       return (db_main.taxid_bitmap_address[byteno] >> bitno) & 1;
+    }
     return 0;
   }
   return 1;
@@ -838,7 +896,9 @@ auto db_read_taxid_file(char const * filename) -> void
   db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
   if (db_main.taxid_file == nullptr)
+  {
     fatal(std::string("Unable to open taxid file ") + filename + ".");
+  }
 
   db_main.taxid_bitmap_size = 64*1024;
   db_main.taxid_bitmap_address = static_cast<unsigned char*>(xmalloc(db_main.taxid_bitmap_size));
@@ -863,7 +923,9 @@ auto db_read_taxid_file(char const * filename) -> void
       token.clear();
     }
     if (symbol == '\n')
+    {
       ++line_number;
+    }
   }
   if (not token.empty())
   {
@@ -906,8 +968,10 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
       if (ai2 != nullptr)
       {
 	if ((ai->memb_bit != 0) && ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1)))
+	{
 	  fatal("Illegal alias file (2).");
-	
+	}
+
 	for(long j=0; j < ai2->dblist_len; j++)
 	{
 	  char * basename3 = addpath(db_main.path, ai2->dblist[j]);
@@ -947,9 +1011,11 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
             db_main.memb_bit = 0;
           }
 
-	if ((ai->memb_bit != 0) && ((ai->oidlist_len != 1) || (ai->dblist_len != 1)))
-	  fatal("Illegal alias file (1).");
-	
+	  if ((ai->memb_bit != 0) && ((ai->oidlist_len != 1) || (ai->dblist_len != 1)))
+	  {
+	    fatal("Illegal alias file (1).");
+	  }
+
 	db_volume_init(db_volume + vol);
 	db_open_xin(symbol_type, basename2, db_volume+vol);
 	
@@ -1010,13 +1076,17 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
   for(int b=0; b<256; b++)
   {
     unsigned int unpacked = 0;
-    for(long i=0; i<4; i++)
-      (reinterpret_cast<unsigned char*>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
+    for (long i = 0; i < 4; i++)
+    {
+      (reinterpret_cast<unsigned char *>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3 - (i & 3)) << 1)) & 3));
+    }
     decompress_nt[b] = unpacked;
   }
 
   if (taxidfilename != nullptr)
+  {
     db_read_taxid_file(taxidfilename);
+  }
 }
 
 namespace {
@@ -1103,9 +1173,13 @@ auto db_close() -> void
     db_main.time = nullptr;
   }
   if (db_main.taxid_bitmap_address != nullptr)
+  {
     free(db_main.taxid_bitmap_address);
+  }
   if (db_main.taxid_filename != nullptr)
+  {
     free(db_main.taxid_filename);
+  }
 }
 
 auto db_getsymtype() -> long;
@@ -1145,7 +1219,9 @@ auto db_getseqcount_volume_masked(long v) -> long
 auto db_getseqcount_masked() -> long
 {
   if (db_main.memb_bit != 0)
+  {
     return db_main.masked_seqcount;
+  }
   return db_main.seqcount;
 }
 
@@ -1157,7 +1233,9 @@ auto db_getsymcount() -> long
 auto db_getsymcount_masked() -> long
 {
   if (db_main.memb_bit != 0)
+  {
     return db_main.masked_symcount;
+  }
   return db_main.symcount;
 }
 
@@ -1185,8 +1263,10 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   mapp m = t->map_seq;
 
   if (m->map_address != nullptr)
+  {
     munmap(m->map_address, m->map_length);
-  
+  }
+
   long s1 = 0;
   long s2 = 0;
   db_volume_t * v1 = nullptr;
@@ -1199,8 +1279,10 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
 
   if (v1 != v2)
+  {
     fatal("Cannot map across database volumes.");
-  
+  }
+
   // find new map area
   
   long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xsq / 4) + s1)));
@@ -1217,8 +1299,10 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
   if (start == MAP_FAILED)
+  {
     fatal("Unable to memory map sequence file.");
-  
+  }
+
   // update
   
   m->map_address = start;
@@ -1234,8 +1318,10 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   mapp m = t->map_hdr;
 
   if (m->map_address != nullptr)
+  {
     munmap(m->map_address, m->map_length);
-  
+  }
+
   long s1 = 0;
   long s2 = 0;
   db_volume_t * v1 = nullptr;
@@ -1248,8 +1334,10 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
 
   if (v1 != v2)
+  {
     fatal("Cannot map across database volumes.");
-  
+  }
+
   // find new map area
   
   long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xhr / 4) + s1)));
@@ -1266,8 +1354,10 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
   if (start == MAP_FAILED)
+  {
     fatal("Unable to memory map sequence file.");
-  
+  }
+
   // update
   
   m->map_address = start;
@@ -1387,9 +1477,11 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  unsigned long const n = e >> 60;
 	  unsigned long const r = ((e >> 48) & 0xfff) + 1;
 	  unsigned long const o = e & 0x0000fffffffffff;
-	
-	  for(unsigned long rr = 0; rr < r ; rr++)
-	    t->ntbuffer[c][o+rr] = n;
+
+	  for (unsigned long rr = 0; rr < r; rr++)
+	  {
+	    t->ntbuffer[c][o + rr] = n;
+	  }
 	}
       }
       else
@@ -1403,9 +1495,11 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  unsigned int const n = e >> 28;
 	  unsigned int const r = ((e >> 24) & 0xf) + 1;
 	  unsigned int const o = e & 0x00ffffff;
-	
-	  for(unsigned int rr = 0; rr < r ; rr++)
-	    t->ntbuffer[c][o+rr] = static_cast<char>(n);
+
+	  for (unsigned int rr = 0; rr < r; rr++)
+	  {
+	    t->ntbuffer[c][o + rr] = static_cast<char>(n);
+	  }
 	}
       }
     }
@@ -1422,8 +1516,10 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], t->xxbuffersize[c]));
 	}
 
-	for(long i=0; i<nt_length; i++)
-	  t->xxbuffer[c][i] = ntcompl[static_cast<int>(t->ntbuffer[c][nt_length-1-i])];
+	for (long i = 0; i < nt_length; i++)
+	{
+	  t->xxbuffer[c][i] = ntcompl[static_cast<int>(t->ntbuffer[c][nt_length - 1 - i])];
+	}
 	t->xxbuffer[c][nt_length] = 0;
 
 	/* deallocate ntbuffer if big */
@@ -1540,17 +1636,25 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)
-  if ((db_main.symtype==3)||(db_main.symtype==4))
+  if ((db_main.symtype == 3) || (db_main.symtype == 4))
+  {
     frame = untranslated_frame;
+  }
 
   db_getsequence(t, seqno, strand, frame, & address, & length, & ntlen, 0);
 
-  if ((db_main.symtype==1)||(db_main.symtype==2))
+  if ((db_main.symtype == 1) || (db_main.symtype == 2))
+  {
     db_print_seq_map(address, length-1, sym_ncbi_aa);
-  else if ((db_main.symtype==0)||(db_main.symtype==3)||(db_main.symtype==4))
+  }
+  else if ((db_main.symtype == 0) || (db_main.symtype == 3) || (db_main.symtype == 4))
+  {
     db_print_seq_map(address, length-1, sym_ncbi_nt16u);
+  }
   else
-    db_print_seq_map(address, length-1, sym_sound);
+  {
+    db_print_seq_map(address, length - 1, sym_sound);
+  }
 }
 
 auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
@@ -1615,8 +1719,10 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
       }
       else
       {
-	if(i != 0)
+	if (i != 0)
+	{
 	  fprintf(out, " ");
+	}
 	fprintf(out, ">%s", deflinetable[i]);
 	if (i==deflines-1)
 	{

@@ -116,9 +116,13 @@ auto append_bounded(char * const dst, std::size_t const size,
 auto nextch(apt p) -> void
 {
   if (p->header_p < p->header_end)
+  {
     p->ch = *p->header_p++;
+  }
   else
+  {
     p->ch = 0;
+  }
 }
 
 auto nextobj(apt p) -> void
@@ -680,12 +684,18 @@ auto show_seq_id(apt p, char const * dbi) -> void
 {
   char const * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
+  {
     db = "tr";
+  }
   if (p->version != 0U)
+  {
     set_id(p, std::string(db) + "|" + p->accession + "." +
            std::to_string(p->version) + "|" + p->name);
+  }
   else
+  {
     set_id(p, std::string(db) + "|" + p->accession + "|" + p->name);
+  }
 }
 
 auto show_id_int(apt p, char const * db) -> void
@@ -756,9 +766,13 @@ auto parse_seq_id(apt p) -> void
   case 0xA0:
     parse_object_id(p);
     if ((*p->gnl_id_string) != 0)
+    {
       set_id(p, std::string(db) + "|" + p->gnl_id_string);
+    }
     else
+    {
       set_id(p, std::string(db) + "|" + std::to_string(p->gnl_id_integer));
+    }
     break;
 
   case 0xA3:
@@ -774,16 +788,22 @@ auto parse_seq_id(apt p) -> void
   case 0xAA:
     parse_dbtag(p);
     if ((*p->gnl_id_string) != 0)
+    {
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
+    }
     else
+    {
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" +
              std::to_string(p->gnl_id_integer));
+    }
     break;
 
   case 0xAB:
     parse_integer(p);
-    if(p->show_gis != 0)
+    if (p->show_gis != 0)
+    {
       show_id_int(p, db);
+    }
     break;
 
   case 0xAE:
@@ -820,7 +840,9 @@ auto parse_blast_def_line(apt p) -> void
   match_obj(p,0x30);
 
   if (p->obj == 0x00)
+  {
     fatal("Missing defline.");
+  }
 
   char seqids[MAXSTRING];
 
@@ -853,7 +875,9 @@ auto parse_blast_def_line(apt p) -> void
       {
 	parse_seq_id(p);
 	if (strlen(seqids) != 0U)
+	{
 	  append_bounded(seqids, sizeof(seqids), "|");
+	}
 	append_bounded(seqids, sizeof(seqids), p->id);
       }
       match_obj(p,0x00);
@@ -907,8 +931,10 @@ auto parse_blast_def_line(apt p) -> void
 #endif
       match_obj(p,0xA5);
       match_obj(p,0x30);
-      while(p->obj != 0U)
+      while (p->obj != 0U)
+      {
 	parse_integer(p);
+      }
       match_obj(p,0x00);
       match_obj(p,0x00);
     }
@@ -933,12 +959,16 @@ auto parse_blast_def_line(apt p) -> void
 	}
     }
 
-  if ((strlen(p->defline) != 0U) && (strlen(p->title) != 0U))
-    strcat(p->defline, " ");
+    if ((strlen(p->defline) != 0U) && (strlen(p->title) != 0U))
+    {
+      strcat(p->defline, " ");
+    }
 
   long const zzz = strlen(p->defline) + strlen(p->title);
   if (zzz >= MAXDEFLINESTRING)
+  {
     fatal("Error: defline too long");
+  }
 
   append_bounded(p->defline, sizeof(p->defline), p->title);
 }
@@ -954,8 +984,10 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
       if ((p->maxlen != 0U) && (show > p->maxlen))
+      {
 	show = p->maxlen;
-      
+      }
+
       if ((show < strlen(defline)) && (show >= 3))
       {
 	strcpy(defline+show-3, "...");
@@ -997,9 +1029,13 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	  else
 	  {
 	    if (p->escaping == Escaping::xml)
+	    {
 	      xml_putc(defline[pos]);
+	    }
 	    else
+	    {
 	      putc(defline[pos], out);
+	    }
 	    pos++;
 	    col++;
 	  }
@@ -1008,14 +1044,18 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 	// padding
 
 	if (p->linelen < LONG_MAX)
+	{
 	  while(col < p->linelen)
 	  {
 	    putc(' ', out);
 	    col++;
 	  }
-	
+	}
+
 	if (p->maxdeflines > 1)
+	{
 	  putc('\n', out);
+	}
 
 	line++;
       }
@@ -1067,7 +1107,9 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
   match_obj(p,0x00);
 
   if (deflinetable != nullptr)
+  {
     *deflinetable = table;
+  }
 
   return deflines;
 }

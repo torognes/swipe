@@ -259,9 +259,11 @@ inline auto dprofile_fill16s(WORD * dprofile_word,
   for (int j=0; j<CDEPTH; j++)
   {
     int d[CHANNELS];
-    for(int z=0; z<CHANNELS; z++)
-      d[z] = dseq[(j*CHANNELS)+z] << 5;
-      
+    for (int z = 0; z < CHANNELS; z++)
+    {
+      d[z] = dseq[(j * CHANNELS) + z] << 5;
+    }
+
     //      for(int i=0; i<24; i += 8)
     for(int i=0; i<32; i += 8)
     {
@@ -401,12 +403,18 @@ auto search16s(WORD * * q_start,
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_pos[c] < d_end[c])
+	  {
 	    dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	  }
 	  else
-	    dseq[(CHANNELS*j)+c] = 0;
+	  {
+	    dseq[(CHANNELS * j) + c] = 0;
+	  }
 	}
 	if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
+	{
 	  easy = 0;
+	}
       }
 	
       dprofile_fill16s(dprofile, score_matrix, dseq);
@@ -418,17 +426,27 @@ auto search16s(WORD * * q_start,
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       if (mask != 0)
       {
-	for(int c=0; c<CHANNELS; c++)
-	  if ((mask & (3 << 2*c)) != 0)
+	for (int c = 0; c < CHANNELS; c++)
+	{
+	  if ((mask & (3 << 2 * c)) != 0)
+	  {
 	    d_best[c] = d_pos[c] - 1;
-	
+	  }
+	}
+
 	for(long i = qlen-1; i >= 0; i--)
 	{
 	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
 	  if (m2 != 0)
-	    for(int c=0; c<CHANNELS; c++)
-	      if ((m2 & (3 << 2*c)) != 0)
+	  {
+	    for (int c = 0; c < CHANNELS; c++)
+	    {
+	      if ((m2 & (3 << 2 * c)) != 0)
+	      {
 		q_best[c] = i;
+	      }
+	    }
+	  }
 	}
       }
 
@@ -461,14 +479,19 @@ auto search16s(WORD * * q_start,
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_pos[c] < d_end[c])
+	    {
 	      dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	    }
 	    else
-	      dseq[(CHANNELS*j)+c] = 0;
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
-		  
+
 	  if (d_pos[c] == d_end[c])
+	  {
 	    easy = 0;
-		  
+	  }
 	}
 	else
 	{
@@ -512,28 +535,38 @@ auto search16s(WORD * * q_start,
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_pos[c] < d_end[c])
+	      {
 		dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	      }
 	      else
-		dseq[(CHANNELS*j)+c] = 0;
+	      {
+		dseq[(CHANNELS * j) + c] = 0;
+	      }
 	    }
 	    if (d_pos[c] == d_end[c])
+	    {
 	      easy = 0;
+	    }
 	  }
 	  else
 	  {
 	    seq_id[c] = -1;
 	    d_pos[c] = &zero;
 	    d_end[c] = d_pos[c];
-	    for (int j=0; j<CDEPTH; j++)
-	      dseq[(CHANNELS*j)+c] = 0;
+	    for (int j = 0; j < CDEPTH; j++)
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 	}
 	T = _mm_slli_si128(T, 2);
       }
 
       if (done == sequences)
+      {
 	break;
-      
+      }
+
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
       domasked16s(&S, hep, qp, &Q, &R, qlen, &Z, &M);
@@ -545,17 +578,27 @@ auto search16s(WORD * * q_start,
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       if (mask != 0)
       {
-	for(int c=0; c<CHANNELS; c++)
-	  if ((mask & (3 << 2*c)) != 0)
+	for (int c = 0; c < CHANNELS; c++)
+	{
+	  if ((mask & (3 << 2 * c)) != 0)
+	  {
 	    d_best[c] = d_pos[c] - 1;
-	
+	  }
+	}
+
 	for(long i = qlen-1; i >= 0; i--)
 	{
 	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
 	  if (m2 != 0)
-	    for(int c=0; c<CHANNELS; c++)
-	      if ((m2 & (3 << 2*c)) != 0)
+	  {
+	    for (int c = 0; c < CHANNELS; c++)
+	    {
+	      if ((m2 & (3 << 2 * c)) != 0)
+	      {
 		q_best[c] = i;
+	      }
+	    }
+	  }
 	}
       }
 
