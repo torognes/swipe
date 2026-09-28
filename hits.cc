@@ -716,7 +716,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 }
 
 
-#define ALIGNLEN 60
+constexpr long ALIGNLEN = 60;
 
 namespace {
 

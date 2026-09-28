@@ -238,7 +238,7 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
   free(t);
 }
 
-#define MAXVOLUMES 256
+constexpr long MAXVOLUMES = 256;
 
 namespace {
 

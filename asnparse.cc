@@ -34,8 +34,8 @@
 
 /* gi,db,name,ac etc needs considerable less space */
 
-#define MAXSTRING 2048
-#define MAXDEFLINESTRING 10240
+constexpr long MAXSTRING = 2048;
+constexpr long MAXDEFLINESTRING = 10240;
 
 struct asnparse_info
 {
