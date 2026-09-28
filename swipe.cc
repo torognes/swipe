@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::fill, std::generate, std::min
+#include <algorithm>  // std::generate, std::min
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
@@ -137,7 +137,7 @@ struct search_data
 
   BYTE * dprofile;
   BYTE * hearray;
-  BYTE ** qtable[6];
+  BYTE ** qtable[6] {};  // nullptr: tables not allocated yet
 
   long * scores;
   long * bestpos;
@@ -216,8 +216,6 @@ auto align_init(struct search_data * sdp) -> void
   sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
-  
-  std::fill(std::begin(sdp->qtable), std::end(sdp->qtable), nullptr);
 
   if (symtype == 0)
   {
@@ -1261,8 +1259,6 @@ auto search_init(struct search_data * sdp) -> void
   sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
-  
-  std::fill(std::begin(sdp->qtable), std::end(sdp->qtable), nullptr);
 
   if (symtype == 0)
   {
