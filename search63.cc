@@ -31,8 +31,8 @@ long fullsw(char * dseq,
 	    char * qend,
 	    long * hearray,
 	    long * score_matrix,
-	    long gapopenextend,
-	    long gapextend)
+	    long gap_open_extend,
+	    long gap_extend)
 {
   long h, n, e, f, s;
   long *hep;
@@ -67,9 +67,9 @@ long fullsw(char * dseq,
             s = h;
 
           *hep = h;
-          e -= gapextend;
-          f -= gapextend;
-          h -= gapopenextend;
+          e -= gap_extend;
+          f -= gap_extend;
+          h -= gap_open_extend;
 
           if (h > e)
             e = h;

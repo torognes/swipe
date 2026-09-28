@@ -445,8 +445,8 @@ void align_done(struct search_data * sdp)
 void calc_chunks(long volcount, 
 		 long par,
 		 long channels,
-		 long * volseqs,
-		 long * volchunks,
+		 long * volume_sequences,
+		 long * volume_chunks,
 		 long * totalchunks,
 		 long * biggestchunk)
 {
@@ -457,26 +457,26 @@ void calc_chunks(long volcount,
   long volsused = 0;
   std::vector<long> chunksizes(volcount);
   long totalseqs = 0;
-  long maxchunksize = 0;
+  long biggest_chunk_size = 0;
   long vv = 0;
   for(long v = 0; v < volcount; v++)
   {
-    if (volseqs[v])
+    if (volume_sequences[v])
     {
-      totalseqs += volseqs[v];
+      totalseqs += volume_sequences[v];
       volsused++;
-      volchunks[v] = 1;
-      chunksizes[v] = volseqs[v];
-      if (chunksizes[v] > maxchunksize)
+      volume_chunks[v] = 1;
+      chunksizes[v] = volume_sequences[v];
+      if (chunksizes[v] > biggest_chunk_size)
       {
-	maxchunksize = chunksizes[v];
+	biggest_chunk_size = chunksizes[v];
 	vv = v;
       }
     }
     else
     {
       chunksizes[v] = 0;
-      volchunks[v] = 0;
+      volume_chunks[v] = 0;
     }
   }
 
@@ -487,20 +487,20 @@ void calc_chunks(long volcount,
   long chunks = volsused;
   long minchunks = totalseqs < par ? totalseqs : par;
 
-  while((maxchunksize > upper) || (chunks < minchunks))
+  while((biggest_chunk_size > upper) || (chunks < minchunks))
   {
-    volchunks[vv]++;
+    volume_chunks[vv]++;
     chunks++;
-    chunksizes[vv] = (volseqs[vv] + volchunks[vv] - 1) / volchunks[vv];
+    chunksizes[vv] = (volume_sequences[vv] + volume_chunks[vv] - 1) / volume_chunks[vv];
 
-    maxchunksize = 0;
+    biggest_chunk_size = 0;
     vv = 0;
     for(long v=0; v < volcount; v++)
     {
-      if (chunksizes[v] > maxchunksize)
+      if (chunksizes[v] > biggest_chunk_size)
       {
 	vv = v;
-	maxchunksize = chunksizes[v];
+	biggest_chunk_size = chunksizes[v];
       }
     }
   }
@@ -515,13 +515,13 @@ void calc_chunks(long volcount,
     for(long v = 0; v < volcount; v++)
     {
       fprintf(out, "%3ld %9ld %6ld %12ld\n",
-	      v, volseqs[v], volchunks[v], chunksizes[v]);
+	      v, volume_sequences[v], volume_chunks[v], chunksizes[v]);
     }
     fprintf(out, "\n");
   }
 #endif
   
-  *biggestchunk = maxchunksize;
+  *biggestchunk = biggest_chunk_size;
   *totalchunks = chunks;
 }
 

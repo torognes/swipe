@@ -410,13 +410,13 @@ void show_volume_info(db_volume_t * vol)
 }
 
 
-al_info_t * db_read_alias(long symtype, const char * basename)
+al_info_t * db_read_alias(long symbol_type, const char * basename)
 {
   // open an alias file and read contents
 
   char * filename = (char*)xmalloc(strlen(basename)+5);
   strcpy(filename, basename);
-  strcat(filename, ((symtype==1)||(symtype==2)||(symtype==5)) ? ".pal" : ".nal");
+  strcat(filename, ((symbol_type==1)||(symbol_type==2)||(symbol_type==5)) ? ".pal" : ".nal");
   
   FILE * db_file_xal = fopen(filename, "r");
 
@@ -545,7 +545,7 @@ static auto load_uint64_host(char const * const address) -> std::uint64_t
   return value;
 }
 
-long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
+long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
 {
   db_volume_init(volume);
 
@@ -560,7 +560,7 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
   char * name_psq = (char*)xmalloc(strlen(basename)+5);
   strcpy(name_psq, basename);
 
-  if ((symtype==1)||(symtype==2)||(symtype==5))
+  if ((symbol_type==1)||(symbol_type==2)||(symbol_type==5))
     {
       strcat(name_pin, ".pin");
       strcat(name_phr, ".phr");
@@ -649,7 +649,7 @@ long db_open_xin(long symtype, const char * basename, db_volume_t * volume)
 
   /* offset tables: seqcount + 1 header and sequence offsets, and, for
      nucleotides, seqcount + 1 ambiguity offsets */
-  bool const is_nucleotide = (symtype != 1) and (symtype != 2) and (symtype != 5);
+  bool const is_nucleotide = (symbol_type != 1) and (symbol_type != 2) and (symbol_type != 5);
   long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
     4 * (volume->seqcount + 1);
   check_xin_room(volume->adr_xin, tables_end);
@@ -907,20 +907,20 @@ void db_read_taxid_file(char * filename)
 }
 
 
-void db_open(long symtype, const char * basename, char * taxidfilename)
+void db_open(long symbol_type, const char * basename, char * taxidfilename)
 {
   al_info_t * ai = NULL;
 
   db_init(& db_main);
 
   db_main.basename = strdup(basename);
-  db_main.symtype  = symtype;
+  db_main.symtype  = symbol_type;
   
   db_main.path = get_path(basename);
 
   long vol = 0;
 
-  if ((ai = db_read_alias(symtype, basename)))
+  if ((ai = db_read_alias(symbol_type, basename)))
   {
     db_main.title = strdup(ai->title);
     db_main.memb_bit = ai->memb_bit;
@@ -931,7 +931,7 @@ void db_open(long symtype, const char * basename, char * taxidfilename)
       
       char * basename2 = addpath(db_main.path, ai->dblist[i]);
       
-      if ((ai2 = db_read_alias(symtype, basename2)))
+      if ((ai2 = db_read_alias(symbol_type, basename2)))
       {
 	if (ai->memb_bit)
 	{
@@ -944,7 +944,7 @@ void db_open(long symtype, const char * basename, char * taxidfilename)
 	  char * basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
 	  db_volume_init(db_volume + vol);
-	  db_open_xin(symtype, basename3, db_volume + vol);
+	  db_open_xin(symbol_type, basename3, db_volume + vol);
 	  
 	  if (ai->memb_bit)
 	  {
@@ -987,7 +987,7 @@ void db_open(long symtype, const char * basename, char * taxidfilename)
 	}
 	
 	db_volume_init(db_volume + vol);
-	db_open_xin(symtype, basename2, db_volume+vol);
+	db_open_xin(symbol_type, basename2, db_volume+vol);
 	
 	if (ai->memb_bit)
 	{
@@ -1019,7 +1019,7 @@ void db_open(long symtype, const char * basename, char * taxidfilename)
   else
   {
     db_volume_init(db_volume);
-    db_open_xin(symtype, basename, db_volume);
+    db_open_xin(symbol_type, basename, db_volume);
     
     //    show_volume_info(db_volume+vol);
 

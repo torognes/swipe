@@ -204,19 +204,19 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
     }
 }
 
-void query_init(const char * queryname, long symtype, long strands)
+void query_init(const char * query_filename, long symbol_type, long strands)
 {
-  if (strcmp(queryname, "-") == 0)
+  if (strcmp(query_filename, "-") == 0)
     query_fp = stdin;
   else
-    query_fp = fopen(queryname, "r");
+    query_fp = fopen(query_filename, "r");
   
   if (!query_fp)
     fatal("Cannot open query file.");
   
   query.description = 0;
   query.dlen = 0;
-  query.symtype = symtype;
+  query.symtype = symbol_type;
   query.strands = strands;
 
   if (query.symtype == 5)

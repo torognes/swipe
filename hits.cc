@@ -312,11 +312,11 @@ static auto threshold_to_long(double const value) -> long
   return static_cast<long>(value);
 }
 
-void hits_init(long descriptions, long alignments, long minscore, long maxscore, double minexpect, double expect, int show_nostats)
+void hits_init(long descriptions, long max_alignments, long minscore, long maxscore, double min_expect, double max_expect, int show_nostats)
 {
   opt_descriptions = descriptions;
-  opt_alignments = alignments;
-  keephits = descriptions > alignments ? descriptions : alignments;
+  opt_alignments = max_alignments;
+  keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
   long maxhits = db_getseqcount_masked();
   if (symtype == 0)
@@ -537,13 +537,13 @@ void hits_init(long descriptions, long alignments, long minscore, long maxscore,
   
   if (stats_available)
   {
-    long minscore_expect = threshold_to_long(ceil(- log(expect / Kmn) / lambda));
+    long minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
     if (minscore_expect > minscore)
       scorethreshold = minscore_expect;
     
-    if (minexpect > 0.0)
+    if (min_expect > 0.0)
     {
-      long maxscore_expect = threshold_to_long(floor(- log(minexpect / Kmn) / lambda));
+      long maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
 	upperscorethreshold = maxscore_expect;
     }
@@ -1227,42 +1227,42 @@ void count_align(long i,
   }
 }
 
-void hits_show_expect(double expect)
+void hits_show_expect(double expect_value)
 {
   char temp[10];
-  if (expect < 1e-180)
+  if (expect_value < 1e-180)
     fprintf(out, "0.0  ");
-  else if (expect < 9.5e-100)
+  else if (expect_value < 9.5e-100)
   {
-    sprintf(temp, "%-6.0e", expect);
+    sprintf(temp, "%-6.0e", expect_value);
     fputs(temp+1, out);
   }
-  else if (expect < 0.00095)
-    fprintf(out, "%-5.0e", expect);
-  else if (expect < 0.0995)
-    fprintf(out, "%-5.3f", expect);
-  else if (expect < 0.95)
-    fprintf(out, "%-5.2f", expect);
-  else if (expect < 9.5)
-    fprintf(out, "%-5.1f", expect);
+  else if (expect_value < 0.00095)
+    fprintf(out, "%-5.0e", expect_value);
+  else if (expect_value < 0.0995)
+    fprintf(out, "%-5.3f", expect_value);
+  else if (expect_value < 0.95)
+    fprintf(out, "%-5.2f", expect_value);
+  else if (expect_value < 9.5)
+    fprintf(out, "%-5.1f", expect_value);
   else
-    fprintf(out, "%5.0f", expect);
+    fprintf(out, "%5.0f", expect_value);
 }
 
-void hits_show_expect_nospace(double expect)
+void hits_show_expect_nospace(double expect_value)
 {
-  if (expect < 1e-180)
+  if (expect_value < 1e-180)
     fprintf(out, "0.0");
-  else if (expect < 9.5e-100)
-    fprintf(out, "%.0e", expect);
-  else if (expect < 0.0995)
-    fprintf(out, "%.3f", expect);
-  else if (expect < 0.95)
-    fprintf(out, "%.2f", expect);
-  else if (expect < 9.5)
-    fprintf(out, "%.1f", expect);
+  else if (expect_value < 9.5e-100)
+    fprintf(out, "%.0e", expect_value);
+  else if (expect_value < 0.0995)
+    fprintf(out, "%.3f", expect_value);
+  else if (expect_value < 0.95)
+    fprintf(out, "%.2f", expect_value);
+  else if (expect_value < 9.5)
+    fprintf(out, "%.1f", expect_value);
   else
-    fprintf(out, "%.0f", expect);
+    fprintf(out, "%.0f", expect_value);
 }
 
 auto xml_putc(char const symbol) noexcept -> void
@@ -1299,35 +1299,35 @@ static auto xml_print(char const * const text,
     xml_putc(text[i]);
 }
 
-void make_anchor(char * anchor, long size, long symtype, long queryno, long i)
+void make_anchor(char * anchor, long size, long symbol_type, long query_index, long i)
 {
-  switch(symtype)
+  switch(symbol_type)
   {
   case 0:
     // blastn: the strand of a hit is stored as its database strand
     // (KI-29)
     snprintf(anchor, size, "%ld_%ld__%c__+",
-	     queryno,
+	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].dstrand ? '-' : '+');
     break;
   case 2:
     snprintf(anchor, size, "%ld_%ld_%ld_%c__",
-	     queryno,
+	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].qframe+1,
 	     hits_list[i].qstrand ? '-' : '+');
     break;
   case 3:
     snprintf(anchor, size, "%ld_%ld___%ld_%c",
-	     queryno,
+	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].dframe+1,
 	     hits_list[i].dstrand ? '-' : '+');
     break;
   case 4:
     snprintf(anchor, size, "%ld_%ld_%ld_%c_%ld_%c",
-	     queryno,
+	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].qframe+1,
 	     hits_list[i].qstrand ? '-' : '+',
@@ -1336,7 +1336,7 @@ void make_anchor(char * anchor, long size, long symtype, long queryno, long i)
     break;
   default:
     snprintf(anchor, size, "%ld_%ld____",
-	     queryno,
+	     query_index,
 	     hits_list[i].seqno);
     break;
   }
@@ -1924,8 +1924,8 @@ void hits_show_tsv(long showalignments,
     
     if (stats_available)
     {
-      double expect = Kmn * exp(- lambda * score);
-      fprintf(out, "\t%.2g", expect);
+      double expect_value = Kmn * exp(- lambda * score);
+      fprintf(out, "\t%.2g", expect_value);
       double bits = lambda_d_log2 * score - logK_d_log2;
       fprintf(out, "\t%.1f", bits);
     }
@@ -1994,13 +1994,13 @@ void hits_show_plain(long show_gis,
 	if (stats_available)
 	{
 	  long bits = (long) floor(lambda_d_log2 * score - logK_d_log2 + 0.5);
-	  double expect = Kmn * exp(- lambda * score);
+	  double expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " %5ld", bits);
 		
 	  fprintf(out, "   ");
 		
-	  hits_show_expect(expect);
+	  hits_show_expect(expect_value);
 	}
 	else
 	  fprintf(out, " %5ld", score);
@@ -2031,10 +2031,10 @@ void hits_show_plain(long show_gis,
 	if (stats_available)
 	{
 	  double bits = lambda_d_log2 * score - logK_d_log2;
-	  double expect = Kmn * exp(- lambda * score);
+	  double expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " Score = %.1lf bits (%ld), Expect = ", bits, score);
-	  hits_show_expect(expect);
+	  hits_show_expect(expect_value);
 	}
 	else
 	{
