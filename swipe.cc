@@ -77,15 +77,6 @@ struct time_info ti;
 namespace {
 
 char * taxidfilename;
-char * outfile = nullptr;
-long minscore;
-long maxscore;
-OutputFormat view;
-long show_gis;
-long query_gencode;
-long db_gencode;
-long subalignments;
-long dump;
 long cpu_feature_sse2;
 std::mutex countmutex;
 std::mutex workmutex;
@@ -646,9 +637,9 @@ auto align_threads() -> void
   align_threads_done();
 }
 
-auto args_show() -> void
+auto args_show(Parameters const & parameters) -> void
 {
-  if (view == OutputFormat::plain)
+  if (parameters.view == OutputFormat::plain)
   {
     
     if (cpu_feature_ssse3 == 0)
@@ -661,7 +652,7 @@ auto args_show() -> void
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
     
-    fprintf(out, "Database file:     %s\n", databasename);
+    fprintf(out, "Database file:     %s\n", parameters.databasename);
     fprintf(out, "Database title:    %s\n", db_gettitle());
     fprintf(out, "Database time:     %s\n", db_gettime());
     
@@ -678,15 +669,15 @@ auto args_show() -> void
 
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
-      if (effdbsize > 0)
+      if (parameters.effdbsize > 0)
       {
-	fprintf(out, "Effective db size: %ld\n", effdbsize);
+	fprintf(out, "Effective db size: %ld\n", parameters.effdbsize);
       }
 
-      fprintf(out, "Query file name:   %s\n", queryname);
+      fprintf(out, "Query file name:   %s\n", parameters.queryname);
 
       long qlen = 0;
-      if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+      if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
 	qlen = query.nt[0].len;
       }
@@ -699,10 +690,10 @@ auto args_show() -> void
 
       query_show();
 
-      if (symtype == SymbolType::blastn)
+      if (parameters.symtype == SymbolType::blastn)
       {
 	fprintf(out, "Query strands:     ");
-	switch (querystrands)
+	switch (parameters.querystrands)
 	{
 	case QueryStrands::plus:
 	  fprintf(out, "Plus");
@@ -717,35 +708,35 @@ auto args_show() -> void
 	  break;
 	}
 	fprintf(out, "\n");
-	fprintf(out, "Score matrix:      %ld/%ld\n", matchscore, mismatchscore);
+	fprintf(out, "Score matrix:      %ld/%ld\n", parameters.matchscore, parameters.mismatchscore);
       }
       else
       {
-	fprintf(out, "Score matrix:      %s\n", matrixname);
+	fprintf(out, "Score matrix:      %s\n", parameters.matrixname);
       }
 
-      fprintf(out, "Gap penalty:       %ld+%ldk\n", gapopen, gapextend);
-      fprintf(out, "Max expect shown:  %-g\n", expect);
-      fprintf(out, "Min score shown:   %ld\n", minscore);
-      fprintf(out, "Max matches shown: %ld\n", maxmatches);
-      fprintf(out, "Alignments shown:  %ld\n", alignments);
-      fprintf(out, "Show gi's:         %ld\n", show_gis);
-      fprintf(out, "Show taxid's:      %ld\n", show_taxid);
-      fprintf(out, "Threads:           %ld\n", threads);
-      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(symtype)]);
-      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+      fprintf(out, "Gap penalty:       %ld+%ldk\n", parameters.gapopen, parameters.gapextend);
+      fprintf(out, "Max expect shown:  %-g\n", parameters.expect);
+      fprintf(out, "Min score shown:   %ld\n", parameters.minscore);
+      fprintf(out, "Max matches shown: %ld\n", parameters.maxmatches);
+      fprintf(out, "Alignments shown:  %ld\n", parameters.alignments);
+      fprintf(out, "Show gi's:         %ld\n", parameters.show_gis);
+      fprintf(out, "Show taxid's:      %ld\n", parameters.show_taxid);
+      fprintf(out, "Threads:           %ld\n", parameters.threads);
+      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(parameters.symtype)]);
+      if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[query_gencode - 1], query_gencode);
+	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[parameters.query_gencode - 1], parameters.query_gencode);
       }
-      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+      if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode - 1], db_gencode);
+	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[parameters.db_gencode - 1], parameters.db_gencode);
       }
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
-      if (taxidfilename != nullptr)
+      if (parameters.taxidfilename != nullptr)
       {
-	fprintf(out, "Taxid filename:    %s\n", taxidfilename);
+	fprintf(out, "Taxid filename:    %s\n", parameters.taxidfilename);
       }
       fprintf(out, "\n");
     }
@@ -1289,13 +1280,10 @@ auto set_option_globals(Parameters const & parameters) -> void
   databasename = parameters.databasename;
   queryname = parameters.queryname;
   taxidfilename = parameters.taxidfilename;
-  outfile = parameters.outfile;
   expect = parameters.expect;
   minexpect = parameters.minexpect;
   alignments = parameters.alignments;
   maxmatches = parameters.maxmatches;
-  minscore = parameters.minscore;
-  maxscore = parameters.maxscore;
   gapopen = parameters.gapopen;
   gapextend = parameters.gapextend;
   gapopenextend = parameters.gapopenextend;
@@ -1304,13 +1292,7 @@ auto set_option_globals(Parameters const & parameters) -> void
   threads = parameters.threads;
   symtype = parameters.symtype;
   querystrands = parameters.querystrands;
-  view = parameters.view;
-  show_gis = parameters.show_gis;
   show_taxid = parameters.show_taxid;
-  query_gencode = parameters.query_gencode;
-  db_gencode = parameters.db_gencode;
-  subalignments = parameters.subalignments;
-  dump = parameters.dump;
   effdbsize = parameters.effdbsize;
 }
 
@@ -1844,7 +1826,7 @@ auto clock_start(struct time_info * tip) -> void
   tip->clock1 = std::chrono::steady_clock::now();
 }
 
-auto clock_stop(struct time_info * tip) -> void
+auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
 {
   struct tm tms;
   char const timeformat[] = "%a, %e %b %Y %T UTC";
@@ -1862,37 +1844,37 @@ auto clock_stop(struct time_info * tip) -> void
   
   double speed = (static_cast<double>(db_getsymcount_masked()));
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     speed *= static_cast<double>(query.nt[0].len);
-    if (querystrands == QueryStrands::both)
+    if (parameters.querystrands == QueryStrands::both)
     {
       speed *= 2;
     }
   }
-  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::sound))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::sound))
   {
     /* sound queries are stored as amino acid queries (KI-33) */
     speed *= static_cast<double>(query.aa[0].len);
   }
-  else if (symtype == SymbolType::blastx)
+  else if (parameters.symtype == SymbolType::blastx)
   {
     speed *= static_cast<double>(query.nt[0].len);
-    if (querystrands == QueryStrands::both)
+    if (parameters.querystrands == QueryStrands::both)
     {
       speed *= 2;
     }
   }
-  else if (symtype == SymbolType::tblastn)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     speed *= 2;
     speed *= static_cast<double>(query.aa[0].len);
   }
-  else if (symtype == SymbolType::tblastx)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
     speed *= 2;
     speed *= static_cast<double>(query.nt[0].len);
-    if (querystrands == QueryStrands::both)
+    if (parameters.querystrands == QueryStrands::both)
     {
       speed *= 2;
     }
@@ -1900,7 +1882,7 @@ auto clock_stop(struct time_info * tip) -> void
   /* the speed is unknown when no time elapsed (KI-33) */
   tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
   
-  if (view == OutputFormat::plain)
+  if (parameters.view == OutputFormat::plain)
   {
     fprintf(out, "Search started:    %s\n", tip->starttime.data());
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
@@ -1919,10 +1901,10 @@ auto clock_stop(struct time_info * tip) -> void
 
 
 
-auto work() -> void
+auto work(Parameters const & parameters) -> void
 {
-  args_show();
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, static_cast<int>(view==OutputFormat::plain));
+  args_show(parameters);
+  hits_init(parameters.maxmatches, parameters.alignments, parameters.minscore, parameters.maxscore, parameters.minexpect, parameters.expect, static_cast<int>(parameters.view==OutputFormat::plain));
 
   compute7 = 0;
   compute16 = 0;
@@ -1935,9 +1917,9 @@ auto work() -> void
 
   //  totalhits = 0;
 
-  prepare_search(threads);
+  prepare_search(parameters.threads);
 
-  if (view==OutputFormat::plain)
+  if (parameters.view==OutputFormat::plain)
   {
     fprintf(out, "Searching...");
     fflush(out);
@@ -1947,12 +1929,12 @@ auto work() -> void
   
   run_threads();
  
-  if (view == OutputFormat::plain)
+  if (parameters.view == OutputFormat::plain)
   {
     fprintf(out, "...............................................done\n\n");
   }
  
-  clock_stop(&ti);
+  clock_stop(parameters, &ti);
 
   //  if (view == 0)
   //    clock_start(&ti);
@@ -1962,7 +1944,7 @@ auto work() -> void
   //  if (view == 0)
   //    clock_stop(&ti);
 
-  hits_show(view, show_gis);
+  hits_show(parameters.view, parameters.show_gis);
   hits_exit();
 }
 
@@ -1981,18 +1963,18 @@ auto main(int argc, char**argv) -> int
   auto const parameters = args_init(argc, argv);
   set_option_globals(parameters);
 
-  db_open(symtype, databasename, taxidfilename);
+  db_open(parameters.symtype, parameters.databasename, parameters.taxidfilename);
   
   volchunks = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
   volseqs   = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
 
-  if(dump != 0)
+  if(parameters.dump != 0)
   {
     struct db_thread_s * t = db_thread_create();
     long const seqcount = db_getseqcount();
     for (long i = 0; i < seqcount; i++)
     {
-      db_show_fasta(t, i, 0, 0, dump - 1);
+      db_show_fasta(t, i, 0, 0, parameters.dump - 1);
     }
     db_thread_destruct(t);
   }
@@ -2002,22 +1984,22 @@ auto main(int argc, char**argv) -> int
 
     queryno = 0;
     
-    query_init(queryname, symtype, querystrands);
+    query_init(parameters.queryname, parameters.symtype, parameters.querystrands);
     
     {
-      hits_show_begin(view);
+      hits_show_begin(parameters.view);
     }
     
     while (query_read() != 0)
     {
       
-      work();
+      work(parameters);
       
       queryno++;
     }
     
     {
-      hits_show_end(view);
+      hits_show_end(parameters.view);
     }
     
     query_exit();
@@ -2030,7 +2012,7 @@ auto main(int argc, char**argv) -> int
 
   db_close();
 
-  if (outfile != nullptr)
+  if (parameters.outfile != nullptr)
   {
     fclose(out);
   }
