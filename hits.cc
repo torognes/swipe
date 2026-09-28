@@ -31,6 +31,7 @@
 #include <cmath>  // std::isnan
 #include <cstddef>  // std::size_t
 #include <limits>
+#include <mutex>  // std::mutex, std::lock_guard
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -101,7 +102,7 @@ struct hits_entry
 } * hits_list;
 
 
-pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex hitsmutex;
 
 auto hits_compare(void const * a, void const * b) -> int
 {
@@ -187,7 +188,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
   
   // find correct place
 
-  pthread_mutex_lock(&hitsmutex);
+  std::lock_guard<std::mutex> const lock(hitsmutex);
 
   if (score > upperscorethreshold)
   {
@@ -201,7 +202,6 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   if ((score < scorethreshold) || (score > upperscorethreshold))
   {
-    pthread_mutex_unlock(&hitsmutex);
     return;
   }
 
@@ -250,7 +250,6 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
     scorethreshold = hits_list[keephits - 1].score;
   }
 
-  pthread_mutex_unlock(&hitsmutex);
 }
 
 auto hits_getcount() -> long

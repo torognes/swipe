@@ -31,6 +31,7 @@
 #include <cstdlib>  // std::strtol, std::strtod
 #include <iterator>  // std::begin, std::end
 #include <limits>
+#include <mutex>  // std::mutex, std::lock_guard
 #include <string>  // std::string (fatal)
 #include <vector>
 
@@ -112,8 +113,8 @@ long db_gencode;
 long subalignments;
 long dump;
 long cpu_feature_sse2;
-pthread_mutex_t countmutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
+std::mutex countmutex;
+std::mutex workmutex;
 pthread_t pthread_id[max_threads];
 long maxchunksize;
 long volnext;
@@ -392,10 +393,11 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
-	  pthread_mutex_lock(&countmutex);
-	  compute32 += sdp->in_count;
-	  rounds32++;
-	  pthread_mutex_unlock(&countmutex);
+	  {
+	    std::lock_guard<std::mutex> const lock(countmutex);
+	    compute32 += sdp->in_count;
+	    rounds32++;
+	  }
 	
 	  search16s(reinterpret_cast<WORD**>(qtable),
 		    gapopenextend,
@@ -602,7 +604,7 @@ auto align_getwork(long * first, long * last) -> int
   long const bins = 7;
   long const volcount = bins;
 
-  pthread_mutex_lock(&workmutex);
+  std::lock_guard<std::mutex> const lock(workmutex);
   if (align_volnext < volcount)
   {
     long const seqcount = align_volseqs[align_volnext];
@@ -623,7 +625,6 @@ auto align_getwork(long * first, long * last) -> int
       align_volnext++;
     }
   }
-  pthread_mutex_unlock(&workmutex);
   return status;
 }
 
@@ -1488,7 +1489,7 @@ auto search_getwork(long * first, long * last) -> int
   int status = 0;
   long const volcount = db_getvolumecount();
   
-  pthread_mutex_lock(&workmutex);
+  std::lock_guard<std::mutex> const lock(workmutex);
   if (volnext < volcount)
   {
     long const seqcount = volseqs[volnext];
@@ -1510,7 +1511,6 @@ auto search_getwork(long * first, long * last) -> int
       volnext++;
     }
   }
-  pthread_mutex_unlock(&workmutex);
   return status;
 }
 
@@ -1597,10 +1597,11 @@ auto search_chunk(struct search_data * sdp) -> void
 	  
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute7 += sdp->in_count;
-	rounds7++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute7 += sdp->in_count;
+	  rounds7++;
+	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
 
@@ -1665,10 +1666,11 @@ auto search_chunk(struct search_data * sdp) -> void
   
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute16 += sdp->in_count;
-	rounds16++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute16 += sdp->in_count;
+	  rounds16++;
+	}
 	  
 	search16(reinterpret_cast<WORD**>(qtable),
 		 gapopenextend,
@@ -1714,10 +1716,11 @@ auto search_chunk(struct search_data * sdp) -> void
   
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute63 += sdp->in_count;
-	rounds63++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute63 += sdp->in_count;
+	  rounds63++;
+	}
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
