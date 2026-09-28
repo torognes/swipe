@@ -330,7 +330,7 @@ long * score_matrix_63 = nullptr;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto score_matrix_read_file(char const * matrix) -> void
+auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
@@ -353,7 +353,7 @@ auto score_matrix_read_file(char const * matrix) -> void
     fatal("Cannot open score matrix file.");
   }
 
-  if (symtype == SymbolType::sound)
+  if (parameters.symtype == SymbolType::sound)
   {
     map = map_sound;
   }
@@ -426,7 +426,7 @@ auto score_matrix_read_file(char const * matrix) -> void
   fclose(fp);
 }
 
-auto score_matrix_read_string(char const * matrix) -> void
+auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
@@ -449,7 +449,7 @@ auto score_matrix_read_string(char const * matrix) -> void
     fatal("Cannot read score matrix string.");
   }
 
-  if (symtype == SymbolType::sound)
+  if (parameters.symtype == SymbolType::sound)
   {
     map = map_sound;
   }
@@ -544,7 +544,7 @@ auto score_matrix_read_string(char const * matrix) -> void
 }
 
 
-auto score_matrix_read() -> void
+auto score_matrix_read(Parameters const & parameters) -> void
 {
   int a = 0;
   int b = 0;
@@ -558,55 +558,55 @@ auto score_matrix_read() -> void
   score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
   memset(score_matrix_63, -1, 32*32*8);
   
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     for (a = 1; a < 16; a++)
     {
       for (b = 1; b < 16; b++)
       {
-	score_matrix_63[(a << 5) + b] = ((a == b) ? matchscore : mismatchscore);
+	score_matrix_63[(a << 5) + b] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
       }
     }
   }
-  else if (strcasecmp(matrixname, "blosum45") == 0)
+  else if (strcasecmp(parameters.matrixname, "blosum45") == 0)
   {
-    score_matrix_read_string(mat_blosum45);
+    score_matrix_read_string(parameters, mat_blosum45);
   }
-  else if (strcasecmp(matrixname, "blosum50") == 0)
+  else if (strcasecmp(parameters.matrixname, "blosum50") == 0)
   {
-    score_matrix_read_string(mat_blosum50);
+    score_matrix_read_string(parameters, mat_blosum50);
   }
-  else if (strcasecmp(matrixname, "blosum62") == 0)
+  else if (strcasecmp(parameters.matrixname, "blosum62") == 0)
   {
-    score_matrix_read_string(mat_blosum62);
+    score_matrix_read_string(parameters, mat_blosum62);
   }
-  else if (strcasecmp(matrixname, "blosum80") == 0)
+  else if (strcasecmp(parameters.matrixname, "blosum80") == 0)
   {
-    score_matrix_read_string(mat_blosum80);
+    score_matrix_read_string(parameters, mat_blosum80);
   }
-  else if (strcasecmp(matrixname, "blosum90") == 0)
+  else if (strcasecmp(parameters.matrixname, "blosum90") == 0)
   {
-    score_matrix_read_string(mat_blosum90);
+    score_matrix_read_string(parameters, mat_blosum90);
   }
-  else if (strcasecmp(matrixname, "pam30") == 0)
+  else if (strcasecmp(parameters.matrixname, "pam30") == 0)
   {
-    score_matrix_read_string(mat_pam30);
+    score_matrix_read_string(parameters, mat_pam30);
   }
-  else if (strcasecmp(matrixname, "pam70") == 0)
+  else if (strcasecmp(parameters.matrixname, "pam70") == 0)
   {
-    score_matrix_read_string(mat_pam70);
+    score_matrix_read_string(parameters, mat_pam70);
   }
-  else if (strcasecmp(matrixname, "pam250") == 0)
+  else if (strcasecmp(parameters.matrixname, "pam250") == 0)
   {
-    score_matrix_read_string(mat_pam250);
+    score_matrix_read_string(parameters, mat_pam250);
   }
-  else if (strcasecmp(matrixname, "identity_5_1") == 0)
+  else if (strcasecmp(parameters.matrixname, "identity_5_1") == 0)
   {
-    score_matrix_read_string(mat_identity_5_1);
+    score_matrix_read_string(parameters, mat_identity_5_1);
   }
   else
   {
-    score_matrix_read_file(matrixname);
+    score_matrix_read_file(parameters, parameters.matrixname);
   }
 
   hi = -100;
@@ -631,7 +631,7 @@ auto score_matrix_read() -> void
   // the 63-bit engine)
   long const max_16 = std::numeric_limits<short>::max();
   long const min_16 = std::numeric_limits<short>::min();
-  if ((hi > max_16) or (lo < min_16) or (gapopenextend > max_16))
+  if ((hi > max_16) or (lo < min_16) or (parameters.gapopenextend > max_16))
   {
     SCORELIMIT_16 = 0;
   }
@@ -658,9 +658,9 @@ auto score_matrix_read() -> void
 
 }  // anonymous namespace
 
-auto score_matrix_init() -> void
+auto score_matrix_init(Parameters const & parameters) -> void
 {
-  score_matrix_read();
+  score_matrix_read(parameters);
 }
 
 auto score_matrix_free() -> void

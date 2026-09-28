@@ -200,7 +200,6 @@ extern char const * databasename;
 extern long alignments;
 extern long queryno;
 extern long compute7;
-extern long show_taxid;
 extern long effdbsize;
 
 extern char map_ncbi_nt4[];
@@ -359,7 +358,7 @@ auto query_exit() -> void;
 auto query_read() -> int;
 auto query_show() -> void;
 
-auto score_matrix_init() -> void;
+auto score_matrix_init(Parameters const & parameters) -> void;
 auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
@@ -371,7 +370,7 @@ auto translate(char const * dna, long dlen,
 struct asnparse_info;
 using apt = asnparse_info *;
 
-auto parser_create() -> apt;
+auto parser_create(long show_taxid) -> apt;
 auto parser_destruct(apt p) -> void;
 
 // XML outputs: the five special characters are escaped (KI-27)
@@ -405,7 +404,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
-auto db_open(SymbolType symbol_type, char const * basename, char * taxidfilename) -> void;
+auto db_open(Parameters const & parameters) -> void;
 auto db_close() -> void;
 auto db_getseqcount() -> long;
 auto db_getseqcount_masked() -> long;

@@ -49,7 +49,6 @@ long gapopen;
 long gapextend;
 long threads;
 SymbolType symtype;
-long show_taxid;
 long matchscore;
 long mismatchscore;
 long gapopenextend;
@@ -1299,7 +1298,6 @@ auto set_option_globals(Parameters const & parameters) -> void
   threads = parameters.threads;
   symtype = parameters.symtype;
   querystrands = parameters.querystrands;
-  show_taxid = parameters.show_taxid;
   effdbsize = parameters.effdbsize;
 }
 
@@ -1972,7 +1970,7 @@ auto main(int argc, char**argv) -> int
   auto const parameters = args_init(argc, argv);
   set_option_globals(parameters);
 
-  db_open(parameters.symtype, parameters.databasename, parameters.taxidfilename);
+  db_open(parameters);
   
   volchunks = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
   volseqs   = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
@@ -1989,7 +1987,7 @@ auto main(int argc, char**argv) -> int
   }
   else
   {
-    score_matrix_init();
+    score_matrix_init(parameters);
 
     queryno = 0;
     

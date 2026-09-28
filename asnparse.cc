@@ -83,6 +83,7 @@ struct asnparse_info
   char defline[MAXDEFLINESTRING];
 
   long show_gis;
+  long show_taxid;
   long indent;
   long (*f_checktaxid)(long);
   unsigned long maxlen;
@@ -820,7 +821,7 @@ auto parse_blast_def_line(apt p) -> void
   
   strcat(p->defline, seqids);
   
-  if (show_taxid != 0)
+  if (p->show_taxid != 0)
     {
       if (p->taxid != 0U)
 	{
@@ -993,9 +994,11 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 
 }  // anonymous namespace
 
-auto parser_create() -> apt
+auto parser_create(long const show_taxid) -> apt
 {
-  return static_cast<apt>(xmalloc(sizeof(struct asnparse_info)));
+  auto * p = static_cast<apt>(xmalloc(sizeof(struct asnparse_info)));
+  p->show_taxid = show_taxid;
+  return p;
 }
 
 auto parser_destruct(apt p) -> void

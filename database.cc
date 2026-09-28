@@ -79,8 +79,15 @@ struct db_main_s
   unsigned char * taxid_bitmap_address;
   long taxid_bitmap_size;
 
+  long show_taxid;  // -H: taxids and memberships in the deflines
 };
 using db_main_t = db_main_s;
+
+namespace {
+
+db_main_t db_main;
+
+}  // anonymous namespace
 
 struct db_volume_s
 {
@@ -205,7 +212,7 @@ auto db_thread_create() -> db_thread_t *
   auto * t = static_cast<struct db_thread_s *>(xmalloc(sizeof(struct db_thread_s)));
   t->map_seq = db_map_create();
   t->map_hdr = db_map_create();
-  t->parser = parser_create();
+  t->parser = parser_create(db_main.show_taxid);
   for(int c=0; c<16; c++)
   {
     t->ntbuffersize[c] = 0;
@@ -242,8 +249,6 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
 constexpr long MAXVOLUMES = 256;
 
 namespace {
-
-db_main_t db_main;
 
 db_volume_t db_volume[MAXVOLUMES];
 
@@ -314,6 +319,7 @@ auto db_init(db_main_t * v) -> void
   v->taxid_bitmap_size = 0;
   v->taxid_filename = nullptr;
   v->taxid_file = nullptr;
+  v->show_taxid = 0;
 }
 
 
@@ -942,11 +948,15 @@ auto db_read_taxid_file(char const * filename) -> void
 }  // anonymous namespace
 
 
-auto db_open(SymbolType symbol_type, char const * basename, char * taxidfilename) -> void
+auto db_open(Parameters const & parameters) -> void
 {
+  SymbolType const symbol_type = parameters.symtype;
+  char const * const basename = parameters.databasename;
+  char * const taxidfilename = parameters.taxidfilename;
   al_info_t * ai = nullptr;
 
   db_init(& db_main);
+  db_main.show_taxid = parameters.show_taxid;
 
   db_main.basename = strdup(basename);
   db_main.symtype  = symbol_type;

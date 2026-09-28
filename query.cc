@@ -371,11 +371,11 @@ auto query_read() -> int
  
   char * map = nullptr;
 
-  if (symtype == SymbolType::sound)
+  if (query.symtype == SymbolType::sound)
   {
     map = map_sound;
   }
-  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn))
+  else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     map = map_ncbi_aa;
   }
@@ -405,7 +405,7 @@ auto query_read() -> int
   }
   query_sequence[query_length] = 0;
     
-  if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  if ((query.symtype == SymbolType::blastn) || (query.symtype == SymbolType::blastx) || (query.symtype == SymbolType::tblastx))
   {
     query.nt[0].seq = query_sequence;
     query.nt[0].len = query_length;
@@ -417,7 +417,7 @@ auto query_read() -> int
       query.nt[1].len = query.nt[0].len;
     }
     
-    if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+    if ((query.symtype == SymbolType::blastx) || (query.symtype == SymbolType::tblastx))
     {
       for(long s=0; s<2; s++)
       {
