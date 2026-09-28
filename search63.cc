@@ -25,6 +25,8 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::max
+#include <cassert>
+#include <cstddef>  // std::size_t
 
 auto fullsw(char * dseq,
 	    char const * dend,
@@ -47,7 +49,8 @@ auto fullsw(char * dseq,
 
   s = 0;
   dp = dseq;
-  memset(hearray, 0, 2 * sizeof(long) * (qend-qseq));
+  assert(qend >= qseq);
+  memset(hearray, 0, 2 * sizeof(long) * static_cast<std::size_t>(qend - qseq));
   
   while (dp < dend)
     {

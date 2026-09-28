@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include <algorithm>  // std::min, std::max
 #include <cassert>
+#include <cstddef>  // std::size_t
 #include <cstring>  // std::memcpy
 #include <limits>
 
@@ -462,10 +463,10 @@ auto score_matrix_read_string(char const * matrix) -> void
   while((*s) != 0)
     {
       char const * nextline = strchr(s, '\n');
-      int linelen = 0;
+      std::size_t linelen = 0;
       if (nextline != nullptr)
       {
-	linelen = nextline - s;
+	linelen = static_cast<std::size_t>(nextline - s);
       }
       else
       {
