@@ -30,6 +30,10 @@
 #define CHANNELS 8
 #define CDEPTH 4
 
+// the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
+// does not fit in a signed short, -32768 has the same bits)
+constexpr short word_0x8000 = static_cast<short>(-32768);
+
 void dprofile_dump16(WORD * dprofile)
 {
   const char * s = sym_ncbi_aa;
@@ -348,8 +352,8 @@ void search16(WORD * * q_start,
   long next_id = 0;
   unsigned done;
   
-  Z = _mm_set_epi16(0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000);
-  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x8000);
+  Z = _mm_set1_epi16(word_0x8000);
+  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
   Q  = _mm_set_epi16(gap_open_penalty, gap_open_penalty,
 		     gap_open_penalty, gap_open_penalty,
 		     gap_open_penalty, gap_open_penalty,
