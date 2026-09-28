@@ -79,7 +79,7 @@ DEBUG_SANITIZER=-fsanitize=undefined,address -fno-omit-frame-pointer
 
 # Build recipes: exactly one is active, RELEASE by default. Objects
 # are not tagged with the recipe: run "make clean" when switching.
-ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE),$(TRACE)),)
+ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE)),)
   RELEASE := 1
 endif
 
@@ -88,7 +88,7 @@ ifdef RELEASE
   OPTIMIZATION=-O3 -DNDEBUG
 else ifdef DEBUG
   # "make DEBUG=1": sanitizers and extended warnings (current GCC or
-  # clang). DEBUG is not defined: it enables the trace blocks (TRACE=1)
+  # clang)
   OPTIMIZATION=-O0 -ggdb3 -D_GLIBCXX_DEBUG $(DEBUG_SANITIZER) $(DEBUG_WARNINGS)
   LINKOPT=$(DEBUG_SANITIZER)
 else ifdef PROFILE
@@ -100,9 +100,6 @@ else ifdef COVERAGE
   OPTIMIZATION=-DCOVERAGE -fprofile-arcs -ftest-coverage -O0
   LINKOPT=--coverage
   LIBS+=-lgcov
-else ifdef TRACE
-  # "make TRACE=1": the #ifdef DEBUG trace blocks, printed to the output
-  OPTIMIZATION=-O0 -ggdb3 -DDEBUG
 endif
 
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
