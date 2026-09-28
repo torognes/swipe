@@ -363,9 +363,6 @@ auto db_showheader(struct db_thread_s const * t, char * address, long length,
 		   long show_gis, long indent,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
 		   Escaping escaping = Escaping::none) -> void;
-auto db_getshowheader(struct db_thread_s * t, long seqno,
-		      long show_gis, long indent,
-		      long maxlen, long linelen, long maxdeflines) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
 		   long strand, long frame, long split) -> void;

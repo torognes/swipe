@@ -1616,16 +1616,6 @@ auto db_showheader(struct db_thread_s const * t, char * address, long length,
 	       indent, maxlen, linelen, maxdeflines, show_descr, escaping);
 }
 
-auto db_getshowheader(struct db_thread_s * t, long seqno,
-		      long show_gis, long indent,
-		      long maxlen, long linelen, long maxdeflines) -> void
-{
-  char * address = nullptr;
-  long length = 0;
-  db_getheader(t, seqno, & address, & length);
-  db_showheader(t, address, length, show_gis, indent, maxlen, linelen, maxdeflines, 1);
-}
-
 namespace {
 
 auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
