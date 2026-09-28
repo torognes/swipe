@@ -647,22 +647,6 @@ void align_threads()
   align_threads_done();
 }
 
-void args_getstring(int i, int argc, char **argv, char ** result, char * error)
-{
-  if (i+1 < argc)
-    *result = argv[i+1];
-  else
-    fatal(error);
-}
-
-void args_getnum(int i, int argc, char **argv, long * result, char * error)
-{
-  if (i+1 < argc)
-    *result = atol(argv[i+1]);
-  else
-    fatal(error);
-}
-
 void args_show()
 {
   if (view == 0)
@@ -1247,11 +1231,6 @@ void args_init(int argc, char **argv)
   translate_init(query_gencode, db_gencode);
 }
 
-
-void vector_fill(BYTE * vector, BYTE value)
-{
-  memset(vector, value, 16);
-}
 
 void vector_print(BYTE * vector)
 {

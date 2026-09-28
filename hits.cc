@@ -1249,22 +1249,6 @@ void hits_show_expect(double expect_value)
     fprintf(out, "%5.0f", expect_value);
 }
 
-void hits_show_expect_nospace(double expect_value)
-{
-  if (expect_value < 1e-180)
-    fprintf(out, "0.0");
-  else if (expect_value < 9.5e-100)
-    fprintf(out, "%.0e", expect_value);
-  else if (expect_value < 0.0995)
-    fprintf(out, "%.3f", expect_value);
-  else if (expect_value < 0.95)
-    fprintf(out, "%.2f", expect_value);
-  else if (expect_value < 9.5)
-    fprintf(out, "%.1f", expect_value);
-  else
-    fprintf(out, "%.0f", expect_value);
-}
-
 auto xml_putc(char const symbol) noexcept -> void
 {
   switch (symbol)
