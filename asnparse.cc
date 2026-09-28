@@ -34,11 +34,6 @@
 
 /* gi,db,name,ac etc needs considerable less space */
 
-#if 0
-#define DEBUG 1
-#define SHOW 1
-#endif
-
 #define MAXSTRING 2048
 #define MAXDEFLINESTRING 10240
 

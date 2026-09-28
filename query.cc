@@ -521,21 +521,6 @@ auto translate_createtable(long tableno, char * table) -> void
     }
   }
 
-#if 0
-  /* dump it */
-  
-  printf("          -ACMGRSVTWYHKDBN\n");
-  for(long x=0; x<16; x++)
-    for(long y=0; y<16; y++)
-    {
-      printf("%2ld %2ld %c %c ", x, y, sym_ncbi_nt16[x], sym_ncbi_nt16[y]);
-      for(long z=0; z<16; z++)
-      {
-	printf("%c", sym_ncbi_aa[table[256*x+16*y+z]]);
-      }
-      printf("\n");
-    }
-#endif
 }
 
 }  // anonymous namespace
@@ -616,36 +601,5 @@ auto query_show() -> void
     }
   }
 
-#if 0
-  long qlen;
-  char * qseq;
-  if ((symtype == 0) || (symtype == 2) || (symtype == 4))
-  {
-    qseq = query.nt[0].seq;
-    qlen = query.nt[0].len;
-  }
-  else
-  {
-    qseq = query.aa[0].seq;
-    qlen = query.aa[0].len;
-  }
-
-  for (int j=0; j<qlen; j+=linewidth)
-  {
-    if (j==0)
-      fprintf(out, "Query sequence:    ");
-    else
-      fprintf(out, "                   ");
-
-    for(int k=0; k<linewidth; k++)
-    {
-      if (j+k < qlen)
-	putc(query.sym[qseq[j+k]], out);
-      else
-	break;
-    }
-    fprintf(out, "\n");
-  }
-#endif
 }
 

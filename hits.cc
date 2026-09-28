@@ -174,21 +174,6 @@ auto hits_sort() -> long *
 
   qsort(hits_sorted, hits_count, sizeof(long), hits_compare);
 
-#if 0
-  fprintf(out, "Hits sorted:\n");
-  fprintf(out, "Hitno Order Vol    Seqno S F S F Score\n");
-  for(long i=0; i<hits_count; i++)
-  {
-    struct hits_entry * h = hits_list + hits_sorted[i];
-    fprintf(out, "%5ld %5ld %3ld %8ld %ld %ld %ld %ld %5ld\n", 
-	    h - hits_list + 1,
-	    i+1,
-	    db_getvolume(h->seqno),
-	    h->seqno, h->qstrand, h->qframe, h->dstrand, h->dframe, h->score);
-  }
-  fprintf(out, "\n");
-#endif
-
   return hits_sorted;
 }
 
@@ -706,10 +691,6 @@ auto hits_align(struct db_thread_s * t, long i) -> void
       h->score_align = h->score;
       h->align_q_end = h->bestq;
       h->align_d_end = h->align_hint;
-#if 0
-      printf("Align with hints: score=%ld, q_end=%ld, d_end=%ld\n", 
-	     h->score_align, h->align_q_end, h->align_d_end);
-#endif
     }
     else
     {
@@ -2124,12 +2105,6 @@ auto hits_show_plain(long show_gis,
 	putc('\n', out);
       }
 
-#if 0
-      fprintf(out, "\n");
-      if (showalignments)
-	fprintf(out, "Alignments (%ld)\n", showalignments);
-#endif
-
       for(long i=0; i<showalignments; i++)
       {
 	fprintf(out, "\n");
@@ -2204,19 +2179,6 @@ auto hits_show_plain(long show_gis,
 		  (hits_list[i].dstrand != 0) ? '-' : '+',
 		  hits_list[i].dframe + 1);
 	}
-
-#if 0
-	// fprintf(out, "String: %s\n", hits_list[i].alignment);
-
-	fprintf(out, "\nAlignment end: %ld, %ld\n", 
-	       hits_list[i].bestq+1,
-	       hits_list[i].align_hint+1);
-	fprintf(out, "Hint offset: %ld, %ld\n", 
-	       hits_list[i].align_q_end - hits_list[i].bestq,
-	       hits_list[i].align_d_end - hits_list[i].align_hint);
-
-	fprintf(out, "Alignment score: %ld\n",hits_list[i].score_align); 
-#endif
 
 	show_align(i);
 	fprintf(out, "\n");

@@ -765,32 +765,6 @@ auto args_show() -> void
 	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode - 1], db_gencode);
       }
 
-#if 0
-      if ((symtype == 2) || (symtype == 4))
-      {
-	for(long s=0; s<2; s++)
-	  for(long f=0; f<3; f++)
-	  {
-	    fprintf(out, "Translation of query, frame %c%ld:\n", s?'-':'+', f+1);
-	    //	    translate(query_, qlen, s, f, 0, & prot, & plen);
-	    
-	    long plen = query.aa[3*s+f].len;
-	    for (int j=0; j<plen; j+=60)
-	    {
-	      for(int k=0; k<60; k++)
-	      {
-		if (j+k < plen)
-		  putc(sym_ncbi_aa[query.aa[3*s+f].seq[j+k]], out);
-		else
-		  break;
-	      }
-	      fprintf(out, "\n");
-	    }
-	    fprintf(out, "\n");
-	  }
-      }
-#endif
-
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
       if (taxidfilename != nullptr)
       {
@@ -2085,35 +2059,11 @@ auto work() -> void
  
   clock_stop(&ti);
 
-#if 0
-  if (view == 0)
-  {
-    fprintf(out, "Computed (7bit):   %ld sequences in %ld rounds\n", compute7, rounds7);
-    fprintf(out, "Computed (16bit):  %ld sequences in %ld rounds\n", compute16, rounds16);
-    fprintf(out, "Computed (63bit):  %ld sequences in %ld rounds\n", compute63, rounds63);
-    //    fprintf(out, "Total hits:        %ld\n", totalhits);
-    fprintf(out, "\n");
-  }
-#endif
-
-#if 0
-  if (view==0)
-  {
-    fprintf(out, "Aligning...");
-    fflush(out);
-  }
-#endif
-
   //  if (view == 0)
   //    clock_start(&ti);
 
   align_threads();
   
-#if 0
-  if (view == 0)
-    fprintf(out, "...............................................done\n\n");
-#endif
- 
   //  if (view == 0)
   //    clock_stop(&ti);
 
