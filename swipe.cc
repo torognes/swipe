@@ -1603,8 +1603,6 @@ auto search_chunk(struct search_data * sdp) -> void
       BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
       long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
-#if 1
-      
       /* 7-bit search */
 	  
       sdp->tmp_list = sdp->in_list;
@@ -1678,9 +1676,6 @@ auto search_chunk(struct search_data * sdp) -> void
 	  }
 	}
       }
-#endif
-
-#if 1
 
       /* 16-bit search */
 	  
@@ -1740,10 +1735,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  }
 	}
       }
-#endif
       
-#if 1
-
       /* 63-bit search */
 
       sdp->tmp_list = sdp->in_list;
@@ -1803,7 +1795,6 @@ auto search_chunk(struct search_data * sdp) -> void
 	}
       }
   
-#endif
     }
   }
 }
@@ -1829,8 +1820,6 @@ auto prepare_search(long par) -> void
   volnext = 0;
   seqnext = 0;
 
-#if 1
-
   long const volcount = db_getvolumecount();
   for (long v = 0; v < volcount; v++)
   {
@@ -1851,53 +1840,6 @@ auto prepare_search(long par) -> void
   {
     volnext++;
   }
-
-#else
-  long seqcount = db_getseqcount();
-
-  long chunkcount;
-  if (seqcount >= 16*par)
-  {
-    chunkcount = par * (long) (floor(sqrt((1.0 * seqcount) / (16 * par))));
-  }
-  else if (seqcount >= par)
-  {
-    chunkcount = par;
-  }
-  else
-  {
-    chunkcount = seqcount;
-  }
-
-//  fprintf(out, "Chunkcount: %ld\n", chunkcount);
-
-  long volcount = db_getvolumecount();
-  long rest_chunks = chunkcount;
-  long rest_seqcount = seqcount;
-  
-  //  fprintf(out, "Seqcount, chunkcount, ratio (total): %ld, %ld, %f\n", seqcount, chunkcount, 1.0 * seqcount / chunkcount);
-
-  maxchunksize = 0;
-
-  for(long i = 0; i < volcount; i++)
-  {
-    long volsize = db_getseqcount_volume(i);
-    long volchunk = ((rest_chunks * volsize) + rest_seqcount - 1) / rest_seqcount;
-    
-    volseqs[i] = volsize;
-    volchunks[i] = volchunk;
-
-    long chunksize = (volsize + volchunk -1) / volchunk;
-
-    if (chunksize > maxchunksize)
-      maxchunksize = chunksize;
-
-    // fprintf(out, "Seqcount, chunkcount, ratio (%ld): %ld, %ld, %f\n", i, volsize, volchunk, 1.0 * volsize / volchunk);
-
-    rest_chunks -= volchunk;
-    rest_seqcount -= volsize;
-  }
-#endif
 }
 
 auto run_threads() -> void
@@ -2050,12 +1992,10 @@ auto work() -> void
   
   run_threads();
  
-#if 1
   if (view == 0)
   {
     fprintf(out, "...............................................done\n\n");
   }
-#endif
  
   clock_stop(&ti);
 

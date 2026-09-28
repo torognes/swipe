@@ -61,13 +61,11 @@ auto region(char const * a_seq,
 
   // Forward pass
 
-#if 1
   if ((*s) != 0)
   {
     score = *s;
   }
   else
-#endif
   {
 
     for (j = 0; j < N; j++)
