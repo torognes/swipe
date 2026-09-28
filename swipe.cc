@@ -930,7 +930,7 @@ auto args_init(int argc, char **argv) -> void
     {"show_taxid",       no_argument,       nullptr, 'H' },
     {"help",             no_argument,       nullptr, 'h' },
     {"version",          no_argument,       nullptr, 'V' },
-    { nullptr, 0, nullptr, 0 }
+    { nullptr, 0, nullptr, 0 },
   };
   
   int option_index = 0;

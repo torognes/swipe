@@ -708,7 +708,7 @@ auto parse_seq_id(apt p) -> void
 
   const char * dbstr[] = 
     { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
-      "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat" };
+      "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", };
 
   p->id[0] = 0;
   p->name[0] = 0;
