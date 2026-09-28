@@ -29,9 +29,11 @@
 
 #define CHANNELS 16
 #define CDEPTH 4
-#define MATRIXWIDTH 32
 
 #ifdef SWIPE_SSSE3
+
+// only used by the SSSE3 version (the score profile is shuffled)
+#define MATRIXWIDTH 32
 
 inline void dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,

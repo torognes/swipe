@@ -124,7 +124,7 @@ long rounds63;
 
 long totalhits;
 
-FILE * out = stdout;
+FILE * out = DEFAULT_OUT;
 
 struct time_info ti;
 
