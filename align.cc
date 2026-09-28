@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::max
 
 // These functions are based on the following articles:
 // - Huang, Hardison & Miller (1990) CABIOS 6:373-381
@@ -32,8 +33,6 @@
 // For consistency with non-symmetric score matrices:
 // a (of length M) is the query sequence
 // b (of length N) is the database sequence
-
-#define MAX(a,b) (a > b ? a : b)
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -83,8 +82,8 @@ void region(char * a_seq,
       long f = - q;
       for (j = 0; j < N; j++)
       {
-	f = MAX(f, h - q) - r;
-	EE[j] = MAX(EE[j], HH[j] - q) - r;
+	f = std::max(f, h - q) - r;
+	EE[j] = std::max(EE[j], HH[j] - q) - r;
 	
 	h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
 	
@@ -130,8 +129,8 @@ void region(char * a_seq,
 	p = -1;
       for (j = *b_end; j >= 0; j--)
 	{
-	  f = MAX(f, h - q) - r;
-	  EE[j] = MAX(EE[j], HH[j] - q) - r;
+	  f = std::max(f, h - q) - r;
+	  EE[j] = std::max(EE[j], HH[j] - q) - r;
 
 	  h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
 
@@ -364,8 +363,8 @@ void diff(struct aligner_info * aip,
 
 	  for (j = 1; j <= N; j++)
 	    {
-	      f = MAX(f, h - q) - r;
-	      EE[j] = MAX(EE[j], HH[j] - q) - r;
+	      f = std::max(f, h - q) - r;
+	      EE[j] = std::max(EE[j], HH[j] - q) - r;
 
 	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[(int)(a_seq[a_pos+i-1])];
 
@@ -405,8 +404,8 @@ void diff(struct aligner_info * aip,
 
 	  for (j = 1; j <= N; j++)
 	    {
-	      f = MAX(f, h - q) - r;
-	      YY[j] = MAX(YY[j], XX[j] - q) - r;
+	      f = std::max(f, h - q) - r;
+	      YY[j] = std::max(YY[j], XX[j] - q) - r;
 
 	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[(int)(a_seq[a_pos+M-i])];
 
