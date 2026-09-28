@@ -507,7 +507,8 @@ void translate(char * dna, long dlen,
   else
     ttable = d_translate;
 
-  long pos, c;
+  long pos;
+  long c;
   long ppos = 0;
   long plen = (dlen - frame) / 3;
   char * prot = (char*) xmalloc(1+plen);

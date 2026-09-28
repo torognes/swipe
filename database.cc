@@ -1189,8 +1189,10 @@ void db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno)
   if (m->map_address)
     munmap(m->map_address, m->map_length);
   
-  long s1, s2;
-  db_volume_t * v1, * v2;
+  long s1;
+  long s2;
+  db_volume_t * v1;
+  db_volume_t * v2;
 
   seqno_volume(firstseqno, & s1, & v1);
   seqno_volume(lastseqno, & s2, & v2);
@@ -1238,8 +1240,10 @@ void db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno)
   if (m->map_address)
     munmap(m->map_address, m->map_length);
   
-  long s1, s2;
-  db_volume_t * v1, * v2;
+  long s1;
+  long s2;
+  db_volume_t * v1;
+  db_volume_t * v2;
 
   seqno_volume(firstseqno, & s1, & v1);
   seqno_volume(lastseqno, & s2, & v2);
@@ -1284,7 +1288,8 @@ void db_translate(char * dna, long dlen,
 		  long strand, long frame, 
 		  char * prot)
 {
-  long pos, c;
+  long pos;
+  long c;
   long ppos = 0;
   long plen = (dlen - frame) / 3;
 
@@ -1536,7 +1541,8 @@ namespace {
 void db_print_seq(db_thread_t * t, long seqno, long strand, long frame)
 {
   char * address;
-  long length, ntlen;
+  long length;
+  long ntlen;
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)

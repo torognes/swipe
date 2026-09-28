@@ -34,9 +34,14 @@ long fullsw(char * dseq,
 	    long gap_open_extend,
 	    long gap_extend)
 {
-  long h, n, e, f, s;
+  long h;
+  long n;
+  long e;
+  long f;
+  long s;
   long *hep;
-  char *qp, *dp;
+  char *qp;
+  char *dp;
   long * sp;
 
   s = 0;

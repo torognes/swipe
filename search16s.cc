@@ -216,10 +216,38 @@ inline void dprofile_fill16s(WORD * dprofile_word,
 			     WORD * score_matrix_word,
 			     BYTE * dseq)
 {
-  __m128i xmm0,  xmm1,  xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7;
-  __m128i xmm8,  xmm9,  xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
-  __m128i xmm16, xmm17, xmm18, xmm19, xmm20, xmm21, xmm22, xmm23;
-  __m128i xmm24, xmm25, xmm26, xmm27, xmm28, xmm29, xmm30, xmm31;
+  __m128i xmm0;
+  __m128i xmm1;
+  __m128i xmm2;
+  __m128i xmm3;
+  __m128i xmm4;
+  __m128i xmm5;
+  __m128i xmm6;
+  __m128i xmm7;
+  __m128i xmm8;
+  __m128i xmm9;
+  __m128i xmm10;
+  __m128i xmm11;
+  __m128i xmm12;
+  __m128i xmm13;
+  __m128i xmm14;
+  __m128i xmm15;
+  __m128i xmm16;
+  __m128i xmm17;
+  __m128i xmm18;
+  __m128i xmm19;
+  __m128i xmm20;
+  __m128i xmm21;
+  __m128i xmm22;
+  __m128i xmm23;
+  __m128i xmm24;
+  __m128i xmm25;
+  __m128i xmm26;
+  __m128i xmm27;
+  __m128i xmm28;
+  __m128i xmm29;
+  __m128i xmm30;
+  __m128i xmm31;
   
   for (int j=0; j<CDEPTH; j++)
   {
@@ -293,8 +321,15 @@ void search16s(WORD * * q_start,
 	       int qlen)
 {
   volatile __m128i S;
-  __m128i SL, Q, R, T, M, Z, T0;
-  __m128i *hep, **qp;
+  __m128i SL;
+  __m128i Q;
+  __m128i R;
+  __m128i T;
+  __m128i M;
+  __m128i Z;
+  __m128i T0;
+  __m128i *hep;
+  __m128i **qp;
   BYTE * d_begin[CHANNELS];
   BYTE * d_pos[CHANNELS];
   BYTE * d_end[CHANNELS];
@@ -446,7 +481,8 @@ void search16s(WORD * * q_start,
 	    seq_id[c] = next_id;
 	    long seqnosf = seqnos[next_id];
 	    char* address;
-	    long length, ntlen;
+	    long length;
+	    long ntlen;
 
 	    long strand = (seqnosf >> 2) & 1;
 	    long frame = seqnosf & 3;

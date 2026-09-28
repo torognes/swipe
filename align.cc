@@ -54,7 +54,8 @@ void region(char * a_seq,
   long * HH = (long *) xmalloc(N * sizeof(long));
   long * EE = (long *) xmalloc(N * sizeof(long));
 
-  long i, j;
+  long i;
+  long j;
 
   long score = 0;
 
@@ -336,7 +337,8 @@ void diff(struct aligner_info * aip,
     {
 
       long I = M/2;
-      long i, j;
+      long i;
+      long j;
       long t;
 
       // Compute HH & EE in forward phase with tb

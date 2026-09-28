@@ -44,8 +44,34 @@ inline void dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * dseq_byte)
 {
 #if MATRIXWIDTH > 16
-  __m128i a, b, c, d, x, y, m0, m1, m2, m3, m4, m5, m6, m7;
-  __m128i t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13;
+  __m128i a;
+  __m128i b;
+  __m128i c;
+  __m128i d;
+  __m128i x;
+  __m128i y;
+  __m128i m0;
+  __m128i m1;
+  __m128i m2;
+  __m128i m3;
+  __m128i m4;
+  __m128i m5;
+  __m128i m6;
+  __m128i m7;
+  __m128i t0;
+  __m128i t1;
+  __m128i t2;
+  __m128i t3;
+  __m128i t4;
+  __m128i t5;
+  __m128i t6;
+  __m128i t7;
+  __m128i t8;
+  __m128i t9;
+  __m128i t10;
+  __m128i t11;
+  __m128i t12;
+  __m128i t13;
   __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
 #else
   __m128i m0, m1, m2, m3, t0, t1, t2, t3, t4;
@@ -183,8 +209,22 @@ inline void dprofile_fill7(BYTE * dprofile,
 			   BYTE * score_matrix,
 			   BYTE * dseq)
 {
-  __m128i xmm0,  xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7;
-  __m128i xmm8,  xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
+  __m128i xmm0;
+  __m128i xmm1;
+  __m128i xmm2;
+  __m128i xmm3;
+  __m128i xmm4;
+  __m128i xmm5;
+  __m128i xmm6;
+  __m128i xmm7;
+  __m128i xmm8;
+  __m128i xmm9;
+  __m128i xmm10;
+  __m128i xmm11;
+  __m128i xmm12;
+  __m128i xmm13;
+  __m128i xmm14;
+  __m128i xmm15;
   
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions
@@ -724,8 +764,15 @@ search7
 	long * scores,
 	long qlen)
 {
-  __m128i S, Q, R, T, M, Z, T0;
-  __m128i *hep, **qp;
+  __m128i S;
+  __m128i Q;
+  __m128i R;
+  __m128i T;
+  __m128i M;
+  __m128i Z;
+  __m128i T0;
+  __m128i *hep;
+  __m128i **qp;
   BYTE * d_begin[CHANNELS];
   BYTE * d_end[CHANNELS];
   
@@ -856,7 +903,8 @@ search7
 	    long seqnosf = seqnos[next_id];
 
 	    char* address;
-	    long length, ntlen;
+	    long length;
+	    long ntlen;
 	    long strand = (seqnosf >> 2) & 1;
 	    long frame = seqnosf & 3;
 	    long seqno = seqnosf >> 3;

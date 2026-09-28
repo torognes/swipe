@@ -604,7 +604,8 @@ void hits_exit()
 void hits_align(struct db_thread_s * t, long i)
 {
   char * address;
-  long length, ntlen;
+  long length;
+  long ntlen;
 
   struct hits_entry * h = hits_list + i;
 

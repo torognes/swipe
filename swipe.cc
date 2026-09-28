@@ -356,7 +356,12 @@ void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
 	  long hs = hits_sorted[hitno];
-	  long seqno, score, hqstrand, hqframe, hdstrand, hdframe;
+	  long seqno;
+	  long score;
+	  long hqstrand;
+	  long hqframe;
+	  long hdstrand;
+	  long hdframe;
 	
 	  hits_gethit(hs, & seqno, & score, & hqstrand, & hqframe, 
 		      & hdstrand, & hdframe);
@@ -621,7 +626,8 @@ void * align_worker(void *)
   search_data sd;
   align_init(&sd);
 
-  long i, j;
+  long i;
+  long j;
   while(align_getwork(&i, &j))
     align_chunk(&sd, i, j);
   
@@ -1483,7 +1489,8 @@ void search_chunk(struct search_data * sdp)
   for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
-      long dstrand, dframe;
+      long dstrand;
+      long dframe;
       
       sdp->out_count = sdp->start_count;
       memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
@@ -1790,7 +1797,8 @@ void cpu_features()
 {
   unsigned int a __attribute__ ((unused));
   unsigned int b __attribute__ ((unused));
-  unsigned int c,d;
+  unsigned int c;
+  unsigned int d;
   cpuid(1,0,a,b,c,d);
   cpu_feature_sse2  = (d >> 26) & 1;
   cpu_feature_ssse3 = (c >>  9) & 1;
