@@ -39,9 +39,9 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 // only used by the SSSE3 version (the score profile is shuffled)
 #define MATRIXWIDTH 32
 
-inline void dprofile_shuffle7(BYTE * dprofile,
+inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
-			      BYTE * dseq_byte)
+			      BYTE * dseq_byte) -> void
 {
 #if MATRIXWIDTH > 16
   __m128i a;
@@ -205,9 +205,9 @@ inline void dprofile_shuffle7(BYTE * dprofile,
 
 #else
 
-inline void dprofile_fill7(BYTE * dprofile,
+inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE * score_matrix,
-			   BYTE * dseq)
+			   BYTE * dseq) -> void
 {
   __m128i xmm0;
   __m128i xmm1;
@@ -588,13 +588,13 @@ inline void dprofile_fill7(BYTE * dprofile,
   "        pmaxub  " H ", %%xmm12     \n"               \
   "        pmaxub  " H ", " F "       \n"
 
-inline void donormal7(__m128i * Sm,
+inline auto donormal7(__m128i * Sm,
 		      __m128i * hep,
 		      __m128i ** qp,
 		      __m128i * Qm,
 		      __m128i * Rm,
 		      long ql,
-		      __m128i * Zm)
+		      __m128i * Zm) -> void
 {
 #ifdef DEBUG
   printf("donormal\n");
@@ -662,14 +662,14 @@ inline void donormal7(__m128i * Sm,
      );
 }
 
-inline void domasked7(__m128i * Sm,
+inline auto domasked7(__m128i * Sm,
 		      __m128i * hep,
 		      __m128i ** qp,
 		      __m128i * Qm, 
 		      __m128i * Rm, 
 		      long ql,      
 		      __m128i * Zm,
-		      __m128i * Mm)
+		      __m128i * Mm) -> void
 {
   
 #ifdef DEBUG

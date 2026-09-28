@@ -160,14 +160,14 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-void fatal(const char * message)
+auto fatal(const char * message) -> void
 {
   if (message)
     fprintf(stderr, "%s\n", message);
   exit(1);
 }
 
-void fatal(std::string const & message)
+auto fatal(std::string const & message) -> void
 {
   fatal(message.c_str());
 }
@@ -206,7 +206,7 @@ long * align_volchunks;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-void align_init(struct search_data * sdp)
+auto align_init(struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
 
@@ -343,7 +343,7 @@ void align_init(struct search_data * sdp)
   }
 }
 
-void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
+auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 {
   if (hitlast < alignments)
   {
@@ -425,7 +425,7 @@ void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
     hits_align(sdp->dbt, hits_sorted[hitno]);
 }
 
-void align_done(struct search_data * sdp)
+auto align_done(struct search_data * sdp) -> void
 {
   for(int i = 0; i < 6; i++)
   {
@@ -450,13 +450,13 @@ void align_done(struct search_data * sdp)
 }
 
 
-void calc_chunks(long volcount, 
+auto calc_chunks(long volcount, 
 		 long par,
 		 long channels,
 		 long * volume_sequences,
 		 long * volume_chunks,
 		 long * totalchunks,
-		 long * biggestchunk)
+		 long * biggestchunk) -> void
 {
 #ifdef DEBUG
   fprintf(out, "Calculating chunk distribution among volumes\n");
@@ -533,7 +533,7 @@ void calc_chunks(long volcount,
   *totalchunks = chunks;
 }
 
-void align_threads_init()
+auto align_threads_init() -> void
 {
   long hits = hits_getcount();
 
@@ -585,7 +585,7 @@ void align_threads_init()
     align_volnext++;
 }
 
-void align_threads_done()
+auto align_threads_done() -> void
 {
   free(hits_sorted);
   free(align_volchunks);
@@ -635,7 +635,7 @@ auto align_worker(void *) -> void *
   return nullptr;
 }
 
-void align_threads()
+auto align_threads() -> void
 {
   long t;
   void * status;
@@ -656,7 +656,7 @@ void align_threads()
   align_threads_done();
 }
 
-void args_show()
+auto args_show() -> void
 {
   if (view == 0)
   {
@@ -775,7 +775,7 @@ void args_show()
     }
 }
   
-void args_usage()
+auto args_usage() -> void
 {
   /* options unused by BLAST: chkuxHN */
   /* options used by SWIPE:   chkuxHN  */
@@ -810,14 +810,14 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
-void args_version()
+auto args_version() -> void
 {
   char const title[] = "SWIPE " SWIPE_VERSION;
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n", title, ref);
 }
 
-void args_help()
+auto args_help() -> void
 {
   args_version();
   fprintf(out, "\n");
@@ -863,7 +863,7 @@ auto parse_dbsize(char const * const text) -> long
   return static_cast<long>(value);
 }
 
-void args_init(int argc, char **argv)
+auto args_init(int argc, char **argv) -> void
 {
   /* Set defaults */
   gapopen = DEFAULT_GAPOPEN;
@@ -1243,13 +1243,13 @@ void args_init(int argc, char **argv)
 }  // anonymous namespace
 
 
-void vector_print(BYTE * vector)
+auto vector_print(BYTE * vector) -> void
 {
   for(int i=0; i<16; i++)
     fprintf(out, " %02x", vector[i]);
 }
 
-void vector_print_word(WORD * vector)
+auto vector_print_word(WORD * vector) -> void
 {
   for(int i=0; i<8; i++)
     fprintf(out, " %04x", vector[i]);
@@ -1258,7 +1258,7 @@ void vector_print_word(WORD * vector)
 
 namespace {
 
-void search_init(struct search_data * sdp)
+auto search_init(struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
   sdp->dprofile = (BYTE*) xmalloc(4*16*32);
@@ -1391,7 +1391,7 @@ void search_init(struct search_data * sdp)
 
 }
 
-void search_done(struct search_data * sdp)
+auto search_done(struct search_data * sdp) -> void
 {
   for(int i = 0; i < 6; i++)
   {
@@ -1440,7 +1440,7 @@ auto search_getwork(long * first, long * last) -> int
 }
 
 
-void search_chunk(struct search_data * sdp)
+auto search_chunk(struct search_data * sdp) -> void
 {
   // the 7-bit engine uses signed bytes: gap penalties are clamped to
   // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
@@ -1696,7 +1696,7 @@ auto worker(void *) -> void *
 }
 
 
-void prepare_search(long par)
+auto prepare_search(long par) -> void
 {
   volnext = 0;
   seqnext = 0;
@@ -1768,7 +1768,7 @@ void prepare_search(long par)
 #endif
 }
 
-void run_threads()
+auto run_threads() -> void
 {
   long t;
   void * status;
@@ -1793,7 +1793,7 @@ void run_threads()
 
 namespace {
 
-void cpu_features()
+auto cpu_features() -> void
 {
   unsigned int a __attribute__ ((unused));
   unsigned int b __attribute__ ((unused));
@@ -1805,13 +1805,13 @@ void cpu_features()
   cpu_feature_sse41 = (c >> 19) & 1;
 }
 
-void clock_start(struct time_info * tip)
+auto clock_start(struct time_info * tip) -> void
 {
   time(& tip->t1);                 /* time(2)   */
   tip->clock1 = std::chrono::steady_clock::now();
 }
 
-void clock_stop(struct time_info * tip)
+auto clock_stop(struct time_info * tip) -> void
 {
   struct tm tms;
   char const timeformat[] = "%a, %e %b %Y %T UTC";
@@ -1876,7 +1876,7 @@ void clock_stop(struct time_info * tip)
 
 
 
-void work()
+auto work() -> void
 {
   args_show();
   hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);

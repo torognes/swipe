@@ -37,7 +37,7 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-void region(char * a_seq,
+auto region(char * a_seq,
 	    char * b_seq,
 	    long M,
 	    long N,
@@ -48,7 +48,7 @@ void region(char * a_seq,
 	    long * b_begin,
 	    long * a_end,
 	    long * b_end,
-	    long * s)
+	    long * s) -> void
 {
   
   long * HH = (long *) xmalloc(N * sizeof(long));
@@ -179,7 +179,7 @@ struct aligner_info
 
 namespace {
 
-void init(struct aligner_info * aip)
+auto init(struct aligner_info * aip) -> void
 {
   aip->op = 0;
   aip->count = 0;
@@ -188,7 +188,7 @@ void init(struct aligner_info * aip)
   aip->length = 0;
 }
 
-void push(struct aligner_info * aip)
+auto push(struct aligner_info * aip) -> void
 {
   if (aip->count > 0)
   {
@@ -213,7 +213,7 @@ void push(struct aligner_info * aip)
   }
 }
 
-void newop(struct aligner_info * aip, char op, long len)
+auto newop(struct aligner_info * aip, char op, long len) -> void
 {
   if (aip->op == op)
     aip->count += len;
@@ -225,22 +225,22 @@ void newop(struct aligner_info * aip, char op, long len)
     }
 }
 
-void delete_a(struct aligner_info * aip, long len)
+auto delete_a(struct aligner_info * aip, long len) -> void
 {
   newop(aip, 'D', len);
 }
 
-void insert_b(struct aligner_info * aip, long len)
+auto insert_b(struct aligner_info * aip, long len) -> void
 {
   newop(aip, 'I', len);
 }
 
-void match(struct aligner_info * aip)
+auto match(struct aligner_info * aip) -> void
 {
   newop(aip, 'M', 1);
 }
 
-void diff(struct aligner_info * aip,
+auto diff(struct aligner_info * aip,
 	  char * a_seq,
 	  char * b_seq,
 	  long M,
@@ -251,7 +251,7 @@ void diff(struct aligner_info * aip,
 	  long q,
 	  long r,
 	  long tb,
-	  long te)
+	  long te) -> void
 {
   long MaxScore = 0;
 
@@ -476,7 +476,7 @@ void diff(struct aligner_info * aip,
 
 }  // anonymous namespace
 
-void align(char * a_seq,
+auto align(char * a_seq,
 	   char * b_seq,
 	   long M,
 	   long N,
@@ -488,7 +488,7 @@ void align(char * a_seq,
 	   long * a_end,
 	   long * b_end,
 	   char ** alignment,
-	   long * s)
+	   long * s) -> void
 {
   struct aligner_info ai;
 

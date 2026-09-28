@@ -153,7 +153,7 @@ typedef struct db_thread_s
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-void db_print_seq_map(char * address, long length, const char * map)
+auto db_print_seq_map(char * address, long length, const char * map) -> void
 {
   long linelength = 80;
   long i = 0;
@@ -181,7 +181,7 @@ auto db_map_create() -> mapp
   return m;
 }
 
-void db_map_destruct(mapp m)
+auto db_map_destruct(mapp m) -> void
 {
   if (m->map_address)
     munmap(m->map_address, m->map_length);
@@ -206,7 +206,7 @@ auto db_thread_create() -> db_thread_t *
   return t;
 }
 
-void db_thread_destruct(struct db_thread_s * t)
+auto db_thread_destruct(struct db_thread_s * t) -> void
 {
   parser_destruct(t->parser);
   db_map_destruct(t->map_seq);
@@ -233,7 +233,7 @@ db_volume_t db_volume[MAXVOLUMES];
 
 namespace {
 
-void db_volume_init(db_volume_t * v)
+auto db_volume_init(db_volume_t * v) -> void
 {
   if (v - db_volume >= MAXVOLUMES)
     fatal("Too many database volumes.");
@@ -280,7 +280,7 @@ void db_volume_init(db_volume_t * v)
   v->map_hdr_offset = 0;
 }
 
-void db_init(db_main_t * v)
+auto db_init(db_main_t * v) -> void
 {
   v->volumecount = 0;
 
@@ -438,7 +438,7 @@ auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
 }
 
 
-void db_close_al(al_info_t * a)
+auto db_close_al(al_info_t * a) -> void
 {
   if (a->title)
   {
@@ -673,7 +673,7 @@ auto addpath(char * path, char * base) -> char *
   return both;
 }
 
-void seqno_volume(long seqno, long * sp, db_volume_t * * vp)
+auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
 {
   // find the volume that seqno belongs to
   // linear search
@@ -710,7 +710,7 @@ auto db_getvolume(long seqno) -> long
 
 namespace {
 
-void db_open_msk(db_volume_t * v)
+auto db_open_msk(db_volume_t * v) -> void
 {
   //  fprintf(stderr, "Opening msk file: %s\n", v->masked_mskfile);
   //  fprintf(stderr, "Maxoid: %ld\n", v->masked_maxoid);
@@ -748,7 +748,7 @@ auto db_check_msk(long seqno) -> long
   return member;
 }
 
-void db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile)
+auto db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile) -> void
 {
   v->masked_mskfile  = addpath(db_main.path, mskfile);
   v->masked_title    = strdup(ai->title);
@@ -806,7 +806,7 @@ auto parse_taxid(std::string const & token,
   return std::strtoul(token.c_str(), nullptr, 10);
 }
 
-void db_add_taxid(unsigned long const taxid)
+auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
@@ -827,7 +827,7 @@ void db_add_taxid(unsigned long const taxid)
   db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
 }
 
-void db_read_taxid_file(char * filename)
+auto db_read_taxid_file(char * filename) -> void
 {
   db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
@@ -873,7 +873,7 @@ void db_read_taxid_file(char * filename)
 }  // anonymous namespace
 
 
-void db_open(long symbol_type, const char * basename, char * taxidfilename)
+auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> void
 {
   al_info_t * ai = nullptr;
 
@@ -1023,7 +1023,7 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
 
 namespace {
 
-void db_volume_close(db_volume_t * v)
+auto db_volume_close(db_volume_t * v) -> void
 {
   if(v->basename)
   {
@@ -1078,7 +1078,7 @@ void db_volume_close(db_volume_t * v)
 
 }  // anonymous namespace
 
-void db_close()
+auto db_close() -> void
 {
   for(long i=0; i<db_main.volumecount;i++)
   {
@@ -1178,7 +1178,7 @@ auto db_gettime() -> char*
   return db_main.time;
 }
 
-void db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno)
+auto db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno) -> void
 {
   //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
 
@@ -1231,7 +1231,7 @@ void db_mapsequences(db_thread_t * t, long firstseqno, long lastseqno)
   m->map_length = length;
 }
 
-void db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno)
+auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
 {
   // unmap if some map exist
   
@@ -1284,9 +1284,9 @@ void db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno)
 
 namespace {
 
-void db_translate(char * dna, long dlen,
+auto db_translate(char * dna, long dlen,
 		  long strand, long frame, 
-		  char * prot)
+		  char * prot) -> void
 {
   long pos;
   long c;
@@ -1325,8 +1325,8 @@ void db_translate(char * dna, long dlen,
 
 }  // anonymous namespace
 
-void db_getsequence(db_thread_t * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c)
+auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame, 
+		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void
 {
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 
@@ -1495,7 +1495,7 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   }
 }
 
-void db_getheader(db_thread_t * t, long seqno, char ** address, long * length)
+auto db_getheader(db_thread_t * t, long seqno, char ** address, long * length) -> void
 {
   long s;
   db_volume_t * v;
@@ -1507,28 +1507,28 @@ void db_getheader(db_thread_t * t, long seqno, char ** address, long * length)
   *address = t->map_hdr->map_address + (offset1 - t->map_hdr->map_offset);
 }
 
-void db_parse_header(db_thread_t * t, char * address, long length, 
+auto db_parse_header(db_thread_t * t, char * address, long length, 
 		     long show_gis, 
-		     long * deflines, char *** deflinetable)
+		     long * deflines, char *** deflinetable) -> void
 {
   parse_getdeflines(t->parser, (unsigned char*) address, length,
 		    db_main.memb_bit, & db_check_taxid, show_gis,
 		    deflines, deflinetable);
 }
 
-void db_showheader(struct db_thread_s * t, char * address, long length, 
+auto db_showheader(struct db_thread_s * t, char * address, long length, 
 		   long show_gis, long indent,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
-		   Escaping const escaping)
+		   Escaping const escaping) -> void
 {
   parse_header(t->parser, (unsigned char*) address, length,
 	       db_main.memb_bit, db_check_taxid, show_gis,
 	       indent, maxlen, linelen, maxdeflines, show_descr, escaping);
 }
 
-void db_getshowheader(struct db_thread_s * t, long seqno,
+auto db_getshowheader(struct db_thread_s * t, long seqno,
 		      long show_gis, long indent,
-		      long maxlen, long linelen, long maxdeflines)
+		      long maxlen, long linelen, long maxdeflines) -> void
 {
   char * address;
   long length;
@@ -1538,7 +1538,7 @@ void db_getshowheader(struct db_thread_s * t, long seqno,
 
 namespace {
 
-void db_print_seq(db_thread_t * t, long seqno, long strand, long frame)
+auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 {
   char * address;
   long length;
@@ -1587,7 +1587,7 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
   return 1;
 }
 
-void db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long split)
+auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long split) -> void
 {
 
   /* 

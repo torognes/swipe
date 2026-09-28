@@ -181,8 +181,8 @@ auto hits_sort() -> long *
 }
 
 
-void hits_enter(long seqno, long score, long qstrand, long qframe,
-		long dstrand, long dframe, long align_hint, long bestq)
+auto hits_enter(long seqno, long score, long qstrand, long qframe,
+		long dstrand, long dframe, long align_hint, long bestq) -> void
 {
   // show_progress();
 
@@ -248,9 +248,9 @@ auto hits_getcount() -> long
   return hits_count;
 }
 
-void hits_gethit(long i, long * seqno, long * score, 
+auto hits_gethit(long i, long * seqno, long * score, 
 		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe)
+		 long * dstrand, long * dframe) -> void
 {
   struct hits_entry * h = hits_list + i;
   *seqno = h->seqno;
@@ -261,25 +261,25 @@ void hits_gethit(long i, long * seqno, long * score,
   *dframe = h->dframe;
 }
 
-void hits_enter_seq(long i, char* seq, long seq_len)
+auto hits_enter_seq(long i, char* seq, long seq_len) -> void
 {
   hits_list[i].dseq = (char*) xmalloc(seq_len);
   memcpy(hits_list[i].dseq, seq, seq_len);
   hits_list[i].dlen = seq_len;
 }
 
-void hits_enter_align_hint(long i, long q_end, long d_end)
+auto hits_enter_align_hint(long i, long q_end, long d_end) -> void
 {
   hits_list[i].bestq = q_end;
   hits_list[i].align_hint = d_end;
 }
 
-void hits_enter_align_coord(long i,
+auto hits_enter_align_coord(long i,
 			    long align_q_start,
 			    long align_q_end,
 			    long align_d_start,
 			    long align_d_end,
-			    long dlennt)
+			    long dlennt) -> void
 {
   hits_list[i].align_q_start = align_q_start;
   hits_list[i].align_q_end = align_q_end;
@@ -288,14 +288,14 @@ void hits_enter_align_coord(long i,
   hits_list[i].dlennt = dlennt;
 }
 
-void hits_enter_header(long i, char * header, long header_len)
+auto hits_enter_header(long i, char * header, long header_len) -> void
 {
   hits_list[i].header_address = (char*) xmalloc(header_len);
   memcpy(hits_list[i].header_address, header, header_len);
   hits_list[i].header_length = header_len;
 }
 
-void hits_enter_align_string(long i, char * align, long align_len)
+auto hits_enter_align_string(long i, char * align, long align_len) -> void
 {
   hits_list[i].alignment = (char*) xmalloc(align_len);
   memcpy(hits_list[i].alignment, align, align_len);
@@ -321,7 +321,7 @@ auto threshold_to_long(double const value) -> long
 
 }  // anonymous namespace
 
-void hits_init(long descriptions, long max_alignments, long minscore, long maxscore, double min_expect, double max_expect, int show_nostats)
+auto hits_init(long descriptions, long max_alignments, long minscore, long maxscore, double min_expect, double max_expect, int show_nostats) -> void
 {
   opt_descriptions = descriptions;
   opt_alignments = max_alignments;
@@ -568,7 +568,7 @@ void hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   //  fprintf(out, "scorethreshold: %ld\n", scorethreshold);
 }
 
-void hits_empty()
+auto hits_empty() -> void
 {
   for (long i=0; i<hits_count; i++)
   {
@@ -594,14 +594,14 @@ void hits_empty()
   }
 }
 
-void hits_exit()
+auto hits_exit() -> void
 {
   hits_empty();
   free(hits_list);
   hits_list = nullptr;
 }
 
-void hits_align(struct db_thread_s * t, long i)
+auto hits_align(struct db_thread_s * t, long i) -> void
 {
   char * address;
   long length;
@@ -707,7 +707,7 @@ int poswidth;
 
 namespace {
 
-void putalignop(char c, long len)
+auto putalignop(char c, long len) -> void
 {
 
   long count = len;
@@ -824,7 +824,7 @@ void putalignop(char c, long len)
   }
 }
 
-void show_align(long i)
+auto show_align(long i) -> void
 {
   long q_align_start = hits_list[i].align_q_start;
   long d_align_start = hits_list[i].align_d_start;
@@ -877,7 +877,7 @@ void show_align(long i)
   putalignop(0, 1);
 }
 
-void whole_align(long i,
+auto whole_align(long i,
 		 long * identities,
 		 long * positives,
 		 long * indels,
@@ -885,7 +885,7 @@ void whole_align(long i,
 		 long * gaps,
 		 char ** qline,
 		 char ** aline,
-		 char ** dline)
+		 char ** dline) -> void
 {
 
   long al = 0;
@@ -1083,12 +1083,12 @@ void whole_align(long i,
   }
 }
 
-void count_align(long i,
+auto count_align(long i,
 		 long * identities,
 		 long * positives,
 		 long * indels,
 		 long * aligned,
-		 long * gaps)
+		 long * gaps) -> void
 {
   long q_align_start = hits_list[i].align_q_start;
   long d_align_start = hits_list[i].align_d_start;
@@ -1239,7 +1239,7 @@ void count_align(long i,
   }
 }
 
-void hits_show_expect(double expect_value)
+auto hits_show_expect(double expect_value) -> void
 {
   char temp[10];
   if (expect_value < 1e-180)
@@ -1299,7 +1299,7 @@ auto xml_print(char const * const text,
     xml_putc(text[i]);
 }
 
-void make_anchor(char * anchor, long size, long symbol_type, long query_index, long i)
+auto make_anchor(char * anchor, long size, long symbol_type, long query_index, long i) -> void
 {
   switch(symbol_type)
   {
@@ -1342,10 +1342,10 @@ void make_anchor(char * anchor, long size, long symbol_type, long query_index, l
   }
 }
 
-void hits_defline_split(char * defline, 
+auto hits_defline_split(char * defline, 
 			long * gi,
 			char ** link, int * linklen, 
-			char ** rest)
+			char ** rest) -> void
 {
   char * p = defline;
   int len;
@@ -1375,9 +1375,9 @@ void hits_defline_split(char * defline,
   }
 }
 
-void hits_show_xml_paralign(long showalignments,
+auto hits_show_xml_paralign(long showalignments,
 			    long showhits,
-			    struct db_thread_s * t)
+			    struct db_thread_s * t) -> void
 {
   /* ParAlign XML */
   
@@ -1785,7 +1785,7 @@ auto ends_query_id(char const symbol) -> bool
     (std::isspace(static_cast<unsigned char>(symbol)) != 0);
 }
 
-void show_description(const char *desc)
+auto show_description(const char *desc) -> void
 {
   const char *dptr;
 
@@ -1804,10 +1804,10 @@ auto show_description_xml(char const * const desc) -> void
     xml_putc(*dptr);
 }
 
-void hits_show_xml(long show_gis,
+auto hits_show_xml(long show_gis,
 		   long showalignments,
 		   long showhits,
-		   struct db_thread_s * t)
+		   struct db_thread_s * t) -> void
 {
   /* Simple XML */
   
@@ -1876,9 +1876,9 @@ void hits_show_xml(long show_gis,
   fprintf(out, "</result>\n");
 }
 
-void hits_show_tsv(long showalignments,
+auto hits_show_tsv(long showalignments,
 		   long showcomments,
-		   struct db_thread_s * t)
+		   struct db_thread_s * t) -> void
 {
   char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
@@ -1938,10 +1938,10 @@ void hits_show_tsv(long showalignments,
   }
 }
 
-void hits_show_plain(long show_gis,
+auto hits_show_plain(long show_gis,
 		     long showalignments,
 		     long showhits,
-		     struct db_thread_s * t)
+		     struct db_thread_s * t) -> void
 {
     if (hits_count == 0)
     {
@@ -2096,7 +2096,7 @@ void hits_show_plain(long show_gis,
 
 }  // anonymous namespace
 
-void hits_show_begin(long view)
+auto hits_show_begin(long view) -> void
 {
   if (view==0)
     {
@@ -2130,7 +2130,7 @@ void hits_show_begin(long view)
     }
 }
 
-void hits_show_end(long view)
+auto hits_show_end(long view) -> void
 {
   if (view==7)
   {
@@ -2142,7 +2142,7 @@ void hits_show_end(long view)
   }
 }
 
-void hits_show(long view, long show_gis)
+auto hits_show(long view, long show_gis) -> void
 {
   // compute number of hits and alignments to actually show
 

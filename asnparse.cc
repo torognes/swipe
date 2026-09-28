@@ -115,7 +115,7 @@ auto append_bounded(char * const dst, std::size_t const size,
   *std::next(dst, used + count) = '\0';
 }
 
-void nextch(apt p)
+auto nextch(apt p) -> void
 {
   if (p->header_p < p->header_end)
     p->ch = *(p->header_p)++;
@@ -123,7 +123,7 @@ void nextch(apt p)
     p->ch = 0;
 }
 
-void nextobj(apt p)
+auto nextobj(apt p) -> void
 {
   p->obj = p->ch;
   nextch(p);
@@ -131,7 +131,7 @@ void nextobj(apt p)
   nextch(p);
 }
 
-void match_obj(apt p, unsigned short x)
+auto match_obj(apt p, unsigned short x) -> void
 {
 #ifdef DEBUG
   printf("%02x%02x ", p->obj, p->len);
@@ -145,7 +145,7 @@ void match_obj(apt p, unsigned short x)
   nextobj(p);
 }
 
-void parse_integer(apt p)
+auto parse_integer(apt p) -> void
 {
 #ifdef SHOW
   printf("integer ");
@@ -180,7 +180,7 @@ void parse_integer(apt p)
   nextobj(p);
 }
 
-void parse_visiblestring(apt p)
+auto parse_visiblestring(apt p) -> void
 {
   //#define SHOW 1
   //#define DEBUG 1
@@ -274,7 +274,7 @@ void parse_visiblestring(apt p)
   //#undef DEBUG
 }
 
-void parse_object_id(apt p)
+auto parse_object_id(apt p) -> void
 {
   p->gnl_id_integer = 0;
   p->gnl_id_string[0] = 0;
@@ -298,7 +298,7 @@ void parse_object_id(apt p)
   }
 }
 
-void parse_dbtag(apt p)
+auto parse_dbtag(apt p) -> void
 {
   p->gnl_db[0] = 0;
 
@@ -316,7 +316,7 @@ void parse_dbtag(apt p)
   match_obj(p,0);
 }
 
-void parse_id_pat(apt p)
+auto parse_id_pat(apt p) -> void
 {
   p->pat_country[0] = 0;
   p->pat_id[0] = 0;
@@ -367,7 +367,7 @@ void parse_id_pat(apt p)
   match_obj(p,0);
 }
 
-void parse_patent_seq_id(apt p)
+auto parse_patent_seq_id(apt p) -> void
 {
   match_obj(p,0x30);
 
@@ -385,7 +385,7 @@ void parse_patent_seq_id(apt p)
   match_obj(p,0);
 }
 
-void parse_textseq_id(apt p)
+auto parse_textseq_id(apt p) -> void
 {
   p->name[0] = 0;
   p->accession[0] = 0;
@@ -439,7 +439,7 @@ void parse_textseq_id(apt p)
   match_obj(p,0);
 }
 
-void parse_gi_import_id(apt p)
+auto parse_gi_import_id(apt p) -> void
 {
   match_obj(p,0x30);
 
@@ -464,7 +464,7 @@ void parse_gi_import_id(apt p)
   match_obj(p,0);
 }
 
-void parse_date_std(apt p)
+auto parse_date_std(apt p) -> void
 {
   char temp[MAXSTRING];
   long year = 0;
@@ -593,7 +593,7 @@ void parse_date_std(apt p)
   //  fprintf(stderr, "Date: %s\n", p->date);
 }
 
-void parse_date(apt p)
+auto parse_date(apt p) -> void
 {
   unsigned char object = p->obj;
   match_obj(p,object);
@@ -617,7 +617,7 @@ void parse_date(apt p)
   match_obj(p,0);
 }
 
-void parse_pdb_seq_id(apt p)
+auto parse_pdb_seq_id(apt p) -> void
 {
   p->pdb_molid[0]=0;
   p->pdb_chain = 32;
@@ -678,7 +678,7 @@ auto set_id(apt p, std::string const & id) -> void
   append_bounded(p->id, sizeof(p->id), id.c_str());
 }
 
-void show_seq_id(apt p, char * dbi)
+auto show_seq_id(apt p, char * dbi) -> void
 {
   const char * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
@@ -690,19 +690,19 @@ void show_seq_id(apt p, char * dbi)
     set_id(p, std::string(db) + "|" + p->accession + "|" + p->name);
 }
 
-void show_id_int(apt p, char * db)
+auto show_id_int(apt p, char * db) -> void
 {
   set_id(p, std::string(db) + "|" + std::to_string(p->parsed_integer));
 }
 
-void show_pat(apt p)
+auto show_pat(apt p) -> void
 {
   set_id(p, std::string(p->pat_granted ? "pat" : "pgp") + "|" +
          p->pat_country + "|" + p->pat_id + "|" +
          std::to_string(p->pat_sequence));
 }
 
-void parse_seq_id(apt p)
+auto parse_seq_id(apt p) -> void
 {
   /* http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5 */
 
@@ -813,7 +813,7 @@ void parse_seq_id(apt p)
   match_obj(p,0);
 }
 
-void parse_blast_def_line(apt p)
+auto parse_blast_def_line(apt p) -> void
 {
 #ifdef SHOW
   printf("\n");
@@ -1082,12 +1082,12 @@ auto parser_create() -> apt
   return (apt) xmalloc(sizeof(struct asnparse_info));
 }
 
-void parser_destruct(apt p)
+auto parser_destruct(apt p) -> void
 {
   free(p);
 }
 
-void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, char *** deflinetablep)
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, char *** deflinetablep) -> void
 {
   p->show_gis = show_gis;
   p->indent = 0;

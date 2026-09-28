@@ -209,7 +209,7 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
 
 }  // anonymous namespace
 
-void query_init(const char * query_filename, long symbol_type, long strands)
+auto query_init(const char * query_filename, long symbol_type, long strands) -> void
 {
   if (strcmp(query_filename, "-") == 0)
     query_fp = stdin;
@@ -263,7 +263,7 @@ void query_init(const char * query_filename, long symbol_type, long strands)
 
 namespace {
 
-void query_free()
+auto query_free() -> void
 {
   if (query.description)
     free(query.description);
@@ -289,7 +289,7 @@ void query_free()
 
 }  // anonymous namespace
 
-void query_exit()
+auto query_exit() -> void
 {
   if (query_fp != stdin)
     fclose(query_fp);
@@ -411,7 +411,7 @@ auto revcompl(char * seq, long len) -> char *
 
 namespace {
 
-void translate_createtable(long tableno, char * table)
+auto translate_createtable(long tableno, char * table) -> void
 {
   /* initialize translation table */
 
@@ -489,15 +489,15 @@ void translate_createtable(long tableno, char * table)
 
 }  // anonymous namespace
 
-void translate_init(long qtableno, long dtableno)
+auto translate_init(long qtableno, long dtableno) -> void
 {
   translate_createtable(qtableno, q_translate);
   translate_createtable(dtableno, d_translate);
 }
 
-void translate(char * dna, long dlen, 
+auto translate(char * dna, long dlen, 
 	       long strand, long frame, long table,
-	       char ** protp, long * plenp)
+	       char ** protp, long * plenp) -> void
 {
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
@@ -546,7 +546,7 @@ void translate(char * dna, long dlen,
 }
 
 
-void query_show()
+auto query_show() -> void
 {
   int linewidth = 60;
   for (unsigned i=0; i<strlen(query.description); i+=linewidth)

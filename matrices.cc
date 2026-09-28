@@ -335,7 +335,7 @@ long * score_matrix_63 = nullptr;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-void score_matrix_read_file(const char * matrix)
+auto score_matrix_read_file(const char * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
@@ -419,7 +419,7 @@ void score_matrix_read_file(const char * matrix)
   fclose(fp);
 }
 
-void score_matrix_read_string(const char * matrix)
+auto score_matrix_read_string(const char * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
@@ -518,7 +518,7 @@ void score_matrix_read_string(const char * matrix)
 }
 
 
-void score_matrix_read()
+auto score_matrix_read() -> void
 {
   int a;
   int b;
@@ -612,12 +612,12 @@ void score_matrix_read()
 
 }  // anonymous namespace
 
-void score_matrix_init()
+auto score_matrix_init() -> void
 {
   score_matrix_read();
 }
 
-void score_matrix_free()
+auto score_matrix_free() -> void
 {
   free(score_matrix_7);
   score_matrix_7 = nullptr;

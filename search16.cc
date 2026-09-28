@@ -93,13 +93,13 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
   "        pmaxsw  " H ", %%xmm12      \n"	\
   "        pmaxsw  " H ", " F "        \n"
 
-inline void donormal16(volatile __m128i * Sm,  /* r9  */
+inline auto donormal16(volatile __m128i * Sm,  /* r9  */
 		       __m128i * hep, /* rdi */
 		       __m128i ** qp, /* rsi */
 		       __m128i * Qm,  /* rdx */
 		       __m128i * Rm,  /* rcx */
 		       long ql,       /* r8  */
-		       __m128i * Zm)
+		       __m128i * Zm) -> void
 {
   __asm__
     __volatile__
@@ -157,14 +157,14 @@ inline void donormal16(volatile __m128i * Sm,  /* r9  */
       );
 }
 
-inline void domasked16(volatile __m128i * Sm,
+inline auto domasked16(volatile __m128i * Sm,
 		       __m128i * hep,
 		       __m128i ** qp,
 		       __m128i * Qm, 
 		       __m128i * Rm, 
 		       long ql,      
 		       __m128i * Zm,
-		       __m128i * Mm)
+		       __m128i * Mm) -> void
 {
   __asm__
     __volatile__
@@ -235,9 +235,9 @@ inline void domasked16(volatile __m128i * Sm,
      );
 }
 
-inline void dprofile_fill16(WORD * dprofile_word,
+inline auto dprofile_fill16(WORD * dprofile_word,
 			    WORD * score_matrix_word,
-			    BYTE * dseq)
+			    BYTE * dseq) -> void
 {
   __m128i xmm0;
   __m128i xmm1;
@@ -329,7 +329,7 @@ inline void dprofile_fill16(WORD * dprofile_word,
   }
 }
 
-void search16(WORD * * q_start,
+auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,
 	      WORD * score_matrix,
@@ -340,7 +340,7 @@ void search16(WORD * * q_start,
 	      long * seqnos,
 	      long * scores,
 	      long * bestpos,
-	      int qlen)
+	      int qlen) -> void
 {
   
   volatile __m128i S;

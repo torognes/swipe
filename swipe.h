@@ -93,8 +93,8 @@ extern char BIAS;
 #define ZERO 0x80
 #endif
 
-void vector_print(BYTE * vector);
-void vector_print_word(WORD * vector);
+auto vector_print(BYTE * vector) -> void;
+auto vector_print_word(WORD * vector) -> void;
 
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
@@ -205,10 +205,10 @@ struct time_info
 
 extern struct time_info ti;
 
-void fatal(const char * message);
-void fatal(std::string const & message);
+auto fatal(const char * message) -> void;
+auto fatal(std::string const & message) -> void;
 
-void search7(BYTE * * q_start,
+auto search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
 	     BYTE gap_extend_penalty,
 	     BYTE * score_matrix,
@@ -218,9 +218,9 @@ void search7(BYTE * * q_start,
 	     long sequences,
 	     long * seqnos,
 	     long * scores,
-	     long qlen);
+	     long qlen) -> void;
 
-void search7_ssse3(BYTE * * q_start,
+auto search7_ssse3(BYTE * * q_start,
 		   BYTE gap_open_penalty,
 		   BYTE gap_extend_penalty,
 		   BYTE * score_matrix,
@@ -230,9 +230,9 @@ void search7_ssse3(BYTE * * q_start,
 		   long sequences,
 		   long * seqnos,
 		   long * scores,
-		   long qlen);
+		   long qlen) -> void;
 
-void search16(WORD * * q_start,
+auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,
 	      WORD * score_matrix,
@@ -243,9 +243,9 @@ void search16(WORD * * q_start,
 	      long * seqnos,
 	      long * scores,
 	      long * bestpos,
-	      int qlen);
+	      int qlen) -> void;
 
-void search16s(WORD * * q_start,
+auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
 	       WORD gap_extend_penalty,
 	       WORD * score_matrix,
@@ -257,7 +257,7 @@ void search16s(WORD * * q_start,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,
-	       int qlen);
+	       int qlen) -> void;
 
 auto fullsw(char * dseq,
 	    char * dend,
@@ -268,7 +268,7 @@ auto fullsw(char * dseq,
 	    long gap_open_penalty,
 	    long gap_extend_penalty) -> long;
 
-void align(char * a_seq,
+auto align(char * a_seq,
 	   char * b_seq,
 	   long M,
 	   long N,
@@ -280,27 +280,27 @@ void align(char * a_seq,
 	   long * a_end,
 	   long * b_end,
 	   char ** alignment,
-	   long * s);
+	   long * s) -> void;
 
-void query_init(const char * queryname, long symtype, long strands);
-void query_exit();
+auto query_init(const char * queryname, long symtype, long strands) -> void;
+auto query_exit() -> void;
 auto query_read() -> int;
-void query_show();
+auto query_show() -> void;
 
-void score_matrix_init();
-void score_matrix_free();
+auto score_matrix_init() -> void;
+auto score_matrix_free() -> void;
 
-void translate_init(long qtableno, long dtableno);
+auto translate_init(long qtableno, long dtableno) -> void;
 auto revcompl(char * seq, long len) -> char *;
-void translate(char * dna, long dlen,
+auto translate(char * dna, long dlen,
                long strand, long frame, long table,
-               char ** protp, long * plenp);
+               char ** protp, long * plenp) -> void;
 
 struct asnparse_info;
 using apt = asnparse_info *;
 
 auto parser_create() -> apt;
-void parser_destruct(apt p);
+auto parser_destruct(apt p) -> void;
 
 // XML outputs: the five special characters are escaped (KI-27)
 enum struct Escaping : int { none, xml };
@@ -313,13 +313,13 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(lon
 		  long linelen, long maxdeflines, long show_descr,
 		  Escaping escaping = Escaping::none) -> long;
 
-void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable);
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable) -> void;
 
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
-void db_open(long symtype, const char * basename, char * taxidfilename);
-void db_close();
+auto db_open(long symtype, const char * basename, char * taxidfilename) -> void;
+auto db_close() -> void;
 auto db_getseqcount() -> long;
 auto db_getseqcount_masked() -> long;
 auto db_getsymcount() -> long;
@@ -336,54 +336,54 @@ auto db_getversion() -> long;
 auto db_getvolume(long seqno) -> long;
 
 auto db_thread_create() -> struct db_thread_s *;
-void db_thread_destruct(struct db_thread_s * t);
+auto db_thread_destruct(struct db_thread_s * t) -> void;
 
 auto db_check_taxid(long taxid) -> long;
 
-void db_parse_header(struct db_thread_s * t, char * address, long length,
+auto db_parse_header(struct db_thread_s * t, char * address, long length,
 		     long show_gis,
-		     long * deflines, char *** deflinetable);
+		     long * deflines, char *** deflinetable) -> void;
 
-void db_showheader(struct db_thread_s * t, char * address, long length, 
+auto db_showheader(struct db_thread_s * t, char * address, long length, 
 		   long show_gis, long indent,
 		   long maxlen, long linelen, long maxdeflines, long show_descr,
-		   Escaping escaping = Escaping::none);
-void db_getshowheader(struct db_thread_s * t, long seqno,
+		   Escaping escaping = Escaping::none) -> void;
+auto db_getshowheader(struct db_thread_s * t, long seqno,
 		      long show_gis, long indent,
-		      long maxlen, long linelen, long maxdeflines);
+		      long maxlen, long linelen, long maxdeflines) -> void;
 
-void db_show_fasta(struct db_thread_s * t, long seqno,
-		   long strand, long frame, long split);
+auto db_show_fasta(struct db_thread_s * t, long seqno,
+		   long strand, long frame, long split) -> void;
 
 auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
-void db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno);
-void db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno);
+auto db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno) -> void;
+auto db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno) -> void;
 
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
-void db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c);
-void db_getheader(struct db_thread_s * t, long seqno, char ** address, 
-		  long * length);
+auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
+		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void;
+auto db_getheader(struct db_thread_s * t, long seqno, char ** address, 
+		  long * length) -> void;
 
-void hits_init(long descriptions, long alignments, long minscore, 
-	       long maxscore, double minexpect, double expect, int show_nostats);
-void hits_enter(long seqno, long score, long qstrand, long qframe,
-		long dstrand, long dframe, long align_hint, long bestq);
+auto hits_init(long descriptions, long alignments, long minscore, 
+	       long maxscore, double minexpect, double expect, int show_nostats) -> void;
+auto hits_enter(long seqno, long score, long qstrand, long qframe,
+		long dstrand, long dframe, long align_hint, long bestq) -> void;
 auto hits_sort() -> long *;
 auto hits_getcount() -> long;
-void hits_align(struct db_thread_s * t, long i);
-void hits_show_begin(long view);
-void hits_show_end(long view);
-void hits_show(long view, long show_gis);
-void hits_empty();
-void hits_exit();
-void hits_gethit(long i, long * seqno, long * score, 
+auto hits_align(struct db_thread_s * t, long i) -> void;
+auto hits_show_begin(long view) -> void;
+auto hits_show_end(long view) -> void;
+auto hits_show(long view, long show_gis) -> void;
+auto hits_empty() -> void;
+auto hits_exit() -> void;
+auto hits_gethit(long i, long * seqno, long * score, 
 		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe);
-void hits_getfull(long i, 
+		 long * dstrand, long * dframe) -> void;
+auto hits_getfull(long i, 
 		  long * seqno, 
 		  long * score,
 		  long * align_q_start,
@@ -392,17 +392,17 @@ void hits_getfull(long i,
 		  long * align_d_end,
 		  char ** header, long * header_len,
 		  char ** seq, long * seq_len,
-		  char ** align, long * align_len);
-void hits_enter_align_hint(long i, long q_end, long d_end);
-void hits_enter_header(long i, char * header, long header_len);
-void hits_enter_seq(long hitno, char* buffer, long len);
-void hits_enter_align_coord(long i,
+		  char ** align, long * align_len) -> void;
+auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
+auto hits_enter_header(long i, char * header, long header_len) -> void;
+auto hits_enter_seq(long hitno, char* buffer, long len) -> void;
+auto hits_enter_align_coord(long i,
 			    long align_q_start,
 			    long align_q_end,
 			    long align_d_start,
 			    long align_d_end,
-			    long dlennt);
-void hits_enter_align_string(long hitno, char * align, long align_len);
+			    long dlennt) -> void;
+auto hits_enter_align_string(long hitno, char * align, long align_len) -> void;
 
 
 auto stats_getparams_nt(long matchscore,
