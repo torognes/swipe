@@ -35,14 +35,15 @@ typedef double array_of_8[8];
 #define BLAST_MATRIX_BEST 1
 #define INT2_MAX 32767
 
+#include "swipe.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "blastkar_partial.c"
 
-long stats_getparams_nt(long matchscore,
-			long mismatchscore, 
+long stats_getparams_nt(long match_score,
+			long mismatch_score, 
 			long gopen,
 			long gextend,
 			double * lambda,
@@ -56,84 +57,84 @@ long stats_getparams_nt(long matchscore,
   long gomax;
   long gemax;
 
-  if      ((matchscore == 1) && (mismatchscore == -5))
+  if      ((match_score == 1) && (mismatch_score == -5))
   {
     bv = blastn_values_1_5;
     bm = sizeof(blastn_values_1_5) / sizeof(array_of_8);
     gomax = 3;
     gemax = 3;
   }
-  else if ((matchscore == 1) && (mismatchscore == -4))
+  else if ((match_score == 1) && (mismatch_score == -4))
   {
     bv = blastn_values_1_4;
     bm = sizeof(blastn_values_1_4) / sizeof(array_of_8);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -7))
+  else if ((match_score == 2) && (mismatch_score == -7))
   {
     bv = blastn_values_2_7;
     bm = sizeof(blastn_values_2_7) / sizeof(array_of_8);
     gomax = 4;
     gemax = 4;
   }
-  else if ((matchscore == 1) && (mismatchscore == -3))
+  else if ((match_score == 1) && (mismatch_score == -3))
   {
     bv = blastn_values_1_3;
     bm = sizeof(blastn_values_1_3) / sizeof(array_of_8);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -5))
+  else if ((match_score == 2) && (mismatch_score == -5))
   {
     bv = blastn_values_2_5;
     bm = sizeof(blastn_values_2_5) / sizeof(array_of_8);
     gomax = 4;
     gemax = 4;
   }
-  else if ((matchscore == 1) && (mismatchscore == -2))
+  else if ((match_score == 1) && (mismatch_score == -2))
   {
     bv = blastn_values_1_2;
     bm = sizeof(blastn_values_1_2) / sizeof(array_of_8);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -3))
+  else if ((match_score == 2) && (mismatch_score == -3))
   {
     bv = blastn_values_2_3;
     bm = sizeof(blastn_values_2_3) / sizeof(array_of_8);
     gomax = 6;
     gemax = 4;
   }
-  else if ((matchscore == 3) && (mismatchscore == -4))
+  else if ((match_score == 3) && (mismatch_score == -4))
   {
     bv = blastn_values_3_4;
     bm = sizeof(blastn_values_3_4) / sizeof(array_of_8);
     gomax = 6;
     gemax = 3;
   }
-  else if ((matchscore == 4) && (mismatchscore == -5))
+  else if ((match_score == 4) && (mismatch_score == -5))
   {
     bv = blastn_values_4_5;
     bm = sizeof(blastn_values_4_5) / sizeof(array_of_8);
     gomax = 4;
     gemax = 2;
   }
-  else if ((matchscore == 1) && (mismatchscore == -1))
+  else if ((match_score == 1) && (mismatch_score == -1))
   {
     bv = blastn_values_1_1;
     bm = sizeof(blastn_values_1_1) / sizeof(array_of_8);
     gomax = 5;
     gemax = 5;
   }
-  else if ((matchscore == 3) && (mismatchscore == -2))
+  else if ((match_score == 3) && (mismatch_score == -2))
   {
     bv = blastn_values_3_2;
     bm = sizeof(blastn_values_3_2) / sizeof(array_of_8);
     gomax = 12;
     gemax = 8;
   }
-  else if ((matchscore == 5) && (mismatchscore == -4))
+  else if ((match_score == 5) && (mismatch_score == -4))
   {
     bv = blastn_values_5_4;
     bm = sizeof(blastn_values_5_4) / sizeof(array_of_8);
