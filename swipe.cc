@@ -36,31 +36,30 @@
 
 /* ARGUMENTS AND THEIR DEFAULTS */
 
-#define DEFAULT_MAXMATCHES 250
-#define DEFAULT_ALIGNMENTS 100
-#define DEFAULT_MINSCORE 1
-#define DEFAULT_MAXSCORE (LONG_MAX)
-#define DEFAULT_QUERYNAME "-"
-#define DEFAULT_DATABASENAME ""
-#define DEFAULT_GAPOPEN 0
-#define DEFAULT_GAPEXTEND 0
-#define DEFAULT_MATRIXNAME "BLOSUM62"
-#define DEFAULT_MATCHSCORE 1
-#define DEFAULT_MISMATCHSCORE (-3)
-#define DEFAULT_THREADS 1
-#define DEFAULT_VIEW 0
-#define DEFAULT_SYMTYPE 1
-#define DEFAULT_SHOW_GIS 0
-#define DEFAULT_SHOW_TAXID 0
-#define DEFAULT_EXPECT 10.0
-#define DEFAULT_MINEXPECT 0.0
-#define DEFAULT_QUERYSTRANDS 3
-#define DEFAULT_QUERY_GENCODE 1
-#define DEFAULT_DB_GENCODE 1
-#define DEFAULT_SUBALIGNMENTS 1
-#define DEFAULT_DUMP 0
-#define DEFAULT_OUT stdout
-#define DEFAULT_EFFDBSIZE 0
+constexpr long default_maxmatches = 250;
+constexpr long default_alignments = 100;
+constexpr long default_minscore = 1;
+constexpr long default_maxscore = LONG_MAX;
+constexpr char const * default_queryname = "-";
+constexpr char const * default_databasename = "";
+constexpr long default_gapopen = 0;
+constexpr long default_gapextend = 0;
+constexpr char const * default_matrixname = "BLOSUM62";
+constexpr long default_matchscore = 1;
+constexpr long default_mismatchscore = -3;
+constexpr long default_threads = 1;
+constexpr long default_view = 0;
+constexpr long default_symtype = 1;
+constexpr long default_show_gis = 0;
+constexpr long default_show_taxid = 0;
+constexpr double default_expect = 10.0;
+constexpr double default_minexpect = 0.0;
+constexpr long default_querystrands = 3;
+constexpr long default_query_gencode = 1;
+constexpr long default_db_gencode = 1;
+constexpr long default_subalignments = 1;
+constexpr long default_dump = 0;
+constexpr long default_effdbsize = 0;
 
 char const * matrixname;
 char const * databasename;
@@ -88,13 +87,13 @@ long queryno;
 long cpu_feature_ssse3;
 long cpu_feature_sse41;
 
-#define MAX_THREADS 256
+constexpr int max_threads = 256;
 
 long compute7;
 
 long totalhits;
 
-FILE * out = DEFAULT_OUT;
+FILE * out = stdout;  // default output: stdout (--out FILE)
 
 struct time_info ti;
 
@@ -115,7 +114,7 @@ long dump;
 long cpu_feature_sse2;
 pthread_mutex_t countmutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_t pthread_id[MAX_THREADS];
+pthread_t pthread_id[max_threads];
 long maxchunksize;
 long volnext;
 long seqnext;
@@ -795,7 +794,7 @@ auto args_usage() -> void
   fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
   fprintf(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
   fprintf(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
-  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", MAX_THREADS);
+  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", max_threads);
   fprintf(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
   fprintf(out, "  -I, --show_gis             show gi numbers in results (no)\n");
   fprintf(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
@@ -871,31 +870,31 @@ auto parse_dbsize(char const * const text) -> long
 auto args_init(int argc, char * const * argv) -> void
 {
   /* Set defaults */
-  gapopen = DEFAULT_GAPOPEN;
-  gapextend = DEFAULT_GAPEXTEND;
+  gapopen = default_gapopen;
+  gapextend = default_gapextend;
   matrixname = "";
-  queryname = DEFAULT_QUERYNAME;
-  databasename = DEFAULT_DATABASENAME;
-  minscore = DEFAULT_MINSCORE;
-  maxscore = DEFAULT_MAXSCORE;
-  maxmatches = DEFAULT_MAXMATCHES;
-  alignments = DEFAULT_ALIGNMENTS;
-  threads = DEFAULT_THREADS;
-  view = DEFAULT_VIEW;
-  symtype = DEFAULT_SYMTYPE;
-  show_gis = DEFAULT_SHOW_GIS;
-  show_taxid = DEFAULT_SHOW_TAXID;
-  expect = DEFAULT_EXPECT;
-  minexpect = DEFAULT_MINEXPECT;
+  queryname = default_queryname;
+  databasename = default_databasename;
+  minscore = default_minscore;
+  maxscore = default_maxscore;
+  maxmatches = default_maxmatches;
+  alignments = default_alignments;
+  threads = default_threads;
+  view = default_view;
+  symtype = default_symtype;
+  show_gis = default_show_gis;
+  show_taxid = default_show_taxid;
+  expect = default_expect;
+  minexpect = default_minexpect;
   taxidfilename = nullptr;
-  matchscore = DEFAULT_MATCHSCORE;
-  mismatchscore = DEFAULT_MISMATCHSCORE;
-  querystrands = DEFAULT_QUERYSTRANDS;
-  query_gencode = DEFAULT_QUERY_GENCODE;
-  db_gencode = DEFAULT_DB_GENCODE;
-  subalignments = DEFAULT_SUBALIGNMENTS;
-  dump = DEFAULT_DUMP;
-  effdbsize = DEFAULT_EFFDBSIZE;
+  matchscore = default_matchscore;
+  mismatchscore = default_mismatchscore;
+  querystrands = default_querystrands;
+  query_gencode = default_query_gencode;
+  db_gencode = default_db_gencode;
+  subalignments = default_subalignments;
+  dump = default_dump;
+  effdbsize = default_effdbsize;
 
   progname = argv[0];
 
@@ -1183,7 +1182,7 @@ auto args_init(int argc, char * const * argv) -> void
   {
     if (strlen(matrixname) == 0)
     {
-      matrixname = DEFAULT_MATRIXNAME;
+      matrixname = default_matrixname;
     }
 
     if (stats_getprefs(matrixname, & gopen_default, & gextend_default) != 0)
@@ -1229,7 +1228,7 @@ auto args_init(int argc, char * const * argv) -> void
     fatal("Illegal effective db size specified");
   }
 
-  if ((threads < 1) || (threads > MAX_THREADS))
+  if ((threads < 1) || (threads > max_threads))
   {
     fatal("Illegal number of threads specified");
   }
