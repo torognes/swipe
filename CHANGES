@@ -1,5 +1,10 @@
 2026-09-28  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.2.0 (in development)
+        * BLAST databases in format version 5 are accepted, in addition
+          to version 4: databases made by current versions of makeblastdb
+          (whose default is version 5) and NCBI's pre-formatted databases
+          can be searched directly, without "-blastdb_version 4". The
+          results are identical for both versions of the same sequences
         * The MPI version of SWIPE (mpiswipe), deprecated in 2.1.2, is
           removed: the "mpiswipe" target of the Makefile and the MPI code
           are gone (GitHub #17). Version 2.1.2 is the last one with

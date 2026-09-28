@@ -556,12 +556,21 @@ long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
   check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
-  if (volume->version != 4)
-    fatal("Illegal database version (must be 4).");
+  // BLAST database versions 4 and 5 have the same files, except for
+  // two fields of the index header of version 5: a volume number
+  // after the symbol type, and the name of an LMDB file (accession
+  // lookup, not needed by swipe) after the title
+  if ((volume->version != 4) and (volume->version != 5))
+    fatal("Illegal database version (must be 4 or 5).");
 
   p += 4;
   volume->symtype = load_uint32_be(p);
   p += 4;
+  if (volume->version == 5)
+  {
+    check_xin_room(p, 8);
+    p += 4;  // volume number
+  }
   long titlelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, titlelen + 4);
@@ -569,6 +578,13 @@ long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
   strncpy(volume->title, p, titlelen);
   volume->title[titlelen] = 0;
   p += titlelen;
+  if (volume->version == 5)
+  {
+    long const lmdb_name_length = load_uint32_be(p);
+    p += 4;
+    check_xin_room(p, lmdb_name_length + 4);
+    p += lmdb_name_length;  // LMDB file name
+  }
   unsigned datelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, datelen);
