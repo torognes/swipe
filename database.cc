@@ -34,7 +34,6 @@
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
-char symtype_disp[] = "npxtzs";
 unsigned int decompress_nt[256];
 
 struct al_info

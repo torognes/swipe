@@ -42,8 +42,6 @@
 #define MAXSTRING 2048
 #define MAXDEFLINESTRING 10240
 
-long maxdefline = 0;
-
 struct asnparse_info
 {
   unsigned char * header_p;

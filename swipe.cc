@@ -195,11 +195,9 @@ auto xrealloc(void *ptr, size_t size) -> void *
 }
 
 long alignedhits;
-long alignedall;
 long * hits_sorted;
 
 long align_volnext;
-long align_seqnext;
 
 long * align_volseqs;
 long * align_volchunks;
