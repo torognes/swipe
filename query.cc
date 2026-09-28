@@ -117,7 +117,7 @@ char ntcompl[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 char q_translate[16*16*16];
 char d_translate[16*16*16];
 
-const char * gencode_names[23] = 
+char const * gencode_names[23] = 
   {
     "Standard Code",
     "Vertebrate Mitochondrial Code",
@@ -144,7 +144,7 @@ const char * gencode_names[23] =
     "Thraustochytrium Mitochondrial Code",
   };
 
-const char * code[23] =
+char const * code[23] =
   { 
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG",
@@ -175,11 +175,11 @@ char remap[] = { 2, 1, 3, 0 };
   
 //                       00000000001111111111222222222233
 //                       01234567890123456789012345678901
-const char * sym_ncbi_nt4   = "acgt############################";
-const char * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
-const char * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
-const char * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
-const char * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
+char const * sym_ncbi_nt4   = "acgt############################";
+char const * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
+char const * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
+char const * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
+char const * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
 
@@ -209,7 +209,7 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
 
 }  // anonymous namespace
 
-auto query_init(const char * query_filename, long symbol_type, long strands) -> void
+auto query_init(char const * query_filename, long symbol_type, long strands) -> void
 {
   if (strcmp(query_filename, "-") == 0)
     query_fp = stdin;
@@ -400,7 +400,7 @@ auto query_read() -> int
   return 1;
 }
 
-auto revcompl(const char * seq, long len) -> char *
+auto revcompl(char const * seq, long len) -> char *
 {
   char * rc = static_cast<char *>(xmalloc(len+1));
   for(long i=0; i<len; i++)
@@ -495,7 +495,7 @@ auto translate_init(long qtableno, long dtableno) -> void
   translate_createtable(dtableno, d_translate);
 }
 
-auto translate(const char * dna, long dlen, 
+auto translate(char const * dna, long dlen, 
 	       long strand, long frame, long table,
 	       char ** protp, long * plenp) -> void
 {

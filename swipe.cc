@@ -62,9 +62,9 @@
 #define DEFAULT_EFFDBSIZE 0
 
 char * progname;
-const char * matrixname;
-const char * databasename;
-const char * queryname;
+char const * matrixname;
+char const * databasename;
+char const * queryname;
 char * taxidfilename;
 char * outfile = nullptr;
 
@@ -160,7 +160,7 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-auto fatal(const char * message) -> void
+auto fatal(char const * message) -> void
 {
   if (message != nullptr)
     fprintf(stderr, "%s\n", message);
@@ -174,7 +174,7 @@ auto fatal(std::string const & message) -> void
 
 auto xmalloc(size_t size) -> void *
 {
-  const size_t alignment = 16;
+  size_t const alignment = 16;
   void * t = nullptr;
   if (posix_memalign(& t, alignment, size) != 0)
     t = nullptr;
@@ -453,7 +453,7 @@ auto align_done(struct search_data * sdp) -> void
 auto calc_chunks(long volcount, 
 		 long par,
 		 long channels,
-		 const long * volume_sequences,
+		 long const * volume_sequences,
 		 long * volume_chunks,
 		 long * totalchunks,
 		 long * biggestchunk) -> void
@@ -666,7 +666,7 @@ auto args_show() -> void
       fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
     
-    const char * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
+    char const * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
     
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };

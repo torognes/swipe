@@ -214,7 +214,7 @@ inline auto domasked16s(volatile __m128i * Sm,
 
 inline auto dprofile_fill16s(WORD * dprofile_word,
 			     WORD * score_matrix_word,
-			     const BYTE * dseq) -> void
+			     BYTE const * dseq) -> void
 {
   __m128i xmm0;
   __m128i xmm1;
@@ -314,7 +314,7 @@ auto search16s(WORD * * q_start,
 	       WORD * hearray,
 	       struct db_thread_s * * dbta,
 	       long sequences,
-	       const long * seqnos,
+	       long const * seqnos,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,

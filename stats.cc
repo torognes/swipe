@@ -49,7 +49,7 @@ auto stats_getparams_nt(long match_score,
 			double * alpha,
 			double * beta) -> long
 {
-  const array_of_8 * bv;
+  array_of_8 const * bv;
   long bm;
   long gomax;
   long gemax;
@@ -164,7 +164,7 @@ auto stats_getparams_nt(long match_score,
   return 0;
 }
 
-auto stats_getparams(const char * matrix,
+auto stats_getparams(char const * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
@@ -239,7 +239,7 @@ auto stats_getparams(const char * matrix,
   return 0;
 }
 
-auto stats_getprefs(const char * matrix,
+auto stats_getprefs(char const * matrix,
 		    long * gopen,
 		    long * gextend) -> long
 {

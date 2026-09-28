@@ -92,7 +92,7 @@ pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto hits_compare(const void * a, const void * b) -> int
+auto hits_compare(void const * a, void const * b) -> int
 {
   auto const index_a = *static_cast<long const *>(a);
   auto const index_b = *static_cast<long const *>(b);
@@ -702,7 +702,7 @@ char * d_seq;
 char q_line[ALIGNLEN+1];
 char a_line[ALIGNLEN+1];
 char d_line[ALIGNLEN+1];
-const char * sym;
+char const * sym;
 int poswidth;
 
 namespace {
@@ -1380,7 +1380,7 @@ auto hits_show_xml_paralign(long showalignments,
   
   fprintf(out, "\t<paralignOutput>\n");
   
-  const char * qseqtypedescr;
+  char const * qseqtypedescr;
   struct sequence q;
   if ((query.symtype == 1) || (query.symtype == 3))
   {
@@ -1414,9 +1414,9 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "</querySequence>\n");
   fprintf(out, "\t\t</queryInformation>\n");
   
-  const char * dbseqtypedescr;
-  const char * ncbidb;
-  const char * ncbiopt;
+  char const * dbseqtypedescr;
+  char const * ncbidb;
+  char const * ncbiopt;
   if ((query.symtype == 0) || (query.symtype == 3) || (query.symtype == 4))
   {
     dbseqtypedescr = "Nucleotide";
@@ -1450,7 +1450,7 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t\t<longestSequenceLength>%ld</longestSequenceLength>\n", db_getlongest());
   fprintf(out, "\t\t</databaseInformation>\n");
   
-  const char * strands = "";
+  char const * strands = "";
   switch(querystrands)
   {
   case 1:
@@ -1782,9 +1782,9 @@ auto ends_query_id(char const symbol) -> bool
     (std::isspace(static_cast<unsigned char>(symbol)) != 0);
 }
 
-auto show_description(const char *desc) -> void
+auto show_description(char const *desc) -> void
 {
-  const char *dptr;
+  char const *dptr;
 
   for (dptr = desc; not ends_query_id(*dptr); dptr++)
   {

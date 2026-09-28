@@ -103,8 +103,8 @@ auto xrealloc(void *ptr, size_t size) -> void *;
 extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
-extern const char * queryname;
-extern const char * matrixname;
+extern char const * queryname;
+extern char const * matrixname;
 extern long gapopen;
 extern long gapextend;
 extern long gapopenextend;
@@ -113,13 +113,13 @@ extern long symtype;
 extern long matchscore;
 extern long mismatchscore;
 extern long totalhits;
-extern const char * gencode_names[];
+extern char const * gencode_names[];
 extern long querystrands;
 extern double minexpect;
 extern double expect;
 extern long maxmatches;
 extern long threads;
-extern const char * databasename;
+extern char const * databasename;
 extern long alignments;
 extern long queryno;
 extern long compute7;
@@ -131,25 +131,25 @@ extern char map_ncbi_nt16[];
 extern char map_ncbi_aa[];
 extern char map_sound[];
 
-extern const char * sym_ncbi_nt4;
-extern const char * sym_ncbi_nt16;
-extern const char * sym_ncbi_nt16u;
-extern const char * sym_ncbi_aa;
-extern const char * sym_sound;
+extern char const * sym_ncbi_nt4;
+extern char const * sym_ncbi_nt16;
+extern char const * sym_ncbi_nt16u;
+extern char const * sym_ncbi_aa;
+extern char const * sym_sound;
 
 extern char ntcompl[];
 extern char d_translate[];
 
 extern FILE * out;
 
-extern const char mat_blosum45[];
-extern const char mat_blosum50[];
-extern const char mat_blosum62[];
-extern const char mat_blosum80[];
-extern const char mat_blosum90[];
-extern const char mat_pam30[];
-extern const char mat_pam70[];
-extern const char mat_pam250[];
+extern char const mat_blosum45[];
+extern char const mat_blosum50[];
+extern char const mat_blosum62[];
+extern char const mat_blosum80[];
+extern char const mat_blosum90[];
+extern char const mat_pam30[];
+extern char const mat_pam70[];
+extern char const mat_pam250[];
 
 extern long SCORELIMIT_7;
 extern long SCORELIMIT_8;
@@ -178,7 +178,7 @@ struct query_s
   long symtype;
   long strands;
   char * map;
-  const char * sym;
+  char const * sym;
 };
 
 extern struct query_s query;
@@ -203,7 +203,7 @@ struct time_info
 
 extern struct time_info ti;
 
-auto fatal(const char * message) -> void;
+auto fatal(char const * message) -> void;
 auto fatal(std::string const & message) -> void;
 
 auto search7(BYTE * * q_start,
@@ -214,7 +214,7 @@ auto search7(BYTE * * q_start,
 	     BYTE * hearray,
 	     struct db_thread_s * dbt,
 	     long sequences,
-	     const long * seqnos,
+	     long const * seqnos,
 	     long * scores,
 	     long qlen) -> void;
 
@@ -226,7 +226,7 @@ auto search7_ssse3(BYTE * * q_start,
 		   BYTE * hearray,
 		   struct db_thread_s * dbt,
 		   long sequences,
-		   const long * seqnos,
+		   long const * seqnos,
 		   long * scores,
 		   long qlen) -> void;
 
@@ -238,7 +238,7 @@ auto search16(WORD * * q_start,
 	      WORD * hearray,
 	      struct db_thread_s * dbt,
 	      long sequences,
-	      const long * seqnos,
+	      long const * seqnos,
 	      long * scores,
 	      long * bestpos,
 	      int qlen) -> void;
@@ -251,16 +251,16 @@ auto search16s(WORD * * q_start,
 	       WORD * hearray,
 	       struct db_thread_s * * dbta,
 	       long sequences,
-	       const long * seqnos,
+	       long const * seqnos,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,
 	       int qlen) -> void;
 
 auto fullsw(char * dseq,
-	    const char * dend,
+	    char const * dend,
 	    char * qseq,
-	    const char * qend,
+	    char const * qend,
 	    long * hearray, 
 	    long * score_matrix,
 	    long gap_open_extend,
@@ -280,7 +280,7 @@ auto align(char * a_seq,
 	   char ** alignment,
 	   long * s) -> void;
 
-auto query_init(const char * query_filename, long symbol_type, long strands) -> void;
+auto query_init(char const * query_filename, long symbol_type, long strands) -> void;
 auto query_exit() -> void;
 auto query_read() -> int;
 auto query_show() -> void;
@@ -289,8 +289,8 @@ auto score_matrix_init() -> void;
 auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(const char * seq, long len) -> char *;
-auto translate(const char * dna, long dlen,
+auto revcompl(char const * seq, long len) -> char *;
+auto translate(char const * dna, long dlen,
                long strand, long frame, long table,
                char ** protp, long * plenp) -> void;
 
@@ -316,7 +316,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
-auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> void;
+auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> void;
 auto db_close() -> void;
 auto db_getseqcount() -> long;
 auto db_getseqcount_masked() -> long;
@@ -413,7 +413,7 @@ auto stats_getparams_nt(long match_score,
 			double * alpha,
 			double * beta) -> long;
 
-auto stats_getparams(const char * matrix,
+auto stats_getparams(char const * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
@@ -422,7 +422,7 @@ auto stats_getparams(const char * matrix,
 		     double * alpha,
 		     double * beta) -> long;
 
-auto stats_getprefs(const char * matrix,
+auto stats_getprefs(char const * matrix,
 		    long * gopen,
 		    long * gextend) -> long;
 

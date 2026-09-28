@@ -37,11 +37,11 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto region(const char * a_seq,
-	    const char * b_seq,
+auto region(char const * a_seq,
+	    char const * b_seq,
 	    long M,
 	    long N,
-	    const long * scorematrix,
+	    long const * scorematrix,
 	    long q,
 	    long r,
 	    long * a_begin,

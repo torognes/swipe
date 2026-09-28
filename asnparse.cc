@@ -678,9 +678,9 @@ auto set_id(apt p, std::string const & id) -> void
   append_bounded(p->id, sizeof(p->id), id.c_str());
 }
 
-auto show_seq_id(apt p, const char * dbi) -> void
+auto show_seq_id(apt p, char const * dbi) -> void
 {
-  const char * db = dbi;
+  char const * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
     db = "tr";
   if (p->version != 0U)
@@ -706,7 +706,7 @@ auto parse_seq_id(apt p) -> void
 {
   /* http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5 */
 
-  const char * dbstr[] = 
+  char const * dbstr[] = 
     { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
       "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", };
 

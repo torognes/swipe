@@ -157,7 +157,7 @@ using db_thread_t = db_thread_s;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto db_print_seq_map(const char * address, long length, const char * map) -> void
+auto db_print_seq_map(char const * address, long length, char const * map) -> void
 {
   long linelength = 80;
   long i = 0;
@@ -350,7 +350,7 @@ auto getnames(char * line, char * * * names) -> long
 
 namespace {
 
-auto db_read_alias(long symbol_type, const char * basename) -> al_info_t *
+auto db_read_alias(long symbol_type, char const * basename) -> al_info_t *
 {
   // open an alias file and read contents
 
@@ -491,7 +491,7 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
   return value;
 }
 
-auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) -> long
+auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) -> long
 {
   db_volume_init(volume);
 
@@ -650,9 +650,9 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   return 1;
 }
 
-auto get_path(const char * basename) -> char *
+auto get_path(char const * basename) -> char *
 {
-  const char * p = basename;
+  char const * p = basename;
   char * path;
   long pathlen = 0;
 
@@ -876,7 +876,7 @@ auto db_read_taxid_file(char * filename) -> void
 }  // anonymous namespace
 
 
-auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> void
+auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> void
 {
   al_info_t * ai = nullptr;
 
@@ -1281,7 +1281,7 @@ auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
 
 namespace {
 
-auto db_translate(const char * dna, long dlen,
+auto db_translate(char const * dna, long dlen,
 		  long strand, long frame, 
 		  char * prot) -> void
 {

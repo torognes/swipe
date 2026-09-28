@@ -207,7 +207,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 
 inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE * score_matrix,
-			   const BYTE * dseq) -> void
+			   BYTE const * dseq) -> void
 {
   __m128i xmm0;
   __m128i xmm1;
@@ -760,7 +760,7 @@ search7
 	BYTE * hearray,
 	struct db_thread_s * dbt,
 	long sequences,
-	const long * seqnos,
+	long const * seqnos,
 	long * scores,
 	long qlen)
 {

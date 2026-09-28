@@ -29,7 +29,7 @@
 #include <cstring>  // std::memcpy
 #include <limits>
 
-const char mat_blosum45[] = 
+char const mat_blosum45[] = 
 "# Entries for the BLOSUM45 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -2 -2  0 -1 -1 -1 -1 -5\n\
@@ -58,7 +58,7 @@ Z -1  1  0  1 -3  4  5 -2  0 -3 -2  1 -1 -3 -1  0 -1 -2 -2 -3  1 -2  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-const char mat_blosum50[] =
+char const mat_blosum50[] =
 "# Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5\n\
@@ -87,7 +87,7 @@ Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-const char mat_blosum62[] =
+char const mat_blosum62[] =
 "# Entries for the BLOSUM62 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  4 -1 -2 -2  0 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -3 -2  0 -2 -1 -1 -1 -4\n\
@@ -116,7 +116,7 @@ Z -1  0  0  1 -3  4  4 -2  0 -3 -3  1 -1 -3 -1  0 -1 -2 -2 -2  0 -3  4 -1 -4\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -4\n\
 * -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1\n";
 
-const char mat_blosum80[] =
+char const mat_blosum80[] =
 "# Entries for the BLOSUM80 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -2 -1 -1 -1  0 -2 -2 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -6\n\
@@ -145,7 +145,7 @@ Z -1  0  0  1 -4  4  5 -3  0 -4 -3  1 -1 -4 -2  0 -1 -3 -3 -3  0 -3  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-const char mat_blosum90[] =
+char const mat_blosum90[] =
 "# Entries for the BLOSUM90 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -3 -1 -1 -1  0 -2 -2 -2 -1 -2 -3 -1  1  0 -4 -3 -1 -2 -2 -1 -1 -6\n\
@@ -174,7 +174,7 @@ Z -1  0 -1  1 -5  5  5 -3  0 -4 -4  1 -2 -4 -2 -1 -1 -4 -3 -3  0 -4  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-const char mat_pam30[] =
+char const mat_pam30[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -211,7 +211,7 @@ X  -3  -6  -3  -5  -9  -5  -5  -5  -5  -5  -6  -5  -5  -8  -5  -3  -4 -11  -7  -
 * -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17   1\n";
 
 
-const char mat_pam70[] =
+char const mat_pam70[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -248,7 +248,7 @@ X  -2  -3  -2  -3  -6  -2  -3  -3  -3  -3  -4  -3  -3  -5  -3  -1  -2  -7  -5  -
 * -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11   1\n";
 
 
-const char mat_pam250[] =
+char const mat_pam250[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -283,7 +283,7 @@ B  0 -1  2  3 -4  1  3  0  1 -2 -3  1 -2 -4 -1  0  0 -5 -3 -2  3  2 -1\n\
 Z  0  0  1  3 -5  3  3  0  2 -2 -3  0 -2 -5  0  0 -1 -6 -4 -2  2  3 -1\n\
 X  0 -1  0 -1 -3 -1 -1 -1 -1 -1 -1 -1 -1 -2 -1  0  0 -4 -2 -1 -1 -1 -1\n";
 
-const char mat_identity_5_1[] =
+char const mat_identity_5_1[] =
 "#  Identity matrix with 31 symbols for sounds\n\
     A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z  a  b  c  d  e\n\
 A   5 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n\
@@ -335,7 +335,7 @@ long * score_matrix_63 = nullptr;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto score_matrix_read_file(const char * matrix) -> void
+auto score_matrix_read_file(char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
@@ -419,7 +419,7 @@ auto score_matrix_read_file(const char * matrix) -> void
   fclose(fp);
 }
 
-auto score_matrix_read_string(const char * matrix) -> void
+auto score_matrix_read_string(char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];

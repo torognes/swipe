@@ -26,9 +26,9 @@
 #include "swipe.h"
 
 auto fullsw(char * dseq,
-	    const char * dend,
+	    char const * dend,
 	    char * qseq,
-	    const char * qend,
+	    char const * qend,
 	    long * hearray,
 	    long * score_matrix,
 	    long gap_open_extend,
