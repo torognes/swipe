@@ -863,7 +863,7 @@ static auto parse_dbsize(char const * const text) -> long
   static char const message[] = "Illegal effective db size specified";
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
   auto const value = parse_double(text, message);
-  if ((value < 0.0) or (value != std::floor(value)) or (value >= upper_limit))
+  if ((value < 0.0) or (std::floor(value) < value) or (value >= upper_limit))
     fatal(message);
   return static_cast<long>(value);
 }
