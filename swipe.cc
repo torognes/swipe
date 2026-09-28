@@ -1647,7 +1647,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    long const dframe = seqnosf & 3;
 
 	    hits_enter(seqno, score,
-		       reported_strands({qstrand, qframe, dstrand, dframe}), -1);
+		       reported_strands({qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1694,13 +1694,9 @@ auto search_chunk(struct search_data * sdp) -> void
 	    long const seqno = seqnosf >> 3;
 	    long const dstrand = (seqnosf >> 2) & 1;
 	    long const dframe = seqnosf & 3;
-		
-	    long const pos = sdp->bestpos[i];
-	    
-	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
 	    hits_enter(seqno, score,
-		       reported_strands({qstrand, qframe, dstrand, dframe}), pos);
+		       reported_strands({qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1758,7 +1754,7 @@ auto search_chunk(struct search_data * sdp) -> void
 			      gapextend);
 
 	  hits_enter(seqno, score,
-		     reported_strands({qstrand, qframe, dstrand, dframe}), -1);
+		     reported_strands({qstrand, qframe, dstrand, dframe}));
 	}
       }
   

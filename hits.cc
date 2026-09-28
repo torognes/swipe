@@ -179,8 +179,7 @@ auto hits_sort() -> long *
 }
 
 
-auto hits_enter(long seqno, long score, HitStrands const & strands,
-		long align_hint) -> void
+auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 {
   // show_progress();
 
@@ -236,8 +235,8 @@ auto hits_enter(long seqno, long score, HitStrands const & strands,
     hits_list[place].dstrand = strands.dstrand;
     hits_list[place].dframe = strands.dframe;
     hits_list[place].score = score;
-    hits_list[place].align_hint = align_hint;
     // set by hits_enter_align_hint(), for the hits to align
+    hits_list[place].align_hint = -1;
     hits_list[place].bestq = -1;
     if (hits_count < keephits)
     {

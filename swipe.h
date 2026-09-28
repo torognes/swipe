@@ -404,8 +404,7 @@ struct HitStrands
   long dframe;
 };
 
-auto hits_enter(long seqno, long score, HitStrands const & strands,
-		long align_hint) -> void;
+auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> long *;
 auto hits_getcount() -> long;
 auto hits_align(struct db_thread_s * t, long i) -> void;
