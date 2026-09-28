@@ -341,14 +341,14 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
   long maxhits = db_getseqcount_masked();
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
     {
       if (querystrands == 3)
       {
 	maxhits *= 2;
       }
     }
-  else if (symtype == 2)
+  else if (symtype == SymbolType::blastx)
     {
       if (querystrands == 3)
       {
@@ -359,11 +359,11 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
 	maxhits *= 3;
       }
     }
-  else if (symtype == 3)
+  else if (symtype == SymbolType::tblastn)
     {
       maxhits *= 6;
     }
-  else if (symtype == 4)
+  else if (symtype == SymbolType::tblastx)
     {
       if (querystrands == 3)
       {
@@ -411,7 +411,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   long m = 0;
   long n = 0;
   int lenadj = 0;
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     if (stats_getparams_nt(matchscore,
 			   mismatchscore,
@@ -473,9 +473,9 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
-  else if (symtype < 5)
+  else if (symtype < SymbolType::sound)
   {
-    if (symtype == 4)
+    if (symtype == SymbolType::tblastx)
     {
       stats_available = stats_getparams(matrixname,
 					32767,
@@ -509,7 +509,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       lenadj = 0;
       
       long qlen = query.aa[0].len;
-      if ((symtype == 2) || (symtype == 4))
+      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
       {
 	qlen = query.nt[0].len / 3;
       }
@@ -521,7 +521,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       }
       else
       {
-	if ((symtype == 3) || (symtype == 4))
+	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
 	{
 	  dlen = symcount / 3;
 	}
@@ -563,13 +563,13 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
   ungapped_H = H;
   double ungapped_alpha = 0;
   double ungapped_beta = 0;
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     stats_getparams_nt(matchscore, mismatchscore, 0, 0,
                        & ungapped_lambda, & ungapped_K, & ungapped_H,
                        & ungapped_alpha, & ungapped_beta);
   }
-  else if (symtype < 5)
+  else if (symtype < SymbolType::sound)
   {
     stats_getparams(matrixname, ungapped_penalty, ungapped_penalty,
 		    &ungapped_lambda, &ungapped_K, &ungapped_H,
@@ -673,7 +673,7 @@ auto hits_align(struct db_thread_s * t, long i) -> void
     
     char * qseq = nullptr;
     long qlen = 0;
-    if (symtype == 0)
+    if (symtype == SymbolType::blastn)
     {
       qseq = query.nt[0].seq;
       qlen = query.nt[0].len;
@@ -766,7 +766,7 @@ auto putalignop(char c, long len) -> void
       qs = q_seq[q_pos++];
       ds = d_seq[d_pos++];
       q_line[line_pos] = sym[static_cast<int>(qs)];
-      if (symtype == 0)
+      if (symtype == SymbolType::blastn)
       {
 	a_line[line_pos] = (qs == ds) ? '|' : ' ';
       }
@@ -812,13 +812,13 @@ auto putalignop(char c, long len) -> void
       long d1 = d_start + 1;
       long d2 = d_pos;
 
-      if ((symtype == 0) && (d_strand != 0))
+      if ((symtype == SymbolType::blastn) && (d_strand != 0))
       {
 	d1 = d_len - d1 + 1;
 	d2 = d_len - d2 + 1;
       }
 
-      if ((symtype == 2) || (symtype == 4))
+      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
       {
 	if (q_strand != 0)
 	{
@@ -832,7 +832,7 @@ auto putalignop(char c, long len) -> void
 	}
       }
       
-      if ((symtype == 3) || (symtype == 4))
+      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
       {
 	if (d_strand != 0)
 	{
@@ -869,13 +869,13 @@ auto show_align(long i) -> void
   d_frame = hits_list[i].dframe;
   char * alignment = hits_list[i].alignment;
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     sym = sym_ncbi_nt16;
     q_seq = query.nt[0].seq;
     q_len = query.nt[0].len;
   }
-  else if (symtype == 5)
+  else if (symtype == SymbolType::sound)
   {
     sym = sym_sound;
     q_seq = query.aa[0].seq;
@@ -951,13 +951,13 @@ auto whole_align(long i,
   q_strand = hits_list[i].qstrand;
   q_frame = hits_list[i].qframe;
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     sym = sym_ncbi_nt16;
     q_seq = query.nt[q_strand].seq;
     q_len = query.nt[q_strand].len;
   }
-  else if (symtype == 5)
+  else if (symtype == SymbolType::sound)
   {
     sym = sym_sound;
     q_seq = query.aa[0].seq;
@@ -1061,7 +1061,7 @@ auto whole_align(long i,
   d_first = hits_list[i].align_d_start;
   d_last = hits_list[i].align_d_end;
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     if (q_strand != 0)
     {
@@ -1076,7 +1076,7 @@ auto whole_align(long i,
     }
   }
   
-  if ((symtype == 2) || (symtype == 4))
+  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     if (q_strand != 0)
     {
@@ -1090,7 +1090,7 @@ auto whole_align(long i,
     }
   }
   
-  if ((symtype == 3) || (symtype == 4))
+  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
   {
     if (d_strand != 0)
     {
@@ -1136,13 +1136,13 @@ auto count_align(long i,
   q_strand = hits_list[i].qstrand;
   q_frame = hits_list[i].qframe;
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     sym = sym_ncbi_nt16;
     q_seq = query.nt[q_strand].seq;
     q_len = query.nt[q_strand].len;
   }
-  else if (symtype == 5)
+  else if (symtype == SymbolType::sound)
   {
     sym = sym_sound;
     q_seq = query.aa[0].seq;
@@ -1219,7 +1219,7 @@ auto count_align(long i,
   d_first = hits_list[i].align_d_start;
   d_last = hits_list[i].align_d_end;
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     if (q_strand != 0)
     {
@@ -1234,7 +1234,7 @@ auto count_align(long i,
     }
   }
   
-  if ((symtype == 2) || (symtype == 4))
+  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     if (q_strand != 0)
     {
@@ -1248,7 +1248,7 @@ auto count_align(long i,
     }
   }
   
-  if ((symtype == 3) || (symtype == 4))
+  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
   {
     if (d_strand != 0)
     {
@@ -1352,11 +1352,11 @@ auto xml_print(char const * const text,
   }
 }
 
-auto make_anchor(char * anchor, long size, long symbol_type, long query_index, long i) -> void
+auto make_anchor(char * anchor, long size, SymbolType symbol_type, long query_index, long i) -> void
 {
   switch(symbol_type)
   {
-  case 0:
+  case SymbolType::blastn:
     // blastn: the strand of a hit is stored as its database strand
     // (KI-29)
     snprintf(anchor, size, "%ld_%ld__%c__+",
@@ -1364,21 +1364,21 @@ auto make_anchor(char * anchor, long size, long symbol_type, long query_index, l
 	     hits_list[i].seqno,
 	     (hits_list[i].dstrand != 0) ? '-' : '+');
     break;
-  case 2:
+  case SymbolType::blastx:
     snprintf(anchor, size, "%ld_%ld_%ld_%c__",
 	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].qframe+1,
 	     (hits_list[i].qstrand != 0) ? '-' : '+');
     break;
-  case 3:
+  case SymbolType::tblastn:
     snprintf(anchor, size, "%ld_%ld___%ld_%c",
 	     query_index,
 	     hits_list[i].seqno,
 	     hits_list[i].dframe+1,
 	     (hits_list[i].dstrand != 0) ? '-' : '+');
     break;
-  case 4:
+  case SymbolType::tblastx:
     snprintf(anchor, size, "%ld_%ld_%ld_%c_%ld_%c",
 	     query_index,
 	     hits_list[i].seqno,
@@ -1442,12 +1442,12 @@ auto hits_show_xml_paralign(long showalignments,
   
   char const * qseqtypedescr = nullptr;
   struct sequence q;
-  if ((query.symtype == 1) || (query.symtype == 3))
+  if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     qseqtypedescr = "Amino Acid";
     q = query.aa[0];
   }
-  else if (query.symtype == 5)
+  else if (query.symtype == SymbolType::sound)
   {
     /* sound queries are stored as amino acid queries (KI-30) */
     qseqtypedescr = "Sound";
@@ -1479,7 +1479,7 @@ auto hits_show_xml_paralign(long showalignments,
   char const * dbseqtypedescr = nullptr;
   char const * ncbidb = nullptr;
   char const * ncbiopt = nullptr;
-  if ((query.symtype == 0) || (query.symtype == 3) || (query.symtype == 4))
+  if ((query.symtype == SymbolType::blastn) || (query.symtype == SymbolType::tblastn) || (query.symtype == SymbolType::tblastx))
   {
     dbseqtypedescr = "Nucleotide";
     ncbidb = "Nucleotide";
@@ -1493,7 +1493,7 @@ auto hits_show_xml_paralign(long showalignments,
   }
 
   /* sound databases are stored as amino acid databases (KI-30) */
-  if (query.symtype == 5)
+  if (query.symtype == SymbolType::sound)
   {
     dbseqtypedescr = "Sound";
   }
@@ -1533,12 +1533,12 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t\t<options>\n");
   fprintf(out, "\t\t\t<algorithm>Smith-Waterman</algorithm>\n");
 
-  if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+  if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     fprintf(out, "\t\t\t<queryStrands>%s</queryStrands>\n", strands);
   }
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     fprintf(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
   }
@@ -1646,23 +1646,23 @@ auto hits_show_xml_paralign(long showalignments,
     fprintf(out, "\t\t\t\t<shortVersionName>");
     xml_print(title, 35);
     fprintf(out, "</shortVersionName>\n");
-    if (symtype == 0)
+    if (symtype == SymbolType::blastn)
     {
       fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
     }
-    else if (symtype == 2)
+    else if (symtype == SymbolType::blastx)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].qstrand != 0) ? '-' : '+', 
 	     hits_list[i].qframe+1);
     }
-    else if (symtype == 3)
+    else if (symtype == SymbolType::tblastn)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].dstrand != 0) ? '-' : '+', 
 	     hits_list[i].dframe+1);
     }
-    else if (symtype == 4)
+    else if (symtype == SymbolType::tblastx)
     {
       fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld/%c%ld</shortVersionFrame>\n", 
 	     (hits_list[i].qstrand != 0) ? '-' : '+', 
@@ -1744,11 +1744,11 @@ auto hits_show_xml_paralign(long showalignments,
       long const dlen = hits_list[i].dlen;
       long const dlennt = hits_list[i].dlennt;
 
-      if (symtype == 0)
+      if (symtype == SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlen);
       }
-      else if ((symtype == 3) || (symtype == 4))
+      else if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
       {
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld nt</databaseSequenceLength>\n", dlennt);
       }
@@ -1757,15 +1757,15 @@ auto hits_show_xml_paralign(long showalignments,
 	fprintf(out, "\t\t\t\t<databaseSequenceLength>%ld aa</databaseSequenceLength>\n", dlen);
       }
 
-      if (symtype == 0)
+      if (symtype == SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t<alignmentMatchLocation>%s</alignmentMatchLocation>\n", (hits_list[i].dstrand != 0) ? "Matches on complementary strands." : "Matches on same strands.");
       }
-      else if ((symtype>=2) && (symtype<=4))
+      else if ((symtype>=SymbolType::blastx) && (symtype<=SymbolType::tblastx))
       {
 	fprintf(out, "\t\t\t\t<longVersionFrames>\n");
 
-	if ((symtype == 2) || (symtype == 4))
+	if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionQueryFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<queryStrand>%c</queryStrand>\n", (hits_list[i].qstrand != 0) ? '-' : '+');
@@ -1773,7 +1773,7 @@ auto hits_show_xml_paralign(long showalignments,
 	  fprintf(out, "\t\t\t\t\t</longVersionQueryFrame>\n");
 	}
 	
-	if ((symtype == 3) || (symtype == 4))
+	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "\t\t\t\t\t<longVersionDatabaseFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<databaseStrand>%c</databaseStrand>\n", (hits_list[i].dstrand != 0) ? '-' : '+');
@@ -1810,7 +1810,7 @@ auto hits_show_xml_paralign(long showalignments,
       fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", 100.0*identities/aligned);
       fprintf(out, "\t\t\t\t\t\t</identical>\n");
 
-      if (symtype != 0)
+      if (symtype != SymbolType::blastn)
       {
 	fprintf(out, "\t\t\t\t\t\t<positive>\n");
 	fprintf(out, "\t\t\t\t\t\t\t<positiveNominator>%ld</positiveNominator>\n", positives);
@@ -1900,7 +1900,7 @@ auto hits_show_xml(long show_gis,
     long const score = hits_list[i].score;
     // the database sequence length in nucleotides for tblastn and
     // tblastx, as in the other outputs (KI-36)
-    long const dlen = ((symtype == 3) || (symtype == 4)) ?
+    long const dlen = ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx)) ?
       hits_list[i].dlennt : hits_list[i].dlen;
     
     fprintf(out, "    <hit>\n");
@@ -2043,15 +2043,15 @@ auto hits_show_plain(long show_gis,
       for(long i=0; i<showhits; i++)
       {
 	long headerlen = 67;
-	if (symtype == 0)
+	if (symtype == SymbolType::blastn)
 	{
 	  headerlen = 65;
 	}
-	else if ((symtype == 2) || (symtype == 3))
+	else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastn))
 	{
 	  headerlen = 64;
 	}
-	else if (symtype == 4)
+	else if (symtype == SymbolType::tblastx)
 	{
 	  headerlen = 61;
 	}
@@ -2063,21 +2063,21 @@ auto hits_show_plain(long show_gis,
 
 	long const score = hits_list[i].score;
 
-	if (symtype == 0)
+	if (symtype == SymbolType::blastn)
 	{
 	  fprintf(out, " %c", (hits_list[i].dstrand != 0) ? '-' : '+');
 	}
-	else if (symtype == 2)
+	else if (symtype == SymbolType::blastx)
 	{
 	  fprintf(out, " %c%ld", (hits_list[i].qstrand != 0) ? '-' : '+',
 		 hits_list[i].qframe+1);
 	}
-	else if (symtype == 3)
+	else if (symtype == SymbolType::tblastn)
 	{
 	  fprintf(out, " %c%ld", (hits_list[i].dstrand != 0) ? '-' : '+',
 		 hits_list[i].dframe+1);
 	}
-	else if (symtype == 4)
+	else if (symtype == SymbolType::tblastx)
 	{
 	  fprintf(out, " %c%ld/%c%ld",
 		  (hits_list[i].qstrand != 0) ? '-' : '+',
@@ -2111,7 +2111,7 @@ auto hits_show_plain(long show_gis,
 	db_showheader(t, hits_list[i].header_address,
 		      hits_list[i].header_length,
 		      show_gis, 10, 0, 79, LONG_MAX, 1);
-	if ((symtype == 3) || (symtype == 4))
+	if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "          Length = %ld\n", hits_list[i].dlennt);
 	}
@@ -2148,7 +2148,7 @@ auto hits_show_plain(long show_gis,
 	      
 	fprintf(out, " Identities = %ld/%ld (%ld%%)",
 	       identities, aligned, identities * 100 / aligned);
-	if (symtype > 0)
+	if (symtype > SymbolType::blastn)
 	{
 	  fprintf(out, ", Positives = %ld/%ld (%ld%%)",
 		  positives, aligned, positives * 100 / aligned);
@@ -2159,19 +2159,19 @@ auto hits_show_plain(long show_gis,
 	}
 	fprintf(out, "\n");
 
-	if (symtype == 0)
+	if (symtype == SymbolType::blastn)
 	{
 	  fprintf(out, " Strand = %s\n", (hits_list[i].dstrand != 0) ? "Plus / Minus" : "Plus / Plus");
 	}
-	else if (symtype == 2)
+	else if (symtype == SymbolType::blastx)
 	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].qstrand != 0) ? '-':'+', hits_list[i].qframe+1);
 	}
-	else if (symtype == 3)
+	else if (symtype == SymbolType::tblastn)
 	{
 	  fprintf(out, " Frame = %c%ld\n", (hits_list[i].dstrand != 0) ? '-':'+', hits_list[i].dframe+1);
 	}
-	else if (symtype == 4)
+	else if (symtype == SymbolType::tblastx)
 	{
 	  fprintf(out, " Frame = %c%ld / %c%ld\n",
 		  (hits_list[i].qstrand != 0) ? '-' : '+',

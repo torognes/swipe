@@ -220,7 +220,7 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
 
 }  // anonymous namespace
 
-auto query_init(char const * query_filename, long symbol_type, long strands) -> void
+auto query_init(char const * query_filename, SymbolType symbol_type, long strands) -> void
 {
   if (strcmp(query_filename, "-") == 0)
   {
@@ -241,12 +241,12 @@ auto query_init(char const * query_filename, long symbol_type, long strands) -> 
   query.symtype = symbol_type;
   query.strands = strands;
 
-  if (query.symtype == 5)
+  if (query.symtype == SymbolType::sound)
   {
     query.map = map_sound;
     query.sym = sym_sound;
   }
-  else if ((query.symtype == 1) || (query.symtype == 3))
+  else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     query.map = map_ncbi_aa;
     query.sym = sym_ncbi_aa;
@@ -369,11 +369,11 @@ auto query_read() -> int
  
   char * map = nullptr;
 
-  if (symtype == 5)
+  if (symtype == SymbolType::sound)
   {
     map = map_sound;
   }
-  else if ((symtype == 1) || (symtype == 3))
+  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn))
   {
     map = map_ncbi_aa;
   }
@@ -403,7 +403,7 @@ auto query_read() -> int
   }
   query_sequence[query_length] = 0;
     
-  if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+  if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     query.nt[0].seq = query_sequence;
     query.nt[0].len = query_length;
@@ -415,7 +415,7 @@ auto query_read() -> int
       query.nt[1].len = query.nt[0].len;
     }
     
-    if ((symtype == 2) || (symtype == 4))
+    if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
     {
       for(long s=0; s<2; s++)
       {

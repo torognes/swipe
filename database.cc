@@ -60,7 +60,7 @@ struct db_main_s
   char * path;
 
   char * basename;
-  long symtype;
+  SymbolType symtype;
   long version;
   char * title;
   char * time;
@@ -300,7 +300,7 @@ auto db_init(db_main_t * v) -> void
   v->volumecount = 0;
 
   v->basename = nullptr;
-  v->symtype = -1;
+  v->symtype = static_cast<SymbolType>(-1);  // not set yet: db_open() sets it
   v->version = 0;
   v->title = nullptr;
   v->time = nullptr;
@@ -363,13 +363,13 @@ auto getnames(char * line, char * * * names) -> long
 
 namespace {
 
-auto db_read_alias(long symbol_type, char const * basename) -> al_info_t *
+auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
 {
   // open an alias file and read contents
 
   char * filename = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(filename, basename);
-  strcat(filename, ((symbol_type==1)||(symbol_type==2)||(symbol_type==5)) ? ".pal" : ".nal");
+  strcat(filename, ((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound)) ? ".pal" : ".nal");
   
   FILE * db_file_xal = fopen(filename, "r");
 
@@ -512,7 +512,7 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
   return value;
 }
 
-auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) -> long
+auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * volume) -> long
 {
   db_volume_init(volume);
 
@@ -527,7 +527,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
   char * name_psq = static_cast<char*>(xmalloc(strlen(basename)+5));
   strcpy(name_psq, basename);
 
-  if ((symbol_type==1)||(symbol_type==2)||(symbol_type==5))
+  if ((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound))
     {
       strcat(name_pin, ".pin");
       strcat(name_phr, ".phr");
@@ -650,7 +650,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
 
   /* offset tables: seqcount + 1 header and sequence offsets, and, for
      nucleotides, seqcount + 1 ambiguity offsets */
-  bool const is_nucleotide = (symbol_type != 1) and (symbol_type != 2) and (symbol_type != 5);
+  bool const is_nucleotide = (symbol_type != SymbolType::blastp) and (symbol_type != SymbolType::blastx) and (symbol_type != SymbolType::sound);
   long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
     (4 * (volume->seqcount + 1));
   check_xin_room(volume->adr_xin, tables_end);
@@ -941,7 +941,7 @@ auto db_read_taxid_file(char const * filename) -> void
 }  // anonymous namespace
 
 
-auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> void
+auto db_open(SymbolType symbol_type, char const * basename, char * taxidfilename) -> void
 {
   al_info_t * ai = nullptr;
 
@@ -1423,7 +1423,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long const length = offset2 - offset1;
   char * address = t->map_seq->map_address + (offset1 - t->map_seq->map_offset);
 
-  if ((db_main.symtype==0)||(db_main.symtype==3)||(db_main.symtype==4))
+  if ((db_main.symtype==SymbolType::blastn)||(db_main.symtype==SymbolType::tblastn)||(db_main.symtype==SymbolType::tblastx))
   {
     /* decompress nucleotide sequence */
 
@@ -1504,7 +1504,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       }
     }
     
-    if (db_main.symtype == 0)
+    if (db_main.symtype == SymbolType::blastn)
     {
       if (strand != 0)
       {
@@ -1541,7 +1541,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	*lengthp = nt_length + 1;
       }
     }
-    else if (((db_main.symtype == 3) || (db_main.symtype == 4)) and
+    else if (((db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx)) and
              (frame != untranslated_frame))
     {
       /* translation */
@@ -1636,18 +1636,18 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)
-  if ((db_main.symtype == 3) || (db_main.symtype == 4))
+  if ((db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx))
   {
     frame = untranslated_frame;
   }
 
   db_getsequence(t, seqno, strand, frame, & address, & length, & ntlen, 0);
 
-  if ((db_main.symtype == 1) || (db_main.symtype == 2))
+  if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
     db_print_seq_map(address, length-1, sym_ncbi_aa);
   }
-  else if ((db_main.symtype == 0) || (db_main.symtype == 3) || (db_main.symtype == 4))
+  else if ((db_main.symtype == SymbolType::blastn) || (db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx))
   {
     db_print_seq_map(address, length-1, sym_ncbi_nt16u);
   }

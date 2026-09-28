@@ -73,6 +73,18 @@ using UINT32 = unsigned int;
 using WORD = unsigned short;
 using BYTE = unsigned char;
 
+// symbol type of the search (option -p, --symtype): the query and
+// database sequence types, and their translations
+enum struct SymbolType : long
+{
+  blastn = 0,   // nucleotide query, nucleotide database
+  blastp = 1,   // amino acid query, amino acid database
+  blastx = 2,   // translated nucleotide query, amino acid database
+  tblastn = 3,  // amino acid query, translated nucleotide database
+  tblastx = 4,  // translated query, translated database
+  sound = 5     // sound codes
+};
+
 extern char BIAS;
 
 auto xmalloc(size_t size) -> void *;
@@ -88,7 +100,7 @@ extern long gapopen;
 extern long gapextend;
 extern long gapopenextend;
 extern long * score_matrix_63;
-extern long symtype;
+extern SymbolType symtype;
 extern long matchscore;
 extern long mismatchscore;
 extern long totalhits;
@@ -154,7 +166,7 @@ struct query_s
   struct sequence aa[6]; /* 6 frames */
   char * description;
   long dlen;
-  long symtype;
+  SymbolType symtype;
   long strands;
   char * map;
   char const * sym;
@@ -259,7 +271,7 @@ auto align(char * a_seq,
 	   char ** alignment,
 	   long * s) -> void;
 
-auto query_init(char const * query_filename, long symbol_type, long strands) -> void;
+auto query_init(char const * query_filename, SymbolType symbol_type, long strands) -> void;
 auto query_exit() -> void;
 auto query_read() -> int;
 auto query_show() -> void;
@@ -295,7 +307,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
-auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> void;
+auto db_open(SymbolType symbol_type, char const * basename, char * taxidfilename) -> void;
 auto db_close() -> void;
 auto db_getseqcount() -> long;
 auto db_getseqcount_masked() -> long;

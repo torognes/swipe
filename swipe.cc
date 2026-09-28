@@ -49,7 +49,7 @@ constexpr long default_matchscore = 1;
 constexpr long default_mismatchscore = -3;
 constexpr long default_threads = 1;
 constexpr long default_view = 0;
-constexpr long default_symtype = 1;
+constexpr SymbolType default_symtype = SymbolType::blastp;
 constexpr long default_show_gis = 0;
 constexpr long default_show_taxid = 0;
 constexpr double default_expect = 10.0;
@@ -72,7 +72,7 @@ long maxmatches;
 long gapopen;
 long gapextend;
 long threads;
-long symtype;
+SymbolType symtype;
 long show_taxid;
 long matchscore;
 long mismatchscore;
@@ -222,7 +222,7 @@ auto align_init(struct search_data * sdp) -> void
   long qlen = 0;
   long hearraylen = 0;
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     for (int s = 0; s < 2; s++)
     {
@@ -239,7 +239,7 @@ auto align_init(struct search_data * sdp) -> void
       }
     }
   }
-  else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
+  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn) || (symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
@@ -250,7 +250,7 @@ auto align_init(struct search_data * sdp) -> void
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == 2) || (symtype == 4))
+  else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     for (int s = 0; s < 2; s++)
     {
@@ -287,7 +287,7 @@ auto align_init(struct search_data * sdp) -> void
   sdp->bestpos = static_cast<long*>(xmalloc(listsize));
   sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -299,7 +299,7 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 2)
+  else if (symtype == SymbolType::blastx)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -311,7 +311,7 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 3)
+  else if (symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -323,7 +323,7 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == 4)
+  else if (symtype == SymbolType::tblastx)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -708,7 +708,7 @@ auto args_show() -> void
       fprintf(out, "Query file name:   %s\n", queryname);
 
       long qlen = 0;
-      if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+      if ((symtype == SymbolType::blastn) || (symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
       {
 	qlen = query.nt[0].len;
       }
@@ -721,7 +721,7 @@ auto args_show() -> void
 
       query_show();
 
-      if (symtype == 0)
+      if (symtype == SymbolType::blastn)
       {
 	fprintf(out, "Query strands:     ");
 	switch (querystrands)
@@ -754,12 +754,12 @@ auto args_show() -> void
       fprintf(out, "Show gi's:         %ld\n", show_gis);
       fprintf(out, "Show taxid's:      %ld\n", show_taxid);
       fprintf(out, "Threads:           %ld\n", threads);
-      fprintf(out, "Symbol type:       %s\n", symtypestring[symtype]);
-      if ((symtype == 2) || (symtype == 4))
+      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(symtype)]);
+      if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
       {
 	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[query_gencode - 1], query_gencode);
       }
-      if ((symtype == 3) || (symtype == 4))
+      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
       {
 	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode - 1], db_gencode);
       }
@@ -1074,31 +1074,31 @@ auto args_init(int argc, char * const * argv) -> void
 	  /* symtype */
 	  if (strcmp(optarg, "blastn") == 0)
 	  {
-	    symtype = 0;
+	    symtype = SymbolType::blastn;
 	  }
 	  else if (strcmp(optarg, "blastp") == 0)
 	  {
-	    symtype = 1;
+	    symtype = SymbolType::blastp;
 	  }
 	  else if (strcmp(optarg, "blastx") == 0)
 	  {
-	    symtype = 2;
+	    symtype = SymbolType::blastx;
 	  }
 	  else if (strcmp(optarg, "tblastn") == 0)
 	  {
-	    symtype = 3;
+	    symtype = SymbolType::tblastn;
 	  }
 	  else if (strcmp(optarg, "tblastx") == 0)
 	  {
-	    symtype = 4;
+	    symtype = SymbolType::tblastx;
 	  }
 	  else if (strcmp(optarg, "sound") == 0)
 	  {
-	    symtype = 5;
+	    symtype = SymbolType::sound;
 	  }
 	  else
 	  {
-	    symtype = parse_long(optarg, "Illegal symbol type.");
+	    symtype = static_cast<SymbolType>(parse_long(optarg, "Illegal symbol type."));
 	  }
 	  break;
 	  
@@ -1167,7 +1167,7 @@ auto args_init(int argc, char * const * argv) -> void
   long gopen_default = 0;
   long gextend_default = 0;
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     if (not gapopen_given)
     {
@@ -1178,7 +1178,7 @@ auto args_init(int argc, char * const * argv) -> void
       gapextend = 2;
     }
   }
-  else if (symtype < 5)
+  else if (symtype < SymbolType::sound)
   {
     if (strlen(matrixname) == 0)
     {
@@ -1205,7 +1205,7 @@ auto args_init(int argc, char * const * argv) -> void
       }
     }
   }
-  else if (symtype == 5)
+  else if (symtype == SymbolType::sound)
   {
     if (strlen(matrixname) == 0)
     {
@@ -1243,7 +1243,7 @@ auto args_init(int argc, char * const * argv) -> void
     fatal("Illegal view type.");
   }
 
-  if ((symtype < 0) || (symtype > 5))
+  if ((symtype < SymbolType::blastn) || (symtype > SymbolType::sound))
   {
     fatal("Illegal symbol type.");
   }
@@ -1258,7 +1258,7 @@ auto args_init(int argc, char * const * argv) -> void
     fatal("Illegal query strands specified.");
   }
 
-  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
+  if ((querystrands == 2) && ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn)))
   {
     fatal("Illegal strand specified for protein query.");
   }
@@ -1333,7 +1333,7 @@ auto search_init(struct search_data * sdp) -> void
   long qlen = 0;
   long hearraylen = 0;
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     for (int s = 0; s < 2; s++)
     {
@@ -1350,7 +1350,7 @@ auto search_init(struct search_data * sdp) -> void
       }
     }
   }
-  else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
+  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn) || (symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
@@ -1361,7 +1361,7 @@ auto search_init(struct search_data * sdp) -> void
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == 2) || (symtype == 4))
+  else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
   {
     for (int s = 0; s < 2; s++)
     {
@@ -1387,7 +1387,7 @@ auto search_init(struct search_data * sdp) -> void
   sdp->hearray = static_cast<BYTE*>(xmalloc(hearraylen*32));
 
   long listsize = maxchunksize * sizeof(long);
-  if ((symtype == 3) || (symtype == 4))
+  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
   {
     listsize *= 6;
   }
@@ -1399,7 +1399,7 @@ auto search_init(struct search_data * sdp) -> void
   sdp->bestpos = static_cast<long*>(xmalloc(listsize));
   sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -1411,7 +1411,7 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 2)
+  else if (symtype == SymbolType::blastx)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -1423,7 +1423,7 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 3)
+  else if (symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -1435,7 +1435,7 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == 4)
+  else if (symtype == SymbolType::tblastx)
   {
     sdp->qstrand1 = querystrands == 2 ? 1 : 0;
     sdp->qframe1 = 0;
@@ -1537,7 +1537,7 @@ auto search_chunk(struct search_data * sdp) -> void
   {
     if (db_check_inclusion(sdp->dbt, seqno) != 0)
     {
-      if ((symtype == 3) || (symtype == 4))
+      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
       {
 	for (long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
 	{
@@ -1638,7 +1638,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    dstrand = (seqnosf >> 2) & 1;
 	    dframe = seqnosf & 3;
 
-	    if ((symtype == 0) && (qstrand != 0))
+	    if ((symtype == SymbolType::blastn) && (qstrand != 0))
 	    {
 	      hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
 	    }
@@ -1697,7 +1697,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    
 	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 
-	    if ((symtype == 0) && (qstrand != 0))
+	    if ((symtype == SymbolType::blastn) && (qstrand != 0))
 	    {
 	      hits_enter(seqno, score, 0, 0, 1, 0, pos, -1);
 	    }
@@ -1743,7 +1743,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  char const * dend = address + length - 1;
       
 	  char * q = nullptr;
-	  if (symtype == 0)
+	  if (symtype == SymbolType::blastn)
 	  {
 	    q = query.nt[qstrand].seq;
 	  }
@@ -1761,7 +1761,7 @@ auto search_chunk(struct search_data * sdp) -> void
 			      gapopenextend,
 			      gapextend);
 
-	  if ((symtype == 0) && (qstrand != 0))
+	  if ((symtype == SymbolType::blastn) && (qstrand != 0))
 	  {
 	    hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
 	  }
@@ -1884,7 +1884,7 @@ auto clock_stop(struct time_info * tip) -> void
   
   double speed = (static_cast<double>(db_getsymcount_masked()));
 
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     speed *= query.nt[0].len;
     if (querystrands == 3)
@@ -1892,12 +1892,12 @@ auto clock_stop(struct time_info * tip) -> void
       speed *= 2;
     }
   }
-  else if ((symtype == 1) || (symtype == 5))
+  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::sound))
   {
     /* sound queries are stored as amino acid queries (KI-33) */
     speed *= query.aa[0].len;
   }
-  else if (symtype == 2)
+  else if (symtype == SymbolType::blastx)
   {
     speed *= query.nt[0].len;
     if (querystrands == 3)
@@ -1905,12 +1905,12 @@ auto clock_stop(struct time_info * tip) -> void
       speed *= 2;
     }
   }
-  else if (symtype == 3)
+  else if (symtype == SymbolType::tblastn)
   {
     speed *= 2;
     speed *= query.aa[0].len;
   }
-  else if (symtype == 4)
+  else if (symtype == SymbolType::tblastx)
   {
     speed *= 2;
     speed *= query.nt[0].len;

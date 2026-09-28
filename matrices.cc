@@ -358,7 +358,7 @@ auto score_matrix_read_file(char const * matrix) -> void
     fatal("Cannot open score matrix file.");
   }
 
-  if (symtype == 5)
+  if (symtype == SymbolType::sound)
   {
     map = map_sound;
   }
@@ -454,7 +454,7 @@ auto score_matrix_read_string(char const * matrix) -> void
     fatal("Cannot read score matrix string.");
   }
 
-  if (symtype == 5)
+  if (symtype == SymbolType::sound)
   {
     map = map_sound;
   }
@@ -565,7 +565,7 @@ auto score_matrix_read() -> void
   score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
   memset(score_matrix_63, -1, 32*32*8);
   
-  if (symtype == 0)
+  if (symtype == SymbolType::blastn)
   {
     for (a = 1; a < 16; a++)
     {
