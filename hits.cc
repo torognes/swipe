@@ -742,6 +742,8 @@ void putalignop(char c, long len)
       d_line[line_pos] = sym[(int)(ds)];
       line_pos++;
       break;
+    default:
+      break;
     }
 
     if ((line_pos == ALIGNLEN) || ((c == 0) && (line_pos > 0)))
@@ -1460,6 +1462,8 @@ void hits_show_xml_paralign(long showalignments,
     break;
   case 3:
     strands = "Both";
+    break;
+  default:
     break;
   }
 

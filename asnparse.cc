@@ -290,6 +290,8 @@ void parse_object_id(apt p)
     strcpy(p->gnl_id_string, p->parsed_string);
     match_obj(p, 0);
     break;
+  default:
+    break;
   }
 }
 
@@ -344,6 +346,8 @@ void parse_id_pat(apt p)
     parse_visiblestring(p);
     strcpy(p->pat_id, p->parsed_string);
     match_obj(p,0);
+    break;
+  default:
     break;
   }
   match_obj(p,0);
@@ -604,6 +608,8 @@ void parse_date(apt p)
 #endif
     parse_date_std(p);
     break;
+  default:
+    break;
   }
   match_obj(p,0);
 }
@@ -796,6 +802,8 @@ void parse_seq_id(apt p)
     set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
     break;
 
+  default:
+    break;
   }
 
   match_obj(p,0);

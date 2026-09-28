@@ -724,6 +724,8 @@ void args_show()
 	case 3:
 	  fprintf(out, "Plus and minus");
 	  break;
+	default:
+	  break;
 	}
 	fprintf(out, "\n");
 	fprintf(out, "Score matrix:      %ld/%ld\n", matchscore, mismatchscore);
