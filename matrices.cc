@@ -332,27 +332,6 @@ short * score_matrix_16 = nullptr;
 unsigned int * score_matrix_32 = nullptr;
 long * score_matrix_63 = nullptr;
 
-void score_matrix_dump()
-{
-  fprintf(out, "     ");
-  for(int i=0; i<32; i++)
-    fprintf(out, "%2d", i);
-  fprintf(out, "\n");
-  fprintf(out, "     ");
-  for(int i=0; i<32; i++)
-    fprintf(out, " %c", sym_ncbi_aa[i]);
-  fprintf(out, "\n");
-  for(int i=0; i<32; i++)
-  {
-    fprintf(out, "%2d %c ", i, sym_ncbi_aa[i]);
-    for(int j=0; j<32; j++)
-      {
-	fprintf(out, "%2ld", score_matrix_63[(i<<5) + j]);
-      }
-    fprintf(out, "\n");
-  }
-}
-
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
@@ -619,7 +598,6 @@ void score_matrix_read()
 void score_matrix_init()
 {
   score_matrix_read();
-  //  score_matrix_dump();
 }
 
 void score_matrix_free()

@@ -342,81 +342,6 @@ long getnames(char * line, char * * * names)
 }  // anonymous namespace
 
 
-void show_alias_info(al_info_t * ai)
-{
-  if (ai->title)
-    fprintf(stderr, "TITLE: %s\n", ai->title);
-  
-  fprintf(stderr, "VOLUMES: %ld\n", ai->dblist_len);
-  
-  for(long i = 0; i < ai->dblist_len; i++)
-    fprintf(stderr, "DBLIST(%ld): %s\n", i, ai->dblist[i]);
-  
-  // for masked files
-  
-  for(long i = 0; i < ai->oidlist_len; i++)
-    fprintf(stderr, "OIDLIST(%ld): %s\n", i, ai->oidlist[i]);
-  if (ai->length >= 0)
-    fprintf(stderr, "LENGTH: %ld\n", ai->length);
-  if (ai->nseq >= 0)
-    fprintf(stderr, "NSEQ: %ld\n", ai->nseq);
-  if (ai->maxoid >= 0)
-    fprintf(stderr, "MAXOID: %ld\n", ai->maxoid);
-  if (ai->memb_bit >= 0)
-    fprintf(stderr, "MEMB_BIT: %ld\n", ai->memb_bit);
-  
-}
-
-
-void show_db_info(db_main_t * vol)
-{
-  fprintf(stderr, "DB info:\n");
-  fprintf(stderr, "volumecount: %ld\n", vol->volumecount);
-  fprintf(stderr, "basename: %s\n", vol->basename);
-  fprintf(stderr, "path: %s\n", vol->path);
-  fprintf(stderr, "symtype: %c\n", symtype_disp[vol->symtype]);
-  fprintf(stderr, "version: %ld\n", vol->version);
-  fprintf(stderr, "title: %s\n", vol->title);
-  fprintf(stderr, "time: %s\n", vol->time);
-  fprintf(stderr, "seqcount: %ld\n", vol->seqcount);
-  fprintf(stderr, "longest: %ld\n", vol->longest);
-  fprintf(stderr, "symcount: %ld\n", vol->symcount);
-  fprintf(stderr, "memb_bit: %ld\n", vol->memb_bit);
-  fprintf(stderr, "masked_seqcount: %ld\n", vol->masked_seqcount);
-  fprintf(stderr, "masked_symcount: %ld\n", vol->masked_symcount);
-  fprintf(stderr, "taxid_filename: %s\n", vol->taxid_filename);
-  fprintf(stderr, "taxid_file: %p\n", static_cast<void *>(vol->taxid_file));
-  fprintf(stderr, "taxid_bitmap_address: %p\n", vol->taxid_bitmap_address);
-  fprintf(stderr, "taxid_bitmap_size: %ld\n", vol->taxid_bitmap_size);
-  fprintf(stderr, "\n");
-}
-
-void show_volume_info(db_volume_t * vol)
-{
-  fprintf(stderr, "Volume info:\n");
-  fprintf(stderr, "basename: %s\n", vol->basename);
-  fprintf(stderr, "symtype: %c\n", symtype_disp[vol->symtype]);
-  fprintf(stderr, "version: %ld\n", vol->version);
-  fprintf(stderr, "title: %s\n", vol->title);
-  fprintf(stderr, "time: %s\n", vol->time);
-  fprintf(stderr, "seqcount: %ld\n", vol->seqcount);
-  fprintf(stderr, "longest: %ld\n", vol->longest);
-  fprintf(stderr, "symcount: %ld\n", vol->symcount);
-  fprintf(stderr, "masked_title: %s\n", vol->masked_title);
-  fprintf(stderr, "masked_length: %ld\n", vol->masked_length);
-  fprintf(stderr, "masked_nseq: %ld\n", vol->masked_nseq);
-  fprintf(stderr, "masked_maxoid: %ld\n", vol->masked_maxoid);
-  fprintf(stderr, "masked_memb_bit: %ld\n", vol->masked_memb_bit);
-  fprintf(stderr, "masked_mskfile: %s\n", vol->masked_mskfile);
-  fprintf(stderr, "offset_xhr: %ld\n", vol->offset_xhr);
-  fprintf(stderr, "offset_xsq: %ld\n", vol->offset_xsq);
-  fprintf(stderr, "offset_amb: %ld\n", vol->offset_amb);
-  fprintf(stderr, "len_xin: %ld\n", vol->len_xin);
-  fprintf(stderr, "len_xsq: %ld\n", vol->len_xsq);
-  fprintf(stderr, "len_xhr: %ld\n", vol->len_xhr);
-  fprintf(stderr, "adr_xin: %p\n", vol->adr_xin);
-  fprintf(stderr, "\n");
-}
 
 
 namespace {
@@ -496,7 +421,6 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
 
     fclose(db_file_xal);
 
-    //    show_alias_info(al_info);
     
     return al_info;
   }
@@ -973,7 +897,6 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
 	    db_open_msk(db_volume + vol);
 	  }
 	  
-	  //	  show_volume_info(db_volume+vol);
 
 	  db_main.seqcount += db_volume[vol].seqcount;
 	  db_main.symcount += db_volume[vol].symcount;
@@ -1016,7 +939,6 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
 	  db_open_msk(db_volume + vol);
 	}
 
-	//	show_volume_info(db_volume+vol);
 
 	db_main.seqcount += db_volume[vol].seqcount;
 	db_main.symcount += db_volume[vol].symcount;
@@ -1042,7 +964,6 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
     db_volume_init(db_volume);
     db_open_xin(symbol_type, basename, db_volume);
     
-    //    show_volume_info(db_volume+vol);
 
     vol++;
 
@@ -1064,7 +985,6 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
     db_main.masked_symcount = db_main.symcount;
   }
 
-  //  show_db_info(&db_main);
   
   /* prepare nucleotide decompression table */
 
@@ -1380,23 +1300,6 @@ void db_translate(char * dna, long dlen,
 }
 
 }  // anonymous namespace
-
-void hexdump(char * address, long length)
-{
-  char * p = address;
-  
-  for (long i = 0; i < length; i++)
-  {
-    if ((i % 16) == 0)
-    {
-      if (i>0)
-	fprintf(stderr, "\n");
-      fprintf(stderr, "%016lx", (long) p);
-    }
-    fprintf(stderr, " %02x", (unsigned char) *p++);
-  }
-  fprintf(stderr, "\n");
-}
 
 void db_getsequence(db_thread_t * t, long seqno, long strand, long frame, 
 		    char ** addressp, long * lengthp, long * ntlenp, int c)

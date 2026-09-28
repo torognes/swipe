@@ -34,25 +34,6 @@
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
 
-void dprofile_dump16(WORD * dprofile)
-{
-  const char * s = sym_ncbi_aa;
-  printf("dprofile_word:\n");
-  for(int i=0; i<32; i++)
-  {
-    printf("%c: ",s[i]);
-    for(int k=0; k<CDEPTH; k++)
-    {
-      printf("[");
-      for(int j=0; j<CHANNELS; j++)
-	printf("%2d", (short) dprofile[CHANNELS*CDEPTH*i + CHANNELS*k + j]);
-      printf("]");
-    }
-    printf("\n");
-  }
-  exit(1);
-}
-
 // Register usage
 // rdi:   hep
 // rsi:   qp
@@ -318,7 +299,6 @@ inline void dprofile_fill16(WORD * dprofile_word,
       _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+7) + CHANNELS*j), xmm31);
     }
   }
-  //  dprofile_dump16(dprofile_word);
 }
 
 void search16(WORD * * q_start,

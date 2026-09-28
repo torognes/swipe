@@ -175,7 +175,6 @@ inline void dprofile_shuffle7(BYTE * dprofile,
 
 #endif
 
-  //  dprofile_dump7(dprofile);
 }
 
 #else
@@ -484,56 +483,6 @@ inline void dprofile_fill7(BYTE * dprofile,
     _mm_store_si128((__m128i*)(dprofile+16*j+1536+448), xmm15);
   }
 
-  //  dprofile_dump7(dprofile);
-}
-
-void dprofile_dump7(BYTE * dprofile)
-{
-  const char * ss = sym_ncbi_aa;
-  //  char * ss = sym_sound;
-
-  printf("\ndprofile:\n");
-  for(int k=0; k<4; k++)
-  {
-    printf("k=%d 0 1 2 3 4 5 6 7 8 9 a b c d e f\n", k);
-    for(int i=0; i<32; i++)
-    {
-      printf("%c: ",ss[i]);
-      for(int j=0; j<16; j++)
-	printf("%2d", (char) dprofile[i*64+16*k+j]);
-      printf("\n");
-    }
-  }
-  printf("\n");
-  exit(1);
-}
-
-int dumpcounter = 0;
-char lines[4*16*1000];
-
-void dseq_dump7(BYTE * dseq)
-{
-  const char * s = sym_ncbi_aa;
-
-  if (dumpcounter < 21)
-  {
-    for(int i=0; i<CHANNELS; i++)
-    {
-      for(int j=0; j<CDEPTH; j++)
-      {
-	lines[4000*i+4*dumpcounter+j] = s[dseq[j*CHANNELS+i]];
-      }
-    }
-    dumpcounter++;
-  }
-  else
-  {
-    for(int i=0; i<16; i++)
-    {
-      printf("%.1000s\n", lines+4000*i);
-    }
-    exit(1);
-  }
 }
 
 #endif
