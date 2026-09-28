@@ -111,6 +111,68 @@ inline auto searches_strand(QueryStrands const strands, long const strand) -> bo
   return ((strand + 1) & static_cast<long>(strands)) != 0;
 }
 
+/* ARGUMENTS AND THEIR DEFAULTS */
+
+constexpr long default_maxmatches = 250;
+constexpr long default_alignments = 100;
+constexpr long default_minscore = 1;
+constexpr long default_maxscore = LONG_MAX;
+constexpr char const * default_queryname = "-";
+constexpr char const * default_databasename = "";
+constexpr long default_gapopen = 0;
+constexpr long default_gapextend = 0;
+constexpr char const * default_matrixname = "BLOSUM62";
+constexpr long default_matchscore = 1;
+constexpr long default_mismatchscore = -3;
+constexpr long default_threads = 1;
+constexpr OutputFormat default_view = OutputFormat::plain;
+constexpr SymbolType default_symtype = SymbolType::blastp;
+constexpr long default_show_gis = 0;
+constexpr long default_show_taxid = 0;
+constexpr double default_expect = 10.0;
+constexpr double default_minexpect = 0.0;
+constexpr QueryStrands default_querystrands = QueryStrands::both;
+constexpr long default_query_gencode = 1;
+constexpr long default_db_gencode = 1;
+constexpr long default_subalignments = 1;
+constexpr long default_dump = 0;
+constexpr long default_effdbsize = 0;
+
+// the command-line options, final once args_init() has parsed and
+// checked them (including the gap penalties that default to those of
+// the score matrix or of the symbol type); gapopenextend is derived
+struct Parameters
+{
+  char * progname = nullptr;
+  char const * matrixname = "";
+  char const * databasename = default_databasename;
+  char const * queryname = default_queryname;
+  char * taxidfilename = nullptr;
+  char * outfile = nullptr;
+  double expect = default_expect;
+  double minexpect = default_minexpect;
+  long alignments = default_alignments;
+  long maxmatches = default_maxmatches;
+  long minscore = default_minscore;
+  long maxscore = default_maxscore;
+  long gapopen = default_gapopen;
+  long gapextend = default_gapextend;
+  long gapopenextend = 0;
+  long matchscore = default_matchscore;
+  long mismatchscore = default_mismatchscore;
+  long threads = default_threads;
+  SymbolType symtype = default_symtype;
+  QueryStrands querystrands = default_querystrands;
+  OutputFormat view = default_view;
+  long show_gis = default_show_gis;
+  long show_taxid = default_show_taxid;
+  long query_gencode = default_query_gencode;
+  long db_gencode = default_db_gencode;
+  long subalignments = default_subalignments;
+  long dump = default_dump;
+  long effdbsize = default_effdbsize;
+};
+
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
 

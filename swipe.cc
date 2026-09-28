@@ -36,32 +36,6 @@
 #include <string>  // std::string (fatal)
 #include <vector>
 
-/* ARGUMENTS AND THEIR DEFAULTS */
-
-constexpr long default_maxmatches = 250;
-constexpr long default_alignments = 100;
-constexpr long default_minscore = 1;
-constexpr long default_maxscore = LONG_MAX;
-constexpr char const * default_queryname = "-";
-constexpr char const * default_databasename = "";
-constexpr long default_gapopen = 0;
-constexpr long default_gapextend = 0;
-constexpr char const * default_matrixname = "BLOSUM62";
-constexpr long default_matchscore = 1;
-constexpr long default_mismatchscore = -3;
-constexpr long default_threads = 1;
-constexpr OutputFormat default_view = OutputFormat::plain;
-constexpr SymbolType default_symtype = SymbolType::blastp;
-constexpr long default_show_gis = 0;
-constexpr long default_show_taxid = 0;
-constexpr double default_expect = 10.0;
-constexpr double default_minexpect = 0.0;
-constexpr QueryStrands default_querystrands = QueryStrands::both;
-constexpr long default_query_gencode = 1;
-constexpr long default_db_gencode = 1;
-constexpr long default_subalignments = 1;
-constexpr long default_dump = 0;
-constexpr long default_effdbsize = 0;
 
 char const * matrixname;
 char const * databasename;
@@ -102,7 +76,6 @@ struct time_info ti;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-char * progname;
 char * taxidfilename;
 char * outfile = nullptr;
 long minscore;
@@ -778,12 +751,12 @@ auto args_show() -> void
     }
 }
   
-auto args_usage() -> void
+auto args_usage(char const * const program_name) -> void
 {
   /* options unused by BLAST: chkuxHN */
   /* options used by SWIPE:   chkuxHN  */
 
-  fprintf(out, "Usage: %s [OPTIONS]\n", progname);
+  fprintf(out, "Usage: %s [OPTIONS]\n", program_name);
   fprintf(out, "  -h, --help                 show help\n");
   fprintf(out, "      --version              show version\n");
   fprintf(out, "  -d, --db=FILE              sequence database base name (required)\n");
@@ -820,12 +793,12 @@ auto args_version() -> void
   fprintf(out, "%s\n\n%s\n", title, ref);
 }
 
-auto args_help() -> void
+auto args_help(char const * const program_name) -> void
 {
   args_version();
   fprintf(out, "\n");
   
-  args_usage();
+  args_usage(program_name);
 }
 
 // strict conversions of option values (KI-9): the whole value must be
@@ -872,36 +845,11 @@ auto parse_dbsize(char const * const text) -> long
   return static_cast<long>(value);
 }
 
-auto args_init(int argc, char * const * argv) -> void
+auto args_init(int argc, char * const * argv) -> Parameters
 {
-  /* Set defaults */
-  gapopen = default_gapopen;
-  gapextend = default_gapextend;
-  matrixname = "";
-  queryname = default_queryname;
-  databasename = default_databasename;
-  minscore = default_minscore;
-  maxscore = default_maxscore;
-  maxmatches = default_maxmatches;
-  alignments = default_alignments;
-  threads = default_threads;
-  view = default_view;
-  symtype = default_symtype;
-  show_gis = default_show_gis;
-  show_taxid = default_show_taxid;
-  expect = default_expect;
-  minexpect = default_minexpect;
-  taxidfilename = nullptr;
-  matchscore = default_matchscore;
-  mismatchscore = default_mismatchscore;
-  querystrands = default_querystrands;
-  query_gencode = default_query_gencode;
-  db_gencode = default_db_gencode;
-  subalignments = default_subalignments;
-  dump = default_dump;
-  effdbsize = default_effdbsize;
+  Parameters parameters;
 
-  progname = argv[0];
+  parameters.progname = argv[0];
 
   opterr = 1;
   char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
@@ -963,17 +911,17 @@ auto args_init(int argc, char * const * argv) -> void
 	{
 	case 'a':
 	  /* threads */
-	  threads = parse_long(optarg, "Illegal number of threads specified");
+	  parameters.threads = parse_long(optarg, "Illegal number of threads specified");
 	  break;
 	  
 	case 'b':
 	  /* alignments */
-	  alignments = parse_long(optarg, "Illegal number of alignments specified.");
+	  parameters.alignments = parse_long(optarg, "Illegal number of alignments specified.");
 	  break;
 	  
 	case 'c':
 	  /* min score threshold */
-	  minscore = parse_long(optarg, "Illegal minimum score specified.");
+	  parameters.minscore = parse_long(optarg, "Illegal minimum score specified.");
 	  break;
 	  
 	case 'C':
@@ -986,22 +934,22 @@ auto args_init(int argc, char * const * argv) -> void
 
 	case 'd':
 	  /* database */
-	  databasename = optarg;
+	  parameters.databasename = optarg;
 	  break;
 	  
 	case 'D':
 	  /* database genetic code */
-	  db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
+	  parameters.db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
 	  break;
 	  
 	case 'e':
 	  /* evalue */
-	  expect = parse_double(optarg, "Illegal expect value specified.");
+	  parameters.expect = parse_double(optarg, "Illegal expect value specified.");
 	  break;
 	  
 	case 'E':
 	  /* gap extend */
-	  gapextend = parse_long(optarg, "Illegal gap penalties.");
+	  parameters.gapextend = parse_long(optarg, "Illegal gap penalties.");
 	  gapextend_given = true;
 	  break;
 	  
@@ -1015,12 +963,12 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'G':
 	  /* gap open */
-	  gapopen = parse_long(optarg, "Illegal gap penalties.");
+	  parameters.gapopen = parse_long(optarg, "Illegal gap penalties.");
 	  gapopen_given = true;
 	  break;
 	  
 	case 'h':
-	  args_help();
+	  args_help(parameters.progname);
 	  exit(0);
 	  break;
 
@@ -1032,138 +980,138 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'H':
 	  /* show_taxid */
-	  show_taxid = 1;
+	  parameters.show_taxid = 1;
 	  break;
 	  
 	case 'i':
 	  /* query */
-	  queryname = optarg;
+	  parameters.queryname = optarg;
 	  break;
 	  
 	case 'I':
 	  /* show_gis */
-	  show_gis = 1;
+	  parameters.show_gis = 1;
 	  break;
 	  
 	case 'k':
 	  /* min evalue threshold */
-	  minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
+	  parameters.minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
 	  break;
 	  
 	case 'K':
 	  /* subalignments */
-	  subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
+	  parameters.subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
 	  break;
 	  
 	case 'm':
 	  /* view */
-	  view = static_cast<OutputFormat>(parse_long(optarg, "Illegal view type."));
+	  parameters.view = static_cast<OutputFormat>(parse_long(optarg, "Illegal view type."));
 	  break;
 	  
 	case 'M':
 	  /* matrix */
-	  matrixname = optarg;
+	  parameters.matrixname = optarg;
 	  break;
 	  
 	case 'N':
 	  /* dump */
-	  dump = parse_long(optarg, "Illegal dump mode.");
+	  parameters.dump = parse_long(optarg, "Illegal dump mode.");
 	  break;
 	  
 	case 'o':
 	  /* output file */
-	  outfile = optarg;
+	  parameters.outfile = optarg;
 	  break;
 	  
 	case 'p':
 	  /* symtype */
 	  if (strcmp(optarg, "blastn") == 0)
 	  {
-	    symtype = SymbolType::blastn;
+	    parameters.symtype = SymbolType::blastn;
 	  }
 	  else if (strcmp(optarg, "blastp") == 0)
 	  {
-	    symtype = SymbolType::blastp;
+	    parameters.symtype = SymbolType::blastp;
 	  }
 	  else if (strcmp(optarg, "blastx") == 0)
 	  {
-	    symtype = SymbolType::blastx;
+	    parameters.symtype = SymbolType::blastx;
 	  }
 	  else if (strcmp(optarg, "tblastn") == 0)
 	  {
-	    symtype = SymbolType::tblastn;
+	    parameters.symtype = SymbolType::tblastn;
 	  }
 	  else if (strcmp(optarg, "tblastx") == 0)
 	  {
-	    symtype = SymbolType::tblastx;
+	    parameters.symtype = SymbolType::tblastx;
 	  }
 	  else if (strcmp(optarg, "sound") == 0)
 	  {
-	    symtype = SymbolType::sound;
+	    parameters.symtype = SymbolType::sound;
 	  }
 	  else
 	  {
-	    symtype = static_cast<SymbolType>(parse_long(optarg, "Illegal symbol type."));
+	    parameters.symtype = static_cast<SymbolType>(parse_long(optarg, "Illegal symbol type."));
 	  }
 	  break;
 	  
 	case 'q':
 	  /* penalty */
-	  mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
+	  parameters.mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
 	  break;
 	  
 	case 'Q':
 	  /* query genetic code */
-	  query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
+	  parameters.query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
 	  break;
 	  
 	case 'r':
 	  /* reward */
-	  matchscore = parse_long(optarg, "Illegal match reward specified.");
+	  parameters.matchscore = parse_long(optarg, "Illegal match reward specified.");
 	  break;
 	  
 	case 'S':
 	  if (strcmp(optarg, "plus") == 0)
 	  {
-	    querystrands = QueryStrands::plus;
+	    parameters.querystrands = QueryStrands::plus;
 	  }
 	  else if (strcmp(optarg, "minus") == 0)
 	  {
-	    querystrands = QueryStrands::minus;
+	    parameters.querystrands = QueryStrands::minus;
 	  }
 	  else if (strcmp(optarg, "both") == 0)
 	  {
-	    querystrands = QueryStrands::both;
+	    parameters.querystrands = QueryStrands::both;
 	  }
 	  else
 	  {
-	    querystrands = static_cast<QueryStrands>(parse_long(optarg, "Illegal query strands specified."));
+	    parameters.querystrands = static_cast<QueryStrands>(parse_long(optarg, "Illegal query strands specified."));
 	  }
 	  break;
 
 	case 'u':
 	  /* maxscore */
-	  maxscore = parse_long(optarg, "Illegal maximum score specified.");
+	  parameters.maxscore = parse_long(optarg, "Illegal maximum score specified.");
 	  break;
 	  
 	case 'v':
 	  /* max matches shown */
-	  maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
+	  parameters.maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
 	  break;
 	  
 	case 'x':
 	  /* taxid filename */
-	  taxidfilename = optarg;
+	  parameters.taxidfilename = optarg;
 	  break;
 	  
 	case 'z':
 	  /* effective db size */
-	  effdbsize = parse_dbsize(optarg);
+	  parameters.effdbsize = parse_dbsize(optarg);
 	  break;
 	  
 	case '?':
 	default:
-	  args_usage();
+	  args_usage(parameters.progname);
 	  exit(1);
 	  break;
 	}
@@ -1172,33 +1120,33 @@ auto args_init(int argc, char * const * argv) -> void
   long gopen_default = 0;
   long gextend_default = 0;
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     if (not gapopen_given)
     {
-      gapopen = 5;
+      parameters.gapopen = 5;
     }
     if (not gapextend_given)
     {
-      gapextend = 2;
+      parameters.gapextend = 2;
     }
   }
-  else if (symtype < SymbolType::sound)
+  else if (parameters.symtype < SymbolType::sound)
   {
-    if (strlen(matrixname) == 0)
+    if (strlen(parameters.matrixname) == 0)
     {
-      matrixname = default_matrixname;
+      parameters.matrixname = default_matrixname;
     }
 
-    if (stats_getprefs(matrixname, & gopen_default, & gextend_default) != 0)
+    if (stats_getprefs(parameters.matrixname, & gopen_default, & gextend_default) != 0)
     {
       if (not gapopen_given)
       {
-	gapopen = gopen_default;
+	parameters.gapopen = gopen_default;
       }
       if (not gapextend_given)
       {
-	gapextend = gextend_default;
+	parameters.gapextend = gextend_default;
       }
     }
     else
@@ -1210,117 +1158,117 @@ auto args_init(int argc, char * const * argv) -> void
       }
     }
   }
-  else if (symtype == SymbolType::sound)
+  else if (parameters.symtype == SymbolType::sound)
   {
-    if (strlen(matrixname) == 0)
+    if (strlen(parameters.matrixname) == 0)
     {
-      matrixname = "IDENTITY_5_1";
+      parameters.matrixname = "IDENTITY_5_1";
     }
     if (not gapopen_given)
     {
-      gapopen = 15;
+      parameters.gapopen = 15;
     }
     if (not gapextend_given)
     {
-      gapextend = 5;
+      parameters.gapextend = 5;
     }
   }
 
-  gapopenextend = gapopen + gapextend;
+  parameters.gapopenextend = parameters.gapopen + parameters.gapextend;
 
-  if (effdbsize < 0)
+  if (parameters.effdbsize < 0)
   {
     fatal("Illegal effective db size specified");
   }
 
-  if ((threads < 1) || (threads > max_threads))
+  if ((parameters.threads < 1) || (parameters.threads > max_threads))
   {
     fatal("Illegal number of threads specified");
   }
 
-  if (strlen(databasename) == 0)
+  if (strlen(parameters.databasename) == 0)
   {
     fatal("No database specified.");
   }
 
-  if (!((view == OutputFormat::plain) || (view == OutputFormat::xml) || (view == OutputFormat::tabular) || (view == OutputFormat::tabular_with_comments) || (view == OutputFormat::paralign_xml)))
+  if (!((parameters.view == OutputFormat::plain) || (parameters.view == OutputFormat::xml) || (parameters.view == OutputFormat::tabular) || (parameters.view == OutputFormat::tabular_with_comments) || (parameters.view == OutputFormat::paralign_xml)))
   {
     fatal("Illegal view type.");
   }
 
-  if ((symtype < SymbolType::blastn) || (symtype > SymbolType::sound))
+  if ((parameters.symtype < SymbolType::blastn) || (parameters.symtype > SymbolType::sound))
   {
     fatal("Illegal symbol type.");
   }
 
-  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
+  if ((parameters.gapopen < 0) || (parameters.gapextend < 0) || ((parameters.gapopen + parameters.gapextend) < 1))
   {
     fatal("Illegal gap penalties.");
   }
 
-  if ((querystrands < QueryStrands::plus) || (querystrands > QueryStrands::both))
+  if ((parameters.querystrands < QueryStrands::plus) || (parameters.querystrands > QueryStrands::both))
   {
     fatal("Illegal query strands specified.");
   }
 
-  if ((querystrands == QueryStrands::minus) && ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn)))
+  if ((parameters.querystrands == QueryStrands::minus) && ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn)))
   {
     fatal("Illegal strand specified for protein query.");
   }
 
-  if ((query_gencode < 1) || (query_gencode > 23) || (gencode_names[query_gencode - 1] == nullptr))
+  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[parameters.query_gencode - 1] == nullptr))
   {
     fatal("Illegal query genetic code specified.");
   }
 
-  if ((db_gencode < 1) || (db_gencode > 23) || (gencode_names[db_gencode - 1] == nullptr))
+  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[parameters.db_gencode - 1] == nullptr))
   {
     fatal("Illegal database genetic code specified.");
   }
 
-  if ((dump < 0) || (dump > 2))
+  if ((parameters.dump < 0) || (parameters.dump > 2))
   {
     fatal("Illegal dump mode.");
   }
 
   /* ranges of the result limits (KI-7, KI-9) */
-  if (maxmatches < 0)
+  if (parameters.maxmatches < 0)
   {
     fatal("Illegal number of descriptions specified.");
   }
 
-  if (alignments < 0)
+  if (parameters.alignments < 0)
   {
     fatal("Illegal number of alignments specified.");
   }
 
   /* scores below 1 are not alignments ("Internal error in align
      function.") */
-  if (minscore < 1)
+  if (parameters.minscore < 1)
   {
     fatal("Illegal minimum score specified.");
   }
 
-  if (maxscore < 0)
+  if (parameters.maxscore < 0)
   {
     fatal("Illegal maximum score specified.");
   }
 
-  if (expect <= 0.0)
+  if (parameters.expect <= 0.0)
   {
     fatal("Illegal expect value specified.");
   }
 
-  if (minexpect < 0.0)
+  if (parameters.minexpect < 0.0)
   {
     fatal("Illegal minimum expect value specified.");
   }
 
   /* the output file is opened (and truncated) only once all the
      options are checked (KI-8) */
-  if (outfile != nullptr)
+  if (parameters.outfile != nullptr)
   {
-    FILE * f = fopen(outfile, "w");
+    FILE * f = fopen(parameters.outfile, "w");
     if (f == nullptr)
     {
       fatal("Unable to open output file for writing.");
@@ -1328,7 +1276,42 @@ auto args_init(int argc, char * const * argv) -> void
     out = f;
   }
   
-  translate_init(query_gencode, db_gencode);
+  translate_init(parameters.query_gencode, parameters.db_gencode);
+
+  return parameters;
+}
+
+// hand-over to the option globals, until every file takes the
+// parameters by reference (track C step 5, decision Q35)
+auto set_option_globals(Parameters const & parameters) -> void
+{
+  matrixname = parameters.matrixname;
+  databasename = parameters.databasename;
+  queryname = parameters.queryname;
+  taxidfilename = parameters.taxidfilename;
+  outfile = parameters.outfile;
+  expect = parameters.expect;
+  minexpect = parameters.minexpect;
+  alignments = parameters.alignments;
+  maxmatches = parameters.maxmatches;
+  minscore = parameters.minscore;
+  maxscore = parameters.maxscore;
+  gapopen = parameters.gapopen;
+  gapextend = parameters.gapextend;
+  gapopenextend = parameters.gapopenextend;
+  matchscore = parameters.matchscore;
+  mismatchscore = parameters.mismatchscore;
+  threads = parameters.threads;
+  symtype = parameters.symtype;
+  querystrands = parameters.querystrands;
+  view = parameters.view;
+  show_gis = parameters.show_gis;
+  show_taxid = parameters.show_taxid;
+  query_gencode = parameters.query_gencode;
+  db_gencode = parameters.db_gencode;
+  subalignments = parameters.subalignments;
+  dump = parameters.dump;
+  effdbsize = parameters.effdbsize;
 }
 
 auto search_init(struct search_data * sdp) -> void
@@ -1995,7 +1978,8 @@ auto main(int argc, char**argv) -> int
     fatal("This program requires a processor with SSE2.");
   }
 
-  args_init(argc,argv);
+  auto const parameters = args_init(argc, argv);
+  set_option_globals(parameters);
 
   db_open(symtype, databasename, taxidfilename);
   
