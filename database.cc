@@ -902,11 +902,8 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
       
       if ((ai2 = db_read_alias(symbol_type, basename2)) != nullptr)
       {
-	if (ai->memb_bit != 0)
-	{
-	  if ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1))
-	    fatal("Illegal alias file (2).");
-	}
+	if ((ai->memb_bit != 0) && ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1)))
+	  fatal("Illegal alias file (2).");
 	
 	for(long j=0; j < ai2->dblist_len; j++)
 	{
@@ -948,11 +945,8 @@ auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> v
             db_main.memb_bit = 0;
           }
 
-	if (ai->memb_bit != 0)
-	{
-	  if ((ai->oidlist_len != 1) || (ai->dblist_len != 1))
-	    fatal("Illegal alias file (1).");
-	}
+	if ((ai->memb_bit != 0) && ((ai->oidlist_len != 1) || (ai->dblist_len != 1)))
+	  fatal("Illegal alias file (1).");
 	
 	db_volume_init(db_volume + vol);
 	db_open_xin(symbol_type, basename2, db_volume+vol);
@@ -1574,12 +1568,9 @@ auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
 
 auto db_check_inclusion(db_thread_t * t, long seqno) -> long
 {
-  if (db_main.memb_bit != 0)
+  if ((db_main.memb_bit != 0) && (db_check_msk(seqno) == 0))
   {
-    if (db_check_msk(seqno) == 0)
-    {
-      return 0;
-    }
+    return 0;
   }
   
   if (db_main.taxid_bitmap_address != nullptr)

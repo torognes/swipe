@@ -955,9 +955,8 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
 
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
-      if (p->maxlen != 0U)
-	if (show > p->maxlen)
-	  show = p->maxlen;
+      if ((p->maxlen != 0U) && (show > p->maxlen))
+	show = p->maxlen;
       
       if ((show < strlen(defline)) && (show >= 3))
       {

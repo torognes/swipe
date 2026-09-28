@@ -774,13 +774,10 @@ auto putalignop(char c, long len) -> void
       long d1 = d_start + 1;
       long d2 = d_pos;
 
-      if (symtype == 0)
+      if ((symtype == 0) && (d_strand != 0))
       {
-	if (d_strand != 0)
-	{
-	  d1 = d_len - d1 + 1;
-	  d2 = d_len - d2 + 1;
-	}
+	d1 = d_len - d1 + 1;
+	d2 = d_len - d2 + 1;
       }
 
       if ((symtype == 2) || (symtype == 4))
