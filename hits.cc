@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::min
+#include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
 #include <cmath>  // std::isnan
@@ -717,36 +718,163 @@ auto hits_align(struct db_thread_s * t, long i) -> void
 }
 
 
-constexpr long ALIGNLEN = 60;
+constexpr std::size_t ALIGNLEN = 60;
 
 namespace {
 
-long line_pos;
-long q_start;
-long d_start;
-long q_pos;
-long d_pos;
-long q_len;
-long q_len_nt;
-long d_len;
-long d_len_nt;
-long d_strand;
-long d_frame;
-long q_strand;
-long q_frame;
-long q_first;
-long q_last;
-long d_first;
-long d_last;
-char * q_seq;
-char * d_seq;
-char q_line[ALIGNLEN+1];
-char a_line[ALIGNLEN+1];
-char d_line[ALIGNLEN+1];
-char const * sym;
-int poswidth;
+// a hit, as seen by the alignment printers: its sequences, strands
+// and frames, and the first and last positions of its alignment, as
+// displayed (1-based, in nucleotides for translated sequences)
+struct AlignedHit
+{
+  char const * alignment = nullptr;
+  char const * sym = nullptr;
+  char const * q_seq = nullptr;
+  char const * d_seq = nullptr;
+  long q_align_start = 0;
+  long d_align_start = 0;
+  long q_len = 0;
+  long q_len_nt = 0;
+  long d_len = 0;
+  long d_len_nt = 0;
+  long q_strand = 0;
+  long q_frame = 0;
+  long d_strand = 0;
+  long d_frame = 0;
+  long q_first = 0;
+  long q_last = 0;
+  long d_first = 0;
+  long d_last = 0;
+  int poswidth = 1;
+};
 
-auto putalignop(char c, long len) -> void
+auto aligned_hit(long const i) -> AlignedHit
+{
+  struct hits_entry const & entry = hits_list[i];
+  AlignedHit hit;
+  hit.alignment = entry.alignment;
+  hit.q_align_start = entry.align_q_start;
+  hit.d_align_start = entry.align_d_start;
+  hit.q_strand = entry.qstrand;
+  hit.q_frame = entry.qframe;
+  hit.d_strand = entry.dstrand;
+  hit.d_frame = entry.dframe;
+  
+  if (symtype == SymbolType::blastn)
+  {
+    // hits of the reverse complement of the query are entered on the
+    // reverse strand of the database sequence (reported_strands())
+    assert(hit.q_strand == 0);
+    hit.sym = sym_ncbi_nt16;
+    hit.q_seq = query.nt[hit.q_strand].seq;
+    hit.q_len = query.nt[hit.q_strand].len;
+  }
+  else if (symtype == SymbolType::sound)
+  {
+    hit.sym = sym_sound;
+    hit.q_seq = query.aa[0].seq;
+    hit.q_len = query.aa[0].len;
+  }
+  else
+  {
+    hit.sym = sym_ncbi_aa;
+    hit.q_seq = query.aa[(3*hit.q_strand)+hit.q_frame].seq;
+    hit.q_len = query.aa[(3*hit.q_strand)+hit.q_frame].len;
+    hit.q_len_nt = query.nt[0].len;
+    hit.d_len_nt = entry.dlennt;
+  }
+
+  hit.d_seq = entry.dseq;
+  hit.d_len = entry.dlen;
+
+  /* calculate first and last alignment positions for display */
+
+  hit.q_first = entry.align_q_start;
+  hit.q_last = entry.align_q_end;
+  hit.d_first = entry.align_d_start;
+  hit.d_last = entry.align_d_end;
+  
+  if (symtype == SymbolType::blastn)
+  {
+    if (hit.q_strand != 0)
+    {
+      hit.q_first = hit.q_len - 1 - hit.q_first;
+      hit.q_last = hit.q_len - 1 - hit.q_last;
+    }
+
+    if (hit.d_strand != 0)
+    {
+      hit.d_first = hit.d_len - 1 - hit.d_first;
+      hit.d_last = hit.d_len - 1 - hit.d_last;
+    }
+  }
+  
+  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  {
+    if (hit.q_strand != 0)
+    {
+      hit.q_first = query.nt[0].len - 1 - (3 * hit.q_first) - hit.q_frame;
+      hit.q_last = query.nt[0].len - 1 - (3 * hit.q_last) - hit.q_frame - 2;
+    }
+    else
+    {
+      hit.q_first = (3 * hit.q_first) + hit.q_frame;
+      hit.q_last = (3 * hit.q_last) + hit.q_frame + 2;
+    }
+  }
+  
+  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+  {
+    if (hit.d_strand != 0)
+    {
+      hit.d_first = hit.d_len_nt - 1 - (3 * hit.d_first) - hit.d_frame;
+      hit.d_last = hit.d_len_nt - 1 - (3 * hit.d_last) - hit.d_frame - 2;
+    }
+    else
+    {
+      hit.d_first = (3 * hit.d_first) + hit.d_frame;
+      hit.d_last = (3 * hit.d_last) + hit.d_frame + 2;
+    }
+  }
+
+  hit.q_first++;
+  hit.q_last++;
+  hit.d_first++;
+  hit.d_last++;
+
+  long const maxqpos = hit.q_first > hit.q_last ? hit.q_first : hit.q_last; 
+  long const maxdpos = hit.d_first > hit.d_last ? hit.d_first : hit.d_last; 
+  long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
+  hit.poswidth = 1;
+  while (maxpos > 9)
+  {
+    maxpos /= 10;
+    hit.poswidth++;
+  }
+
+  return hit;
+}
+
+// show_align(): the alignment of a hit, in lines of ALIGNLEN columns
+struct AlignmentLines
+{
+  explicit AlignmentLines(AlignedHit const & aligned) :
+    hit(aligned), q_pos(aligned.q_align_start), d_pos(aligned.d_align_start) {}
+
+  auto putalignop(char c, long len) -> void;
+
+  AlignedHit const & hit;
+  std::size_t line_pos = 0;
+  long q_start = 0;
+  long d_start = 0;
+  long q_pos = 0;
+  long d_pos = 0;
+  std::array<char, ALIGNLEN + 1> q_line {{}};
+  std::array<char, ALIGNLEN + 1> a_line {{}};
+  std::array<char, ALIGNLEN + 1> d_line {{}};
+};
+
+auto AlignmentLines::putalignop(char c, long len) -> void
 {
 
   long count = len;
@@ -764,35 +892,35 @@ auto putalignop(char c, long len) -> void
     switch(c)
     {
     case 'M':
-      qs = q_seq[q_pos++];
-      ds = d_seq[d_pos++];
-      q_line[line_pos] = sym[static_cast<int>(qs)];
+      qs = hit.q_seq[q_pos++];
+      ds = hit.d_seq[d_pos++];
+      q_line[line_pos] = hit.sym[static_cast<int>(qs)];
       if (symtype == SymbolType::blastn)
       {
 	a_line[line_pos] = (qs == ds) ? '|' : ' ';
       }
       else
       {
-	a_line[line_pos] = (qs == ds) ? sym[static_cast<int>(qs)] : 
+	a_line[line_pos] = (qs == ds) ? hit.sym[static_cast<int>(qs)] : 
 	  (score_matrix_63[(32*qs)+ds] > 0 ? '+' : ' ');
       }
-      d_line[line_pos] = sym[static_cast<int>(ds)];
+      d_line[line_pos] = hit.sym[static_cast<int>(ds)];
       line_pos++;
       break;
 
     case 'D':
-      qs = q_seq[q_pos++];
-      q_line[line_pos] = sym[static_cast<int>(qs)];
+      qs = hit.q_seq[q_pos++];
+      q_line[line_pos] = hit.sym[static_cast<int>(qs)];
       a_line[line_pos] = ' ';
       d_line[line_pos] = '-';
       line_pos++;
       break;
 
     case 'I':
-      ds = d_seq[d_pos++];
+      ds = hit.d_seq[d_pos++];
       q_line[line_pos] = '-';
       a_line[line_pos] = ' ';
-      d_line[line_pos] = sym[static_cast<int>(ds)];
+      d_line[line_pos] = hit.sym[static_cast<int>(ds)];
       line_pos++;
       break;
     default:
@@ -813,45 +941,45 @@ auto putalignop(char c, long len) -> void
       long d1 = d_start + 1;
       long d2 = d_pos;
 
-      if ((symtype == SymbolType::blastn) && (d_strand != 0))
+      if ((symtype == SymbolType::blastn) && (hit.d_strand != 0))
       {
-	d1 = d_len - d1 + 1;
-	d2 = d_len - d2 + 1;
+	d1 = hit.d_len - d1 + 1;
+	d2 = hit.d_len - d2 + 1;
       }
 
       if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
       {
-	if (q_strand != 0)
+	if (hit.q_strand != 0)
 	{
-	  q1 = q_len_nt - (3*q_start) - q_frame;
-	  q2 = q_len_nt - (3*q_pos) - q_frame + 1;
+	  q1 = hit.q_len_nt - (3*q_start) - hit.q_frame;
+	  q2 = hit.q_len_nt - (3*q_pos) - hit.q_frame + 1;
 	}
 	else
 	{
-	  q1 = (3*q_start) + q_frame + 1;
-	  q2 = (3*q_pos) + q_frame;
+	  q1 = (3*q_start) + hit.q_frame + 1;
+	  q2 = (3*q_pos) + hit.q_frame;
 	}
       }
       
       if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
       {
-	if (d_strand != 0)
+	if (hit.d_strand != 0)
 	{
-	  d1 = d_len_nt - (3*d_start) - d_frame;
-	  d2 = d_len_nt - (3*d_pos) - d_frame + 1;
+	  d1 = hit.d_len_nt - (3*d_start) - hit.d_frame;
+	  d2 = hit.d_len_nt - (3*d_pos) - hit.d_frame + 1;
 	}
 	else
 	{
-	  d1 = (3*d_start) + d_frame + 1;
-	  d2 = (3*d_pos) + d_frame;
+	  d1 = (3*d_start) + hit.d_frame + 1;
+	  d2 = (3*d_pos) + hit.d_frame;
 	}
       }
 
 
       fprintf(out, "\n");
-      fprintf(out, "Query: %*ld %s %ld\n", poswidth, q1, q_line, q2);
-      fprintf(out, "       %*s %s\n", poswidth, "", a_line);
-      fprintf(out, "Sbjct: %*ld %s %ld\n", poswidth, d1, d_line, d2);
+      fprintf(out, "Query: %*ld %s %ld\n", hit.poswidth, q1, q_line.data(), q2);
+      fprintf(out, "       %*s %s\n", hit.poswidth, "", a_line.data());
+      fprintf(out, "Sbjct: %*ld %s %ld\n", hit.poswidth, d1, d_line.data(), d2);
 
       line_pos = 0;
     }
@@ -860,45 +988,12 @@ auto putalignop(char c, long len) -> void
   }
 }
 
-auto show_align(long i) -> void
+auto show_align(AlignedHit const & hit) -> void
 {
-  long const q_align_start = hits_list[i].align_q_start;
-  long const d_align_start = hits_list[i].align_d_start;
-  q_strand = hits_list[i].qstrand;
-  q_frame = hits_list[i].qframe;
-  d_strand = hits_list[i].dstrand;
-  d_frame = hits_list[i].dframe;
-  char * alignment = hits_list[i].alignment;
+  AlignmentLines lines(hit);
   
-  if (symtype == SymbolType::blastn)
-  {
-    sym = sym_ncbi_nt16;
-    q_seq = query.nt[0].seq;
-    q_len = query.nt[0].len;
-  }
-  else if (symtype == SymbolType::sound)
-  {
-    sym = sym_sound;
-    q_seq = query.aa[0].seq;
-    q_len = query.aa[0].len;
-  }
-  else
-  {
-    sym = sym_ncbi_aa;
-    q_seq = query.aa[(3*q_strand)+q_frame].seq;
-    q_len = query.aa[(3*q_strand)+q_frame].len;
-    q_len_nt = query.nt[0].len;
-    d_len_nt = hits_list[i].dlennt;
-  }
-
-  d_seq = hits_list[i].dseq;
-  d_len = hits_list[i].dlen;
-  
-  q_pos = q_align_start;
-  d_pos = d_align_start;
-  
-  char const * p = alignment;
-  char const * e = alignment + strlen(alignment);
+  char const * p = hit.alignment;
+  char const * e = hit.alignment + strlen(hit.alignment);
   
   while(p < e)
   {
@@ -907,13 +1002,13 @@ auto show_align(long i) -> void
     int n = 0;
     sscanf(p, "%ld%n", & len, & n);
     p += n;
-    putalignop(op, len);
+    lines.putalignop(op, len);
   }
   
-  putalignop(0, 1);
+  lines.putalignop(0, 1);
 }
 
-auto whole_align(long i,
+auto whole_align(AlignedHit const & hit,
 		 long * identities,
 		 long * positives,
 		 long * indels,
@@ -925,8 +1020,7 @@ auto whole_align(long i,
 {
 
   long al = 0;
-  char * alignment = hits_list[i].alignment;
-  char const * p = alignment;
+  char const * p = hit.alignment;
   while((*p) != 0)
   {
     long len = 0;
@@ -944,48 +1038,16 @@ auto whole_align(long i,
   *aline = alinep;
   *dline = dlinep;
 
-  long const q_align_start = hits_list[i].align_q_start;
-  long const d_align_start = hits_list[i].align_d_start;
-
-  d_strand = hits_list[i].dstrand;
-  d_frame = hits_list[i].dframe;
-  q_strand = hits_list[i].qstrand;
-  q_frame = hits_list[i].qframe;
-  
-  if (symtype == SymbolType::blastn)
-  {
-    sym = sym_ncbi_nt16;
-    q_seq = query.nt[q_strand].seq;
-    q_len = query.nt[q_strand].len;
-  }
-  else if (symtype == SymbolType::sound)
-  {
-    sym = sym_sound;
-    q_seq = query.aa[0].seq;
-    q_len = query.aa[0].len;
-  }
-  else
-  {
-    sym = sym_ncbi_aa;
-    q_seq = query.aa[(3*q_strand)+q_frame].seq;
-    q_len = query.aa[(3*q_strand)+q_frame].len;
-    q_len_nt = query.nt[0].len;
-    d_len_nt = hits_list[i].dlennt;
-  }
-
   *identities = 0;
   *positives = 0;
   *indels = 0;
   *gaps = 0;
   *aligned = 0;
   
-  d_seq = hits_list[i].dseq;
-  d_len = hits_list[i].dlen;
+  long q_pos = hit.q_align_start;
+  long d_pos = hit.d_align_start;
   
-  q_pos = q_align_start;
-  d_pos = d_align_start;
-  
-  p = alignment;
+  p = hit.alignment;
 
   while((*p) != 0)
   {
@@ -1000,8 +1062,8 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char const qs = q_seq[q_pos++];
-	*qlinep++ = sym[static_cast<int>(qs)];
+	char const qs = hit.q_seq[q_pos++];
+	*qlinep++ = hit.sym[static_cast<int>(qs)];
 	*alinep++ = ' ';
 	*dlinep++ = '-';
       }
@@ -1012,10 +1074,10 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char const ds = d_seq[d_pos++];
+	char const ds = hit.d_seq[d_pos++];
 	*qlinep++ = '-';
 	*alinep++ = ' ';
-	*dlinep++ = sym[static_cast<int>(ds)];
+	*dlinep++ = hit.sym[static_cast<int>(ds)];
       }
       *gaps += 1;
       *indels += len;
@@ -1024,9 +1086,9 @@ auto whole_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char const qs = q_seq[q_pos++];
-	char const ds = d_seq[d_pos++];
-	*qlinep++ = sym[static_cast<int>(qs)];
+	char const qs = hit.q_seq[q_pos++];
+	char const ds = hit.d_seq[d_pos++];
+	*qlinep++ = hit.sym[static_cast<int>(qs)];
 	if (qs == ds)
 	{
 	  *alinep++ = '|';
@@ -1042,7 +1104,7 @@ auto whole_align(long i,
 	{
 	  *alinep++ = ' ';
 	}
-	*dlinep++ = sym[static_cast<int>(ds)];
+	*dlinep++ = hit.sym[static_cast<int>(ds)];
       }
     }
     else
@@ -1054,124 +1116,26 @@ auto whole_align(long i,
   *qlinep = 0;
   *alinep = 0;
   *dlinep = 0;
-
-  /* calculate first and last alignment positions for display */
-
-  q_first = hits_list[i].align_q_start;
-  q_last = hits_list[i].align_q_end;
-  d_first = hits_list[i].align_d_start;
-  d_last = hits_list[i].align_d_end;
-  
-  if (symtype == SymbolType::blastn)
-  {
-    if (q_strand != 0)
-    {
-      q_first = q_len - 1 - q_first;
-      q_last = q_len - 1 - q_last;
-    }
-
-    if (d_strand != 0)
-    {
-      d_first = d_len - 1 - d_first;
-      d_last = d_len - 1 - d_last;
-    }
-  }
-  
-  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
-  {
-    if (q_strand != 0)
-    {
-      q_first = query.nt[0].len - 1 - (3 * q_first) - q_frame;
-      q_last = query.nt[0].len - 1 - (3 * q_last) - q_frame - 2;
-    }
-    else
-    {
-      q_first = (3 * q_first) + q_frame;
-      q_last = (3 * q_last) + q_frame + 2;
-    }
-  }
-  
-  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
-  {
-    if (d_strand != 0)
-    {
-      d_first = d_len_nt - 1 - (3 * d_first) - d_frame;
-      d_last = d_len_nt - 1 - (3 * d_last) - d_frame - 2;
-    }
-    else
-    {
-      d_first = (3 * d_first) + d_frame;
-      d_last = (3 * d_last) + d_frame + 2;
-    }
-  }
-
-  q_first++;
-  q_last++;
-  d_first++;
-  d_last++;
-
-  long const maxqpos = q_first > q_last ? q_first : q_last; 
-  long const maxdpos = d_first > d_last ? d_first : d_last; 
-  long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
-  poswidth = 1;
-  while (maxpos > 9)
-  {
-    maxpos /= 10;
-    poswidth++;
-  }
 }
 
-auto count_align(long i,
+auto count_align(AlignedHit const & hit,
 		 long * identities,
 		 long * positives,
 		 long * indels,
 		 long * aligned,
 		 long * gaps) -> void
 {
-  long const q_align_start = hits_list[i].align_q_start;
-  long const d_align_start = hits_list[i].align_d_start;
-  char * alignment = hits_list[i].alignment;
-
-  d_strand = hits_list[i].dstrand;
-  d_frame = hits_list[i].dframe;
-  q_strand = hits_list[i].qstrand;
-  q_frame = hits_list[i].qframe;
-  
-  if (symtype == SymbolType::blastn)
-  {
-    sym = sym_ncbi_nt16;
-    q_seq = query.nt[q_strand].seq;
-    q_len = query.nt[q_strand].len;
-  }
-  else if (symtype == SymbolType::sound)
-  {
-    sym = sym_sound;
-    q_seq = query.aa[0].seq;
-    q_len = query.aa[0].len;
-  }
-  else
-  {
-    sym = sym_ncbi_aa;
-    q_seq = query.aa[(3*q_strand)+q_frame].seq;
-    q_len = query.aa[(3*q_strand)+q_frame].len;
-    q_len_nt = query.nt[0].len;
-    d_len_nt = hits_list[i].dlennt;
-  }
-
   *identities = 0;
   *positives = 0;
   *indels = 0;
   *gaps = 0;
   *aligned = 0;
   
-  d_seq = hits_list[i].dseq;
-  d_len = hits_list[i].dlen;
+  long q_pos = hit.q_align_start;
+  long d_pos = hit.d_align_start;
   
-  q_pos = q_align_start;
-  d_pos = d_align_start;
-  
-  char const * p = alignment;
-  char const * e = alignment + strlen(alignment);
+  char const * p = hit.alignment;
+  char const * e = hit.alignment + strlen(hit.alignment);
 
   while(p < e)
   {
@@ -1198,8 +1162,8 @@ auto count_align(long i,
     {
       for(long j=0; j<len; j++)
       {
-	char const qs = q_seq[q_pos++];
-	char const ds = d_seq[d_pos++];
+	char const qs = hit.q_seq[q_pos++];
+	char const ds = hit.d_seq[d_pos++];
 	if (qs == ds)
 	{
 	  (*identities)++;
@@ -1211,71 +1175,6 @@ auto count_align(long i,
 	}
       }
     }
-  }
-
-  /* calculate first and last alignment positions for display */
-
-  q_first = hits_list[i].align_q_start;
-  q_last = hits_list[i].align_q_end;
-  d_first = hits_list[i].align_d_start;
-  d_last = hits_list[i].align_d_end;
-  
-  if (symtype == SymbolType::blastn)
-  {
-    if (q_strand != 0)
-    {
-      q_first = q_len - 1 - q_first;
-      q_last = q_len - 1 - q_last;
-    }
-
-    if (d_strand != 0)
-    {
-      d_first = d_len - 1 - d_first;
-      d_last = d_len - 1 - d_last;
-    }
-  }
-  
-  if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
-  {
-    if (q_strand != 0)
-    {
-      q_first = query.nt[0].len - 1 - (3 * q_first) - q_frame;
-      q_last = query.nt[0].len - 1 - (3 * q_last) - q_frame - 2;
-    }
-    else
-    {
-      q_first = (3 * q_first) + q_frame;
-      q_last = (3 * q_last) + q_frame + 2;
-    }
-  }
-  
-  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
-  {
-    if (d_strand != 0)
-    {
-      d_first = d_len_nt - 1 - (3 * d_first) - d_frame;
-      d_last = d_len_nt - 1 - (3 * d_last) - d_frame - 2;
-    }
-    else
-    {
-      d_first = (3 * d_first) + d_frame;
-      d_last = (3 * d_last) + d_frame + 2;
-    }
-  }
-
-  q_first++;
-  q_last++;
-  d_first++;
-  d_last++;
-
-  long const maxqpos = q_first > q_last ? q_first : q_last; 
-  long const maxdpos = d_first > d_last ? d_first : d_last; 
-  long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
-  poswidth = 1;
-  while (maxpos > 9)
-  {
-    maxpos /= 10;
-    poswidth++;
   }
 }
 
@@ -1798,7 +1697,8 @@ auto hits_show_xml_paralign(long showalignments,
       char *aline = nullptr;
       char *dline = nullptr;
         
-      whole_align(i, & identities, & positives, & indels, & aligned, & gaps,
+      AlignedHit const hit = aligned_hit(i);
+      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
 
       fprintf(out, "\t\t\t\t<alignment>\n");
@@ -1827,15 +1727,15 @@ auto hits_show_xml_paralign(long showalignments,
       fprintf(out, "\t\t\t\t\t\t</indels>\n");
       fprintf(out, "\t\t\t\t\t\t<gaps>%ld</gaps>\n", gaps);
       fprintf(out, "\t\t\t\t\t\t<alignmentQuery>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryStart>%ld</alignmentQueryStart>\n", q_first);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryStart>%ld</alignmentQueryStart>\n", hit.q_first);
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryLine>%s</alignmentQueryLine>\n", qline);
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>%ld</alignmentQueryEnd>\n", q_last);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>%ld</alignmentQueryEnd>\n", hit.q_last);
       fprintf(out, "\t\t\t\t\t\t</alignmentQuery>\n");
       fprintf(out, "\t\t\t\t\t\t<alignmentLine>%s</alignmentLine>\n", aline);
       fprintf(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>%ld</alignmentDatabaseStart>\n", d_first);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>%ld</alignmentDatabaseStart>\n", hit.d_first);
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>%s</alignmentDatabaseLine>\n", dline);
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>%ld</alignmentDatabaseEnd>\n", d_last);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>%ld</alignmentDatabaseEnd>\n", hit.d_last);
       fprintf(out, "\t\t\t\t\t\t</alignmentDatabase>\n");
       fprintf(out, "\t\t\t\t\t</subalignment>\n");
       fprintf(out, "\t\t\t\t</alignment>\n");
@@ -1932,15 +1832,16 @@ auto hits_show_xml(long show_gis,
       char *aline = nullptr;
       char *dline = nullptr;
         
-      whole_align(i, & identities, & positives, & indels, & aligned, & gaps,
+      AlignedHit const hit = aligned_hit(i);
+      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
 
       fprintf(out, "      <alignment>");
       fprintf(out, "%s", hits_list[i].alignment);
       fprintf(out, "</alignment>\n");
 
-      fprintf(out, "      <qpos>%ld,%ld</qpos>\n", q_first, q_last);
-      fprintf(out, "      <dpos>%ld,%ld</dpos>\n", d_first, d_last);
+      fprintf(out, "      <qpos>%ld,%ld</qpos>\n", hit.q_first, hit.q_last);
+      fprintf(out, "      <dpos>%ld,%ld</dpos>\n", hit.d_first, hit.d_last);
       
       fprintf(out, "      <qseq>%s</qseq>\n", qline);
       fprintf(out, "      <aseq>%s</aseq>\n", aline);
@@ -1994,7 +1895,8 @@ auto hits_show_tsv(long showalignments,
     long aligned = 0;
     long indels = 0;
     
-    count_align(i, & identities, & positives, & indels, & aligned, & gaps);
+    AlignedHit const hit = aligned_hit(i);
+    count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
     
     long const score = hits_list[i].score;
     
@@ -2003,10 +1905,10 @@ auto hits_show_tsv(long showalignments,
 	    aligned,
 	    aligned - identities - indels,
 	    gaps,
-	    q_first,
-	    q_last,
-	    d_first,
-	    d_last);
+	    hit.q_first,
+	    hit.q_last,
+	    hit.d_first,
+	    hit.d_last);
     
     if (stats_available != 0)
     {
@@ -2156,7 +2058,8 @@ auto hits_show_plain(long show_gis,
 	long aligned = 0;
 	long indels = 0;
 
-	count_align(i, & identities, & positives, & indels, & aligned, & gaps);
+	AlignedHit const hit = aligned_hit(i);
+	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
 	      
 	fprintf(out, " Identities = %ld/%ld (%ld%%)",
 	       identities, aligned, identities * 100 / aligned);
@@ -2192,7 +2095,7 @@ auto hits_show_plain(long show_gis,
 		  hits_list[i].dframe + 1);
 	}
 
-	show_align(i);
+	show_align(hit);
 	fprintf(out, "\n");
       }
 	  
