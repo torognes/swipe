@@ -26,6 +26,12 @@
           to fail with "Cannot open score matrix file." unless such a file
           existed. BLOSUM62_20 is now an unknown matrix name, like any
           other file name (KI-15)
+        * Fix: database alias files with a TAXIDLIST or SEQIDLIST line
+          (written by blastdb_aliastool -taxidlist or -seqidlist) were
+          accepted, but the list was ignored and the whole database was
+          searched (KI-39). They are now rejected, as GILIST already was
+          ("TAXIDLIST in database alias files not implemented."); the
+          taxid list can be given with -x instead
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2

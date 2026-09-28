@@ -398,6 +398,17 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
 	// not implemented
 	fatal("GILIST in database alias files not implemented.");
       }
+      else if (strncmp(line, "TAXIDLIST", 9) == 0)
+      {
+	// written by blastdb_aliastool -taxidlist: not implemented, and
+	// ignoring it would search the whole database (KI-39)
+	fatal("TAXIDLIST in database alias files not implemented.");
+      }
+      else if (strncmp(line, "SEQIDLIST", 9) == 0)
+      {
+	// written by blastdb_aliastool -seqidlist: not implemented (KI-39)
+	fatal("SEQIDLIST in database alias files not implemented.");
+      }
       else if (strncmp(line, "LENGTH ", 7) == 0)
       {
 	al_info->length = atol(line+7);
