@@ -150,6 +150,9 @@ typedef struct db_thread_s
   long xxbuffersize[16];
 } db_thread_t;
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 void db_print_seq_map(char * address, long length, const char * map)
 {
   long linelength = 80;
@@ -184,6 +187,8 @@ void db_map_destruct(mapp m)
     munmap(m->map_address, m->map_length);
   free(m);
 }
+
+}  // anonymous namespace
 
 db_thread_t * db_thread_create()
 {
@@ -225,6 +230,8 @@ void db_thread_destruct(struct db_thread_s * t)
 db_main_t db_main;
 
 db_volume_t db_volume[MAXVOLUMES];
+
+namespace {
 
 void db_volume_init(db_volume_t * v)
 {
@@ -332,6 +339,8 @@ long getnames(char * line, char * * * names)
   return namecount;
 }
 
+}  // anonymous namespace
+
 
 void show_alias_info(al_info_t * ai)
 {
@@ -409,6 +418,8 @@ void show_volume_info(db_volume_t * vol)
   fprintf(stderr, "\n");
 }
 
+
+namespace {
 
 al_info_t * db_read_alias(long symbol_type, const char * basename)
 {
@@ -519,6 +530,8 @@ void db_close_al(al_info_t * a)
   }
 }
 
+}  // anonymous namespace
+
 // numbers stored in the database files, read at any alignment: a cast
 // to an integer pointer is undefined behaviour when the address is not
 // aligned (reported by UBSan), memcpy is not
@@ -544,6 +557,8 @@ static auto load_uint64_host(char const * const address) -> std::uint64_t
   std::memcpy(&value, address, sizeof(value));
   return value;
 }
+
+namespace {
 
 long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
 {
@@ -740,6 +755,8 @@ void seqno_volume(long seqno, long * sp, db_volume_t * * vp)
   fatal("Cant find database volume.");
 }
 
+}  // anonymous namespace
+
 long db_getvolume(long seqno)
 {
   long dummy;
@@ -747,6 +764,8 @@ long db_getvolume(long seqno)
   seqno_volume(seqno, & dummy, & vp);
   return vp - db_volume;
 }
+
+namespace {
 
 void db_open_msk(db_volume_t * v)
 {
@@ -795,6 +814,8 @@ void db_set_masked_info(db_volume_t * v, al_info_t * ai, char * mskfile)
   v->masked_maxoid   = ai->maxoid;
   v->masked_memb_bit = ai->memb_bit;
 }
+
+}  // anonymous namespace
 
 long db_check_taxid(long taxid)
 {
@@ -863,6 +884,8 @@ static void db_add_taxid(unsigned long const taxid)
   db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
 }
 
+namespace {
+
 void db_read_taxid_file(char * filename)
 {
   db_main.taxid_filename = strdup(filename);
@@ -905,6 +928,8 @@ void db_read_taxid_file(char * filename)
   static_cast<void>(lines);  // only read by the trace above
   fclose(db_main.taxid_file);
 }
+
+}  // anonymous namespace
 
 
 void db_open(long symbol_type, const char * basename, char * taxidfilename)
@@ -1059,6 +1084,8 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
     db_read_taxid_file(taxidfilename);
 }
 
+namespace {
+
 void db_volume_close(db_volume_t * v)
 {
   if(v->basename)
@@ -1111,6 +1138,8 @@ void db_volume_close(db_volume_t * v)
   close(v->fd_xhr);
   close(v->fd_xsq);
 }
+
+}  // anonymous namespace
 
 void db_close()
 {
@@ -1314,6 +1343,8 @@ void db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno)
   m->map_length = length;
 }
 
+namespace {
+
 void db_translate(char * dna, long dlen,
 		  long strand, long frame, 
 		  char * prot)
@@ -1351,6 +1382,8 @@ void db_translate(char * dna, long dlen,
 
   prot[ppos] = 0;
 }
+
+}  // anonymous namespace
 
 void hexdump(char * address, long length)
 {
@@ -1580,6 +1613,8 @@ void db_getshowheader(struct db_thread_s * t, long seqno,
   db_showheader(t, address, length, show_gis, indent, maxlen, linelen, maxdeflines, 1);
 }
 
+namespace {
+
 void db_print_seq(db_thread_t * t, long seqno, long strand, long frame)
 {
   char * address;
@@ -1607,6 +1642,8 @@ long db_check_taxid_seqno(db_thread_t * t, long seqno)
   db_getheader(t, seqno, & address, & length);
   return parse_getdeflinecount(t->parser, (unsigned char*) address, length, db_main.memb_bit, & db_check_taxid);
 }
+
+}  // anonymous namespace
 
 long db_check_inclusion(db_thread_t * t, long seqno)
 {

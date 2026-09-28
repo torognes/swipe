@@ -353,6 +353,9 @@ void score_matrix_dump()
   }
 }
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 void score_matrix_read_file(const char * matrix)
 {
   char line[LINE_MAX];
@@ -610,6 +613,8 @@ void score_matrix_read()
       score_matrix_16[(a<<5) + b] = (short) sc;
     }
 }
+
+}  // anonymous namespace
 
 void score_matrix_init()
 {

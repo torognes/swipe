@@ -203,6 +203,9 @@ long align_seqnext;
 long * align_volseqs;
 long * align_volchunks;
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 void align_init(struct search_data * sdp)
 {
   sdp->dbt = db_thread_create();
@@ -801,12 +804,16 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
+}  // anonymous namespace
+
 static void args_version()
 {
   char const title[] = "SWIPE " SWIPE_VERSION;
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n", title, ref);
 }
+
+namespace {
 
 void args_help()
 {
@@ -815,6 +822,8 @@ void args_help()
   
   args_usage();
 }
+
+}  // anonymous namespace
 
 // strict conversions of option values (KI-9): the whole value must be
 // a number, without trailing characters, and within the range of the
@@ -853,6 +862,8 @@ static auto parse_dbsize(char const * const text) -> long
     fatal(message);
   return static_cast<long>(value);
 }
+
+namespace {
 
 void args_init(int argc, char **argv)
 {
@@ -1231,6 +1242,8 @@ void args_init(int argc, char **argv)
   translate_init(query_gencode, db_gencode);
 }
 
+}  // anonymous namespace
+
 
 void vector_print(BYTE * vector)
 {
@@ -1244,6 +1257,8 @@ void vector_print_word(WORD * vector)
     fprintf(out, " %04x", vector[i]);
 }
 
+
+namespace {
 
 void search_init(struct search_data * sdp)
 {
@@ -1771,9 +1786,13 @@ void run_threads()
   }
 }
 
+}  // anonymous namespace
+
 #define cpuid(l1,l2,a,b,c,d)						\
   __asm__ __volatile__							\
     ("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (l1), "c" (l2));
+
+namespace {
 
 void cpu_features()
 {
@@ -1927,6 +1946,8 @@ void work()
   hits_show(view, show_gis);
   hits_exit();
 }
+
+}  // anonymous namespace
 
 int main(int argc, char**argv)
 {

@@ -35,6 +35,9 @@
 
 #define MAX(a,b) (a > b ? a : b)
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 void region(char * a_seq,
 	    char * b_seq,
 	    long M,
@@ -163,6 +166,8 @@ void region(char * a_seq,
   *s = score;
 }
 
+}  // anonymous namespace
+
 struct aligner_info
 {
   char op;
@@ -171,6 +176,8 @@ struct aligner_info
   long length;
   long size;
 };
+
+namespace {
 
 void init(struct aligner_info * aip)
 {
@@ -465,6 +472,8 @@ void diff(struct aligner_info * aip,
 	}
     }
 }
+
+}  // anonymous namespace
 
 void align(char * a_seq,
 	   char * b_seq,

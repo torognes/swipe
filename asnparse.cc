@@ -99,6 +99,9 @@ struct asnparse_info
   Escaping escaping;
 };
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 // append src to the null-terminated string dst (capacity: size
 // bytes), truncating src if necessary
 auto append_bounded(char * const dst, std::size_t const size,
@@ -1074,6 +1077,8 @@ long parse_blast_def_line_set_new(apt p, char *** deflinetable)
 
   return deflines;
 }
+
+}  // anonymous namespace
 
 apt parser_create()
 {

@@ -89,6 +89,9 @@ struct hits_entry
 
 pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 int hits_compare(const void * a, const void * b)
 {
   auto const index_a = *static_cast<long const *>(a);
@@ -147,6 +150,8 @@ int hits_compare(const void * a, const void * b)
 
   return 0;
 }
+
+}  // anonymous namespace
 
 long * hits_sort()
 {
@@ -694,6 +699,8 @@ char a_line[ALIGNLEN+1];
 char d_line[ALIGNLEN+1];
 const char * sym;
 int poswidth;
+
+namespace {
 
 void putalignop(char c, long len)
 {
@@ -1249,6 +1256,8 @@ void hits_show_expect(double expect_value)
     fprintf(out, "%5.0f", expect_value);
 }
 
+}  // anonymous namespace
+
 auto xml_putc(char const symbol) noexcept -> void
 {
   switch (symbol)
@@ -1282,6 +1291,8 @@ static auto xml_print(char const * const text,
   for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
     xml_putc(text[i]);
 }
+
+namespace {
 
 void make_anchor(char * anchor, long size, long symbol_type, long query_index, long i)
 {
@@ -1761,6 +1772,8 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t</paralignOutput>\n");
 }
 
+}  // anonymous namespace
+
 // the query id ends at the first whitespace character (space, tab,
 // ...), as in BLAST (KI-20)
 static auto ends_query_id(char const symbol) -> bool
@@ -1787,6 +1800,8 @@ static auto show_description_xml(char const * const desc) -> void
   for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
     xml_putc(*dptr);
 }
+
+namespace {
 
 void hits_show_xml(long show_gis,
 		   long showalignments,
@@ -2077,6 +2092,8 @@ void hits_show_plain(long show_gis,
     }
     //      fprintf(out, "\n");
 }
+
+}  // anonymous namespace
 
 void hits_show_begin(long view)
 {

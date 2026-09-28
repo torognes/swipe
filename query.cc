@@ -189,6 +189,9 @@ FILE * query_fp;
 // empty string means the end of the file)
 std::string query_line;
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 // read the next line of fp into line, whatever its length (KI-16,
 // KI-17), including its end-of-line character; line is empty at the
 // end of the file (or after a read error)
@@ -203,6 +206,8 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
         break;
     }
 }
+
+}  // anonymous namespace
 
 void query_init(const char * query_filename, long symbol_type, long strands)
 {
@@ -256,6 +261,8 @@ void query_init(const char * query_filename, long symbol_type, long strands)
     read_line(query_fp, query_line);
 }
 
+namespace {
+
 void query_free()
 {
   if (query.description)
@@ -279,6 +286,8 @@ void query_free()
     }
   }
 }
+
+}  // anonymous namespace
 
 void query_exit()
 {
@@ -400,6 +409,8 @@ char * revcompl(char * seq, long len)
   return rc;
 }
 
+namespace {
+
 void translate_createtable(long tableno, char * table)
 {
   /* initialize translation table */
@@ -475,6 +486,8 @@ void translate_createtable(long tableno, char * table)
     }
 #endif
 }
+
+}  // anonymous namespace
 
 void translate_init(long qtableno, long dtableno)
 {
