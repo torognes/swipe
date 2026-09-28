@@ -1380,7 +1380,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       ambp = std::next(ambp, sizeof(UINT32));
       unsigned long big_table = (amb_entries >> 31);
     
-      if (big_table != 0u)
+      if (big_table != 0U)
       {
 	unsigned long entries = (amb_bytes - 4) / 8;
 	char const * ambp64 = std::next(address, aoff + 4);
