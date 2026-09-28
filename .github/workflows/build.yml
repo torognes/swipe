@@ -121,7 +121,7 @@ jobs:
       run: |
         c++ --version
         make clean
-        make -j "$(sysctl -n hw.ncpu)" RELEASE=1
+        make -j "$(sysctl -n hw.ncpu)" RELEASE=1 WERROR=1
         ./swipe -h 2>&1 | head -n 1
 
     - name: Install NCBI BLAST+ (makeblastdb)
