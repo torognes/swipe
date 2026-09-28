@@ -39,8 +39,15 @@ COMMON=-g -pthread
 # everywhere, its option moves here, so that it cannot come back
 COMPILEOPT=-Wall -Wextra -Wpedantic -Wcast-qual -Wdouble-promotion \
 	-Wfloat-equal -Wformat=2 -Wnon-virtual-dtor -Woverloaded-virtual \
-	-Wredundant-decls -Wshadow -Wswitch-default -Wuninitialized -Wunused \
-	-Wunused-macros -Wvla -Wzero-as-null-pointer-constant
+	-Wmissing-declarations -Wredundant-decls -Wshadow -Wswitch-default \
+	-Wuninitialized -Wunused -Wunused-macros -Wvla \
+	-Wzero-as-null-pointer-constant
+
+# "make WERROR=1": warnings are errors (used by the CI; off by default,
+# so that a compiler with new warnings can still build swipe)
+ifdef WERROR
+  COMPILEOPT += -Werror
+endif
 
 # language standard (swipe must build with GCC 4.8.5 and later)
 STD=-std=c++11
