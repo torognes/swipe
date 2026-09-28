@@ -261,11 +261,11 @@ auto hits_gethit(long i, long * seqno, long * score,
   *dframe = h->dframe;
 }
 
-auto hits_enter_seq(long i, char* seq, long seq_len) -> void
+auto hits_enter_seq(long hitno, char* seq, long seq_len) -> void
 {
-  hits_list[i].dseq = static_cast<char*>(xmalloc(seq_len));
-  memcpy(hits_list[i].dseq, seq, seq_len);
-  hits_list[i].dlen = seq_len;
+  hits_list[hitno].dseq = static_cast<char*>(xmalloc(seq_len));
+  memcpy(hits_list[hitno].dseq, seq, seq_len);
+  hits_list[hitno].dlen = seq_len;
 }
 
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void
@@ -295,11 +295,11 @@ auto hits_enter_header(long i, char * header, long header_len) -> void
   hits_list[i].header_length = header_len;
 }
 
-auto hits_enter_align_string(long i, char * align, long align_len) -> void
+auto hits_enter_align_string(long hitno, char * align, long align_len) -> void
 {
-  hits_list[i].alignment = static_cast<char*>(xmalloc(align_len));
-  memcpy(hits_list[i].alignment, align, align_len);
-  //  hits_list[i].alignment[align_len] = 0;
+  hits_list[hitno].alignment = static_cast<char*>(xmalloc(align_len));
+  memcpy(hits_list[hitno].alignment, align, align_len);
+  //  hits_list[hitno].alignment[align_len] = 0;
 }
 
 namespace {

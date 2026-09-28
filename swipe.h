@@ -263,7 +263,7 @@ auto fullsw(char * dseq,
 	    char * qend,
 	    long * hearray, 
 	    long * score_matrix,
-	    long gap_open_penalty,
+	    long gap_open_extend,
 	    long gap_extend_penalty) -> long;
 
 auto align(char * a_seq,
@@ -280,7 +280,7 @@ auto align(char * a_seq,
 	   char ** alignment,
 	   long * s) -> void;
 
-auto query_init(const char * queryname, long symtype, long strands) -> void;
+auto query_init(const char * query_filename, long symbol_type, long strands) -> void;
 auto query_exit() -> void;
 auto query_read() -> int;
 auto query_show() -> void;
@@ -316,7 +316,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
-auto db_open(long symtype, const char * basename, char * taxidfilename) -> void;
+auto db_open(long symbol_type, const char * basename, char * taxidfilename) -> void;
 auto db_close() -> void;
 auto db_getseqcount() -> long;
 auto db_getseqcount_masked() -> long;
@@ -366,8 +366,8 @@ auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
 auto db_getheader(struct db_thread_s * t, long seqno, char ** address, 
 		  long * length) -> void;
 
-auto hits_init(long descriptions, long alignments, long minscore, 
-	       long maxscore, double minexpect, double expect, int show_nostats) -> void;
+auto hits_init(long descriptions, long max_alignments, long minscore, 
+	       long maxscore, double min_expect, double max_expect, int show_nostats) -> void;
 auto hits_enter(long seqno, long score, long qstrand, long qframe,
 		long dstrand, long dframe, long align_hint, long bestq) -> void;
 auto hits_sort() -> long *;
@@ -393,7 +393,7 @@ auto hits_getfull(long i,
 		  char ** align, long * align_len) -> void;
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
 auto hits_enter_header(long i, char * header, long header_len) -> void;
-auto hits_enter_seq(long hitno, char* buffer, long len) -> void;
+auto hits_enter_seq(long hitno, char* seq, long seq_len) -> void;
 auto hits_enter_align_coord(long i,
 			    long align_q_start,
 			    long align_q_end,
@@ -403,8 +403,8 @@ auto hits_enter_align_coord(long i,
 auto hits_enter_align_string(long hitno, char * align, long align_len) -> void;
 
 
-auto stats_getparams_nt(long matchscore,
-			long mismatchscore, 
+auto stats_getparams_nt(long match_score,
+			long mismatch_score, 
 			long gopen,
 			long gextend,
 			double * lambda,
