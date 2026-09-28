@@ -91,14 +91,16 @@ pthread_mutex_t hitsmutex = PTHREAD_MUTEX_INITIALIZER;
 
 int hits_compare(const void * a, const void * b)
 {
-  struct hits_entry * ap = hits_list + *((long *) a);
-  struct hits_entry * bp = hits_list + *((long *) b);
+  auto const index_a = *static_cast<long const *>(a);
+  auto const index_b = *static_cast<long const *>(b);
+  struct hits_entry * ap = hits_list + index_a;
+  struct hits_entry * bp = hits_list + index_b;
   
-  if ( (*((long*)a) >= opt_alignments) < (*((long*)b) >= opt_alignments) )
+  if ( (index_a >= opt_alignments) < (index_b >= opt_alignments) )
   {
     return -1;
   }
-  else if ( (*((long*)a) >= opt_alignments) > (*((long*)b) >= opt_alignments) )
+  else if ( (index_a >= opt_alignments) > (index_b >= opt_alignments) )
   {
     return +1;
   }

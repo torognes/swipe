@@ -459,7 +459,7 @@ void search16(WORD * * q_start,
 		  
 	  if (cand_id >= 0)
 	  {
-	    long score = ((WORD*)&S)[c] ^ 0x8000;
+	    long score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];
 	    done++;

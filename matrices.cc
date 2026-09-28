@@ -439,7 +439,7 @@ void score_matrix_read_string(const char * matrix)
   long sc; 
   char * map, * p, * q, c;
 
-  char * s = (char*) matrix;
+  char const * s = matrix;
 
   if (!s)
     fatal("Cannot read score matrix string.");
@@ -453,7 +453,7 @@ void score_matrix_read_string(const char * matrix)
 
   while(*s)
     {
-      char * nextline = strchr(s, '\n');
+      char const * nextline = strchr(s, '\n');
       int linelen;
       if (nextline)
 	linelen = nextline - s;
