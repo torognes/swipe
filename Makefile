@@ -26,7 +26,14 @@
 
 COMMON=-g -pthread
 
-COMPILEOPT=-Wall -Wextra
+# Warnings of every recipe. The extra ones are known to every
+# supported compiler (GCC 4.8.5 and later, clang), and swipe builds
+# without any of them: once a warning of the DEBUG set below is fixed
+# everywhere, its option moves here, so that it cannot come back
+COMPILEOPT=-Wall -Wextra -Wcast-qual -Wdouble-promotion \
+	-Wfloat-equal -Wformat=2 -Wnon-virtual-dtor -Woverloaded-virtual \
+	-Wredundant-decls -Wshadow -Wswitch-default -Wuninitialized -Wunused \
+	-Wunused-macros -Wvla
 
 # language standard (swipe must build with GCC 4.8.5 and later)
 STD=-std=c++11
@@ -44,14 +51,12 @@ IS_CLANG := $(shell $(CXX) -x c++ -E -dM - < /dev/null 2>/dev/null | grep -c '__
 
 # Extra warnings of the DEBUG recipe (current GCC and clang only: the
 # oldest supported GCC rejects some of these options)
-DEBUG_WARNINGS_COMMON=-Wcast-align -Wcast-qual -Wconversion -Wdate-time \
-	-Wdouble-promotion -Wfloat-equal -Wformat=2 -Wnon-virtual-dtor \
-	-Wnull-dereference -Wold-style-cast -Woverloaded-virtual -Wpedantic \
-	-Wshadow -Wsign-conversion -Wuninitialized -Wunused -Wunused-macros \
-	-Wvla
+DEBUG_WARNINGS_COMMON=-Wcast-align -Wconversion -Wdate-time \
+	-Wextra-semi -Wimplicit-fallthrough -Wnull-dereference \
+	-Wold-style-cast -Wpedantic -Wsign-conversion
 DEBUG_WARNINGS_GCC=-Wduplicated-branches -Wduplicated-cond \
 	-Wformat-overflow -Wlogical-op -Wuseless-cast
-DEBUG_WARNINGS_CLANG=-Wextra-semi -Wcomma -Wassign-enum -Wover-aligned
+DEBUG_WARNINGS_CLANG=-Wcomma -Wassign-enum -Wover-aligned
 ifneq ($(IS_CLANG),0)
   DEBUG_WARNINGS=$(DEBUG_WARNINGS_COMMON) $(DEBUG_WARNINGS_CLANG)
 else
