@@ -815,7 +815,7 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
-void args_version()
+static void args_version()
 {
   char const title[] = "SWIPE " SWIPE_VERSION;
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
