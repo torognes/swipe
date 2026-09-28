@@ -36,9 +36,9 @@ typedef double array_of_8[8];
 #define INT2_MAX 32767
 
 #include "swipe.h"
-#include <math.h>
-#include <string.h>
-#include <stdio.h>
+#include <cmath>
+#include <cstring>
+#include <cstdio>
 
 #include "blastkar_partial.c"
 

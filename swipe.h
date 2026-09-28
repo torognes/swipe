@@ -26,11 +26,11 @@
 #ifndef SWIPE_H
 #define SWIPE_H
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <ctype.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <climits>
+#include <cctype>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -38,7 +38,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <math.h>
+#include <cmath>
 #include <x86intrin.h>
 #include <array>
 #include <chrono>
