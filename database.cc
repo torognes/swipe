@@ -892,18 +892,18 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
 
   long vol = 0;
 
-  if ((ai = db_read_alias(symbol_type, basename)) != nullptr)
+  ai = db_read_alias(symbol_type, basename);
+  if (ai != nullptr)
   {
     db_main.title = strdup(ai->title);
     db_main.memb_bit = ai->memb_bit;
 
     for(long i=0; i<ai->dblist_len; i++)
     {
-      al_info_t * ai2 = nullptr;
-      
       char * basename2 = addpath(db_main.path, ai->dblist[i]);
       
-      if ((ai2 = db_read_alias(symbol_type, basename2)) != nullptr)
+      al_info_t * ai2 = db_read_alias(symbol_type, basename2);
+      if (ai2 != nullptr)
       {
 	if ((ai->memb_bit != 0) && ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1)))
 	  fatal("Illegal alias file (2).");

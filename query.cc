@@ -344,7 +344,6 @@ auto query_read() -> int
   long query_length = 0;
  
   char * map = nullptr;
-  char m = 0;
 
   if (symtype == 5)
     map = map_sound;
@@ -359,14 +358,15 @@ auto query_read() -> int
     // bytes above 0x7f must not be negative indexes (KI-19)
     while(int const c = static_cast<unsigned char>(*p++))
     {
-      if ((m = map[c]) >= 0)
+      char const symbol = map[c];
+      if (symbol >= 0)
       {
 	if (query_length + 1 >= size)
 	{
 	  size += LINE_MAX;
 	  query_sequence = static_cast<char*>(xrealloc(query_sequence, size));
 	}
-	query_sequence[query_length++] = m;
+	query_sequence[query_length++] = symbol;
       }
     }
     read_line(query_fp, query_line);
