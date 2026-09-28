@@ -804,16 +804,12 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
-}  // anonymous namespace
-
-static void args_version()
+void args_version()
 {
   char const title[] = "SWIPE " SWIPE_VERSION;
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n", title, ref);
 }
-
-namespace {
 
 void args_help()
 {
@@ -823,12 +819,10 @@ void args_help()
   args_usage();
 }
 
-}  // anonymous namespace
-
 // strict conversions of option values (KI-9): the whole value must be
 // a number, without trailing characters, and within the range of the
 // type; otherwise, swipe stops with the error message of the option
-static auto parse_long(char const * const text, char const * const message) -> long
+auto parse_long(char const * const text, char const * const message) -> long
 {
   assert(text != nullptr);
   char * end = nullptr;
@@ -839,7 +833,7 @@ static auto parse_long(char const * const text, char const * const message) -> l
   return value;
 }
 
-static auto parse_double(char const * const text, char const * const message) -> double
+auto parse_double(char const * const text, char const * const message) -> double
 {
   assert(text != nullptr);
   char * end = nullptr;
@@ -853,7 +847,7 @@ static auto parse_double(char const * const text, char const * const message) ->
 
 // the effective database size accepts the real notation of blastall's
 // -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
-static auto parse_dbsize(char const * const text) -> long
+auto parse_dbsize(char const * const text) -> long
 {
   static char const message[] = "Illegal effective db size specified";
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
@@ -862,8 +856,6 @@ static auto parse_dbsize(char const * const text) -> long
     fatal(message);
   return static_cast<long>(value);
 }
-
-namespace {
 
 void args_init(int argc, char **argv)
 {

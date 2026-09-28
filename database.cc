@@ -530,19 +530,17 @@ void db_close_al(al_info_t * a)
   }
 }
 
-}  // anonymous namespace
-
 // numbers stored in the database files, read at any alignment: a cast
 // to an integer pointer is undefined behaviour when the address is not
 // aligned (reported by UBSan), memcpy is not
-static auto load_uint32_be(char const * const address) -> UINT32
+auto load_uint32_be(char const * const address) -> UINT32
 {
   UINT32 value = 0;
   std::memcpy(&value, address, sizeof(value));
   return bswap_32(value);
 }
 
-static auto load_uint64_be(char const * const address) -> std::uint64_t
+auto load_uint64_be(char const * const address) -> std::uint64_t
 {
   std::uint64_t value = 0;
   std::memcpy(&value, address, sizeof(value));
@@ -551,14 +549,12 @@ static auto load_uint64_be(char const * const address) -> std::uint64_t
 
 // the residue count of the index file is not byte-swapped (read in the
 // byte order of the host, as before)
-static auto load_uint64_host(char const * const address) -> std::uint64_t
+auto load_uint64_host(char const * const address) -> std::uint64_t
 {
   std::uint64_t value = 0;
   std::memcpy(&value, address, sizeof(value));
   return value;
 }
-
-namespace {
 
 long db_open_xin(long symbol_type, const char * basename, db_volume_t * volume)
 {
@@ -839,16 +835,18 @@ long db_check_taxid(long taxid)
 constexpr unsigned long max_taxid = (1UL << 31) - 1;
 constexpr std::size_t max_taxid_digits = 10;
 
-static auto is_digit(char const symbol) -> bool
+namespace {
+
+auto is_digit(char const symbol) -> bool
 {
   return std::isdigit(static_cast<unsigned char>(symbol)) != 0;
 }
 
 // a taxid is a string of decimal digits, no larger than max_taxid;
 // anything else stops swipe with the line number (KI-25)
-static auto parse_taxid(std::string const & token,
-                        char const * const filename,
-                        long const line_number) -> unsigned long
+auto parse_taxid(std::string const & token,
+                 char const * const filename,
+                 long const line_number) -> unsigned long
 {
   auto const is_valid = (not token.empty()) and
     (token.size() <= max_taxid_digits) and
@@ -863,7 +861,7 @@ static auto parse_taxid(std::string const & token,
   return std::strtoul(token.c_str(), nullptr, 10);
 }
 
-static void db_add_taxid(unsigned long const taxid)
+void db_add_taxid(unsigned long const taxid)
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
@@ -883,8 +881,6 @@ static void db_add_taxid(unsigned long const taxid)
   unsigned char v = db_main.taxid_bitmap_address[byteno];
   db_main.taxid_bitmap_address[byteno] = (unsigned char)(v | (1 << bitno));
 }
-
-namespace {
 
 void db_read_taxid_file(char * filename)
 {

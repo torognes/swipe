@@ -302,10 +302,12 @@ void hits_enter_align_string(long i, char * align, long align_len)
   //  hits_list[i].alignment[align_len] = 0;
 }
 
+namespace {
+
 // score thresholds computed from E-values can be infinite (e.g. an
 // empty database, Kmn = 0) or beyond the range of long: converting
 // them with a cast is undefined behaviour (KI-7)
-static auto threshold_to_long(double const value) -> long
+auto threshold_to_long(double const value) -> long
 {
   assert(not std::isnan(value));
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
@@ -316,6 +318,8 @@ static auto threshold_to_long(double const value) -> long
     return std::numeric_limits<long>::min();
   return static_cast<long>(value);
 }
+
+}  // anonymous namespace
 
 void hits_init(long descriptions, long max_alignments, long minscore, long maxscore, double min_expect, double max_expect, int show_nostats)
 {
@@ -1283,16 +1287,16 @@ auto xml_putc(char const symbol) noexcept -> void
     }
 }
 
+namespace {
+
 // print at most max_length characters of text, escaped as XML (KI-27);
 // the text is truncated before it is escaped
-static auto xml_print(char const * const text,
-                      std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
+auto xml_print(char const * const text,
+               std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
 {
   for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
     xml_putc(text[i]);
 }
-
-namespace {
 
 void make_anchor(char * anchor, long size, long symbol_type, long query_index, long i)
 {
@@ -1772,17 +1776,15 @@ void hits_show_xml_paralign(long showalignments,
   fprintf(out, "\t</paralignOutput>\n");
 }
 
-}  // anonymous namespace
-
 // the query id ends at the first whitespace character (space, tab,
 // ...), as in BLAST (KI-20)
-static auto ends_query_id(char const symbol) -> bool
+auto ends_query_id(char const symbol) -> bool
 {
   return (symbol == '\0') or
     (std::isspace(static_cast<unsigned char>(symbol)) != 0);
 }
 
-static void show_description(const char *desc)
+void show_description(const char *desc)
 {
   const char *dptr;
 
@@ -1795,13 +1797,11 @@ static void show_description(const char *desc)
 // query id (the description up to its first whitespace character),
 // escaped as XML
 // (KI-27)
-static auto show_description_xml(char const * const desc) -> void
+auto show_description_xml(char const * const desc) -> void
 {
   for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
     xml_putc(*dptr);
 }
-
-namespace {
 
 void hits_show_xml(long show_gis,
 		   long showalignments,
