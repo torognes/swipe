@@ -66,7 +66,7 @@ const char * matrixname;
 const char * databasename;
 const char * queryname;
 char * taxidfilename;
-char * outfile = NULL;
+char * outfile = nullptr;
 
 double expect;
 double minexpect;
@@ -175,11 +175,11 @@ void fatal(std::string const & message)
 void * xmalloc(size_t size)
 {
   const size_t alignment = 16;
-  void * t = NULL;
+  void * t = nullptr;
   if (posix_memalign(& t, alignment, size) != 0)
-    t = NULL;
+    t = nullptr;
   
-  if (t==NULL)
+  if (t==nullptr)
     fatal("Unable to allocate enough memory.");
 
   return t;
@@ -889,7 +889,7 @@ void args_init(int argc, char **argv)
   show_taxid = DEFAULT_SHOW_TAXID;
   expect = DEFAULT_EXPECT;
   minexpect = DEFAULT_MINEXPECT;
-  taxidfilename = NULL;
+  taxidfilename = nullptr;
   matchscore = DEFAULT_MATCHSCORE;
   mismatchscore = DEFAULT_MISMATCHSCORE;
   querystrands = DEFAULT_QUERYSTRANDS;
@@ -906,37 +906,37 @@ void args_init(int argc, char **argv)
 
   static struct option long_options[] =
   {
-    {"db",               required_argument, NULL, 'd' },
-    {"query",            required_argument, NULL, 'i' },
-    {"matrix",           required_argument, NULL, 'M' },
-    {"penalty",          required_argument, NULL, 'q' },
-    {"reward",           required_argument, NULL, 'r' },
-    {"gapopen",          required_argument, NULL, 'G' },
-    {"gapextend",        required_argument, NULL, 'E' },
-    {"strand",           required_argument, NULL, 'S' },
-    {"num_descriptions", required_argument, NULL, 'v' },
-    {"num_alignments",   required_argument, NULL, 'b' },
-    {"min_score",        required_argument, NULL, 'c' },
-    {"max_score",        required_argument, NULL, 'u' },
-    {"evalue",           required_argument, NULL, 'e' },
-    {"minevalue",        required_argument, NULL, 'k' },
-    {"num_threads",      required_argument, NULL, 'a' },
-    {"outfmt",           required_argument, NULL, 'm' },
-    {"symtype",          required_argument, NULL, 'p' },
-    {"taxidlist",        required_argument, NULL, 'x' },
-    {"taxid",            required_argument, NULL, 'x' },  /* alias (2.1.1 and older) */
-    {"comp_based_stats", required_argument, NULL, 'C' },
-    {"query_gencode",    required_argument, NULL, 'Q' },
-    {"db_gencode",       required_argument, NULL, 'D' },
-    {"filter",           required_argument, NULL, 'F' },
-    {"subalignments",    required_argument, NULL, 'K' },
-    {"dump",             required_argument, NULL, 'N' },
-    {"out",              required_argument, NULL, 'o' },
-    {"dbsize",           required_argument, NULL, 'z' },
-    {"show_gis",         no_argument,       NULL, 'I' },
-    {"show_taxid",       no_argument,       NULL, 'H' },
-    {"help",             no_argument,       NULL, 'h' },
-    {"version",          no_argument,       NULL, 'V' },
+    {"db",               required_argument, nullptr, 'd' },
+    {"query",            required_argument, nullptr, 'i' },
+    {"matrix",           required_argument, nullptr, 'M' },
+    {"penalty",          required_argument, nullptr, 'q' },
+    {"reward",           required_argument, nullptr, 'r' },
+    {"gapopen",          required_argument, nullptr, 'G' },
+    {"gapextend",        required_argument, nullptr, 'E' },
+    {"strand",           required_argument, nullptr, 'S' },
+    {"num_descriptions", required_argument, nullptr, 'v' },
+    {"num_alignments",   required_argument, nullptr, 'b' },
+    {"min_score",        required_argument, nullptr, 'c' },
+    {"max_score",        required_argument, nullptr, 'u' },
+    {"evalue",           required_argument, nullptr, 'e' },
+    {"minevalue",        required_argument, nullptr, 'k' },
+    {"num_threads",      required_argument, nullptr, 'a' },
+    {"outfmt",           required_argument, nullptr, 'm' },
+    {"symtype",          required_argument, nullptr, 'p' },
+    {"taxidlist",        required_argument, nullptr, 'x' },
+    {"taxid",            required_argument, nullptr, 'x' },  /* alias (2.1.1 and older) */
+    {"comp_based_stats", required_argument, nullptr, 'C' },
+    {"query_gencode",    required_argument, nullptr, 'Q' },
+    {"db_gencode",       required_argument, nullptr, 'D' },
+    {"filter",           required_argument, nullptr, 'F' },
+    {"subalignments",    required_argument, nullptr, 'K' },
+    {"dump",             required_argument, nullptr, 'N' },
+    {"out",              required_argument, nullptr, 'o' },
+    {"dbsize",           required_argument, nullptr, 'z' },
+    {"show_gis",         no_argument,       nullptr, 'I' },
+    {"show_taxid",       no_argument,       nullptr, 'H' },
+    {"help",             no_argument,       nullptr, 'h' },
+    {"version",          no_argument,       nullptr, 'V' },
     { nullptr, 0, nullptr, 0 }
   };
   

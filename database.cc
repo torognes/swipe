@@ -233,19 +233,19 @@ void db_volume_init(db_volume_t * v)
 
   v->symtype = -1;
   v->version = 0;
-  v->title = NULL;
-  v->time = NULL;
+  v->title = nullptr;
+  v->time = nullptr;
 
   v->seqcount = 0;
   v->longest = 0;
   v->symcount = 0;
   
-  v->masked_title = NULL;
+  v->masked_title = nullptr;
   v->masked_length = 0;
   v->masked_nseq = 0;
   v->masked_maxoid = 0;
   v->masked_memb_bit = 0;
-  v->masked_mskfile = NULL;
+  v->masked_mskfile = nullptr;
 
   v->offset_xhr = 0;
   v->offset_xsq = 0;
@@ -261,8 +261,8 @@ void db_volume_init(db_volume_t * v)
   v->len_xhr = 0;
   v->len_msk = 0;
   
-  v->adr_xin = NULL;
-  v->adr_msk = NULL;
+  v->adr_xin = nullptr;
+  v->adr_msk = nullptr;
 
   v->map_seq_address = nullptr;
   v->map_seq_length = 0;
@@ -277,11 +277,11 @@ void db_init(db_main_t * v)
 {
   v->volumecount = 0;
 
-  v->basename = NULL;
+  v->basename = nullptr;
   v->symtype = -1;
   v->version = 0;
-  v->title = NULL;
-  v->time = NULL;
+  v->title = nullptr;
+  v->time = nullptr;
 
   v->seqcount = 0;
   v->longest = 0;
@@ -430,9 +430,9 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
     
     al_info->dblist_len = 0;
     al_info->oidlist_len = 0;
-    al_info->title = NULL;
-    al_info->dblist = NULL;
-    al_info->oidlist = NULL;
+    al_info->title = nullptr;
+    al_info->dblist = nullptr;
+    al_info->oidlist = nullptr;
     al_info->length = 0;
     al_info->nseq = 0;
     al_info->maxoid = 0;
@@ -491,7 +491,7 @@ al_info_t * db_read_alias(long symbol_type, const char * basename)
   }
   else
   {
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -501,21 +501,21 @@ void db_close_al(al_info_t * a)
   if (a->title)
   {
     free(a->title);
-    a->title = NULL;
+    a->title = nullptr;
   }
   if (a->dblist)
   {
     for (long i=0; i<a->dblist_len; i++)
       free(a->dblist[i]);
     free(a->dblist);
-    a->dblist = NULL;
+    a->dblist = nullptr;
   }
   if (a->oidlist)
   {
     for (long i=0; i<a->oidlist_len; i++)
       free(a->oidlist[i]);
     free(a->oidlist);
-    a->oidlist = NULL;
+    a->oidlist = nullptr;
   }
 }
 
@@ -909,7 +909,7 @@ void db_read_taxid_file(char * filename)
 
 void db_open(long symbol_type, const char * basename, char * taxidfilename)
 {
-  al_info_t * ai = NULL;
+  al_info_t * ai = nullptr;
 
   db_init(& db_main);
 
@@ -927,7 +927,7 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
 
     for(long i=0; i<ai->dblist_len; i++)
     {
-      al_info_t * ai2 = NULL;
+      al_info_t * ai2 = nullptr;
       
       char * basename2 = addpath(db_main.path, ai->dblist[i]);
       
@@ -965,12 +965,12 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
 	  vol++;
 	  
 	  free(basename3);
-	  basename3 = NULL;
+	  basename3 = nullptr;
 	}
 	
 	db_close_al(ai2);
 	free(ai2);
-	ai2 = NULL;
+	ai2 = nullptr;
       }
       else
       {
@@ -1009,12 +1009,12 @@ void db_open(long symbol_type, const char * basename, char * taxidfilename)
       }
       
       free(basename2);
-      basename2 = NULL;
+      basename2 = nullptr;
     }
     
     db_close_al(ai);
     free(ai);
-    ai = NULL;
+    ai = nullptr;
   }
   else
   {
@@ -1064,27 +1064,27 @@ void db_volume_close(db_volume_t * v)
   if(v->basename)
   {
     free(v->basename);
-    v->basename = NULL;
+    v->basename = nullptr;
   }
   if(v->title)
   {
     free(v->title);
-    v->title = NULL;
+    v->title = nullptr;
   }
   if(v->time)
   {
     free(v->time);
-    v->time = NULL;
+    v->time = nullptr;
   }
   if(v->masked_title)
   {
     free(v->masked_title);
-    v->masked_title = NULL;
+    v->masked_title = nullptr;
   }
   if(v->masked_mskfile)
   {
     free(v->masked_mskfile);
-    v->masked_mskfile = NULL;
+    v->masked_mskfile = nullptr;
   }
 
   munmap(v->adr_xin, v->len_xin);
@@ -1098,13 +1098,13 @@ void db_volume_close(db_volume_t * v)
   if (v->map_seq_address)
   {
     munmap(v->map_seq_address, v->map_seq_length);
-    v->map_seq_address = NULL;
+    v->map_seq_address = nullptr;
   }
 
   if (v->map_hdr_address)
   {
     munmap(v->map_hdr_address, v->map_hdr_length);
-    v->map_hdr_address = NULL;
+    v->map_hdr_address = nullptr;
   }
 
   close(v->fd_xin);
@@ -1121,22 +1121,22 @@ void db_close()
   if (db_main.path)
   {
     free(db_main.path);
-    db_main.path = NULL;
+    db_main.path = nullptr;
   }
   if (db_main.basename)
   {
     free(db_main.basename);
-    db_main.basename = NULL;
+    db_main.basename = nullptr;
   }
   if (db_main.title)
   {
     free(db_main.title);
-    db_main.title = NULL;
+    db_main.title = nullptr;
   }
   if (db_main.time)
   {
     free(db_main.time);
-    db_main.time = NULL;
+    db_main.time = nullptr;
   }
   if (db_main.taxid_bitmap_address)
     free(db_main.taxid_bitmap_address);
@@ -1483,7 +1483,7 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  //	       t->ntbuffersize[c], c);
 	  t->ntbuffersize[c] = 0;
 	  free(t->ntbuffer[c]);
-	  t->ntbuffer[c] = NULL;
+	  t->ntbuffer[c] = nullptr;
 	}
 
 	*addressp = t->xxbuffer[c];
@@ -1518,7 +1518,7 @@ void db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	//	       t->ntbuffersize[c], c);
 	t->ntbuffersize[c] = 0;
 	free(t->ntbuffer[c]);
-	t->ntbuffer[c] = NULL;
+	t->ntbuffer[c] = nullptr;
       }
       
       *addressp = t->xxbuffer[c];

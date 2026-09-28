@@ -325,12 +325,12 @@ long SCORELIMIT_32;
 long SCORELIMIT_63;
 char BIAS;
 
-char * score_matrix_7 = NULL;
-char * score_matrix_7t = NULL;
-unsigned char * score_matrix_8 = NULL;
-short * score_matrix_16 = NULL;
-unsigned int * score_matrix_32 = NULL;
-long * score_matrix_63 = NULL;
+char * score_matrix_7 = nullptr;
+char * score_matrix_7t = nullptr;
+unsigned char * score_matrix_8 = nullptr;
+short * score_matrix_16 = nullptr;
+unsigned int * score_matrix_32 = nullptr;
+long * score_matrix_63 = nullptr;
 
 void score_matrix_dump()
 {
@@ -374,7 +374,7 @@ void score_matrix_read_file(const char * matrix)
   
   symbols = 0;
 
-  while(fgets(line, LINE_MAX, fp) != NULL)
+  while(fgets(line, LINE_MAX, fp) != nullptr)
     {
       p = line;
       c = *p++;
@@ -398,7 +398,7 @@ void score_matrix_read_file(const char * matrix)
 	  q = order;
 
 	  while ((c = *p++))
-	    if (strchr(" \t\n", c) == NULL)
+	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
@@ -485,7 +485,7 @@ void score_matrix_read_string(const char * matrix)
 	  q = order;
 
 	  while ((c = *p++))
-	    if (strchr(" \t\n", c) == NULL)
+	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
@@ -620,16 +620,16 @@ void score_matrix_init()
 void score_matrix_free()
 {
   free(score_matrix_7);
-  score_matrix_7 = NULL;
+  score_matrix_7 = nullptr;
   free(score_matrix_7t);
-  score_matrix_7t = NULL;
+  score_matrix_7t = nullptr;
   free(score_matrix_8);
-  score_matrix_8 = NULL;
+  score_matrix_8 = nullptr;
   free(score_matrix_16);
-  score_matrix_16 = NULL;
+  score_matrix_16 = nullptr;
   free(score_matrix_32);
-  score_matrix_32 = NULL;
+  score_matrix_32 = nullptr;
   free(score_matrix_63);
-  score_matrix_63 = NULL;
+  score_matrix_63 = nullptr;
 }
 

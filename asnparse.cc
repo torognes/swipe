@@ -1155,5 +1155,5 @@ long parse_getdeflinecount(apt p, unsigned char * buf, long len,
   nextch(p);
   nextobj(p);
 
-  return parse_blast_def_line_set_new(p, NULL);
+  return parse_blast_def_line_set_new(p, nullptr);
 }
