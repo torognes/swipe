@@ -591,8 +591,8 @@ auto translate(char const * dna, long dlen,
 
 auto query_show() -> void
 {
-  int const linewidth = 60;
-  for (unsigned i=0; i<strlen(query.description); i+=linewidth)
+  constexpr std::size_t linewidth = 60;
+  for (std::size_t i=0; i<strlen(query.description); i+=linewidth)
   {
     if (i == 0)
     {

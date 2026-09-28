@@ -34,10 +34,24 @@ using array_of_8 = double[8];
 
 #include "swipe.h"
 #include <cmath>
+#include <cstddef>  // std::size_t
 #include <cstring>
 #include <cstdio>
 
 #include "blastkar_partial.c"
+
+namespace {
+
+// number of rows of a table of blastn statistics (a long, as the
+// count it replaces; the conversion is explicit for GCC 4.8's
+// -Wsign-conversion, which does not fold sizeof() divisions)
+template <std::size_t rows>
+constexpr auto row_count(array_of_8 const (& /*table*/)[rows]) -> long
+{
+  return static_cast<long>(rows);
+}
+
+}  // anonymous namespace
 
 auto stats_getparams_nt(long match_score,
 			long mismatch_score, 
@@ -57,84 +71,84 @@ auto stats_getparams_nt(long match_score,
   if      ((match_score == 1) && (mismatch_score == -5))
   {
     bv = blastn_values_1_5;
-    bm = sizeof(blastn_values_1_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_5);
     gomax = 3;
     gemax = 3;
   }
   else if ((match_score == 1) && (mismatch_score == -4))
   {
     bv = blastn_values_1_4;
-    bm = sizeof(blastn_values_1_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_4);
     gomax = 2;
     gemax = 2;
   }
   else if ((match_score == 2) && (mismatch_score == -7))
   {
     bv = blastn_values_2_7;
-    bm = sizeof(blastn_values_2_7) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_7);
     gomax = 4;
     gemax = 4;
   }
   else if ((match_score == 1) && (mismatch_score == -3))
   {
     bv = blastn_values_1_3;
-    bm = sizeof(blastn_values_1_3) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_3);
     gomax = 2;
     gemax = 2;
   }
   else if ((match_score == 2) && (mismatch_score == -5))
   {
     bv = blastn_values_2_5;
-    bm = sizeof(blastn_values_2_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_5);
     gomax = 4;
     gemax = 4;
   }
   else if ((match_score == 1) && (mismatch_score == -2))
   {
     bv = blastn_values_1_2;
-    bm = sizeof(blastn_values_1_2) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_2);
     gomax = 2;
     gemax = 2;
   }
   else if ((match_score == 2) && (mismatch_score == -3))
   {
     bv = blastn_values_2_3;
-    bm = sizeof(blastn_values_2_3) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_3);
     gomax = 6;
     gemax = 4;
   }
   else if ((match_score == 3) && (mismatch_score == -4))
   {
     bv = blastn_values_3_4;
-    bm = sizeof(blastn_values_3_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_3_4);
     gomax = 6;
     gemax = 3;
   }
   else if ((match_score == 4) && (mismatch_score == -5))
   {
     bv = blastn_values_4_5;
-    bm = sizeof(blastn_values_4_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_4_5);
     gomax = 4;
     gemax = 2;
   }
   else if ((match_score == 1) && (mismatch_score == -1))
   {
     bv = blastn_values_1_1;
-    bm = sizeof(blastn_values_1_1) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_1);
     gomax = 5;
     gemax = 5;
   }
   else if ((match_score == 3) && (mismatch_score == -2))
   {
     bv = blastn_values_3_2;
-    bm = sizeof(blastn_values_3_2) / sizeof(array_of_8);
+    bm = row_count(blastn_values_3_2);
     gomax = 12;
     gemax = 8;
   }
   else if ((match_score == 5) && (mismatch_score == -4))
   {
     bv = blastn_values_5_4;
-    bm = sizeof(blastn_values_5_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_5_4);
     gomax = 25;
     gemax = 10;
   }
