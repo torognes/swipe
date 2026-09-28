@@ -2190,21 +2190,21 @@ auto hits_show_plain(long show_gis,
 
 }  // anonymous namespace
 
-auto hits_show_begin(long view) -> void
+auto hits_show_begin(OutputFormat view) -> void
 {
-  if (view==0)
+  if (view==OutputFormat::plain)
     {
       fprintf(out, "%s\n\n%s\n\n", 
 	      "SWIPE " SWIPE_VERSION, 
 	      "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.");
     }
-  else if (view==7)
+  else if (view==OutputFormat::xml)
     {
       // one root element around the results of all queries (KI-26)
       fprintf(out, "<?xml version=\"1.0\"?>\n");
       fprintf(out, "<results>\n");
     }
-  else if (view==99)
+  else if (view==OutputFormat::paralign_xml)
     {
       char url1[] = "http://www.w3.org/2001/XMLSchema-instance";
       char url2[] = "http://www.paralign.org/ParalignXML.xsd";
@@ -2224,19 +2224,19 @@ auto hits_show_begin(long view) -> void
     }
 }
 
-auto hits_show_end(long view) -> void
+auto hits_show_end(OutputFormat view) -> void
 {
-  if (view==7)
+  if (view==OutputFormat::xml)
   {
     fprintf(out, "</results>\n");
   }
-  else if (view==99)
+  else if (view==OutputFormat::paralign_xml)
   {
     fprintf(out, "</ParalignXML>\n");
   }
 }
 
-auto hits_show(long view, long show_gis) -> void
+auto hits_show(OutputFormat view, long show_gis) -> void
 {
   // compute number of hits and alignments to actually show
 
@@ -2263,19 +2263,19 @@ auto hits_show(long view, long show_gis) -> void
 
   struct db_thread_s * t = db_thread_create();
 
-  if(view == 0)
+  if(view == OutputFormat::plain)
   {
     hits_show_plain(show_gis, showalignments, showhits, t);
   }
-  else if (view==7)
+  else if (view==OutputFormat::xml)
   {
     hits_show_xml(show_gis, showalignments, showhits, t);
   }
-  else if ((view==8)||(view==9))
+  else if ((view==OutputFormat::tabular)||(view==OutputFormat::tabular_with_comments))
   {
-    hits_show_tsv(showalignments, static_cast<long>(view == 9), t);
+    hits_show_tsv(showalignments, static_cast<long>(view == OutputFormat::tabular_with_comments), t);
   }
-  else if (view==99)
+  else if (view==OutputFormat::paralign_xml)
   {
     hits_show_xml_paralign(showalignments, showhits, t);
   }

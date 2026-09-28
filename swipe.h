@@ -85,6 +85,16 @@ enum struct SymbolType : long
   sound = 5     // sound codes
 };
 
+// output format of the results (option -m, --outfmt)
+enum struct OutputFormat : long
+{
+  plain = 0,                  // BLAST-like plain text
+  xml = 7,                    // simple XML
+  tabular = 8,                // tabular (BLAST -m 8)
+  tabular_with_comments = 9,  // tabular with comment lines (BLAST -m 9)
+  paralign_xml = 99           // ParAlign XML
+};
+
 extern char BIAS;
 
 auto xmalloc(size_t size) -> void *;
@@ -364,9 +374,9 @@ auto hits_enter(long seqno, long score, long qstrand, long qframe,
 auto hits_sort() -> long *;
 auto hits_getcount() -> long;
 auto hits_align(struct db_thread_s * t, long i) -> void;
-auto hits_show_begin(long view) -> void;
-auto hits_show_end(long view) -> void;
-auto hits_show(long view, long show_gis) -> void;
+auto hits_show_begin(OutputFormat view) -> void;
+auto hits_show_end(OutputFormat view) -> void;
+auto hits_show(OutputFormat view, long show_gis) -> void;
 auto hits_empty() -> void;
 auto hits_exit() -> void;
 auto hits_gethit(long i, long * seqno, long * score, 

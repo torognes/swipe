@@ -48,7 +48,7 @@ constexpr char const * default_matrixname = "BLOSUM62";
 constexpr long default_matchscore = 1;
 constexpr long default_mismatchscore = -3;
 constexpr long default_threads = 1;
-constexpr long default_view = 0;
+constexpr OutputFormat default_view = OutputFormat::plain;
 constexpr SymbolType default_symtype = SymbolType::blastp;
 constexpr long default_show_gis = 0;
 constexpr long default_show_taxid = 0;
@@ -105,7 +105,7 @@ char * taxidfilename;
 char * outfile = nullptr;
 long minscore;
 long maxscore;
-long view;
+OutputFormat view;
 long show_gis;
 long query_gencode;
 long db_gencode;
@@ -670,7 +670,7 @@ auto align_threads() -> void
 
 auto args_show() -> void
 {
-  if (view == 0)
+  if (view == OutputFormat::plain)
   {
     
     if (cpu_feature_ssse3 == 0)
@@ -1052,7 +1052,7 @@ auto args_init(int argc, char * const * argv) -> void
 	  
 	case 'm':
 	  /* view */
-	  view = parse_long(optarg, "Illegal view type.");
+	  view = static_cast<OutputFormat>(parse_long(optarg, "Illegal view type."));
 	  break;
 	  
 	case 'M':
@@ -1238,7 +1238,7 @@ auto args_init(int argc, char * const * argv) -> void
     fatal("No database specified.");
   }
 
-  if (!((view == 0) || (view == 7) || (view == 8) || (view == 9) || (view == 99)))
+  if (!((view == OutputFormat::plain) || (view == OutputFormat::xml) || (view == OutputFormat::tabular) || (view == OutputFormat::tabular_with_comments) || (view == OutputFormat::paralign_xml)))
   {
     fatal("Illegal view type.");
   }
@@ -1922,7 +1922,7 @@ auto clock_stop(struct time_info * tip) -> void
   /* the speed is unknown when no time elapsed (KI-33) */
   tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
   
-  if (view == 0)
+  if (view == OutputFormat::plain)
   {
     fprintf(out, "Search started:    %s\n", tip->starttime.data());
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
@@ -1944,7 +1944,7 @@ auto clock_stop(struct time_info * tip) -> void
 auto work() -> void
 {
   args_show();
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, static_cast<int>(view==0));
+  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, static_cast<int>(view==OutputFormat::plain));
 
   compute7 = 0;
   compute16 = 0;
@@ -1959,7 +1959,7 @@ auto work() -> void
 
   prepare_search(threads);
 
-  if (view==0)
+  if (view==OutputFormat::plain)
   {
     fprintf(out, "Searching...");
     fflush(out);
@@ -1969,7 +1969,7 @@ auto work() -> void
   
   run_threads();
  
-  if (view == 0)
+  if (view == OutputFormat::plain)
   {
     fprintf(out, "...............................................done\n\n");
   }
