@@ -73,25 +73,7 @@ using UINT32 = unsigned int;
 using WORD = unsigned short;
 using BYTE = unsigned char;
 
-#define WIDTH 32
-#define WIDTH_SHIFT 5
-#define BLOCKWIDTH 32
-
-#define ext1 ".ssq"
-#define ext2 ".ssi"
-#define ext3 ".shd"
-#define ext4 ".shi"
-
 extern char BIAS;
-
-
-//#define BIASED
-
-#ifdef BIASED
-#define ZERO 0x00
-#else
-#define ZERO 0x80
-#endif
 
 auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
