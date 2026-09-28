@@ -37,7 +37,7 @@
 char symtype_disp[] = "npxtzs";
 unsigned int decompress_nt[256];
 
-typedef struct al_info
+struct al_info
 {
   char * title;
   long dblist_len;
@@ -48,9 +48,10 @@ typedef struct al_info
   long length;
   long maxoid;
   long nseq;
-} al_info_t;
+};
+using al_info_t = al_info;
 
-typedef struct db_main_s
+struct db_main_s
 {
   long volumecount;
 
@@ -75,9 +76,10 @@ typedef struct db_main_s
   unsigned char * taxid_bitmap_address;
   long taxid_bitmap_size;
 
-} db_main_t;
+};
+using db_main_t = db_main_s;
 
-typedef struct db_volume_s
+struct db_volume_s
 {
   // the underlying unmasked volume
 
@@ -126,20 +128,21 @@ typedef struct db_volume_s
   long map_hdr_length;
   long map_hdr_offset;
 
-} db_volume_t;
+};
+using db_volume_t = db_volume_s;
 
-typedef struct db_map_s
+struct db_map_s
 {
   char * map_address; // address in mem of mapped region (multiple of pagesize)
   db_volume_t * map_volume; // volume mapped
   long map_offset;    // offset in file of the mapped region
   long map_length;    // size of memory mapped region
-} db_map_t;
+};
+using db_map_t = db_map_s;
 
-typedef struct db_map_s db_map_t;
-typedef db_map_t * mapp;
+using mapp = db_map_t *;
 
-typedef struct db_thread_s
+struct db_thread_s
 {
   mapp map_seq;
   mapp map_hdr;
@@ -148,7 +151,8 @@ typedef struct db_thread_s
   char * xxbuffer[16];
   long ntbuffersize[16];
   long xxbuffersize[16];
-} db_thread_t;
+};
+using db_thread_t = db_thread_s;
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {

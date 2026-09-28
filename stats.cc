@@ -23,11 +23,8 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
-typedef int Int4;
-typedef long Int8;
-typedef double Nlm_FloatHi;
-typedef int Boolean;
-typedef double array_of_8[8];
+using Boolean = int;
+using array_of_8 = double[8];
 #define FALSE 0
 #define TRUE 1
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
