@@ -41,9 +41,6 @@
 #include <chrono>
 #include <ctime>
 
-#ifdef MPISWIPE
-#include <mpi.h>
-#endif
 
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>

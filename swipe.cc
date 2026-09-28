@@ -105,9 +105,6 @@ pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t pthread_id[MAX_THREADS];
 
-#ifdef MPISWIPE
-int mpirank, mpisize;
-#endif
 
 long maxchunksize;
 long volnext;
@@ -510,9 +507,6 @@ void calc_chunks(long volcount,
   }
   
 #ifdef DEBUG
-#ifdef MPISWIPE
-  if (!mpirank)
-#endif
   {
     fprintf(out, "\n");
     fprintf(out, "Chunk distribution:\n");
@@ -675,12 +669,10 @@ void args_show()
   if (view == 0)
   {
     
-#ifndef MPISWIPE
     if (! cpu_feature_ssse3)
     {
       fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
-#endif
     
     const char * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
     
@@ -835,9 +827,6 @@ void args_help()
 {
   args_version();
   fprintf(out, "\n");
-#ifdef MPISWIPE
-  fprintf(out, "Note: mpiswipe is deprecated, and will be removed in SWIPE 2.2.0.\n\n");
-#endif
   
   args_usage();
 }
@@ -1887,648 +1876,6 @@ void clock_stop(struct time_info * tip)
 }
 
 
-#ifdef MPISWIPE
-
-#define tag_die 0
-#define tag_search 1
-#define tag_search_done 2
-#define tag_search_get 3
-#define tag_search_report 4
-#define tag_align 5
-#define tag_align_init 11
-#define tag_align_done 6
-#define tag_align_get 7
-#define tag_align_report 8
-#define tag_features 9
-#define tag_stats 10
-#define tag_align_header 11
-#define tag_align_seq 12
-#define tag_align_coord 13
-#define tag_align_string 14
-
-void master(int size)
-{
-  long nodes_with_sse2 = cpu_feature_sse2;
-  long nodes_with_ssse3 = cpu_feature_ssse3;
-
-  for(int i=1; i < size; i++)
-  {
-    long features;
-    MPI_Status s;
-    MPI_Recv(&features, 1, MPI_LONG, MPI_ANY_SOURCE, tag_features, 
-	     MPI_COMM_WORLD, &s);
-    nodes_with_sse2 += features >> 1;
-    nodes_with_ssse3 += features & 1;
-  }
-
-  if (nodes_with_sse2 < size)
-    fatal("Sorry, some nodes lack SSE2.");
-  
-  if (nodes_with_ssse3 < size)
-  {
-    fprintf(out, "Performance reduced because %ld nodes lack SSSE3.\n",
-	   size - nodes_with_ssse3);
-  }
-  
-  if (size < 2)
-    fatal("Cannot run on a single node.");
-
-  args_show();
-
-
-  /* master node, job distributor */
-
-  //fprintf(out, "This is the master.\n");
-
-  /* init */
-  
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
-
-  prepare_search(size-1);
-
-  if (view==0)
-    {
-      fprintf(out, "Searching...");
-      fflush(out);
-    }
-
-  long slaves_active = 0;
-  long first = 0;
-  long last = 0;
-  
-  long buffersize = 1024;
-
-  //  fprintf(out, "master buffersize: %ld.\n", buffersize);
-  
-  char * buffer = (char*) xmalloc(buffersize);
-  long * longbuffer = (long*) buffer;
-
-  compute7 = 0;
-  compute16 = 0;
-  compute32 = 0;
-  compute63 = 0;
-  rounds7 = 0;
-  rounds16 = 0;
-  rounds32 = 0;
-  rounds63 = 0;
-  totalhits = 0;
-
-  clock_start(&ti);
-  
-  /* phase 1 - searching */
-
-  for (int i = 1; i < size; i++)
-  {
-    if (search_getwork(&first, &last))
-    {
-      longbuffer[0] = first;
-      longbuffer[1] = last;
-      /* To be made non-blocking with mpi_isend.
-	 Need individual buffers. 
-	 Need request list. */
-      MPI_Send(longbuffer, 2, MPI_LONG, i, tag_search, MPI_COMM_WORLD);
-      //      fprintf(out, "Asking slave %d to search from %ld to %ld.\n", i, first, last);
-      slaves_active++;
-    }	
-    else
-      break;
-  }
-  
-  while(slaves_active)
-  {
-    long morework = search_getwork(&first, &last);
-
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-    
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Received message with tag %d and length %d from node %d.\n",
-	   tag, len, source);
-#endif
-
-    switch(tag)
-    {
-
-    case tag_search_done:
-
-      if (morework)
-      {
-	longbuffer[0] = first;
-	longbuffer[1] = last;
-	MPI_Send(longbuffer, 2, MPI_LONG, source, tag_search, MPI_COMM_WORLD);
-	//	fprintf(out, "Asking slave %d to search from %ld to %ld.\n", source, first, last);
-      }	
-      else
-      {
-	MPI_Send(0, 0, MPI_CHAR, source, tag_search_get, MPI_COMM_WORLD);
-	//	fprintf(out, "Asking slave %d to send results\n", source);
-      }
-      break;
-
-    case tag_search_report:
-      
-#ifdef DEBUG
-      fprintf(out, "Master receiving %d hits from slave %d.\n", len/56, source);
-#endif
-
-      for (int i = 0; i < (long)(len/sizeof(long)); i+=8)
-      {
-
-	long seqno = longbuffer[i+0];
-	long score = longbuffer[i+1];
-	long qstrand = longbuffer[i+2];
-	long qframe = longbuffer[i+3];
-	long dstrand = longbuffer[i+4];
-	long dframe = longbuffer[i+5];
-	long pos = longbuffer[i+6];
-	long bestq = longbuffer[i+7];
-
-	//	fprintf(out, "seqno=%ld\n", seqno);
-	if ((symtype == 0) && qstrand)
-	  hits_enter(seqno, score, 0, 0, 1, 0, pos, bestq);
-	else
-	  hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, bestq);
-      }
-      
-      break;
-
-    case tag_stats:
-      
-      rounds7 += longbuffer[0];
-      rounds16 += longbuffer[1];
-      rounds32 += longbuffer[2];
-      rounds63 += longbuffer[3];
-      compute7 += longbuffer[4];
-      compute16 += longbuffer[5];
-      compute32 += longbuffer[6];
-      compute63 += longbuffer[7];
-      totalhits += longbuffer[8];
-      
-      slaves_active--;
-
-      break;
-    }
-  }
-
-  if (view == 0)
-    fprintf(out, "...............................................done\n\n");
-
-  clock_stop(&ti);
-
-#if 0
-  if (view == 0)
-  {
-    fprintf(out, "Computed (7bit):   %ld sequences in %ld rounds\n", compute7, rounds7);
-    fprintf(out, "Computed (16bit):  %ld sequences in %ld rounds\n", compute16, rounds16);
-    //    fprintf(out, "Computed (32bit):  %ld sequences in %ld rounds\n", compute32, rounds32);
-    fprintf(out, "Computed (63bit):  %ld sequences in %ld rounds\n", compute63, rounds63);
-    fprintf(out, "\n");
-  }
-#endif
-  
-  /* phase 2 - aligning */
-
-  //OK master: align_threads_init();
-  // slaves: align_init(&sd);
-  // master: align_getwork -> slaves (i,j)
-  // slaves: align_chunk(&sd, i, j)
-  // slaves: align_done(&sd);
-  //OK master: align_threads_done();
-  
-
-  long hitno = 0;
-  long n = hits_getcount();
-  long showalignments = n < alignments ? n : alignments;
-  long * node_job = (long *) xmalloc(size * sizeof(long));
-  long seqno, score, qstrand, qframe, dstrand, dframe;
-  
-  align_threads_init();
-
-  //  if (view == 0)
-  //    clock_start(&ti);
-
-  while ((hitno < n) && (hitno < size - 1))
-  {
-    hits_gethit(hitno, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-    longbuffer[0] = seqno;
-    longbuffer[1] = hitno < showalignments;
-    longbuffer[2] = qstrand;
-    longbuffer[3] = qframe;
-    longbuffer[4] = dstrand;
-    longbuffer[5] = dframe;
-    node_job[hitno+1] = hitno;
-#ifdef DEBUG
-    fprintf(out, "Asking node %ld to align hitno %ld seqno %ld.\n", hitno+1, hitno, seqno);
-#endif
-    MPI_Send(longbuffer, 6, MPI_LONG, hitno+1, tag_align, MPI_COMM_WORLD);
-    slaves_active++;
-    hitno++;
-  }
-
-  while(slaves_active)
-  {
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Received message with tag %d and length %d from node %d.\n",
-	   tag, len, source);
-#endif
-
-    switch(tag)
-    {
-
-    case tag_align_seq:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving sequence from node %d\n", source);
-#endif
-      hits_enter_seq(node_job[source], buffer, len);
-      break;
-
-    case tag_align_coord:
-      
-#ifdef DEBUG
-      fprintf(out, "Receiving coord from node %d\n", source);
-#endif
-      hits_enter_align_coord(node_job[source],
-			     longbuffer[0],
-			     longbuffer[1],
-			     longbuffer[2],
-			     longbuffer[3],
-			     longbuffer[4]);
-      break;
-
-    case tag_align_string:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving alignment from node %d\n", source);
-#endif
-      hits_enter_align_string(node_job[source], buffer, len);
-      break;
-
-    case tag_align_header:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving header from node %d (hitno %ld)\n", source, node_job[source]);
-#endif
-      hits_enter_header(node_job[source], buffer, len);
-      
-      if (hitno < n)
-      {
-	hits_gethit(hitno, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-	longbuffer[0] = seqno;
-	longbuffer[1] = hitno < showalignments;
-	longbuffer[2] = qstrand;
-	longbuffer[3] = qframe;
-	longbuffer[4] = dstrand;
-	longbuffer[5] = dframe;
-	node_job[source] = hitno;
-#ifdef DEBUG
-	fprintf(out, "Asking node %d to align hitno %ld seqno %ld.\n", source, hitno, seqno);
-#endif
-	MPI_Send(longbuffer, 6, MPI_LONG, source, tag_align, MPI_COMM_WORLD);
-	hitno++;
-      }
-      else
-	slaves_active--;
-      break;
-
-    }
-  }
-
-  //  if (view == 0)
-  //    clock_stop(&ti);
-
-#ifdef DEBUG
-  fprintf(out, "Showing hits.\n");
-#endif
-
-  hits_show(view, show_gis);
-  
-#ifdef DEBUG
-  fprintf(out, "Shown hits.\n");
-#endif
-
-  /* ask all slaves to terminate. */
-  for (int i=1; i < size; i++)
-    MPI_Send(0, 0, MPI_CHAR, i, tag_die, MPI_COMM_WORLD);
-    
-  hits_exit();
-
-  align_threads_done();
-
-  free(node_job);
-  free(buffer);
-
-#ifdef DEBUG
-  fprintf(out, "Master completed.\n");
-#endif
-}
-
-void slave(int rank, int size)
-{
-  (void) rank; /* avoid warning */
-  
-  long features = cpu_feature_sse2 * 2 + cpu_feature_ssse3;
-  MPI_Send(&features, 1, MPI_LONG, 0, tag_features, MPI_COMM_WORLD);
-
-  //  fprintf(out, "Node %d: SSE2: %ld SSSE3: %ld\n", rank, cpu_feature_sse2, cpu_feature_ssse3);
-  //  fprintf(out, "This is slave no %d.\n", rank);
-
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, 0);
-
-  prepare_search(size-1);
-
-  long morework = 1;
-
-  long buffersize = 1024;
-  char * buffer = (char*) xmalloc(buffersize);
-  long * longbuffer = (long*) buffer;
-  
-  //  fprintf(out, "buffersize: %ld.\n", buffersize);
-
-  //OK master: align_threads_init();
-  // slaves: align_init(&sd);
-  // master: align_getwork -> slaves (i,j)
-  // slaves: align_chunk(&sd, i, j)
-  // slaves: align_done(&sd);
-  //OK master: align_threads_done();
-
-  struct search_data sd;
-
-  search_init(&sd);
-
-  totalhits = 0;
-  compute7 = 0;
-  compute16 = 0;
-  compute32 = 0;
-  compute63 = 0;
-  rounds7 = 0;
-  rounds16 = 0;
-  rounds32 = 0;
-  rounds63 = 0;
-
-  struct db_thread_s * t = db_thread_create();
-
-  while (morework)
-  {
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Slave %d receiving message with tag %d from source %d of length %d.\n",
-    	   rank, tag, source, len);
-#endif
-
-    long n;
-
-    long seqno;
-    long qframe;
-    long qstrand;
-    long dframe;
-    long dstrand;
-    long score;
-    long do_align;
-
-    long align_q_start;
-    long align_q_end;
-    long align_d_start;
-    long align_d_end;
-
-    long header_len;
-    long seq_len;
-    long ntlen;
-    long alignment_len;
-    char * header;
-    char * seq;
-    char * alignment;
-    
-    switch(tag)
-    {
-
-    case tag_search:
-      
-      sd.seqfirst = longbuffer[0];
-      sd.seqlast = longbuffer[1];
-
-      // fprintf(out, "Slave %d doing search from %d to %d.\n",
-      //	     rank, sd.seqfirst, sd.seqlast);
-
-      search_chunk(&sd);
-      
-      MPI_Send(0, 0, MPI_CHAR, 0, tag_search_done, MPI_COMM_WORLD);
-      
-      //      fprintf(out, "Slave %d reporting finished search.\n", rank);
-      break;
-
-    case tag_search_get:
-      
-      //      fprintf(out, "Slave %d sending %d results...\n", rank, hits_count);
-
-      n = hits_getcount();
-      
-      if (buffersize < (long)(8*n*sizeof(long)))
-      {
-	buffersize = 8*n*sizeof(long);
-#ifdef DEBUG
-	fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-	buffer = (char *) xrealloc(buffer, buffersize);
-	longbuffer = (long*) buffer;
-      }
-      
-      for(long i=0; i < n; i++)
-      {
-	hits_gethit(i, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-
-	//	fprintf(out, "slave sending seqno=%ld\n", seqno);
-
-	longbuffer[8*i+0] = seqno;
-	longbuffer[8*i+1] = score;
-	longbuffer[8*i+2] = qstrand;
-	longbuffer[8*i+3] = qframe;
-	longbuffer[8*i+4] = dstrand;
-	longbuffer[8*i+5] = dframe;
-	longbuffer[8*i+6] = -1;
-	longbuffer[8*i+7] = -1;
-      }
-
-      MPI_Send(longbuffer, 8*n, MPI_LONG, 0, tag_search_report, MPI_COMM_WORLD);
-
-      longbuffer[0] = rounds7;
-      longbuffer[1] = rounds16;
-      longbuffer[2] = rounds32;
-      longbuffer[3] = rounds63;
-      longbuffer[4] = compute7;
-      longbuffer[5] = compute16;
-      longbuffer[6] = compute32;
-      longbuffer[7] = compute63;
-      longbuffer[8] = totalhits;
-
-      MPI_Send(longbuffer, 9, MPI_LONG, 0, tag_stats, MPI_COMM_WORLD);
-
-      break;
-
-    case tag_align:
-
-      seqno = longbuffer[0];
-      do_align = longbuffer[1];
-      qstrand = longbuffer[2];
-      qframe = longbuffer[3];
-      dstrand = longbuffer[4];
-      dframe = longbuffer[5];
-
-      if (do_align)
-      {
-	db_mapsequences(t, seqno, seqno);
-	db_getsequence(t, seqno, dstrand, dframe, 
-		       & seq, & seq_len, & ntlen, 0);
-
-	char * dseq = seq;
-	long dlen = seq_len - 1;
-
-	char * qseq;
-	long qlen;
-
-	if (symtype == 0)
-	{
-	  qseq = query.nt[0].seq;
-	  qlen = query.nt[0].len;
-	}
-	else
-	{
-	  qseq = query.aa[3*qstrand + qframe].seq;
-	  qlen = query.aa[3*qstrand + qframe].len;
-	}
-
-	long align_score;
-
-	// give no hint of alignment end
-	
-	align_q_end = 0;
-	align_d_end = 0;
-	align_score = 0;
-
-	align(qseq,
-	      dseq,
-	      qlen,
-	      dlen,
-	      score_matrix_63,
-	      gapopen,
-	      gapextend,
-	      & align_q_start,
-	      & align_d_start,
-	      & align_q_end,
-	      & align_d_end,
-	      & alignment,
-	      & align_score);
-	
-	MPI_Send(dseq, dlen, MPI_CHAR, 0, tag_align_seq, MPI_COMM_WORLD);
-
-	longbuffer[0] = align_q_start;
-	longbuffer[1] = align_q_end;
-	longbuffer[2] = align_d_start;
-	longbuffer[3] = align_d_end;
-	longbuffer[4] = ntlen;
-	MPI_Send(longbuffer, 5, MPI_LONG, 0, tag_align_coord, MPI_COMM_WORLD);
-	
- 	alignment_len = strlen(alignment);
-	MPI_Send(alignment, alignment_len+1, MPI_CHAR, 0, tag_align_string, MPI_COMM_WORLD);
-	free(alignment);
-      }
-
-      db_mapheaders(t, seqno, seqno);
-      db_getheader(t, seqno, & header, & header_len);
-#ifdef DEBUG
-      fprintf(out, "Node %d sending header of length %ld.\n", rank, header_len);
-#endif
-      MPI_Send(header, header_len, MPI_CHAR, 0, tag_align_header, MPI_COMM_WORLD);
-      
-      break;
-
-    case tag_die:
-      //      fprintf(out, "Slave %d asked to die.\n", rank);
-      morework = 0;
-      break;
-
-    }
-  }
-
-
-  db_thread_destruct(t);
-  
-  //  fprintf(out, "Slave %d dies.\n", rank);
-
-  search_done(&sd);
-
-  free(buffer);
-
-  hits_exit();
-
-}
-
-#endif
 
 void work()
 {
@@ -2603,27 +1950,11 @@ void work()
 
 int main(int argc, char**argv)
 {
-#ifdef MPISWIPE
-  int rc = MPI_Init(&argc, &argv);
-  if (rc != MPI_SUCCESS)
-    fatal("Unable to initialize MPI.");
-  
-  int rank;
-  int size;
-  MPI_Comm_rank(MPI_COMM_WORLD, & rank);
-  MPI_Comm_size(MPI_COMM_WORLD, & size);
-
-  mpirank = rank;
-  mpisize = size;
-
-#endif
 
   cpu_features();
 
-#ifndef MPISWIPE
   if (! cpu_feature_sse2)
     fatal("This program requires a processor with SSE2.");
-#endif
 
   args_init(argc,argv);
 
@@ -2648,9 +1979,6 @@ int main(int argc, char**argv)
     
     query_init(queryname, symtype, querystrands);
     
-#ifdef MPISWIPE
-    if (!mpirank)
-#endif
     {
       hits_show_begin(view);
     }
@@ -2658,21 +1986,11 @@ int main(int argc, char**argv)
     while (query_read())
     {
       
-#ifdef MPISWIPE
-      if (rank == 0)
-	master(size);
-      else
-	slave(rank,size);
-#else
       work();
-#endif
       
       queryno++;
     }
     
-#ifdef MPISWIPE
-    if (!mpirank)
-#endif
     {
       hits_show_end(view);
     }
@@ -2693,15 +2011,6 @@ int main(int argc, char**argv)
 #endif
   db_close();
 
-#ifdef MPISWIPE
-#ifdef DEBUG
-  fprintf(out, "Finalizing (rank %d).\n", rank);
-#endif
-  MPI_Finalize();
-#ifdef DEBUG
-  fprintf(out, "Finalized (rank %d).\n", rank);
-#endif
-#endif
   
   if (outfile)
     fclose(out);

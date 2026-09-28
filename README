@@ -43,7 +43,7 @@ National Center for Biotechnology Information (NCBI).
 Please cite: Rognes T (2011) Faster Smith-Waterman database searches
 with inter-sequence SIMD parallelisation. BMC Bioinformatics 12, 221.
 
-Usage: ./[mpi]swipe [OPTIONS]
+Usage: ./swipe [OPTIONS]
   -h, --help                 show help
       --version              show version
   -d, --db=FILE              sequence database base name (required)
@@ -120,9 +120,8 @@ are honoured (e.g. "make CXXFLAGS=-O2"). "make install" copies the
 binary to $(PREFIX)/bin (PREFIX is /usr/local by default; DESTDIR is
 supported), and "make uninstall" removes it.
 
-The MPI version of SWIPE (mpiswipe) is deprecated: it is no longer
-built by "make" ("make mpiswipe" builds it, with an Open MPI mpicxx),
-and it will be removed in version 2.2.0.
+The MPI version of SWIPE (mpiswipe) was removed in version 2.2.0
+(version 2.1.2 is the last one that includes it).
 
 SWIPE will only run on processors with the SSE2 instruction set and
 runs best on processors with the SSSE3 instruction set. Please see

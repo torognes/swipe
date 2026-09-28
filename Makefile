@@ -24,9 +24,6 @@
 
 # Makefile for SWIPE
 
-MPI_COMPILE=`mpicxx --showme:compile`
-MPI_LINK=`mpicxx --showme:link`
-
 COMMON=-g -pthread
 
 COMPILEOPT=-Wall -Wextra
@@ -96,10 +93,8 @@ endif
 SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
-PROG=swipe mpiswipe
+PROG=swipe
 
-# mpiswipe (MPI version, needs mpicxx) is deprecated: it is no longer
-# built by default, run "make mpiswipe" to build it
 all : swipe
 
 # Installation directories (GNU conventions): make install PREFIX=...
@@ -135,7 +130,7 @@ OBJS = database.o asnparse.o align.o matrices.o \
 # files), so that editing any header, or blastkar_partial.c (included
 # by stats.cc), rebuilds the right objects.
 DEPFLAGS = -MMD -MP
-DEPFILES = swipe.d mpiswipe.d $(OBJS:.o=.d)
+DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)
 
 DEPS = Makefile
@@ -143,14 +138,8 @@ DEPS = Makefile
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)
 
-mpiswipe : mpiswipe.o $(OBJS)
-	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
-
 %.o : %.cc $(DEPS)
 	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-mpiswipe.o : swipe.cc $(DEPS)
-	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
 search7_ssse3.o : search7.cc $(DEPS)
 	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
