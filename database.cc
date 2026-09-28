@@ -653,7 +653,7 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
 auto get_path(char const * basename) -> char *
 {
   char const * p = basename;
-  char * path;
+  char * path = nullptr;
   long pathlen = 0;
 
   while (char const c = *p++)
@@ -706,8 +706,8 @@ auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
 
 auto db_getvolume(long seqno) -> long
 {
-  long dummy;
-  db_volume_t * vp;
+  long dummy = 0;
+  db_volume_t * vp = nullptr;
   seqno_volume(seqno, & dummy, & vp);
   return vp - db_volume;
 }
@@ -733,8 +733,8 @@ auto db_open_msk(db_volume_t * v) -> void
 
 auto db_check_msk(long seqno) -> long
 {
-  long s;
-  db_volume_t * v;
+  long s = 0;
+  db_volume_t * v = nullptr;
   
   long member = 1;
   if (db_main.memb_bit != 0)
@@ -1008,7 +1008,7 @@ auto db_open(long symbol_type, char const * basename, char * taxidfilename) -> v
 
   for(int b=0; b<256; b++)
   {
-    unsigned int unpacked;
+    unsigned int unpacked = 0;
     for(long i=0; i<4; i++)
       (reinterpret_cast<unsigned char*>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     decompress_nt[b] = unpacked;
@@ -1186,10 +1186,10 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   if (m->map_address != nullptr)
     munmap(m->map_address, m->map_length);
   
-  long s1;
-  long s2;
-  db_volume_t * v1;
-  db_volume_t * v2;
+  long s1 = 0;
+  long s2 = 0;
+  db_volume_t * v1 = nullptr;
+  db_volume_t * v2 = nullptr;
 
   seqno_volume(firstseqno, & s1, & v1);
   seqno_volume(lastseqno, & s2, & v2);
@@ -1235,10 +1235,10 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   if (m->map_address != nullptr)
     munmap(m->map_address, m->map_length);
   
-  long s1;
-  long s2;
-  db_volume_t * v1;
-  db_volume_t * v2;
+  long s1 = 0;
+  long s2 = 0;
+  db_volume_t * v1 = nullptr;
+  db_volume_t * v2 = nullptr;
 
   seqno_volume(firstseqno, & s1, & v1);
   seqno_volume(lastseqno, & s2, & v2);
@@ -1281,8 +1281,8 @@ auto db_translate(char const * dna, long dlen,
 		  long strand, long frame, 
 		  char * prot) -> void
 {
-  long pos;
-  long c;
+  long pos = 0;
+  long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
 
@@ -1323,8 +1323,8 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 {
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 
-  db_volume_t * v;
-  long s;
+  db_volume_t * v = nullptr;
+  long s = 0;
   seqno_volume(seqno, &s, &v);
 
   long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xsq / 4 + s)));
@@ -1490,8 +1490,8 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * length) -> void
 {
-  long s;
-  db_volume_t * v;
+  long s = 0;
+  db_volume_t * v = nullptr;
   seqno_volume(seqno, &s, &v);
 
   long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xhr / 4 + s)));
@@ -1523,8 +1523,8 @@ auto db_getshowheader(struct db_thread_s * t, long seqno,
 		      long show_gis, long indent,
 		      long maxlen, long linelen, long maxdeflines) -> void
 {
-  char * address;
-  long length;
+  char * address = nullptr;
+  long length = 0;
   db_getheader(t, seqno, & address, & length);
   db_showheader(t, address, length, show_gis, indent, maxlen, linelen, maxdeflines, 1);
 }
@@ -1533,9 +1533,9 @@ namespace {
 
 auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 {
-  char * address;
-  long length;
-  long ntlen;
+  char * address = nullptr;
+  long length = 0;
+  long ntlen = 0;
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)
@@ -1554,8 +1554,8 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 
 auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
 {
-  char * address;
-  long length;
+  char * address = nullptr;
+  long length = 0;
   db_getheader(t, seqno, & address, & length);
   return parse_getdeflinecount(t->parser, reinterpret_cast<unsigned char*>(address), length, db_main.memb_bit, & db_check_taxid);
 }
@@ -1590,13 +1590,13 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
   
   db_mapheaders(t, seqno, seqno);
 
-  char * address;
-  long length;
+  char * address = nullptr;
+  long length = 0;
   
   db_getheader(t, seqno, & address, & length);
 
-  long deflines;
-  char ** deflinetable;
+  long deflines = 0;
+  char ** deflinetable = nullptr;
 
   db_parse_header(t, address, length, 1,
 		  & deflines, & deflinetable);

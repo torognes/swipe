@@ -34,15 +34,15 @@ auto fullsw(char * dseq,
 	    long gap_open_extend,
 	    long gap_extend) -> long
 {
-  long h;
-  long n;
-  long e;
-  long f;
-  long s;
-  long *hep;
-  char *qp;
-  char *dp;
-  long * sp;
+  long h = 0;
+  long n = 0;
+  long e = 0;
+  long f = 0;
+  long s = 0;
+  long *hep = nullptr;
+  char *qp = nullptr;
+  char *dp = nullptr;
+  long * sp = nullptr;
 
   s = 0;
   dp = dseq;

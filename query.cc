@@ -334,8 +334,8 @@ auto query_read() -> int
   query_sequence[0] = 0;
   long query_length = 0;
  
-  char * map;
-  char m;
+  char * map = nullptr;
+  char m = 0;
 
   if (symtype == 5)
     map = map_sound;
@@ -501,14 +501,14 @@ auto translate(char const * dna, long dlen,
 {
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
-  char * ttable;
+  char * ttable = nullptr;
   if (table == 0)
     ttable = q_translate;
   else
     ttable = d_translate;
 
-  long pos;
-  long c;
+  long pos = 0;
+  long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   char * prot = static_cast<char*>(xmalloc(1+plen));

@@ -54,8 +54,8 @@ auto region(char const * a_seq,
   long * HH = static_cast<long *>(xmalloc(N * sizeof(long)));
   long * EE = static_cast<long *>(xmalloc(N * sizeof(long)));
 
-  long i;
-  long j;
+  long i = 0;
+  long j = 0;
 
   long score = 0;
 
@@ -123,7 +123,7 @@ auto region(char const * a_seq,
     {
       long h = -1;
       long f = -1;
-      long p;
+      long p = 0;
       if (i == *a_end)
 	p = 0;
       else
@@ -273,7 +273,7 @@ auto diff(struct aligner_info * aip,
       // tb = 0 or q depending on whether a gap is already open on left of B
       // te = 0 or q depending on whether a gap is already open on right of B
 
-      long J;
+      long J = 0;
 
       if (tb <= te)
 	{
@@ -337,9 +337,9 @@ auto diff(struct aligner_info * aip,
     {
 
       long const I = M/2;
-      long i;
-      long j;
-      long t;
+      long i = 0;
+      long j = 0;
+      long t = 0;
 
       // Compute HH & EE in forward phase with tb
 

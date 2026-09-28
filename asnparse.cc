@@ -1035,7 +1035,7 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 {
   match_obj(p,0x30);
   long deflines = 0;
-  long size;
+  long size = 0;
   char * * table = nullptr;
 
   if (deflinetable != nullptr)
@@ -1105,7 +1105,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable;
+  char ** deflinetable = nullptr;
   long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
 
   *deflinetablep = deflinetable;
@@ -1135,7 +1135,7 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable;
+  char ** deflinetable = nullptr;
   long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
   long const deflines2 = show_deflines(p, deflines, deflinetable);
   return deflines2;

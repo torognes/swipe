@@ -340,16 +340,16 @@ auto score_matrix_read_file(char const * matrix) -> void
   char line[LINE_MAX];
   char order[LINE_MAX];
 
-  int a;
-  int b;
-  int i;
-  int read;
-  int symbols;
-  long sc; 
-  char * map;
-  char * p;
-  char * q;
-  char c;
+  int a = 0;
+  int b = 0;
+  int i = 0;
+  int read = 0;
+  int symbols = 0;
+  long sc = 0; 
+  char * map = nullptr;
+  char * p = nullptr;
+  char * q = nullptr;
+  char c = 0;
 
   FILE * fp = fopen(matrix, "r");
 
@@ -424,16 +424,16 @@ auto score_matrix_read_string(char const * matrix) -> void
   char line[LINE_MAX];
   char order[LINE_MAX];
 
-  int a;
-  int b;
-  int i;
-  int read;
-  int symbols;
-  long sc; 
-  char * map;
-  char * p;
-  char * q;
-  char c;
+  int a = 0;
+  int b = 0;
+  int i = 0;
+  int read = 0;
+  int symbols = 0;
+  long sc = 0; 
+  char * map = nullptr;
+  char * p = nullptr;
+  char * q = nullptr;
+  char c = 0;
 
   char const * s = matrix;
 
@@ -450,7 +450,7 @@ auto score_matrix_read_string(char const * matrix) -> void
   while((*s) != 0)
     {
       char const * nextline = strchr(s, '\n');
-      int linelen;
+      int linelen = 0;
       if (nextline != nullptr)
 	linelen = nextline - s;
       else
@@ -520,11 +520,11 @@ auto score_matrix_read_string(char const * matrix) -> void
 
 auto score_matrix_read() -> void
 {
-  int a;
-  int b;
-  long sc;
-  long lo;
-  long hi; 
+  int a = 0;
+  int b = 0;
+  long sc = 0;
+  long lo = 0;
+  long hi = 0; 
   
   score_matrix_7 = static_cast<char *>(xmalloc(32*32*sizeof(char)));
   score_matrix_7t = static_cast<char *>(xmalloc(32*32*sizeof(char)));

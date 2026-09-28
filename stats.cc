@@ -49,10 +49,10 @@ auto stats_getparams_nt(long match_score,
 			double * alpha,
 			double * beta) -> long
 {
-  array_of_8 const * bv;
-  long bm;
-  long gomax;
-  long gemax;
+  array_of_8 const * bv = nullptr;
+  long bm = 0;
+  long gomax = 0;
+  long gemax = 0;
 
   if      ((match_score == 1) && (mismatch_score == -5))
   {
@@ -173,8 +173,8 @@ auto stats_getparams(char const * matrix,
 		     double * alpha,
 		     double * beta) -> long
 {
-  double (*mat)[8]; 
-  long val;
+  double (*mat)[8] = nullptr; 
+  long val = 0;
 
   if (strcasecmp(matrix, "BLOSUM45") == 0)
   {
@@ -243,9 +243,9 @@ auto stats_getprefs(char const * matrix,
 		    long * gopen,
 		    long * gextend) -> long
 {
-  double (*mat)[8]; 
-  long val;
-  Int4 *prefs;
+  double (*mat)[8] = nullptr; 
+  long val = 0;
+  Int4 *prefs = nullptr;
 
   if (strcasecmp(matrix, "BLOSUM45") == 0)
   {

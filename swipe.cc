@@ -351,12 +351,12 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
 	  long const hs = hits_sorted[hitno];
-	  long seqno;
-	  long score;
-	  long hqstrand;
-	  long hqframe;
-	  long hdstrand;
-	  long hdframe;
+	  long seqno = 0;
+	  long score = 0;
+	  long hqstrand = 0;
+	  long hqframe = 0;
+	  long hdstrand = 0;
+	  long hdframe = 0;
 	
 	  hits_gethit(hs, & seqno, & score, & hqstrand, & hqframe, 
 		      & hdstrand, & hdframe);
@@ -544,12 +544,12 @@ auto align_threads_init() -> void
 
   for(long i = 0; i<hits; i++)
   {
-    long seqno;
-    long score;
-    long qstrand;
-    long qframe;
-    long dstrand;
-    long dframe;
+    long seqno = 0;
+    long score = 0;
+    long qstrand = 0;
+    long qframe = 0;
+    long dstrand = 0;
+    long dframe = 0;
     
     if (i>=alignments)
       align_volseqs[6]++;
@@ -563,7 +563,7 @@ auto align_threads_init() -> void
     }
   }
 
-  long totalchunks;
+  long totalchunks = 0;
 
   calc_chunks(bins,
 	      threads,
@@ -621,8 +621,8 @@ auto align_worker(void * /*unused*/) -> void *
   search_data sd;
   align_init(&sd);
 
-  long i;
-  long j;
+  long i = 0;
+  long j = 0;
   while(align_getwork(&i, &j) != 0)
     align_chunk(&sd, i, j);
   
@@ -632,8 +632,8 @@ auto align_worker(void * /*unused*/) -> void *
 
 auto align_threads() -> void
 {
-  long t;
-  void * status;
+  long t = 0;
+  void * status = nullptr;
 
   align_threads_init();
   
@@ -688,7 +688,7 @@ auto args_show() -> void
 
       fprintf(out, "Query file name:   %s\n", queryname);
 
-      long qlen;
+      long qlen = 0;
       if ((symtype == 0) || (symtype == 2) || (symtype == 4))
 	qlen = query.nt[0].len;
       else
@@ -929,7 +929,7 @@ auto args_init(int argc, char * const * argv) -> void
   };
   
   int option_index = 0;
-  int c;
+  int c = 0;
 
   // gap penalties not given on the command line take the default
   // values of the score matrix or of the symbol type; a penalty of
@@ -1127,8 +1127,8 @@ auto args_init(int argc, char * const * argv) -> void
 	}
     }
   
-  long gopen_default;
-  long gextend_default;
+  long gopen_default = 0;
+  long gextend_default = 0;
 
   if (symtype == 0)
   {
@@ -1479,8 +1479,8 @@ auto search_chunk(struct search_data * sdp) -> void
   for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
-      long dstrand;
-      long dframe;
+      long dstrand = 0;
+      long dframe = 0;
       
       sdp->out_count = sdp->start_count;
       memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
@@ -1638,15 +1638,15 @@ auto search_chunk(struct search_data * sdp) -> void
 	  dstrand = (seqnosf >> 2) & 1;
 	  dframe = seqnosf & 3;
       
-	  char * address;
-	  long length;
-	  long ntlen;
+	  char * address = nullptr;
+	  long length = 0;
+	  long ntlen = 0;
 	  db_getsequence(sdp->dbt, seqno, dstrand, dframe, 
 			 & address, & length, & ntlen, 0);
 	  char * dbegin = address;
 	  char const * dend = address + length - 1;
       
-	  char * q;
+	  char * q = nullptr;
 	  if (symtype == 0)
 	    q = query.nt[qstrand].seq;
 	  else
@@ -1697,7 +1697,7 @@ auto prepare_search(long par) -> void
   for(long v = 0; v < volcount; v++)
     volseqs[v] = db_getseqcount_volume(v);
 
-  long totalchunks;
+  long totalchunks = 0;
 
   calc_chunks(volcount,
 	      par,
@@ -1760,8 +1760,8 @@ auto prepare_search(long par) -> void
 
 auto run_threads() -> void
 {
-  long t;
-  void * status;
+  long t = 0;
+  void * status = nullptr;
 
   for(t=0; t<threads; t++)
     {
@@ -1785,10 +1785,10 @@ namespace {
 
 auto cpu_features() -> void
 {
-  unsigned int a __attribute__ ((unused));
-  unsigned int b __attribute__ ((unused));
-  unsigned int c;
-  unsigned int d;
+  unsigned int a __attribute__ ((unused)) = 0;
+  unsigned int b __attribute__ ((unused)) = 0;
+  unsigned int c = 0;
+  unsigned int d = 0;
   cpuid(1,0,a,b,c,d);
   cpu_feature_sse2  = (d >> 26) & 1;
   cpu_feature_ssse3 = (c >>  9) & 1;

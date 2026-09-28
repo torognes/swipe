@@ -368,8 +368,8 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
     h->alignment = nullptr;
   }
 
-  int seqcount;
-  long symcount;
+  int seqcount = 0;
+  long symcount = 0;
 
   if (db_ismasked() != 0)
   {
@@ -416,7 +416,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       
       long const qlen = query.nt[0].len;
 
-      long dlen;
+      long dlen = 0;
       if (effdbsize > 0)
 	dlen = effdbsize;
       else
@@ -487,7 +487,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       if ((symtype == 2) || (symtype == 4))
 	qlen = query.nt[0].len / 3;
 
-      long dlen;
+      long dlen = 0;
       if (effdbsize > 0)
       {
 	dlen = effdbsize;
@@ -603,9 +603,9 @@ auto hits_exit() -> void
 
 auto hits_align(struct db_thread_s * t, long i) -> void
 {
-  char * address;
-  long length;
-  long ntlen;
+  char * address = nullptr;
+  long length = 0;
+  long ntlen = 0;
 
   struct hits_entry * h = hits_list + i;
 
@@ -630,8 +630,8 @@ auto hits_align(struct db_thread_s * t, long i) -> void
     h->dseq = static_cast<char*>(xmalloc(h->dlen));
     memcpy(h->dseq, address, h->dlen);
     
-    char * qseq;
-    long qlen;
+    char * qseq = nullptr;
+    long qlen = 0;
     if (symtype == 0)
     {
       qseq = query.nt[0].seq;
@@ -719,8 +719,8 @@ auto putalignop(char c, long len) -> void
       d_start = d_pos;
     }
 
-    char qs;
-    char ds;
+    char qs = 0;
+    char ds = 0;
 
     switch(c)
     {
@@ -864,8 +864,8 @@ auto show_align(long i) -> void
   while(p < e)
   {
     char const op = *p++;
-    long len;
-    int n;
+    long len = 0;
+    int n = 0;
     sscanf(p, "%ld%n", & len, & n);
     p += n;
     putalignop(op, len);
@@ -890,8 +890,8 @@ auto whole_align(long i,
   char const * p = alignment;
   while((*p) != 0)
   {
-    long len;
-    int n;
+    long len = 0;
+    int n = 0;
     sscanf(p, "%*c%ld%n", & len, & n);
     p += n;
     al += len;
@@ -951,8 +951,8 @@ auto whole_align(long i,
   while((*p) != 0)
   {
     char const op = *p++;
-    long len;
-    int n;
+    long len = 0;
+    int n = 0;
     sscanf(p, "%ld%n", & len, & n);
     p += n;
     
@@ -1135,8 +1135,8 @@ auto count_align(long i,
   while(p < e)
   {
     char const op = *p++;
-    long len;
-    int n;
+    long len = 0;
+    int n = 0;
     sscanf(p, "%ld%n", & len, & n);
     p += n;
     
@@ -1345,7 +1345,7 @@ auto hits_defline_split(char * defline,
 			char ** rest) -> void
 {
   char * p = defline;
-  int len;
+  int len = 0;
 
   *link = nullptr;
   *linklen = 0;
@@ -1380,7 +1380,7 @@ auto hits_show_xml_paralign(long showalignments,
   
   fprintf(out, "\t<paralignOutput>\n");
   
-  char const * qseqtypedescr;
+  char const * qseqtypedescr = nullptr;
   struct sequence q;
   if ((query.symtype == 1) || (query.symtype == 3))
   {
@@ -1414,9 +1414,9 @@ auto hits_show_xml_paralign(long showalignments,
   fprintf(out, "</querySequence>\n");
   fprintf(out, "\t\t</queryInformation>\n");
   
-  char const * dbseqtypedescr;
-  char const * ncbidb;
-  char const * ncbiopt;
+  char const * dbseqtypedescr = nullptr;
+  char const * ncbidb = nullptr;
+  char const * ncbiopt = nullptr;
   if ((query.symtype == 0) || (query.symtype == 3) || (query.symtype == 4))
   {
     dbseqtypedescr = "Nucleotide";
@@ -1543,12 +1543,12 @@ auto hits_show_xml_paralign(long showalignments,
     char anchor[200];
     make_anchor(anchor, 200, query.symtype, queryno, i);
 
-    long deflines;
-    char ** deflinetable;
+    long deflines = 0;
+    char ** deflinetable = nullptr;
     long gi = 0;
-    char * link;
-    char * title;
-    int linklen;
+    char * link = nullptr;
+    char * title = nullptr;
+    int linklen = 0;
     db_parse_header(t, hits_list[i].header_address, hits_list[i].header_length,
 		    1, & deflines, & deflinetable);
     hits_defline_split(deflinetable[0], 
@@ -1624,12 +1624,12 @@ auto hits_show_xml_paralign(long showalignments,
       fprintf(out, "\t\t\t<longVersionHit>\n");
       fprintf(out, "\t\t\t\t<longVersionAnchor>%s</longVersionAnchor>\n", anchor);
       
-      long deflines;
-      char ** deflinetable;
+      long deflines = 0;
+      char ** deflinetable = nullptr;
       long gi = 0;
-      char * link;
-      char * title;
-      int linklen;
+      char * link = nullptr;
+      char * title = nullptr;
+      int linklen = 0;
       db_parse_header(t, hits_list[i].header_address, hits_list[i].header_length,
 		      1, & deflines, & deflinetable);
       fprintf(out, "\t\t\t\t<linkContainer>\n");
@@ -1709,15 +1709,15 @@ auto hits_show_xml_paralign(long showalignments,
       long const score = hits_list[i].score;
       double const e = Kmn * exp(- lambda * score);
 
-      long identities;
-      long positives;
-      long indels;
-      long gaps;
-      long aligned;
+      long identities = 0;
+      long positives = 0;
+      long indels = 0;
+      long gaps = 0;
+      long aligned = 0;
     
-      char *qline;
-      char *aline;
-      char *dline;
+      char *qline = nullptr;
+      char *aline = nullptr;
+      char *dline = nullptr;
         
       whole_align(i, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
@@ -1784,7 +1784,7 @@ auto ends_query_id(char const symbol) -> bool
 
 auto show_description(char const *desc) -> void
 {
-  char const *dptr;
+  char const *dptr = nullptr;
 
   for (dptr = desc; not ends_query_id(*dptr); dptr++)
   {
@@ -1839,15 +1839,15 @@ auto hits_show_xml(long show_gis,
     
     if (i < showalignments)
     {
-      long identities;
-      long positives;
-      long gaps;
-      long aligned;
-      long indels;
+      long identities = 0;
+      long positives = 0;
+      long gaps = 0;
+      long aligned = 0;
+      long indels = 0;
 
-      char *qline;
-      char *aline;
-      char *dline;
+      char *qline = nullptr;
+      char *aline = nullptr;
+      char *dline = nullptr;
         
       whole_align(i, & identities, & positives, & indels, & aligned, & gaps,
 		  & qline, & aline, & dline);
@@ -1899,11 +1899,11 @@ auto hits_show_tsv(long showalignments,
 		  hits_list[i].header_length,
 		  1, 0, 0, LONG_MAX, 1, 0);
     
-    long identities;
-    long positives;
-    long gaps;
-    long aligned;
-    long indels;
+    long identities = 0;
+    long positives = 0;
+    long gaps = 0;
+    long aligned = 0;
+    long indels = 0;
     
     count_align(i, & identities, & positives, & indels, & aligned, & gaps);
     
@@ -2040,11 +2040,11 @@ auto hits_show_plain(long show_gis,
 
 	putc('\n', out);
 
-	long identities;
-	long positives;
-	long gaps;
-	long aligned;
-	long indels;
+	long identities = 0;
+	long positives = 0;
+	long gaps = 0;
+	long aligned = 0;
+	long indels = 0;
 
 	count_align(i, & identities, & positives, & indels, & aligned, & gaps);
 	      
@@ -2143,8 +2143,8 @@ auto hits_show(long view, long show_gis) -> void
 {
   // compute number of hits and alignments to actually show
 
-  long showalignments;
-  long showhits;
+  long showalignments = 0;
+  long showhits = 0;
 
   if (hits_count < opt_descriptions)
     showhits = hits_count;
