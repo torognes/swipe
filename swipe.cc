@@ -826,8 +826,8 @@ void args_usage()
 
 void args_version()
 {
-  char title[] = "SWIPE " SWIPE_VERSION;
-  char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
+  char const title[] = "SWIPE " SWIPE_VERSION;
+  char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprintf(out, "%s\n\n%s\n", title, ref);
 }
 
