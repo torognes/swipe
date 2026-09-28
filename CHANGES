@@ -4,6 +4,14 @@
           exits with status 0
         * Fix: --help exited with status 1: it now exits with status 0,
           as other GNU-style programs (KI-2)
+        * Fix: a gap open or gap extension penalty of zero (-G 0, -E 0)
+          was replaced by the default value of the score matrix or of
+          the symbol type, so that linear gap costs (e.g. -G 0 -E 2)
+          could not be used (KI-6, GitHub #12). Zero is now a valid
+          penalty; penalties that are not given still take the default
+          values, and both penalties cannot be zero. Statistics (E-values
+          and bit scores) are shown when BLAST has them for these gap
+          penalties (e.g. blastn, reward 1, penalty -3, -G 0 -E 2)
         * Fix: with tblastn and tblastx (-p 3, -p 4), the simple XML output
           (-m 7) reported the length of the translated database sequence
           (<len>, in amino acids), whereas the other outputs report its

@@ -952,6 +952,12 @@ void args_init(int argc, char **argv)
   
   int option_index = 0;
   int c;
+
+  // gap penalties not given on the command line take the default
+  // values of the score matrix or of the symbol type; a penalty of
+  // zero is a valid value (KI-6)
+  auto gapopen_given = false;
+  auto gapextend_given = false;
   
   while (1)
     {
@@ -1000,6 +1006,7 @@ void args_init(int argc, char **argv)
 	case 'E':
 	  /* gap extend */
 	  gapextend = parse_long(optarg, "Illegal gap penalties.");
+	  gapextend_given = true;
 	  break;
 	  
 	case 'F':
@@ -1011,6 +1018,7 @@ void args_init(int argc, char **argv)
 	case 'G':
 	  /* gap open */
 	  gapopen = parse_long(optarg, "Illegal gap penalties.");
+	  gapopen_given = true;
 	  break;
 	  
 	case 'h':
@@ -1146,9 +1154,9 @@ void args_init(int argc, char **argv)
 
   if (symtype == 0)
   {
-    if (gapopen == 0)
+    if (not gapopen_given)
       gapopen = 5;
-    if (gapextend == 0)
+    if (not gapextend_given)
       gapextend = 2;
   }
   else if (symtype < 5)
@@ -1158,14 +1166,15 @@ void args_init(int argc, char **argv)
 
     if (stats_getprefs(matrixname, & gopen_default, & gextend_default))
     {
-      if (gapopen == 0)
+      if (not gapopen_given)
 	gapopen = gopen_default;
-      if (gapextend == 0)
+      if (not gapextend_given)
 	gapextend = gextend_default;
     }
     else
     {
-      if ((gapopen == 0) && (gapextend == 0))
+      // no default for this matrix: a penalty not given is zero
+      if ((not gapopen_given) && (not gapextend_given))
 	fatal("Unknown score matrix. Gap penalties must be specified (-G and -E).");
     }
   }
@@ -1173,9 +1182,9 @@ void args_init(int argc, char **argv)
   {
     if (strlen(matrixname) == 0)
       matrixname = "IDENTITY_5_1";
-    if (gapopen == 0)
+    if (not gapopen_given)
       gapopen = 15;
-    if (gapextend == 0)
+    if (not gapextend_given)
       gapextend = 5;
   }
 
