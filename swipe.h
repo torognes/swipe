@@ -60,7 +60,12 @@
 
 // the version number is read from the file VERSION by the Makefile
 #ifndef SWIPE_VERSION
+#ifdef __CPPCHECK__
+// static analysis with cppcheck, run without the Makefile's flags
+#define SWIPE_VERSION "0.0.0"
+#else
 #error "SWIPE_VERSION is not defined: build swipe with make"
+#endif
 #endif
 
 // Should be 32bits integer
