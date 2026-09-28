@@ -374,14 +374,8 @@ auto search16(WORD * * q_start,
   
   Z = _mm_set1_epi16(word_0x8000);
   T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
-  Q  = _mm_set_epi16(gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty);
-  R  = _mm_set_epi16(gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty);
+  Q  = _mm_set1_epi16(static_cast<short>(gap_open_penalty));
+  R  = _mm_set1_epi16(static_cast<short>(gap_extend_penalty));
   
   zero = 0;
   done = 0;

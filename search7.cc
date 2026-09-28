@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <cstddef>  // std::size_t
 
 constexpr int CHANNELS = 16;
 constexpr int CDEPTH = 4;
@@ -232,7 +233,7 @@ inline auto dprofile_fill7(BYTE * dprofile,
     unsigned d[CHANNELS];
     for (int i = 0; i < CHANNELS; i++)
     {
-      d[i] = dseq[(j * CHANNELS) + i] << 5;
+      d[i] = static_cast<unsigned>(dseq[(j * CHANNELS) + i]) << 5;
     }
 
     xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
@@ -763,27 +764,13 @@ search7
   long next_id = 0;
   unsigned done;
   
-  memset(hearray, 0x80, qlen * 32);
+  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * 32);
 
   Z  = _mm_set1_epi8(byte_0x80);
   T0 = _mm_set_epi8(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, byte_0x80);
-  Q  = _mm_set_epi8(gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty);
-  R  = _mm_set_epi8(gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty);
+  Q  = _mm_set1_epi8(static_cast<char>(gap_open_penalty));
+  R  = _mm_set1_epi8(static_cast<char>(gap_extend_penalty));
   zero = 0;
   done = 0;
 
