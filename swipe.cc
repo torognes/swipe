@@ -76,7 +76,6 @@ struct time_info ti;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-char * taxidfilename;
 long cpu_feature_sse2;
 std::mutex countmutex;
 std::mutex workmutex;
@@ -123,6 +122,13 @@ struct search_data
 
   long qstrand1, qstrand2, qframe1, qframe2;
   long dstrand1, dstrand2, dframe1, dframe2;
+};
+
+// what a worker thread gets from pthread_create(): the parameters,
+// read-only (the object lives until the threads are joined)
+struct WorkerArguments
+{
+  Parameters const * parameters;
 };
 
 }  // anonymous namespace
@@ -178,7 +184,7 @@ long align_volnext;
 long * align_volseqs;
 long * align_volchunks;
 
-auto align_init(struct search_data * sdp) -> void
+auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
 
@@ -188,11 +194,11 @@ auto align_init(struct search_data * sdp) -> void
   long qlen = 0;
   long hearraylen = 0;
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     for (int s = 0; s < 2; s++)
     {
-      if (searches_strand(querystrands, s))
+      if (searches_strand(parameters.querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -205,7 +211,7 @@ auto align_init(struct search_data * sdp) -> void
       }
     }
   }
-  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn) || (symtype == SymbolType::sound))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
@@ -216,11 +222,11 @@ auto align_init(struct search_data * sdp) -> void
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
     for (int s = 0; s < 2; s++)
     {
-      if (searches_strand(querystrands, s))
+      if (searches_strand(parameters.querystrands, s))
       {
 	for(int f=0; f<3; f++)
 	{
@@ -253,11 +259,11 @@ auto align_init(struct search_data * sdp) -> void
   sdp->bestpos = static_cast<long*>(xmalloc(listsize));
   sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -265,11 +271,11 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == SymbolType::blastx)
+  else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -277,7 +283,7 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == SymbolType::tblastn)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -289,11 +295,11 @@ auto align_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == SymbolType::tblastx)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -315,9 +321,9 @@ auto align_init(struct search_data * sdp) -> void
   }
 }
 
-auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
+auto align_chunk(Parameters const & parameters, struct search_data * sdp, long hitfirst, long hitlast) -> void
 {
-  if (hitlast < alignments)
+  if (hitlast < parameters.alignments)
   {
 
     for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
@@ -367,8 +373,8 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	  // the 16-bit penalties are only used when they fit (KI-13:
 	  // otherwise no 16-bit result is accepted)
 	  search16s(reinterpret_cast<WORD**>(qtable),
-		    static_cast<WORD>(gapopenextend),
-		    static_cast<WORD>(gapextend),
+		    static_cast<WORD>(parameters.gapopenextend),
+		    static_cast<WORD>(parameters.gapextend),
 		    reinterpret_cast<WORD*>(score_matrix_16),
 		    reinterpret_cast<WORD*>(sdp->dprofile),
 		    reinterpret_cast<WORD*>(sdp->hearray),
@@ -501,7 +507,7 @@ auto calc_chunks(long volcount,
   *totalchunks = chunks;
 }
 
-auto align_threads_init() -> void
+auto align_threads_init(Parameters const & parameters) -> void
 {
   long const hits = hits_getcount();
 
@@ -526,7 +532,7 @@ auto align_threads_init() -> void
     long dstrand = 0;
     long dframe = 0;
 
-    if (i >= alignments)
+    if (i >= parameters.alignments)
     {
       align_volseqs[6]++;
     }
@@ -543,7 +549,7 @@ auto align_threads_init() -> void
   long totalchunks = 0;
 
   calc_chunks(bins,
-	      threads,
+	      parameters.threads,
 	      8,
 	      align_volseqs,
 	      align_volchunks,
@@ -596,38 +602,40 @@ auto align_getwork(long * first, long * last) -> int
   return status;
 }
 
-auto align_worker(void * /*unused*/) -> void *
+auto align_worker(void * arguments) -> void *
 {
+  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   search_data sd;
-  align_init(&sd);
+  align_init(parameters, &sd);
 
   long i = 0;
   long j = 0;
   while (align_getwork(&i, &j) != 0)
   {
-    align_chunk(&sd, i, j);
+    align_chunk(parameters, &sd, i, j);
   }
 
   align_done(&sd);
   return nullptr;
 }
 
-auto align_threads() -> void
+auto align_threads(Parameters const & parameters) -> void
 {
   long t = 0;
   void * status = nullptr;
 
-  align_threads_init();
-  
-  for(t=0; t<threads; t++)
+  align_threads_init(parameters);
+
+  WorkerArguments arguments {&parameters};
+  for(t=0; t<parameters.threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, align_worker, nullptr) != 0)
+      if (pthread_create(pthread_id + t, nullptr, align_worker, &arguments) != 0)
       {
 	fatal("Cannot create thread.");
       }
     }
   
-  for(t=0; t<threads; t++) {
+  for(t=0; t<parameters.threads; t++) {
     if (pthread_join(pthread_id[t], &status) != 0)
     {
       fatal("Cannot join thread.");
@@ -1279,7 +1287,6 @@ auto set_option_globals(Parameters const & parameters) -> void
   matrixname = parameters.matrixname;
   databasename = parameters.databasename;
   queryname = parameters.queryname;
-  taxidfilename = parameters.taxidfilename;
   expect = parameters.expect;
   minexpect = parameters.minexpect;
   alignments = parameters.alignments;
@@ -1296,18 +1303,18 @@ auto set_option_globals(Parameters const & parameters) -> void
   effdbsize = parameters.effdbsize;
 }
 
-auto search_init(struct search_data * sdp) -> void
+auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
   sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
     for (int s = 0; s < 2; s++)
     {
-      if (searches_strand(querystrands, s))
+      if (searches_strand(parameters.querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
@@ -1320,7 +1327,7 @@ auto search_init(struct search_data * sdp) -> void
       }
     }
   }
-  else if ((symtype == SymbolType::blastp) || (symtype == SymbolType::tblastn) || (symtype == SymbolType::sound))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
@@ -1331,11 +1338,11 @@ auto search_init(struct search_data * sdp) -> void
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == SymbolType::blastx) || (symtype == SymbolType::tblastx))
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
     for (int s = 0; s < 2; s++)
     {
-      if (searches_strand(querystrands, s))
+      if (searches_strand(parameters.querystrands, s))
       {
 	for(int f=0; f<3; f++)
 	{
@@ -1357,7 +1364,7 @@ auto search_init(struct search_data * sdp) -> void
   sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
   auto listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
-  if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+  if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
     listsize *= 6;
   }
@@ -1369,11 +1376,11 @@ auto search_init(struct search_data * sdp) -> void
   sdp->bestpos = static_cast<long*>(xmalloc(listsize));
   sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
-  if (symtype == SymbolType::blastn)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -1381,11 +1388,11 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == SymbolType::blastx)
+  else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1393,7 +1400,7 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == SymbolType::tblastn)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -1405,11 +1412,11 @@ auto search_init(struct search_data * sdp) -> void
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == SymbolType::tblastx)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == QueryStrands::minus ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == QueryStrands::plus ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1486,28 +1493,28 @@ auto search_getwork(long * first, long * last) -> int
 
 // blastn: a hit of the reverse complement of the query is entered as
 // a hit of the query on the reverse strand of the database sequence
-auto reported_strands(HitStrands const & strands) -> HitStrands
+auto reported_strands(SymbolType const symbol_type, HitStrands const & strands) -> HitStrands
 {
-  if ((symtype == SymbolType::blastn) && (strands.qstrand != 0))
+  if ((symbol_type == SymbolType::blastn) && (strands.qstrand != 0))
   {
     return {0, 0, 1, 0};
   }
   return strands;
 }
 
-auto search_chunk(struct search_data * sdp) -> void
+auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> void
 {
   // the 7-bit engine uses signed bytes: gap penalties are clamped to
   // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
   // penalty of 127 already takes any score down to zero. The 16-bit
   // and 63-bit engines, and the alignments, use the real penalties
   long const max_7 = std::numeric_limits<signed char>::max();
-  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(gapopenextend, max_7));
-  BYTE const gapextend_7 = static_cast<BYTE>(std::min(gapextend, max_7));
+  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(parameters.gapopenextend, max_7));
+  BYTE const gapextend_7 = static_cast<BYTE>(std::min(parameters.gapextend, max_7));
 
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
 
-  if (taxidfilename != nullptr)
+  if (parameters.taxidfilename != nullptr)
   {
     db_mapheaders(sdp->dbt, sdp->seqfirst, sdp->seqlast);
   }
@@ -1517,7 +1524,7 @@ auto search_chunk(struct search_data * sdp) -> void
   {
     if (db_check_inclusion(sdp->dbt, seqno) != 0)
     {
-      if ((symtype == SymbolType::tblastn) || (symtype == SymbolType::tblastx))
+      if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
 	for (long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
 	{
@@ -1617,7 +1624,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    long const dframe = seqnosf & 3;
 
 	    hits_enter(seqno, score,
-		       reported_strands({qstrand, qframe, dstrand, dframe}));
+		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1644,8 +1651,8 @@ auto search_chunk(struct search_data * sdp) -> void
 	// the 16-bit penalties are only used when they fit (KI-13:
 	// otherwise no 16-bit result is accepted)
 	search16(reinterpret_cast<WORD**>(qtable),
-		 static_cast<WORD>(gapopenextend),
-		 static_cast<WORD>(gapextend),
+		 static_cast<WORD>(parameters.gapopenextend),
+		 static_cast<WORD>(parameters.gapextend),
 		 reinterpret_cast<WORD*>(score_matrix_16),
 		 reinterpret_cast<WORD*>(sdp->dprofile),
 		 reinterpret_cast<WORD*>(sdp->hearray),
@@ -1669,7 +1676,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	    long const dframe = seqnosf & 3;
 
 	    hits_enter(seqno, score,
-		       reported_strands({qstrand, qframe, dstrand, dframe}));
+		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1709,7 +1716,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  char const * dend = address + length - 1;
       
 	  char * q = nullptr;
-	  if (symtype == SymbolType::blastn)
+	  if (parameters.symtype == SymbolType::blastn)
 	  {
 	    q = query.nt[qstrand].seq;
 	  }
@@ -1724,11 +1731,11 @@ auto search_chunk(struct search_data * sdp) -> void
 			      q + qlen,
 			      reinterpret_cast<long*>(sdp->hearray),
 			      score_matrix_63,
-			      gapopenextend,
-			      gapextend);
+			      parameters.gapopenextend,
+			      parameters.gapextend);
 
 	  hits_enter(seqno, score,
-		     reported_strands({qstrand, qframe, dstrand, dframe}));
+		     reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	}
       }
   
@@ -1737,14 +1744,15 @@ auto search_chunk(struct search_data * sdp) -> void
 }
 
 
-auto worker(void * /*unused*/) -> void *
+auto worker(void * arguments) -> void *
 {
+  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   struct search_data sd;
-  search_init(&sd);
+  search_init(parameters, &sd);
 
   while (search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
   {
-    search_chunk(&sd);
+    search_chunk(parameters, &sd);
   }
 
   search_done(&sd);
@@ -1779,20 +1787,21 @@ auto prepare_search(long par) -> void
   }
 }
 
-auto run_threads() -> void
+auto run_threads(Parameters const & parameters) -> void
 {
   long t = 0;
   void * status = nullptr;
 
-  for(t=0; t<threads; t++)
+  WorkerArguments arguments {&parameters};
+  for(t=0; t<parameters.threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, worker, nullptr) != 0)
+      if (pthread_create(pthread_id + t, nullptr, worker, &arguments) != 0)
       {
 	fatal("Cannot create thread.");
       }
     }
   
-  for(t=0; t<threads; t++) {
+  for(t=0; t<parameters.threads; t++) {
     if (pthread_join(pthread_id[t], &status) != 0)
     {
       fatal("Cannot join thread.");
@@ -1927,7 +1936,7 @@ auto work(Parameters const & parameters) -> void
 
   clock_start(&ti);
   
-  run_threads();
+  run_threads(parameters);
  
   if (parameters.view == OutputFormat::plain)
   {
@@ -1939,7 +1948,7 @@ auto work(Parameters const & parameters) -> void
   //  if (view == 0)
   //    clock_start(&ti);
 
-  align_threads();
+  align_threads(parameters);
   
   //  if (view == 0)
   //    clock_stop(&ti);
