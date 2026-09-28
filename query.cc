@@ -247,8 +247,8 @@ auto query_init(const char * query_filename, long symbol_type, long strands) -> 
     
     for(long f=0; f<3; f++)
     {
-      query.aa[3*s+f].seq = nullptr;
-      query.aa[3*s+f].len = 0;
+      query.aa[(3*s)+f].seq = nullptr;
+      query.aa[(3*s)+f].len = 0;
     }
   }
 
@@ -279,10 +279,10 @@ auto query_free() -> void
     
     for(long f=0; f<3; f++)
     {
-      if (query.aa[3*s+f].seq != nullptr)
-	free(query.aa[3*s+f].seq);
-      query.aa[3*s+f].seq = nullptr;
-      query.aa[3*s+f].len = 0;
+      if (query.aa[(3*s)+f].seq != nullptr)
+	free(query.aa[(3*s)+f].seq);
+      query.aa[(3*s)+f].seq = nullptr;
+      query.aa[(3*s)+f].len = 0;
     }
   }
 }
@@ -385,7 +385,7 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
-		      & query.aa[3*s+f].seq, & query.aa[3*s+f].len);
+		      & query.aa[(3*s)+f].seq, & query.aa[(3*s)+f].len);
 	  }
 	}
       }
@@ -426,7 +426,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	    {
 	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
 	      {
-		long codon = remap[i]*16 + remap[j]*4 + remap[k];
+		long codon = (remap[i]*16) + (remap[j]*4) + remap[k];
 		char x = code[tableno-1][codon];
 		if (aa == '-')
 		{
@@ -467,7 +467,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	if (aa == '-')
 	  aa = 'X';
 
-	table[256*a+16*b+c] = map_ncbi_aa[static_cast<int>(aa)];
+	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<int>(aa)];
       }
 
 #if 0

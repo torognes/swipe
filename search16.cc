@@ -276,7 +276,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
   {
     int d[CHANNELS];
     for(int z=0; z<CHANNELS; z++)
-      d[z] = dseq[j*CHANNELS+z] << 5;
+      d[z] = dseq[(j*CHANNELS)+z] << 5;
       
     //      for(int i=0; i<24; i += 8)
     for(int i=0; i<32; i += 8)
@@ -317,14 +317,14 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       xmm30 = _mm_unpacklo_epi64(xmm21, xmm23);
       xmm31 = _mm_unpackhi_epi64(xmm21, xmm23);
       
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+0) + CHANNELS*j), xmm24);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+1) + CHANNELS*j), xmm25);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+2) + CHANNELS*j), xmm26);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+3) + CHANNELS*j), xmm27);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+4) + CHANNELS*j), xmm28);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+5) + CHANNELS*j), xmm29);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+6) + CHANNELS*j), xmm30);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + CDEPTH*CHANNELS*(i+7) + CHANNELS*j), xmm31);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
     }
   }
 }
@@ -390,7 +390,7 @@ auto search16(WORD * * q_start,
   for(int a=0; a < qlen; a++)
   {
     hep[2*a] = Z;
-    hep[2*a+1] = Z;
+    hep[(2*a)+1] = Z;
   }
 
   for (int c=0; c<CHANNELS; c++)
@@ -413,9 +413,9 @@ auto search16(WORD * * q_start,
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_pos[c] < d_end[c])
-	    dseq[CHANNELS*j+c] = *(d_pos[c]++);
+	    dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
 	  else
-	    dseq[CHANNELS*j+c] = 0;
+	    dseq[(CHANNELS*j)+c] = 0;
 	}
 	if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
 	  easy = 0;
@@ -461,9 +461,9 @@ auto search16(WORD * * q_start,
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_pos[c] < d_end[c])
-	      dseq[CHANNELS*j+c] = *(d_pos[c]++);
+	      dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
 	    else
-	      dseq[CHANNELS*j+c] = 0;
+	      dseq[(CHANNELS*j)+c] = 0;
 	  }
 		  
 	  if (d_pos[c] == d_end[c])
@@ -508,9 +508,9 @@ auto search16(WORD * * q_start,
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_pos[c] < d_end[c])
-		dseq[CHANNELS*j+c] = *(d_pos[c]++);
+		dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
 	      else
-		dseq[CHANNELS*j+c] = 0;
+		dseq[(CHANNELS*j)+c] = 0;
 	    }
 	    if (d_pos[c] == d_end[c])
 	      easy = 0;
@@ -523,7 +523,7 @@ auto search16(WORD * * q_start,
 	    d_best[c] = d_begin[c];
 	    d_end[c] = d_begin[c];
 	    for (int j=0; j<CDEPTH; j++)
-	      dseq[CHANNELS*j+c] = 0;
+	      dseq[(CHANNELS*j)+c] = 0;
 	  }
 	}
 	T = _mm_slli_si128(T, 2);

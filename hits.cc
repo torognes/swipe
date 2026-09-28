@@ -438,7 +438,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       if (effdbsize > 0)
 	n = effdbsize;
       else
-	n = dlen - seqcount * lenadj;
+	n = dlen - (seqcount * lenadj);
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -514,7 +514,7 @@ auto hits_init(long descriptions, long max_alignments, long minscore, long maxsc
       if (effdbsize > 0)
 	n = effdbsize;
       else
-	n = dlen - seqcount * lenadj;
+	n = dlen - (seqcount * lenadj);
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -639,8 +639,8 @@ auto hits_align(struct db_thread_s * t, long i) -> void
     }
     else
     {
-      qseq = query.aa[3*h->qstrand + h->qframe].seq;
-      qlen = query.aa[3*h->qstrand + h->qframe].len;
+      qseq = query.aa[(3*h->qstrand) + h->qframe].seq;
+      qlen = query.aa[(3*h->qstrand) + h->qframe].len;
     }
 
     // give hint of alignment end
@@ -735,7 +735,7 @@ auto putalignop(char c, long len) -> void
       else
       {
 	a_line[line_pos] = (qs == ds) ? sym[static_cast<int>(qs)] : 
-	  (score_matrix_63[32*qs+ds] > 0 ? '+' : ' ');
+	  (score_matrix_63[(32*qs)+ds] > 0 ? '+' : ' ');
       }
       d_line[line_pos] = sym[static_cast<int>(ds)];
       line_pos++;
@@ -787,13 +787,13 @@ auto putalignop(char c, long len) -> void
       {
 	if (q_strand != 0)
 	{
-	  q1 = q_len_nt - 3*q_start - q_frame;
-	  q2 = q_len_nt - 3*q_pos - q_frame + 1;
+	  q1 = q_len_nt - (3*q_start) - q_frame;
+	  q2 = q_len_nt - (3*q_pos) - q_frame + 1;
 	}
 	else
 	{
-	  q1 = 3*q_start + q_frame + 1;
-	  q2 = 3*q_pos + q_frame;
+	  q1 = (3*q_start) + q_frame + 1;
+	  q2 = (3*q_pos) + q_frame;
 	}
       }
       
@@ -801,13 +801,13 @@ auto putalignop(char c, long len) -> void
       {
 	if (d_strand != 0)
 	{
-	  d1 = d_len_nt - 3*d_start - d_frame;
-	  d2 = d_len_nt - 3*d_pos - d_frame + 1;
+	  d1 = d_len_nt - (3*d_start) - d_frame;
+	  d2 = d_len_nt - (3*d_pos) - d_frame + 1;
 	}
 	else
 	{
-	  d1 = 3*d_start + d_frame + 1;
-	  d2 = 3*d_pos + d_frame;
+	  d1 = (3*d_start) + d_frame + 1;
+	  d2 = (3*d_pos) + d_frame;
 	}
       }
 
@@ -849,8 +849,8 @@ auto show_align(long i) -> void
   else
   {
     sym = sym_ncbi_aa;
-    q_seq = query.aa[3*q_strand+q_frame].seq;
-    q_len = query.aa[3*q_strand+q_frame].len;
+    q_seq = query.aa[(3*q_strand)+q_frame].seq;
+    q_len = query.aa[(3*q_strand)+q_frame].len;
     q_len_nt = query.nt[0].len;
     d_len_nt = hits_list[i].dlennt;
   }
@@ -931,8 +931,8 @@ auto whole_align(long i,
   else
   {
     sym = sym_ncbi_aa;
-    q_seq = query.aa[3*q_strand+q_frame].seq;
-    q_len = query.aa[3*q_strand+q_frame].len;
+    q_seq = query.aa[(3*q_strand)+q_frame].seq;
+    q_len = query.aa[(3*q_strand)+q_frame].len;
     q_len_nt = query.nt[0].len;
     d_len_nt = hits_list[i].dlennt;
   }
@@ -997,7 +997,7 @@ auto whole_align(long i,
 	  (*identities)++;
 	  (*positives)++;
 	}
-	else if (score_matrix_63[32*qs+ds] > 0)
+	else if (score_matrix_63[(32*qs)+ds] > 0)
 	{
 	  *alinep++ = '+';
 	  (*positives)++;
@@ -1043,13 +1043,13 @@ auto whole_align(long i,
   {
     if (q_strand != 0)
     {
-      q_first = query.nt[0].len - 1 - 3 * q_first - q_frame;
-      q_last = query.nt[0].len - 1 - 3 * q_last - q_frame - 2;
+      q_first = query.nt[0].len - 1 - (3 * q_first) - q_frame;
+      q_last = query.nt[0].len - 1 - (3 * q_last) - q_frame - 2;
     }
     else
     {
-      q_first = 3 * q_first + q_frame;
-      q_last = 3 * q_last + q_frame + 2;
+      q_first = (3 * q_first) + q_frame;
+      q_last = (3 * q_last) + q_frame + 2;
     }
   }
   
@@ -1057,13 +1057,13 @@ auto whole_align(long i,
   {
     if (d_strand != 0)
     {
-      d_first = d_len_nt - 1 - 3 * d_first - d_frame;
-      d_last = d_len_nt - 1 - 3 * d_last - d_frame - 2;
+      d_first = d_len_nt - 1 - (3 * d_first) - d_frame;
+      d_last = d_len_nt - 1 - (3 * d_last) - d_frame - 2;
     }
     else
     {
-      d_first = 3 * d_first + d_frame;
-      d_last = 3 * d_last + d_frame + 2;
+      d_first = (3 * d_first) + d_frame;
+      d_last = (3 * d_last) + d_frame + 2;
     }
   }
 
@@ -1114,8 +1114,8 @@ auto count_align(long i,
   else
   {
     sym = sym_ncbi_aa;
-    q_seq = query.aa[3*q_strand+q_frame].seq;
-    q_len = query.aa[3*q_strand+q_frame].len;
+    q_seq = query.aa[(3*q_strand)+q_frame].seq;
+    q_len = query.aa[(3*q_strand)+q_frame].len;
     q_len_nt = query.nt[0].len;
     d_len_nt = hits_list[i].dlennt;
   }
@@ -1167,7 +1167,7 @@ auto count_align(long i,
 	  (*identities)++;
 	  (*positives)++;
 	}
-	else if (score_matrix_63[32*qs+ds] > 0)
+	else if (score_matrix_63[(32*qs)+ds] > 0)
 	  (*positives)++;
       }
     }
@@ -1199,13 +1199,13 @@ auto count_align(long i,
   {
     if (q_strand != 0)
     {
-      q_first = query.nt[0].len - 1 - 3 * q_first - q_frame;
-      q_last = query.nt[0].len - 1 - 3 * q_last - q_frame - 2;
+      q_first = query.nt[0].len - 1 - (3 * q_first) - q_frame;
+      q_last = query.nt[0].len - 1 - (3 * q_last) - q_frame - 2;
     }
     else
     {
-      q_first = 3 * q_first + q_frame;
-      q_last = 3 * q_last + q_frame + 2;
+      q_first = (3 * q_first) + q_frame;
+      q_last = (3 * q_last) + q_frame + 2;
     }
   }
   
@@ -1213,13 +1213,13 @@ auto count_align(long i,
   {
     if (d_strand != 0)
     {
-      d_first = d_len_nt - 1 - 3 * d_first - d_frame;
-      d_last = d_len_nt - 1 - 3 * d_last - d_frame - 2;
+      d_first = d_len_nt - 1 - (3 * d_first) - d_frame;
+      d_last = d_len_nt - 1 - (3 * d_last) - d_frame - 2;
     }
     else
     {
-      d_first = 3 * d_first + d_frame;
-      d_last = 3 * d_last + d_frame + 2;
+      d_first = (3 * d_first) + d_frame;
+      d_last = (3 * d_last) + d_frame + 2;
     }
   }
 
@@ -1926,7 +1926,7 @@ auto hits_show_tsv(long showalignments,
     {
       double expect_value = Kmn * exp(- lambda * score);
       fprintf(out, "\t%.2g", expect_value);
-      double bits = lambda_d_log2 * score - logK_d_log2;
+      double bits = (lambda_d_log2 * score) - logK_d_log2;
       fprintf(out, "\t%.1f", bits);
     }
     else
@@ -1993,7 +1993,7 @@ auto hits_show_plain(long show_gis,
 	      
 	if (stats_available != 0)
 	{
-	  long bits = static_cast<long>(floor(lambda_d_log2 * score - logK_d_log2 + 0.5));
+	  long bits = static_cast<long>(floor((lambda_d_log2 * score) - logK_d_log2 + 0.5));
 	  double expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " %5ld", bits);
@@ -2030,7 +2030,7 @@ auto hits_show_plain(long show_gis,
 
 	if (stats_available != 0)
 	{
-	  double bits = lambda_d_log2 * score - logK_d_log2;
+	  double bits = (lambda_d_log2 * score) - logK_d_log2;
 	  double expect_value = Kmn * exp(- lambda * score);
 		
 	  fprintf(out, " Score = %.1lf bits (%ld), Expect = ", bits, score);

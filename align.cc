@@ -281,7 +281,7 @@ auto diff(struct aligner_info * aip,
 	  // A----
 	  // -BBBB
 
-	  MaxScore = - tb - (1 + N) * r - q;
+	  MaxScore = - tb - ((1 + N) * r) - q;
 	  J = -1;
 	}
       else
@@ -290,7 +290,7 @@ auto diff(struct aligner_info * aip,
 	  // ----A
 	  // BBBB-
 
-	  MaxScore = - q - (1 + N) * r - te;
+	  MaxScore = - q - ((1 + N) * r) - te;
 	  J = N;
 	}
 
@@ -300,7 +300,7 @@ auto diff(struct aligner_info * aip,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - r * (N-1);
+	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - (r * (N-1));
 
 	  if (j > 0)
 	    Score -= q;

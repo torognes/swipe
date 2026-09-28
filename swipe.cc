@@ -232,7 +232,7 @@ auto align_init(struct search_data * sdp) -> void
 	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + 16*query.nt[s].seq[i];
+	  sdp->qtable[3*s][i] = sdp->dprofile + (16*query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -244,7 +244,7 @@ auto align_init(struct search_data * sdp) -> void
     sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + 16*query.aa[0].seq[i];
+      sdp->qtable[0][i] = sdp->dprofile + (16*query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
@@ -254,12 +254,12 @@ auto align_init(struct search_data * sdp) -> void
       if (((s+1) & querystrands) != 0)
 	for(int f=0; f<3; f++)
 	{
-	  qlen = query.aa[3*s+f].len;
-	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	  qlen = query.aa[(3*s)+f].len;
+	  sdp->qlen[(3*s)+f] = qlen;
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
-	    sdp->qtable[3*s+f][i] = sdp->dprofile + 16*query.aa[3*s+f].seq[i];
+	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (16*query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -380,8 +380,8 @@ auto align_chunk(struct search_data * sdp, long hitfirst, long hitlast) -> void
 	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
 
 
-	  BYTE ** qtable = sdp->qtable[3*qstrand+qframe];
-	  long qlen = sdp->qlen[3*qstrand+qframe];
+	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+	  long qlen = sdp->qlen[(3*qstrand)+qframe];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
@@ -564,7 +564,7 @@ auto align_threads_init() -> void
 		  & qstrand, & qframe,
 		  & dstrand, & dframe);
       
-      align_volseqs[3*qstrand+qframe]++;
+      align_volseqs[(3*qstrand)+qframe]++;
     }
   }
 
@@ -1280,7 +1280,7 @@ auto search_init(struct search_data * sdp) -> void
 	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + 64*query.nt[s].seq[i];
+	  sdp->qtable[3*s][i] = sdp->dprofile + (64*query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -1292,7 +1292,7 @@ auto search_init(struct search_data * sdp) -> void
     sdp->qtable[0] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + 64*query.aa[0].seq[i];
+      sdp->qtable[0][i] = sdp->dprofile + (64*query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
@@ -1302,12 +1302,12 @@ auto search_init(struct search_data * sdp) -> void
       if (((s+1) & querystrands) != 0)
 	for(int f=0; f<3; f++)
 	{
-	  qlen = query.aa[3*s+f].len;
-	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
+	  qlen = query.aa[(3*s)+f].len;
+	  sdp->qlen[(3*s)+f] = qlen;
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(qlen*sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
-	    sdp->qtable[3*s+f][i] = sdp->dprofile + 64*query.aa[3*s+f].seq[i];
+	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (64*query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -1495,8 +1495,8 @@ auto search_chunk(struct search_data * sdp) -> void
       sdp->out_count = sdp->start_count;
       memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
       
-      BYTE ** qtable = sdp->qtable[3*qstrand+qframe];
-      long qlen = sdp->qlen[3*qstrand+qframe];
+      BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+      long qlen = sdp->qlen[(3*qstrand)+qframe];
       
 #if 1
       
@@ -1660,7 +1660,7 @@ auto search_chunk(struct search_data * sdp) -> void
 	  if (symtype == 0)
 	    q = query.nt[qstrand].seq;
 	  else
-	    q = query.aa[3*qstrand+qframe].seq;
+	    q = query.aa[(3*qstrand)+qframe].seq;
 
 	  long score = fullsw(dbegin,
 			      dend,

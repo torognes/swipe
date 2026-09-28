@@ -602,19 +602,19 @@ auto db_open_xin(long symbol_type, const char * basename, db_volume_t * volume) 
   volume->longest = load_uint32_be(p);
   p += 4;
   volume->offset_xhr = p - volume->adr_xin;
-  volume->offset_xsq = volume->offset_xhr + 4 * (volume->seqcount + 1);
-  volume->offset_amb = volume->offset_xsq + 4 * (volume->seqcount + 1);
+  volume->offset_xsq = volume->offset_xhr + (4 * (volume->seqcount + 1));
+  volume->offset_amb = volume->offset_xsq + (4 * (volume->seqcount + 1));
 
   /* offset tables: seqcount + 1 header and sequence offsets, and, for
      nucleotides, seqcount + 1 ambiguity offsets */
   bool const is_nucleotide = (symbol_type != 1) and (symbol_type != 2) and (symbol_type != 5);
   long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
-    4 * (volume->seqcount + 1);
+    (4 * (volume->seqcount + 1));
   check_xin_room(volume->adr_xin, tables_end);
 
   auto const offset_at = [volume](long const table, long const seqno) -> long
     {
-      return load_uint32_be(std::next(volume->adr_xin, table + 4 * seqno));
+      return load_uint32_be(std::next(volume->adr_xin, table + (4 * seqno)));
     };
 
   for (long seqno = 0; seqno < volume->seqcount; ++seqno)
@@ -1348,7 +1348,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     long amb_bytes = length - aoff;
 
     unsigned char last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
-    long nt_length = 4 * (aoff - 1) + (last & 3);
+    long nt_length = (4 * (aoff - 1)) + (last & 3);
   
     if (t->ntbuffersize[c] < nt_length + 1)
     {
