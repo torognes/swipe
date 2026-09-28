@@ -28,8 +28,10 @@ release, most notably hit statistics, alignments, as well as support for
 nucleotide sequences, large databases and MPI.
 
 The software is distributed from https://github.com/torognes/swipe
-Releases, including older versions, are available from
-https://github.com/torognes/swipe/releases
+The source code of every version from 2.0.5 onward is available from
+https://github.com/torognes/swipe/tags, and pre-compiled binaries of
+versions 2.1.0 and later from https://github.com/torognes/swipe/releases.
+Versions 1.0 to 2.0.4 are no longer distributed.
 
 Binary executables are available for Linux and Mac (both 64-bit).
 

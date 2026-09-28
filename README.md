@@ -21,8 +21,11 @@ Please see the [README](https://github.com/torognes/swipe/blob/master/README)
 and [CHANGES](https://github.com/torognes/swipe/blob/master/CHANGES) file for
 a little bit of documentation.
 
-Releases, including older versions, are available on
-[GitHub](https://github.com/torognes/swipe/releases).
+The source code of every version from 2.0.5 onward is available on
+[GitHub](https://github.com/torognes/swipe/tags), and pre-compiled
+binaries of versions 2.1.0 and later on the
+[releases page](https://github.com/torognes/swipe/releases). Versions
+1.0 to 2.0.4 are no longer distributed.
 
 SWIPE may be installed with Homebrew using the following command:
 
