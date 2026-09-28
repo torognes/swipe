@@ -157,7 +157,7 @@ using db_thread_t = db_thread_s;
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-auto db_print_seq_map(char * address, long length, const char * map) -> void
+auto db_print_seq_map(const char * address, long length, const char * map) -> void
 {
   long linelength = 80;
   long i = 0;
@@ -1281,7 +1281,7 @@ auto db_mapheaders(db_thread_t * t, long firstseqno, long lastseqno) -> void
 
 namespace {
 
-auto db_translate(char * dna, long dlen,
+auto db_translate(const char * dna, long dlen,
 		  long strand, long frame, 
 		  char * prot) -> void
 {

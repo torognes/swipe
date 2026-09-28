@@ -400,7 +400,7 @@ auto query_read() -> int
   return 1;
 }
 
-auto revcompl(char * seq, long len) -> char *
+auto revcompl(const char * seq, long len) -> char *
 {
   char * rc = static_cast<char *>(xmalloc(len+1));
   for(long i=0; i<len; i++)
@@ -495,7 +495,7 @@ auto translate_init(long qtableno, long dtableno) -> void
   translate_createtable(dtableno, d_translate);
 }
 
-auto translate(char * dna, long dlen, 
+auto translate(const char * dna, long dlen, 
 	       long strand, long frame, long table,
 	       char ** protp, long * plenp) -> void
 {

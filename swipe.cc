@@ -453,7 +453,7 @@ auto align_done(struct search_data * sdp) -> void
 auto calc_chunks(long volcount, 
 		 long par,
 		 long channels,
-		 long * volume_sequences,
+		 const long * volume_sequences,
 		 long * volume_chunks,
 		 long * totalchunks,
 		 long * biggestchunk) -> void

@@ -214,7 +214,7 @@ auto search7(BYTE * * q_start,
 	     BYTE * hearray,
 	     struct db_thread_s * dbt,
 	     long sequences,
-	     long * seqnos,
+	     const long * seqnos,
 	     long * scores,
 	     long qlen) -> void;
 
@@ -226,7 +226,7 @@ auto search7_ssse3(BYTE * * q_start,
 		   BYTE * hearray,
 		   struct db_thread_s * dbt,
 		   long sequences,
-		   long * seqnos,
+		   const long * seqnos,
 		   long * scores,
 		   long qlen) -> void;
 
@@ -238,7 +238,7 @@ auto search16(WORD * * q_start,
 	      WORD * hearray,
 	      struct db_thread_s * dbt,
 	      long sequences,
-	      long * seqnos,
+	      const long * seqnos,
 	      long * scores,
 	      long * bestpos,
 	      int qlen) -> void;
@@ -251,16 +251,16 @@ auto search16s(WORD * * q_start,
 	       WORD * hearray,
 	       struct db_thread_s * * dbta,
 	       long sequences,
-	       long * seqnos,
+	       const long * seqnos,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,
 	       int qlen) -> void;
 
 auto fullsw(char * dseq,
-	    char * dend,
+	    const char * dend,
 	    char * qseq,
-	    char * qend,
+	    const char * qend,
 	    long * hearray, 
 	    long * score_matrix,
 	    long gap_open_extend,
@@ -289,8 +289,8 @@ auto score_matrix_init() -> void;
 auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(char * seq, long len) -> char *;
-auto translate(char * dna, long dlen,
+auto revcompl(const char * seq, long len) -> char *;
+auto translate(const char * dna, long dlen,
                long strand, long frame, long table,
                char ** protp, long * plenp) -> void;
 

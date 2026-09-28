@@ -678,7 +678,7 @@ auto set_id(apt p, std::string const & id) -> void
   append_bounded(p->id, sizeof(p->id), id.c_str());
 }
 
-auto show_seq_id(apt p, char * dbi) -> void
+auto show_seq_id(apt p, const char * dbi) -> void
 {
   const char * db = dbi;
   if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
