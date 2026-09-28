@@ -26,7 +26,7 @@
 #include "swipe.h"
 #include <algorithm>  // std::all_of
 #include <cctype>  // std::isdigit, std::isspace
-#include <cstdint>  // std::uint64_t
+#include <cstdint>  // std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoul
 #include <cstring>  // std::memcpy
 #include <iterator>  // std::next
@@ -592,11 +592,11 @@ auto db_open_xin(long symbol_type, char const * basename, db_volume_t * volume) 
   strncpy(volume->time, p, datelen);
   volume->time[datelen] = 0;
   p += datelen;
-  if (((long)p & 3) != 0)
+  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
     p++;
-  if (((long)p & 3) != 0)
+  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
     p++;
-  if (((long)p & 3) != 0)
+  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
     p++;
   check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
@@ -1202,10 +1202,8 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   
   // find new map area
   
-  long const offset1 = bswap_32(((unsigned int*)v1->adr_xin)
-			  [v1->offset_xsq / 4 + s1]);
-  long const offset2 = bswap_32(((unsigned int*)v1->adr_xin)
-			  [v1->offset_xsq / 4 + s2 + 1]);
+  long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xsq / 4) + s1)));
+  long const offset2 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xsq / 4) + s2 + 1)));
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
@@ -1253,10 +1251,8 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   
   // find new map area
   
-  long const offset1 = bswap_32(((unsigned int*)v1->adr_xin)
-			  [v1->offset_xhr / 4 + s1]);
-  long const offset2 = bswap_32(((unsigned int*)v1->adr_xin)
-			  [v1->offset_xhr / 4 + s2 + 1]);
+  long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xhr / 4) + s1)));
+  long const offset2 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xhr / 4) + s2 + 1)));
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
@@ -1331,8 +1327,8 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long s;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s]);
-  long const offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xsq / 4 + s + 1]);
+  long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xsq / 4 + s)));
+  long const offset2 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xsq / 4 + s + 1)));
   long const length = offset2 - offset1;
   char * address = t->map_seq->map_address + (offset1 - t->map_seq->map_offset);
 
@@ -1340,7 +1336,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   {
     /* decompress nucleotide sequence */
 
-    long const offset3 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_amb / 4 + s]);
+    long const offset3 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_amb / 4 + s)));
     long const aoff = offset3 - offset1;
 
     long const amb_bytes = length - aoff;
@@ -1498,8 +1494,8 @@ auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * len
   db_volume_t * v;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s]);
-  long const offset2 = bswap_32(((unsigned int*)v->adr_xin)[v->offset_xhr / 4 + s + 1]);
+  long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xhr / 4 + s)));
+  long const offset2 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xhr / 4 + s + 1)));
   *length = offset2 - offset1;
   *address = t->map_hdr->map_address + (offset1 - t->map_hdr->map_offset);
 }

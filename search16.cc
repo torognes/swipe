@@ -435,9 +435,9 @@ auto search16(WORD * * q_start,
 #ifdef DEBUG
       printf("E mask=%04x\n", mask);
       printf("SL=");
-      vector_print_word((WORD*)&SL);
+      vector_print_word(reinterpret_cast<WORD*>(&SL));
       printf("\nS =");
-      vector_print_word((WORD*)&S);
+      vector_print_word(reinterpret_cast<WORD*>(const_cast<__m128i*>(&S)));
       printf("\nBe:");
       for (int c=0; c<CHANNELS; c++)
 	printf(" %4ld", d_best[c]-d_begin[c]);
@@ -548,12 +548,12 @@ auto search16(WORD * * q_start,
 #ifdef DEBUG
       printf("H mask=%04x\n", mask);
       printf("M =");
-      vector_print_word((WORD*)&M);
+      vector_print_word(reinterpret_cast<WORD*>(&M));
       printf("\n");
       printf("SL=");
-      vector_print_word((WORD*)&SL);
+      vector_print_word(reinterpret_cast<WORD*>(&SL));
       printf("\nS =");
-      vector_print_word((WORD*)&S);
+      vector_print_word(reinterpret_cast<WORD*>(const_cast<__m128i*>(&S)));
       printf("\nBe:");
       for (int c=0; c<CHANNELS; c++)
 	printf(" %4ld", d_best[c]-d_begin[c]);

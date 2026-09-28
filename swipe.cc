@@ -639,7 +639,7 @@ auto align_threads() -> void
   
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, align_worker, (void *)t) != 0)
+      if (pthread_create(pthread_id + t, nullptr, align_worker, nullptr) != 0)
 	fatal("Cannot create thread.");
     }
   
@@ -1765,7 +1765,7 @@ auto run_threads() -> void
 
   for(t=0; t<threads; t++)
     {
-      if (pthread_create(pthread_id + t, nullptr, worker, (void *)t) != 0)
+      if (pthread_create(pthread_id + t, nullptr, worker, nullptr) != 0)
 	fatal("Cannot create thread.");
     }
   
