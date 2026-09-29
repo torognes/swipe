@@ -1879,8 +1879,6 @@ auto main(int argc, char**argv) -> int
     }
     
     query_exit();
-
-    score_matrix_free();
   }
   
   db_close();

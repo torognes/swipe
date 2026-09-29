@@ -173,7 +173,7 @@ auto xrealloc(void *ptr, size_t size) -> void *;
 extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
-extern long * score_matrix_63;
+extern long * const score_matrix_63;
 extern long totalhits;
 extern char const * gencode_names[];
 extern long queryno;
@@ -207,9 +207,9 @@ extern char const mat_pam250[];
 extern long SCORELIMIT_7;
 extern long SCORELIMIT_16;
 
-extern char * score_matrix_7;
-extern char * score_matrix_7t;
-extern short * score_matrix_16;
+extern char * const score_matrix_7;
+extern char * const score_matrix_7t;
+extern short * const score_matrix_16;
 
 struct sequence
 {
@@ -337,7 +337,6 @@ auto query_read() -> int;
 auto query_show() -> void;
 
 auto score_matrix_init(Parameters const & parameters) -> void;
-auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
 auto revcompl(char const * seq, long len) -> Buffer<char>;
