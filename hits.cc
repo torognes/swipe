@@ -32,9 +32,11 @@
 #include <cinttypes>  // PRId64
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t, INT64_C
+#include <initializer_list>
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
+#include <string>
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -1057,9 +1059,9 @@ auto whole_align(AlignedHit const & hit,
 		 long * indels,
 		 long * aligned,
 		 long * gaps,
-		 char ** qline,
-		 char ** aline,
-		 char ** dline) -> void
+		 std::string & qline,
+		 std::string & aline,
+		 std::string & dline) -> void
 {
 
   long al = 0;
@@ -1073,13 +1075,11 @@ auto whole_align(AlignedHit const & hit,
     al += len;
   }
 
-  char * qlinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
-  char * alinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
-  char * dlinep = static_cast<char*>(xmalloc(static_cast<std::size_t>(al) + 1));
-
-  *qline = qlinep;
-  *aline = alinep;
-  *dline = dlinep;
+  for (auto * line : {&qline, &aline, &dline})
+  {
+    line->clear();
+    line->reserve(static_cast<std::size_t>(al));
+  }
 
   *identities = 0;
   *positives = 0;
@@ -1106,9 +1106,9 @@ auto whole_align(AlignedHit const & hit,
       for(long j=0; j<len; j++)
       {
 	char const qs = hit.q_seq[q_pos++];
-	*qlinep++ = hit.sym[static_cast<int>(qs)];
-	*alinep++ = ' ';
-	*dlinep++ = '-';
+	qline += hit.sym[static_cast<int>(qs)];
+	aline += ' ';
+	dline += '-';
       }
       *gaps += 1;
       *indels += len;
@@ -1118,9 +1118,9 @@ auto whole_align(AlignedHit const & hit,
       for(long j=0; j<len; j++)
       {
 	char const ds = hit.d_seq[d_pos++];
-	*qlinep++ = '-';
-	*alinep++ = ' ';
-	*dlinep++ = hit.sym[static_cast<int>(ds)];
+	qline += '-';
+	aline += ' ';
+	dline += hit.sym[static_cast<int>(ds)];
       }
       *gaps += 1;
       *indels += len;
@@ -1131,23 +1131,23 @@ auto whole_align(AlignedHit const & hit,
       {
 	char const qs = hit.q_seq[q_pos++];
 	char const ds = hit.d_seq[d_pos++];
-	*qlinep++ = hit.sym[static_cast<int>(qs)];
+	qline += hit.sym[static_cast<int>(qs)];
 	if (qs == ds)
 	{
-	  *alinep++ = '|';
+	  aline += '|';
 	  (*identities)++;
 	  (*positives)++;
 	}
 	else if (score_matrix_63[(32*qs)+ds] > 0)
 	{
-	  *alinep++ = '+';
+	  aline += '+';
 	  (*positives)++;
 	}
 	else
 	{
-	  *alinep++ = ' ';
+	  aline += ' ';
 	}
-	*dlinep++ = hit.sym[static_cast<int>(ds)];
+	dline += hit.sym[static_cast<int>(ds)];
       }
     }
     else
@@ -1156,9 +1156,6 @@ auto whole_align(AlignedHit const & hit,
     }
   }
 
-  *qlinep = 0;
-  *alinep = 0;
-  *dlinep = 0;
 }
 
 auto count_align(AlignedHit const & hit,
@@ -1737,13 +1734,13 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       long gaps = 0;
       long aligned = 0;
     
-      char *qline = nullptr;
-      char *aline = nullptr;
-      char *dline = nullptr;
+      std::string qline;
+      std::string aline;
+      std::string dline;
         
       AlignedHit const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  & qline, & aline, & dline);
+		  qline, aline, dline);
 
       fprintf(out, "\t\t\t\t<alignment>\n");
       fprintf(out, "\t\t\t\t\t<subalignment>\n");
@@ -1772,22 +1769,19 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprintf(out, "\t\t\t\t\t\t<gaps>%ld</gaps>\n", gaps);
       fprintf(out, "\t\t\t\t\t\t<alignmentQuery>\n");
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryStart>%ld</alignmentQueryStart>\n", hit.q_first);
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryLine>%s</alignmentQueryLine>\n", qline);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryLine>%s</alignmentQueryLine>\n", qline.c_str());
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>%ld</alignmentQueryEnd>\n", hit.q_last);
       fprintf(out, "\t\t\t\t\t\t</alignmentQuery>\n");
-      fprintf(out, "\t\t\t\t\t\t<alignmentLine>%s</alignmentLine>\n", aline);
+      fprintf(out, "\t\t\t\t\t\t<alignmentLine>%s</alignmentLine>\n", aline.c_str());
       fprintf(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>%ld</alignmentDatabaseStart>\n", hit.d_first);
-      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>%s</alignmentDatabaseLine>\n", dline);
+      fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>%s</alignmentDatabaseLine>\n", dline.c_str());
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>%ld</alignmentDatabaseEnd>\n", hit.d_last);
       fprintf(out, "\t\t\t\t\t\t</alignmentDatabase>\n");
       fprintf(out, "\t\t\t\t\t</subalignment>\n");
       fprintf(out, "\t\t\t\t</alignment>\n");
       fprintf(out, "\t\t\t</longVersionHit>\n");
 
-      free(qline);
-      free(aline);
-      free(dline);
 
     }
 
@@ -1873,13 +1867,13 @@ auto hits_show_xml(Parameters const & parameters,
       long aligned = 0;
       long indels = 0;
 
-      char *qline = nullptr;
-      char *aline = nullptr;
-      char *dline = nullptr;
+      std::string qline;
+      std::string aline;
+      std::string dline;
         
       AlignedHit const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  & qline, & aline, & dline);
+		  qline, aline, dline);
 
       fprintf(out, "      <alignment>");
       fprintf(out, "%s", hits_list[i].alignment);
@@ -1888,13 +1882,10 @@ auto hits_show_xml(Parameters const & parameters,
       fprintf(out, "      <qpos>%ld,%ld</qpos>\n", hit.q_first, hit.q_last);
       fprintf(out, "      <dpos>%ld,%ld</dpos>\n", hit.d_first, hit.d_last);
       
-      fprintf(out, "      <qseq>%s</qseq>\n", qline);
-      fprintf(out, "      <aseq>%s</aseq>\n", aline);
-      fprintf(out, "      <dseq>%s</dseq>\n", dline);
+      fprintf(out, "      <qseq>%s</qseq>\n", qline.c_str());
+      fprintf(out, "      <aseq>%s</aseq>\n", aline.c_str());
+      fprintf(out, "      <dseq>%s</dseq>\n", dline.c_str());
 
-      free(qline);
-      free(aline);
-      free(dline);
     }
     fprintf(out, "    </hit>\n");
   }
