@@ -28,6 +28,7 @@
 #include <algorithm>  // std::min
 #include <array>
 #include <cassert>
+#include <climits>  // CHAR_BIT
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstring>  // std::memcpy, std::strlen
 #include <iterator>  // std::next
@@ -98,6 +99,12 @@ namespace ber {
 
 constexpr unsigned char end_of_contents = 0x00;
 constexpr unsigned char sequence = 0x30;  // SEQUENCE, SEQUENCE OF
+// a length above long_form is followed by (length - long_form) bytes
+// of length (big-endian), at most max_length_bytes here
+constexpr unsigned char long_form = 0x80;
+constexpr unsigned char max_length_bytes = 4;
+// the INTEGER values of the headers fit in 4 bytes (big-endian)
+constexpr unsigned long max_integer_bytes = 4;
 constexpr unsigned char context_tag_0 = 0xA0;  // [0], constructed
 
 }  // namespace ber
@@ -167,12 +174,12 @@ auto parse_integer(apt p) -> void
 
   //  match_obj(0x02);
 
-  if ((length > 0) && (length <= 4))
+  if ((length > 0) && (length <= ber::max_integer_bytes))
     {
       for(unsigned long i = 0; i < length; i++)
       {
 	//	printf("%02x ", ch);
-	p->parsed_integer = (p->parsed_integer << 8) | p->ch;
+	p->parsed_integer = (p->parsed_integer << CHAR_BIT) | p->ch;
 	nextch(p);
       }
     }
@@ -189,44 +196,23 @@ auto parse_visiblestring(apt p) -> void
 
   unsigned long length = p->len;
 
-  if (length == 0x81)
+  // the long form: the length is in the next 1 to 4 bytes (a length
+  // byte of exactly long_form, the indefinite form, is not decoded:
+  // strings are always written with a definite length)
+  if (p->len > ber::long_form)
     {
-      length = p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x82)
-    {
-
-      length = p->ch;
-      nextch(p);
-
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x83)
-    {
-      length = p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x84)
-    {
-      length = p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len > 0x84)
-    {
-      fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
-      fatal("Error parsing binary ASN.1 in database sequence definition.");
+      auto const length_bytes = static_cast<unsigned char>(p->len - ber::long_form);
+      if (length_bytes > ber::max_length_bytes)
+	{
+	  fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
+	  fatal("Error parsing binary ASN.1 in database sequence definition.");
+	}
+      length = 0;
+      for (unsigned char i = 0; i < length_bytes; i++)
+	{
+	  length = (length << CHAR_BIT) | p->ch;
+	  nextch(p);
+	}
     }
   
   //  printf("length=%lu ", length);
