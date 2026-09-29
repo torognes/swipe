@@ -540,12 +540,15 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     Int4 i = 0;                 /* iteration index */
     const Int4 maxits = 20;     /* maximum allowed iterations */
     // swipe: db_length is converted explicitly (NCBI: implicitly)
-    Nlm_FloatHi m = query_length, n = static_cast<double>(db_length), N = db_num_seqs;
+    Nlm_FloatHi const m = query_length;
+    Nlm_FloatHi const n = static_cast<double>(db_length);
+    Nlm_FloatHi const N = db_num_seqs;
 
     Nlm_FloatHi ell = 0;        /* A float value of the length adjustment */
     Nlm_FloatHi ss = 0;         /* effective size of the search space */
-    Nlm_FloatHi ell_min = 0, ell_max = 0;   /* At each iteration i,
+    Nlm_FloatHi ell_min = 0;   /* At each iteration i,
                                          * ell_min <= ell <= ell_max. */
+    Nlm_FloatHi ell_max = 0;
     bool converged       = false;       /* True if the iteration converged */
     Nlm_FloatHi ell_next = 0;   /* Value the variable ell takes at iteration
                                  * i + 1 */
@@ -556,23 +559,22 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
      * Use quadratic formula: 2 c /( - b + sqrt( b*b - 4 * a * c )) */
     { /* scope of a, mb, and c, the coefficients in the quadratic formula
        * (the variable mb is -b) */
-        Nlm_FloatHi a  = N;
-        Nlm_FloatHi mb = m * N + n;
-        Nlm_FloatHi c  = n * m - std::max(m, n) / K;
+        Nlm_FloatHi const a  = N;
+        Nlm_FloatHi const mb = (m * N) + n;
+        Nlm_FloatHi const c  = (n * m) - (std::max(m, n) / K);
 
         if(c < 0) {
             *length_adjustment = 0;
             return 1;
-        } else {
-            ell_max = 2 * c / (mb + sqrt(mb * mb - 4 * a * c));
         }
+        ell_max = 2 * c / (mb + sqrt((mb * mb) - (4 * a * c)));
     } /* end scope of a, mb and c */
 
     for(i = 1; i <= maxits; i++) {      /* for all iteration indices */
         Nlm_FloatHi ell_bar = 0;    /* proposed next value of ell */
         ell      = ell_next;
-        ss       = (m - ell) * (n - N * ell);
-        ell_bar  = alpha_d_lambda * (logK + log(ss)) + beta;
+        ss       = (m - ell) * (n - (N * ell));
+        ell_bar  = (alpha_d_lambda * (logK + log(ss))) + beta;
         if(ell_bar >= ell) { /* ell is no bigger than the true fixed point */
             ell_min = ell;
             if(ell_bar - ell_min <= 1.0) {
@@ -603,8 +605,8 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
         /* But verify that ceil(ell_min) != floor(ell_fixed) */
         ell = ceil(ell_min);
         if( ell <= ell_max ) {
-          ss = (m - ell) * (n - N * ell);
-          if(alpha_d_lambda * (logK + log(ss)) + beta >= ell) {
+          ss = (m - ell) * (n - (N * ell));
+          if((alpha_d_lambda * (logK + log(ss))) + beta >= ell) {
             /* ceil(ell_min) == floor(ell_fixed) */
             *length_adjustment = static_cast<Int4>(ell);
           }
@@ -671,7 +673,7 @@ auto matrix_tables(char const * const matrix) -> MatrixTables
       { "PAM70", make_view(pam70_values), make_view(pam70_prefs) },
       { "PAM250", make_view(pam250_values), make_view(pam250_prefs) }, }};
   auto const found = std::find_if(known.begin(), known.end(),
-                                  [matrix](MatrixTables const & tables) {
+                                  [matrix](MatrixTables const & tables) -> bool {
                                     return strcasecmp(matrix, tables.name) == 0;
                                   });
   return (found == known.end()) ? MatrixTables{"", View<array_of_8>{}, View<Int4>{}} : *found;
@@ -705,7 +707,7 @@ auto blastn_tables(long const match_score, long const mismatch_score) -> BlastnT
       { 3, -2, { make_view(blastn_values_3_2), 12, 8 } },
       { 5, -4, { make_view(blastn_values_5_4), 25, 10 } }, }};
   auto const found = std::find_if(known.begin(), known.end(),
-                                  [match_score, mismatch_score](BlastnPair const & pair) {
+                                  [match_score, mismatch_score](BlastnPair const & pair) -> bool {
                                     return (pair.match_score == match_score) and
                                       (pair.mismatch_score == mismatch_score);
                                   });
