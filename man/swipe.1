@@ -1,0 +1,436 @@
+.\" ============================================================================
+.TH swipe 1 "September 29, 2026" "version 2.2.0" "USER COMMANDS"
+.\" ============================================================================
+.SH NAME
+swipe \(em Smith-Waterman database searches with inter-sequence SIMD
+parallelisation
+.\" ============================================================================
+.SH SYNOPSIS
+.SY swipe
+.B \-h|\-\-version
+.YS
+.PP
+.SY swipe
+.B \-d
+.I database
+.OP \-i filename
+.OP \-p type
+.OP \-M matrix
+.OP \-G int
+.OP \-E int
+.OP \-r int
+.OP \-q int
+.OP \-S strands
+.OP \-Q code
+.OP \-D code
+.OP \-e real
+.OP \-k real
+.OP \-c int
+.OP \-u int
+.OP \-v int
+.OP \-b int
+.OP \-m format
+.OP \-a int
+.OP \-x filename
+.OP \-z int
+.OP \-o filename
+.OP \-IH
+.YS
+.PP
+.SY swipe
+.B \-d
+.I database
+.BR \-N " 1|2"
+.OP \-p type
+.OP \-o filename
+.OP \-H
+.YS
+.\" ============================================================================
+.SH DESCRIPTION
+SWIPE performs rapid local alignment searches of amino acid or
+nucleotide query sequences against sequence databases, using the
+Smith-Waterman algorithm: the optimal local alignment score is
+computed for every database sequence, with no heuristic.
+Speed comes from inter-sequence parallelisation: the SIMD
+instructions of the processor compute the alignment scores of up to
+16 database sequences at once (SSE2 is required; SSSE3 is faster).
+Scores are first computed with 7-bit saturated arithmetic, and the
+sequences whose score overflows are searched again with 16-bit,
+then 63-bit arithmetic, so that every score is exact.
+.PP
+Queries are read in FASTA format, from standard input or from the
+file given with
+.BR \-i .
+Several queries can be searched in one run: they are searched one
+after the other.
+Characters that are not valid sequence symbols are ignored.
+.PP
+The database is a BLAST database, prepared with the
+.B makeblastdb
+tool of NCBI BLAST+ (or with the
+.B formatdb
+tool of the legacy NCBI BLAST).
+Databases in format version 4 and version 5 (the default of current
+makeblastdb versions, and the format of NCBI's pre-formatted
+databases) are accepted.
+Databases split into volumes, and alias files
+.RI ( .pal ,
+.IR .nal )
+that list several databases or select a subset of their sequences
+(OIDLIST and MEMB_BIT lines), are accepted as well.
+Alias files with GILIST, TAXIDLIST or SEQIDLIST lines are rejected:
+the taxid list can be given with
+.B \-x
+instead.
+.PP
+The search type is chosen with
+.BR \-p :
+.TS
+tab(@);
+l l l l l.
+\fB\-p\fR@name@query@database@comparisons
+_
+0@blastn@nucleotide@nucleotide@query strands (\fB\-S\fR)
+1@blastp@amino acid@amino acid@direct (default)
+2@blastx@nucleotide@amino acid@query in 6 frames
+3@tblastn@amino acid@nucleotide@database in 6 frames
+4@tblastx@nucleotide@nucleotide@6\(mu6 frames
+5@sound@sound codes@sound codes@direct
+.TE
+.PP
+Results are ranked by decreasing alignment score.
+When statistical parameters are available for the scoring system,
+E-values and bit scores are computed with the Karlin-Altschul
+statistics of NCBI BLAST, from the length of the query and the
+size of the database (both corrected by the length adjustment of
+BLAST).
+Composition-based statistics and query filtering are not
+implemented.
+.\" ============================================================================
+.SH OPTIONS
+.SS General options
+.TP 9
+.B \-h\fP,\fB\ \-\-help
+display the version, the reference and the list of options, and
+exit with status 0.
+.TP
+.B \-\-version
+display the version and the reference, and exit with status 0.
+.TP
+.BI \-a\fP,\fB\ \-\-num_threads\fB\~ "positive integer"
+number of threads to use, from 1 to 256 (default is 1).
+.\" ----------------------------------------------------------------------------
+.SS Input options
+.TP 9
+.BI \-d\fP,\fB\ \-\-db\fB\~ "base name"
+base name of the database (required): the name given to
+makeblastdb with
+.BR \-out ,
+without the extension of the database files
+.RI ( .pin ,
+.IR .psq ,
+.IR .pal ,
+etc.).
+.TP
+.BI \-i\fP,\fB\ \-\-query\fB\~ filename
+FASTA file of the queries (default is standard input, also selected
+with the name \-).
+.TP
+.BI \-p\fP,\fB\ \-\-symtype\fB\~ "name or integer"
+search type: blastn (0), blastp (1), blastx (2), tblastn (3),
+tblastx (4) or sound (5); see the table above (default is blastp).
+.TP
+.BI \-S\fP,\fB\ \-\-strand\fB\~ "name or integer"
+query strands to search, for nucleotide queries (blastn, blastx
+and tblastx): plus (1), minus (2) or both (3) (default is both).
+Protein queries (blastp, tblastn) cannot be searched on the minus
+strand.
+.TP
+.BI \-Q\fP,\fB\ \-\-query_gencode\fB\~ "positive integer"
+genetic code used to translate the queries of blastx and tblastx
+searches (default is 1, the standard code).
+Codes 1 to 6, 9 to 16 and 21 to 23 of the NCBI genetic codes are
+accepted.
+.TP
+.BI \-D\fP,\fB\ \-\-db_gencode\fB\~ "positive integer"
+genetic code used to translate the database sequences of tblastn
+and tblastx searches (default is 1).
+The same codes as for
+.B \-Q
+are accepted.
+.TP
+.BI \-x\fP,\fB\ \-\-taxidlist\fB\~ filename
+search only the database sequences of the organisms listed in
+.IR filename :
+a plain text file with one NCBI taxonomy identifier (taxid) per line.
+The database must contain taxids (makeblastdb
+.BR \-taxid_map ).
+The database size used for the E-values is not changed.
+The option
+.B \-\-taxid
+is an alias of
+.BR \-\-taxidlist .
+.TP
+.BI \-z\fP,\fB\ \-\-dbsize\fB\~ "positive integer or zero"
+effective size of the database, in residues, used for the E-values
+instead of the actual size (default is 0: the actual size).
+Scientific notation is accepted (e.g. 1e9).
+.\" ----------------------------------------------------------------------------
+.SS Scoring options
+.TP 9
+.BI \-M\fP,\fB\ \-\-matrix\fB\~ "name or filename"
+score matrix of amino acid searches (default is BLOSUM62; IDENTITY_5_1
+for sound searches).
+The matrices BLOSUM45, BLOSUM50, BLOSUM62, BLOSUM80, BLOSUM90,
+PAM30, PAM70 and PAM250 are built in (names are case-insensitive);
+any other name is read as the name of a file, in the NCBI matrix
+format.
+Ignored in blastn searches, whose scores are set by
+.B \-r
+and
+.BR \-q .
+.TP
+.BI \-r\fP,\fB\ \-\-reward\fB\~ integer
+score of a nucleotide match, in blastn searches (default is 1).
+.TP
+.BI \-q\fP,\fB\ \-\-penalty\fB\~ integer
+score of a nucleotide mismatch, in blastn searches (default is \-3).
+.TP
+.BI \-G\fP,\fB\ \-\-gapopen\fB\~ "positive integer or zero"
+gap opening penalty.
+.TP
+.BI \-E\fP,\fB\ \-\-gapextend\fB\~ "positive integer or zero"
+gap extension penalty: a gap of length
+.I k
+costs
+.IR G\~+\~k\~\(mu\~E .
+The two penalties cannot both be zero.
+A penalty that is not given takes the default value of the score
+matrix: 14+2 (BLOSUM45), 13+2 (BLOSUM50), 11+1 (BLOSUM62 and
+BLOSUM80), 10+1 (BLOSUM90 and PAM70), 9+1 (PAM30) and 15+2
+(PAM250); 5+2 for blastn searches, and 15+5 for sound searches.
+With a matrix read from a file, at least one of the penalties must be
+given, and a penalty that is not given is zero.
+.PP
+The file
+.I scoring.pdf
+of the SWIPE distribution lists the scoring systems (score matrix,
+or match reward and mismatch penalty, and gap penalties) for which
+statistical parameters are available.
+With other scoring systems, E-values and bit scores are not
+computed: hits are selected and reported by raw score only.
+.\" ----------------------------------------------------------------------------
+.SS Result options
+.TP 9
+.BI \-e\fP,\fB\ \-\-evalue\fB\~ "positive real"
+maximum E-value of the hits to report (default is 10.0).
+.TP
+.BI \-k\fP,\fB\ \-\-minevalue\fB\~ "positive real or zero"
+minimum E-value of the hits to report (default is 0.0).
+.TP
+.BI \-c\fP,\fB\ \-\-min_score\fB\~ "positive integer"
+minimum raw alignment score (not a bit score) of the hits to report
+(default is 1).
+.TP
+.BI \-u\fP,\fB\ \-\-max_score\fB\~ "positive integer or zero"
+maximum raw alignment score of the hits to report (default: no
+limit).
+.TP
+.BI \-v\fP,\fB\ \-\-num_descriptions\fB\~ "positive integer or zero"
+number of hits described in the plain and XML outputs (default is
+250).
+.TP
+.BI \-b\fP,\fB\ \-\-num_alignments\fB\~ "positive integer or zero"
+number of hits aligned (default is 100).
+The tabular outputs report one line per aligned hit: their number of
+lines is set by
+.BR \-b ,
+not by
+.BR \-v .
+.\" ----------------------------------------------------------------------------
+.SS Output options
+.TP 9
+.BI \-m\fP,\fB\ \-\-outfmt\fB\~ integer
+output format (default is 0):
+.RS
+.TP 4
+0
+plain text, similar to NCBI BLAST's pairwise output: the search
+parameters, the list of hits, then their alignments;
+.TP
+7
+simple XML: one
+.I <result>
+element per query, inside one
+.I <results>
+element;
+.TP
+8
+tabular, one line per hit and 12 tab-separated columns, as NCBI
+BLAST's
+.BR "\-m 8" :
+query identifier, database sequence identifier, percentage of
+identity, alignment length, mismatches, gap openings, query start
+and end, database sequence start and end, E-value, bit score.
+Without statistical parameters, the last two columns are replaced
+by the raw score;
+.TP
+9
+tabular with comment lines: the same columns, preceded for each
+query by comment lines (starting with #) naming the program, the
+query, the database and the columns;
+.TP
+99
+ParAlign XML.
+.RE
+.TP 9
+.BI \-o\fP,\fB\ \-\-out\fB\~ filename
+write the results to
+.I filename
+instead of standard output.
+The file is created (or truncated) once all the options are checked.
+.TP
+.B \-I\fP,\fB\ \-\-show_gis
+show the gi numbers of the database sequences, when the database
+has them, in the plain and XML outputs.
+The tabular outputs always show them.
+.TP
+.B \-H\fP,\fB\ \-\-show_taxid
+show the taxids of the database sequences, and their membership and
+link bits when present, after their identifiers.
+.TP
+.BI \-N\fP,\fB\ \-\-dump\fB\~ integer
+write the database sequences in FASTA format, instead of searching:
+1 writes one header line per sequence (the deflines of a sequence
+of a non-redundant database are joined on that line, separated by
+" >"), 2 writes one header per defline (the sequence is then
+repeated after each of its deflines); 0 searches (default).
+Identifiers include the gi numbers.
+Sequences of translated databases (tblastn, tblastx) are written as
+nucleotides.
+.\" ----------------------------------------------------------------------------
+.SS BLAST compatibility options
+These BLAST options are accepted, but only with the values that
+disable the corresponding features, which SWIPE does not implement:
+.TP 9
+.BI \-C\fP,\fB\ \-\-comp_based_stats\fB\~ "F or 0"
+composition-based statistics (F, f or 0 only).
+.TP
+.BI \-F\fP,\fB\ \-\-filter\fB\~ F
+query filtering of low complexity regions (F, f or an empty string
+only).
+Pre-filter the queries if needed.
+.TP
+.BI \-K\fP,\fB\ \-\-subalignments\fB\~ integer
+number of subalignments: accepted and ignored, SWIPE reports one
+alignment per hit.
+.\" ============================================================================
+.SH EXIT STATUS
+.TP 4
+0
+success, including when no hit is found, and for
+.B \-h
+and
+.BR \-\-version .
+.TP
+1
+error: an invalid option or option value, a query file or a
+database that cannot be read, or an output file that cannot be
+written.
+A message is written to standard error.
+.\" ============================================================================
+.SH EXAMPLES
+Search the protein queries of
+.I query.fsa
+against the protein database
+.I swissprot
+(made with makeblastdb), with 8 threads and a maximum E-value of
+0.001:
+.PP
+.RS
+.EX
+swipe \-p 1 \-i query.fsa \-d swissprot \-e 0.001 \-a 8
+.EE
+.RE
+.PP
+Search a nucleotide query against the nucleotide database
+.I ecoli
+(both strands), with a tabular output:
+.PP
+.RS
+.EX
+swipe \-p 0 \-i primer.fsa \-d ecoli \-m 8 \-o hits.tsv
+.EE
+.RE
+.PP
+Search only the human entries of the database
+.I est
+(which contains taxids), with a translated search of the protein
+query of
+.IR prot.fsa :
+.PP
+.RS
+.EX
+echo 9606 > human.tax
+swipe \-p 3 \-i prot.fsa \-d est \-x human.tax
+.EE
+.RE
+.PP
+Make a database and search it with linear gap costs (no E-values,
+since BLAST has no statistical parameters for these penalties):
+.PP
+.RS
+.EX
+makeblastdb \-in proteins.fasta \-dbtype prot \-out proteins
+swipe \-d proteins \-i query.fsa \-G 0 \-E 2
+.EE
+.RE
+.\" ============================================================================
+.SH AUTHORS
+Concept, implementation and maintenance: Torbj\[/o]rn Rognes.
+.\" ============================================================================
+.SH CITATION
+Rognes T (2011) Faster Smith-Waterman database searches with
+inter-sequence SIMD parallelisation.
+.I BMC Bioinformatics
+12:221.
+doi:10.1186/1471-2105-12-221
+.\" ============================================================================
+.SH REPORTING BUGS
+Submit suggestions and bug-reports at
+.UR https://github.com/torognes/swipe/issues
+.UE ,
+or send a pull request on
+.UR https://github.com/torognes/swipe
+.UE .
+.\" ============================================================================
+.SH AVAILABILITY
+Source code and binaries are available at
+.UR https://github.com/torognes/swipe
+.UE .
+.\" ============================================================================
+.SH COPYRIGHT
+Copyright (C) 2008-2021 Torbj\[/o]rn Rognes, University of Oslo,
+Oslo University Hospital and Sencel Bioinformatics AS.
+.PP
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+.PP
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+See the GNU Affero General Public License for more details.
+.\" ============================================================================
+.SH SEE ALSO
+.BR makeblastdb ,
+the NCBI BLAST+ tool that prepares the databases, and
+.B blastp
+and
+.B blastn
+of NCBI BLAST+, the heuristic search tools whose options SWIPE
+follows.
+The file
+.I CHANGES
+of the SWIPE distribution lists the changes of each version.
