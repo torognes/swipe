@@ -979,14 +979,15 @@ auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable
 
 auto parser_create(long const show_taxid) -> apt
 {
-  auto * p = static_cast<apt>(xmalloc(sizeof(struct asnparse_info)));
+  // default-initialized (not zero-filled), as the former xmalloc()
+  auto * p = new asnparse_info;
   p->show_taxid = show_taxid;
   return p;
 }
 
 auto parser_destruct(apt p) -> void
 {
-  free(p);
+  delete p;
 }
 
 auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
