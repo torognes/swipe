@@ -117,20 +117,41 @@ all : swipe
 # DESTDIR is prepended for staged installs (packaging)
 PREFIX ?= /usr/local
 exec_prefix := $(PREFIX)
+datarootdir := $(PREFIX)/share
 bindir := $(exec_prefix)/bin
+mandir := $(datarootdir)/man
+man1dir := $(mandir)/man1
+bashcompdir ?= $(datarootdir)/bash-completion/completions
+zshcompdir ?= $(datarootdir)/zsh/site-functions
+
+MAN := man/swipe.1
+BASH_COMPLETION := completion/swipe.bash
+ZSH_COMPLETION := completion/_swipe
 
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+INSTALL_DATA ?= $(INSTALL) -m 0644
 MKDIR_P ?= $(INSTALL) -d
 
-.PHONY : all clean distclean install uninstall
+.PHONY : all clean distclean install install-completion uninstall
 
-install : swipe
+install : swipe $(MAN) install-completion
 	$(MKDIR_P) $(DESTDIR)$(bindir)
 	$(INSTALL_PROGRAM) swipe $(DESTDIR)$(bindir)/swipe
+	$(MKDIR_P) $(DESTDIR)$(man1dir)
+	$(INSTALL_DATA) $(MAN) $(DESTDIR)$(man1dir)/swipe.1
+
+install-completion : $(BASH_COMPLETION) $(ZSH_COMPLETION)
+	$(MKDIR_P) $(DESTDIR)$(bashcompdir)
+	$(INSTALL_DATA) $(BASH_COMPLETION) $(DESTDIR)$(bashcompdir)/swipe
+	$(MKDIR_P) $(DESTDIR)$(zshcompdir)
+	$(INSTALL_DATA) $(ZSH_COMPLETION) $(DESTDIR)$(zshcompdir)/_swipe
 
 uninstall :
 	rm -f $(DESTDIR)$(bindir)/swipe
+	rm -f $(DESTDIR)$(man1dir)/swipe.1
+	rm -f $(DESTDIR)$(bashcompdir)/swipe
+	rm -f $(DESTDIR)$(zshcompdir)/_swipe
 
 clean :
 	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov

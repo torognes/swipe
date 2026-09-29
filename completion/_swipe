@@ -1,0 +1,52 @@
+#compdef swipe
+#
+# zsh completion for swipe
+#
+# Installation (handled automatically by `make install`):
+#   copy this file (named `_swipe`) into a directory listed in your $fpath,
+#   e.g. /usr/share/zsh/site-functions, then restart zsh.
+
+# the base names of the BLAST databases (index and alias files, without
+# their extension)
+_swipe_databases() {
+    local -a databases
+    databases=( ${(u)${~:-*.(pin|nin|pal|nal)(N)}%.*} )
+    _describe -t databases 'BLAST database' databases
+    _files -/
+}
+
+_swipe() {
+    _arguments -s -S \
+        '(- *)'{-h,--help}'[display help and exit]' \
+        '(- *)--version[display version information and exit]' \
+        '(-d --db)'{-d,--db}'[database base name]:database:_swipe_databases' \
+        '(-i --query)'{-i,--query}'[query sequence file (FASTA)]:filename:_files' \
+        '(-M --matrix)'{-M,--matrix}'[score matrix name or file]:matrix:(BLOSUM45 BLOSUM50 BLOSUM62 BLOSUM80 BLOSUM90 PAM30 PAM70 PAM250)' \
+        '(-q --penalty)'{-q,--penalty}'[penalty for nucleotide mismatch]:penalty:' \
+        '(-r --reward)'{-r,--reward}'[reward for nucleotide match]:reward:' \
+        '(-G --gapopen)'{-G,--gapopen}'[gap open penalty]:penalty:' \
+        '(-E --gapextend)'{-E,--gapextend}'[gap extension penalty]:penalty:' \
+        '(-v --num_descriptions)'{-v,--num_descriptions}'[sequence descriptions to show]:number:' \
+        '(-b --num_alignments)'{-b,--num_alignments}'[sequence alignments to show]:number:' \
+        '(-e --evalue)'{-e,--evalue}'[maximum expect value of sequences to show]:evalue:' \
+        '(-k --minevalue)'{-k,--minevalue}'[minimum expect value of sequences to show]:evalue:' \
+        '(-c --min_score)'{-c,--min_score}'[minimum raw score of sequences to show]:score:' \
+        '(-u --max_score)'{-u,--max_score}'[maximum raw score of sequences to show]:score:' \
+        '(-a --num_threads)'{-a,--num_threads}'[number of threads to use]:threads:' \
+        '(-m --outfmt)'{-m,--outfmt}'[output format]:format:((0\:plain 7\:XML 8\:tabular 9\:tabular\ with\ comments 99\:ParAlign\ XML))' \
+        '(-I --show_gis)'{-I,--show_gis}'[show gi numbers in results]' \
+        '(-p --symtype)'{-p,--symtype}'[symbol type (search type)]:type:(blastn blastp blastx tblastn tblastx sound)' \
+        '(-S --strand)'{-S,--strand}'[query strands to search]:strands:(plus minus both)' \
+        '(-Q --query_gencode)'{-Q,--query_gencode}'[query genetic code]:code:(1 2 3 4 5 6 9 10 11 12 13 14 15 16 21 22 23)' \
+        '(-D --db_gencode)'{-D,--db_gencode}'[database genetic code]:code:(1 2 3 4 5 6 9 10 11 12 13 14 15 16 21 22 23)' \
+        '(-x --taxidlist --taxid)'{-x,--taxidlist,--taxid}'[taxid list file]:filename:_files' \
+        '(-N --dump)'{-N,--dump}'[dump database]:mode:((0\:search 1\:dump 2\:dump\ with\ split\ headers))' \
+        '(-H --show_taxid)'{-H,--show_taxid}'[show taxids etc. in results]' \
+        '(-o --out)'{-o,--out}'[output file]:filename:_files' \
+        '(-z --dbsize)'{-z,--dbsize}'[effective database size]:size:' \
+        '(-C --comp_based_stats)'{-C,--comp_based_stats}'[composition-based statistics (not supported)]:value:(F)' \
+        '(-F --filter)'{-F,--filter}'[query filtering (not supported)]:value:(F)' \
+        '(-K --subalignments)'{-K,--subalignments}'[number of subalignments (ignored)]:number:'
+}
+
+_swipe "$@"
