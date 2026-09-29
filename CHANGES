@@ -47,7 +47,7 @@
           sequences and the length adjustment, which overflows for large
           databases (e.g. 50 million sequences and an adjustment of 100):
           E-values were wrong for such databases (KI-40). It is now
-          computed in long
+          computed with 64-bit integers
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2
