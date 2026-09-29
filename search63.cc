@@ -24,24 +24,33 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::max
+#include <cassert>
+#include <cstddef>  // std::size_t
 
-long fullsw(char * dseq,
-	    char * dend,
+auto fullsw(char * dseq,
+	    char const * dend,
 	    char * qseq,
-	    char * qend,
+	    char const * qend,
 	    long * hearray,
 	    long * score_matrix,
-	    long gapopenextend,
-	    long gapextend)
+	    long gap_open_extend,
+	    long gap_extend) -> long
 {
-  long h, n, e, f, s;
-  long *hep;
-  char *qp, *dp;
-  long * sp;
+  long h = 0;
+  long n = 0;
+  long e = 0;
+  long f = 0;
+  long s = 0;
+  long *hep = nullptr;
+  char *qp = nullptr;
+  char *dp = nullptr;
+  long * sp = nullptr;
 
   s = 0;
   dp = dseq;
-  memset(hearray, 0, 2 * sizeof(long) * (qend-qseq));
+  assert(qend >= qseq);
+  memset(hearray, 0, 2 * sizeof(long) * static_cast<std::size_t>(qend - qseq));
   
   while (dp < dend)
     {
@@ -55,26 +64,20 @@ long fullsw(char * dseq,
         {
           n = *hep;
           e = *(hep+1);
-          h += sp[(int)(*qp)];
+          h += sp[static_cast<int>(*qp)];
 
-          if (e > h)
-            h = e;
-          if (f > h)
-            h = f;
-          if (h < 0)
-            h = 0;
-          if (h > s)
-            s = h;
+          h = std::max(e, h);
+          h = std::max(f, h);
+          h = std::max<long>(h, 0);
+          s = std::max(h, s);
 
           *hep = h;
-          e -= gapextend;
-          f -= gapextend;
-          h -= gapopenextend;
+          e -= gap_extend;
+          f -= gap_extend;
+          h -= gap_open_extend;
 
-          if (h > e)
-            e = h;
-          if (h > f)
-            f = h;
+          e = std::max(h, e);
+          f = std::max(h, f);
 
           *(hep+1) = e;
           h = n;

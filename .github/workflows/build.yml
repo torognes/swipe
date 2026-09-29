@@ -24,9 +24,9 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 }
+          - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 WERROR=1 }
           - { name: gcc-debug,    cxx: g++,     recipe: DEBUG=1 }
-          - { name: clang-release, cxx: clang++, recipe: RELEASE=1 }
+          - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 }
 
     name: linux-x86_64 (${{ matrix.build.name }})
 
@@ -84,7 +84,7 @@ jobs:
       timeout-minutes: 15
       run: |
         docker run --rm -v "${PWD}":/src -w /src gcc:${{ matrix.gcc }} \
-            bash -c 'g++ --version && make clean && make -j "$(nproc)" RELEASE=1'
+            bash -c 'g++ --version && make clean && make -j "$(nproc)" RELEASE=1 WERROR=1'
         ./swipe -h 2>&1 | head -n 1
 
     - name: Install NCBI BLAST+ (makeblastdb)

@@ -23,11 +23,15 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <ctype.h>
+#ifndef SWIPE_H
+#define SWIPE_H
+
+#include <cstdio>
+#include <cstring>
+#include <cstdint>  // std::int32_t, std::int64_t
+#include <cstdlib>
+#include <climits>
+#include <cctype>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -35,15 +39,13 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <getopt.h>
-#include <math.h>
+#include <cmath>
 #include <x86intrin.h>
 #include <array>
 #include <chrono>
 #include <ctime>
+#include <string>
 
-#ifdef MPISWIPE
-#include <mpi.h>
-#endif
 
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
@@ -57,105 +59,165 @@
 #define LINE_MAX 2048
 #endif
 
-#define SWIPE_VERSION "2.1.2"
-
-// Should be 32bits integer
-typedef unsigned int UINT32;
-typedef unsigned short WORD;
-typedef unsigned char BYTE;
-typedef BYTE VECTOR[16];
-
-#define WIDTH 32
-#define WIDTH_SHIFT 5
-#define BLOCKWIDTH 32
-
-#define ext1 ".ssq"
-#define ext2 ".ssi"
-#define ext3 ".shd"
-#define ext4 ".shi"
-
-extern char BIAS;
-
-
-//#define BIASED
-
-#ifdef BIASED
-#define ZERO 0x00
+// the version number is read from the file VERSION by the Makefile
+#ifndef SWIPE_VERSION
+#ifdef __CPPCHECK__
+// static analysis with cppcheck, run without the Makefile's flags
+#define SWIPE_VERSION "0.0.0"
 #else
-#define ZERO 0x80
+#error "SWIPE_VERSION is not defined: build swipe with make"
+#endif
 #endif
 
-void vector_print(BYTE * vector);
-void vector_print_word(WORD * vector);
+// Should be 32bits integer
+using UINT32 = unsigned int;
+using WORD = unsigned short;
+using BYTE = unsigned char;
 
-void * xmalloc(size_t size);
-void * xrealloc(void *ptr, size_t size);
+// symbol type of the search (option -p, --symtype): the query and
+// database sequence types, and their translations
+enum struct SymbolType : long
+{
+  blastn = 0,   // nucleotide query, nucleotide database
+  blastp = 1,   // amino acid query, amino acid database
+  blastx = 2,   // translated nucleotide query, amino acid database
+  tblastn = 3,  // amino acid query, translated nucleotide database
+  tblastx = 4,  // translated query, translated database
+  sound = 5     // sound codes
+};
+
+// output format of the results (option -m, --outfmt)
+enum struct OutputFormat : long
+{
+  plain = 0,                  // BLAST-like plain text
+  xml = 7,                    // simple XML
+  tabular = 8,                // tabular (BLAST -m 8)
+  tabular_with_comments = 9,  // tabular with comment lines (BLAST -m 9)
+  paralign_xml = 99           // ParAlign XML
+};
+
+// query strands to search (option -S, --strand): a bit mask of the
+// plus (1) and minus (2) strands
+enum struct QueryStrands : long
+{
+  plus = 1,
+  minus = 2,
+  both = 3
+};
+
+// true when the query strand of index strand (0: plus, 1: minus) is
+// searched
+inline auto searches_strand(QueryStrands const strands, long const strand) -> bool
+{
+  return ((strand + 1) & static_cast<long>(strands)) != 0;
+}
+
+/* ARGUMENTS AND THEIR DEFAULTS */
+
+constexpr long default_maxmatches = 250;
+constexpr long default_alignments = 100;
+constexpr long default_minscore = 1;
+constexpr long default_maxscore = LONG_MAX;
+constexpr char const * default_queryname = "-";
+constexpr char const * default_databasename = "";
+constexpr long default_gapopen = 0;
+constexpr long default_gapextend = 0;
+constexpr char const * default_matrixname = "BLOSUM62";
+constexpr long default_matchscore = 1;
+constexpr long default_mismatchscore = -3;
+constexpr long default_threads = 1;
+constexpr OutputFormat default_view = OutputFormat::plain;
+constexpr SymbolType default_symtype = SymbolType::blastp;
+constexpr long default_show_gis = 0;
+constexpr long default_show_taxid = 0;
+constexpr double default_expect = 10.0;
+constexpr double default_minexpect = 0.0;
+constexpr QueryStrands default_querystrands = QueryStrands::both;
+constexpr long default_query_gencode = 1;
+constexpr long default_db_gencode = 1;
+constexpr long default_subalignments = 1;
+constexpr long default_dump = 0;
+constexpr std::int64_t default_effdbsize = 0;
+
+// the command-line options, final once args_init() has parsed and
+// checked them (including the gap penalties that default to those of
+// the score matrix or of the symbol type); gapopenextend is derived
+struct Parameters
+{
+  char * progname = nullptr;
+  char const * matrixname = "";
+  char const * databasename = default_databasename;
+  char const * queryname = default_queryname;
+  char * taxidfilename = nullptr;
+  char * outfile = nullptr;
+  double expect = default_expect;
+  double minexpect = default_minexpect;
+  long alignments = default_alignments;
+  long maxmatches = default_maxmatches;
+  long minscore = default_minscore;
+  long maxscore = default_maxscore;
+  long gapopen = default_gapopen;
+  long gapextend = default_gapextend;
+  long gapopenextend = 0;
+  long matchscore = default_matchscore;
+  long mismatchscore = default_mismatchscore;
+  long threads = default_threads;
+  SymbolType symtype = default_symtype;
+  QueryStrands querystrands = default_querystrands;
+  OutputFormat view = default_view;
+  long show_gis = default_show_gis;
+  long show_taxid = default_show_taxid;
+  long query_gencode = default_query_gencode;
+  long db_gencode = default_db_gencode;
+  long subalignments = default_subalignments;
+  long dump = default_dump;
+  std::int64_t effdbsize = default_effdbsize;
+};
+
+auto xmalloc(size_t size) -> void *;
+auto xrealloc(void *ptr, size_t size) -> void *;
 
 
 extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
-extern const char * queryname;
-extern const char * matrixname;
-extern long gapopen;
-extern long gapextend;
-extern long gapopenextend;
 extern long * score_matrix_63;
-extern long symtype;
-extern long matchscore;
-extern long mismatchscore;
 extern long totalhits;
-extern const char * gencode_names[];
-extern long querystrands;
-extern double minexpect;
-extern double expect;
-extern long maxmatches;
-extern long threads;
-extern const char * databasename;
-extern long alignments;
+extern char const * gencode_names[];
 extern long queryno;
 extern long compute7;
-extern long show_taxid;
-extern long effdbsize;
 
 extern char map_ncbi_nt4[];
 extern char map_ncbi_nt16[];
 extern char map_ncbi_aa[];
 extern char map_sound[];
 
-extern const char * sym_ncbi_nt4;
-extern const char * sym_ncbi_nt16;
-extern const char * sym_ncbi_nt16u;
-extern const char * sym_ncbi_aa;
-extern const char * sym_sound;
+extern char const * sym_ncbi_nt4;
+extern char const * sym_ncbi_nt16;
+extern char const * sym_ncbi_nt16u;
+extern char const * sym_ncbi_aa;
+extern char const * sym_sound;
 
 extern char ntcompl[];
 extern char d_translate[];
 
 extern FILE * out;
 
-extern const char mat_blosum45[];
-extern const char mat_blosum50[];
-extern const char mat_blosum62[];
-extern const char mat_blosum80[];
-extern const char mat_blosum90[];
-extern const char mat_pam30[];
-extern const char mat_pam70[];
-extern const char mat_pam250[];
+extern char const mat_blosum45[];
+extern char const mat_blosum50[];
+extern char const mat_blosum62[];
+extern char const mat_blosum80[];
+extern char const mat_blosum90[];
+extern char const mat_pam30[];
+extern char const mat_pam70[];
+extern char const mat_pam250[];
 
 extern long SCORELIMIT_7;
-extern long SCORELIMIT_8;
 extern long SCORELIMIT_16;
-extern long SCORELIMIT_32;
-extern long SCORELIMIT_63;
-extern char BIAS;
 
 extern char * score_matrix_7;
 extern char * score_matrix_7t;
-extern unsigned char * score_matrix_8;
 extern short * score_matrix_16;
-extern unsigned int * score_matrix_32;
-extern long * score_matrix_63;
 
 struct sequence
 {
@@ -169,10 +231,10 @@ struct query_s
   struct sequence aa[6]; /* 6 frames */
   char * description;
   long dlen;
-  long symtype;
-  long strands;
+  SymbolType symtype;
+  QueryStrands strands;
   char * map;
-  const char * sym;
+  char const * sym;
 };
 
 extern struct query_s query;
@@ -197,10 +259,12 @@ struct time_info
 
 extern struct time_info ti;
 
-void fatal(const char * message);
-void fatal(const char * format, const char * message);
+// print the message to stderr and exit with status 1; [[noreturn]]
+// belongs on the declarations: callers know that fatal() never returns
+[[noreturn]] auto fatal(char const * message) noexcept -> void;
+[[noreturn]] auto fatal(std::string const & message) noexcept -> void;
 
-void search7(BYTE * * q_start,
+auto search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
 	     BYTE gap_extend_penalty,
 	     BYTE * score_matrix,
@@ -208,11 +272,11 @@ void search7(BYTE * * q_start,
 	     BYTE * hearray,
 	     struct db_thread_s * dbt,
 	     long sequences,
-	     long * seqnos,
+	     long const * seqnos,
 	     long * scores,
-	     long qlen);
+	     long qlen) -> void;
 
-void search7_ssse3(BYTE * * q_start,
+auto search7_ssse3(BYTE * * q_start,
 		   BYTE gap_open_penalty,
 		   BYTE gap_extend_penalty,
 		   BYTE * score_matrix,
@@ -220,11 +284,11 @@ void search7_ssse3(BYTE * * q_start,
 		   BYTE * hearray,
 		   struct db_thread_s * dbt,
 		   long sequences,
-		   long * seqnos,
+		   long const * seqnos,
 		   long * scores,
-		   long qlen);
+		   long qlen) -> void;
 
-void search16(WORD * * q_start,
+auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,
 	      WORD * score_matrix,
@@ -232,35 +296,35 @@ void search16(WORD * * q_start,
 	      WORD * hearray,
 	      struct db_thread_s * dbt,
 	      long sequences,
-	      long * seqnos,
+	      long const * seqnos,
 	      long * scores,
 	      long * bestpos,
-	      int qlen);
+	      int qlen) -> void;
 
-void search16s(WORD * * q_start,
+auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
 	       WORD gap_extend_penalty,
 	       WORD * score_matrix,
 	       WORD * dprofile,
 	       WORD * hearray,
-	       struct db_thread_s * * dbta,
+	       struct db_thread_s * const * dbta,
 	       long sequences,
-	       long * seqnos,
+	       long const * seqnos,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,
-	       int qlen);
+	       int qlen) -> void;
 
-long fullsw(char * dseq,
-	    char * dend,
+auto fullsw(char * dseq,
+	    char const * dend,
 	    char * qseq,
-	    char * qend,
+	    char const * qend,
 	    long * hearray, 
 	    long * score_matrix,
-	    long gap_open_penalty,
-	    long gap_extend_penalty);
+	    long gap_open_extend,
+	    long gap_extend_penalty) -> long;
 
-void align(char * a_seq,
+auto align(char * a_seq,
 	   char * b_seq,
 	   long M,
 	   long N,
@@ -272,27 +336,27 @@ void align(char * a_seq,
 	   long * a_end,
 	   long * b_end,
 	   char ** alignment,
-	   long * s);
+	   long * s) -> void;
 
-void query_init(const char * queryname, long symtype, long strands);
-void query_exit();
-int query_read();
-void query_show();
+auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;
+auto query_exit() -> void;
+auto query_read() -> int;
+auto query_show() -> void;
 
-void score_matrix_init();
-void score_matrix_free();
+auto score_matrix_init(Parameters const & parameters) -> void;
+auto score_matrix_free() -> void;
 
-void translate_init(long qtableno, long dtableno);
-char * revcompl(char * seq, long len);
-void translate(char * dna, long dlen,
+auto translate_init(long qtableno, long dtableno) -> void;
+auto revcompl(char const * seq, long len) -> char *;
+auto translate(char const * dna, long dlen,
                long strand, long frame, long table,
-               char ** protp, long * plenp);
+               char ** protp, long * plenp) -> void;
 
 struct asnparse_info;
-typedef struct asnparse_info * apt;
+using apt = asnparse_info *;
 
-apt parser_create();
-void parser_destruct(apt p);
+auto parser_create(long show_taxid) -> apt;
+auto parser_destruct(apt p) -> void;
 
 // XML outputs: the five special characters are escaped (KI-27)
 enum struct Escaping : int { none, xml };
@@ -300,82 +364,99 @@ enum struct Escaping : int { none, xml };
 // print a character to out, escaped as XML (&amp; &lt; &gt; &quot; &apos;)
 auto xml_putc(char symbol) noexcept -> void;
 
-long parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
-		  long show_gis, long indent, long maxlen, 
-		  long linelen, long maxdeflines, long show_descr,
-		  Escaping escaping = Escaping::none);
+// deflines: whole, or only their identifier (up to the first space)
+enum struct DeflineText : int { identifier, full };
 
-void parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable);
+// how parse_header() and db_showheader() print the deflines of a
+// database sequence (the defaults: the first defline, whole, on one
+// line, neither truncated nor padded)
+struct HeaderLayout
+{
+  long show_gis = 0;  // non-zero: show the gi numbers (-I)
+  long indent = 0;  // continuation lines, when maxdeflines > 1
+  long maxlen = 0;  // truncated after maxlen characters (0: never)
+  long linelen = LONG_MAX;  // wrapped and padded to linelen (LONG_MAX: never)
+  long maxdeflines = 1;  // more than one: one defline per line
+  DeflineText text = DeflineText::full;
+  Escaping escaping = Escaping::none;
+};
 
-long parse_getdeflinecount(apt p, unsigned char * buf, long len,
-                           long memb, long(*f_checktaxid)(long));
+auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
+		  HeaderLayout const & layout) -> long;
 
-void db_open(long symtype, const char * basename, char * taxidfilename);
-void db_close();
-long db_getseqcount();
-long db_getseqcount_masked();
-long db_getsymcount();
-long db_getsymcount_masked();
-long db_getlongest();
-char* db_gettitle();
-char* db_gettime();
-long db_getvolumecount();
-long db_getseqcount_volume(long v);
-long db_getseqcount_volume_masked(long v);
-long db_ismasked();
-long db_getversion();
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable) -> void;
 
-long db_getvolume(long seqno);
+auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+                           long memb, long(*f_checktaxid)(long)) -> long;
 
-struct db_thread_s * db_thread_create();
-void db_thread_destruct(struct db_thread_s * t);
+auto db_open(Parameters const & parameters) -> void;
+auto db_close() -> void;
+auto db_getseqcount() -> std::int64_t;
+auto db_getseqcount_masked() -> std::int64_t;
+auto db_getsymcount() -> std::int64_t;
+auto db_getsymcount_masked() -> std::int64_t;
+auto db_getlongest() -> long;
+auto db_gettitle() -> char*;
+auto db_gettime() -> char*;
+auto db_getvolumecount() -> long;
+auto db_getseqcount_volume(long v) -> long;
+auto db_getseqcount_volume_masked(long v) -> long;
+auto db_ismasked() -> long;
+auto db_getversion() -> long;
 
-long db_check_taxid(long taxid);
+auto db_getvolume(long seqno) -> long;
 
-void db_parse_header(struct db_thread_s * t, char * address, long length,
+auto db_thread_create() -> struct db_thread_s *;
+auto db_thread_destruct(struct db_thread_s * t) -> void;
+
+auto db_check_taxid(long taxid) -> long;
+
+auto db_parse_header(struct db_thread_s const * t, char * address, long length,
 		     long show_gis,
-		     long * deflines, char *** deflinetable);
+		     long * deflines, char *** deflinetable) -> void;
 
-void db_showheader(struct db_thread_s * t, char * address, long length, 
-		   long show_gis, long indent,
-		   long maxlen, long linelen, long maxdeflines, long show_descr,
-		   Escaping escaping = Escaping::none);
-void db_getshowheader(struct db_thread_s * t, long seqno,
-		      long show_gis, long indent,
-		      long maxlen, long linelen, long maxdeflines);
+auto db_showheader(struct db_thread_s const * t, char * address, long length,
+		   HeaderLayout const & layout) -> void;
 
-void db_show_fasta(struct db_thread_s * t, long seqno,
-		   long strand, long frame, long split);
+auto db_show_fasta(struct db_thread_s * t, long seqno,
+		   long strand, long frame, long split) -> void;
 
-long db_check_inclusion(struct db_thread_s * t, long seqno);
+auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
-void db_mapsequences(struct db_thread_s * t, long firstseqno, long lastseqno);
-void db_mapheaders(struct db_thread_s * t, long firstseqno, long lastseqno);
+auto db_mapsequences(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
+auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
 
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
-void db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c);
-void db_getheader(struct db_thread_s * t, long seqno, char ** address, 
-		  long * length);
+auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
+		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void;
+auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
+		  long * length) -> void;
 
-void hits_init(long descriptions, long alignments, long minscore, 
-	       long maxscore, double minexpect, double expect, int show_nostats);
-void hits_enter(long seqno, long score, long qstrand, long qframe,
-		long dstrand, long dframe, long align_hint, long bestq);
-long * hits_sort();
-long hits_getcount();
-void hits_align(struct db_thread_s * t, long i);
-void hits_show_begin(long view);
-void hits_show_end(long view);
-void hits_show(long view, long show_gis);
-void hits_empty();
-void hits_exit();
-void hits_gethit(long i, long * seqno, long * score, 
+auto hits_init(Parameters const & parameters) -> void;
+// strands and frames of a hit: query and database sequence
+struct HitStrands
+{
+  long qstrand;
+  long qframe;
+  long dstrand;
+  long dframe;
+};
+
+auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
+auto hits_sort() -> long *;
+auto hits_getcount() -> long;
+auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
+auto hits_show_begin(OutputFormat view) -> void;
+auto hits_show_end(OutputFormat view) -> void;
+auto hits_show(Parameters const & parameters) -> void;
+auto hits_empty() -> void;
+auto hits_exit() -> void;
+auto hits_gethit(long i, long * seqno, long * score, 
 		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe);
-void hits_getfull(long i, 
+		 long * dstrand, long * dframe) -> void;
+auto hits_getfull(long i, 
 		  long * seqno, 
 		  long * score,
 		  long * align_q_start,
@@ -384,45 +465,48 @@ void hits_getfull(long i,
 		  long * align_d_end,
 		  char ** header, long * header_len,
 		  char ** seq, long * seq_len,
-		  char ** align, long * align_len);
-void hits_enter_align_hint(long i, long q_end, long d_end);
-void hits_enter_header(long i, char * header, long header_len);
-void hits_enter_seq(long hitno, char* buffer, long len);
-void hits_enter_align_coord(long i,
+		  char ** align, long * align_len) -> void;
+auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
+auto hits_enter_header(long i, char const * header, long header_len) -> void;
+auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void;
+auto hits_enter_align_coord(long i,
 			    long align_q_start,
 			    long align_q_end,
 			    long align_d_start,
 			    long align_d_end,
-			    long dlennt);
-void hits_enter_align_string(long hitno, char * align, long align_len);
+			    long dlennt) -> void;
+auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void;
 
 
-long stats_getparams_nt(long matchscore,
-			long mismatchscore, 
+auto stats_getparams_nt(long match_score,
+			long mismatch_score, 
 			long gopen,
 			long gextend,
 			double * lambda,
 			double * K,
 			double * H,
 			double * alpha,
-			double * beta);
+			double * beta) -> long;
 
-long stats_getparams(const char * matrix,
+auto stats_getparams(char const * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
 		     double * K,
 		     double * H,
 		     double * alpha,
-		     double * beta);
+		     double * beta) -> long;
 
-long stats_getprefs(const char * matrix,
+auto stats_getprefs(char const * matrix,
 		    long * gopen,
-		    long * gextend);
+		    long * gextend) -> long;
 
 
-typedef int Int4;
-typedef long Int8;
-typedef double Nlm_FloatHi;
+// the NCBI integer types of blastkar_partial.c: 4 and 8 bytes
+using Int4 = std::int32_t;
+using Int8 = std::int64_t;
+using Nlm_FloatHi = double;
 
 #include "blastkar_partial.h"
+
+#endif  // SWIPE_H

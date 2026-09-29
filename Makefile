@@ -24,12 +24,30 @@
 
 # Makefile for SWIPE
 
-MPI_COMPILE=`mpicxx --showme:compile`
-MPI_LINK=`mpicxx --showme:link`
+# the version number, in a single place (also read by
+# .github/scripts/version.sh)
+VERSION := $(shell cat VERSION 2>/dev/null)
+ifeq ($(VERSION),)
+  $(error cannot read the version number from ./VERSION)
+endif
 
 COMMON=-g -pthread
 
-COMPILEOPT=-Wall -Wextra
+# Warnings of every recipe. The extra ones are known to every
+# supported compiler (GCC 4.8.5 and later, clang), and swipe builds
+# without any of them: once a warning of the DEBUG set below is fixed
+# everywhere, its option moves here, so that it cannot come back
+COMPILEOPT=-Wall -Wextra -Wpedantic -Wcast-align -Wcast-qual -Wconversion \
+	-Wdouble-promotion -Wfloat-equal -Wformat=2 -Wnon-virtual-dtor \
+	-Woverloaded-virtual -Wmissing-declarations -Wredundant-decls -Wshadow \
+	-Wsign-conversion -Wswitch-default -Wold-style-cast -Wuninitialized \
+	-Wunused -Wunused-macros -Wvla -Wzero-as-null-pointer-constant
+
+# "make WERROR=1": warnings are errors (used by the CI; off by default,
+# so that a compiler with new warnings can still build swipe)
+ifdef WERROR
+  COMPILEOPT += -Werror
+endif
 
 # language standard (swipe must build with GCC 4.8.5 and later)
 STD=-std=c++11
@@ -47,14 +65,11 @@ IS_CLANG := $(shell $(CXX) -x c++ -E -dM - < /dev/null 2>/dev/null | grep -c '__
 
 # Extra warnings of the DEBUG recipe (current GCC and clang only: the
 # oldest supported GCC rejects some of these options)
-DEBUG_WARNINGS_COMMON=-Wcast-align -Wcast-qual -Wconversion -Wdate-time \
-	-Wdouble-promotion -Wfloat-equal -Wformat=2 -Wnon-virtual-dtor \
-	-Wnull-dereference -Wold-style-cast -Woverloaded-virtual -Wpedantic \
-	-Wshadow -Wsign-conversion -Wuninitialized -Wunused -Wunused-macros \
-	-Wvla
+DEBUG_WARNINGS_COMMON=-Wdate-time -Wextra-semi -Wimplicit-fallthrough \
+	-Wnull-dereference
 DEBUG_WARNINGS_GCC=-Wduplicated-branches -Wduplicated-cond \
 	-Wformat-overflow -Wlogical-op -Wuseless-cast
-DEBUG_WARNINGS_CLANG=-Wextra-semi -Wcomma -Wassign-enum -Wover-aligned
+DEBUG_WARNINGS_CLANG=-Wcomma -Wassign-enum -Wover-aligned
 ifneq ($(IS_CLANG),0)
   DEBUG_WARNINGS=$(DEBUG_WARNINGS_COMMON) $(DEBUG_WARNINGS_CLANG)
 else
@@ -64,7 +79,7 @@ DEBUG_SANITIZER=-fsanitize=undefined,address -fno-omit-frame-pointer
 
 # Build recipes: exactly one is active, RELEASE by default. Objects
 # are not tagged with the recipe: run "make clean" when switching.
-ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE),$(TRACE)),)
+ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE)),)
   RELEASE := 1
 endif
 
@@ -73,7 +88,7 @@ ifdef RELEASE
   OPTIMIZATION=-O3 -DNDEBUG
 else ifdef DEBUG
   # "make DEBUG=1": sanitizers and extended warnings (current GCC or
-  # clang). DEBUG is not defined: it enables the trace blocks (TRACE=1)
+  # clang)
   OPTIMIZATION=-O0 -ggdb3 -D_GLIBCXX_DEBUG $(DEBUG_SANITIZER) $(DEBUG_WARNINGS)
   LINKOPT=$(DEBUG_SANITIZER)
 else ifdef PROFILE
@@ -85,21 +100,17 @@ else ifdef COVERAGE
   OPTIMIZATION=-DCOVERAGE -fprofile-arcs -ftest-coverage -O0
   LINKOPT=--coverage
   LIBS+=-lgcov
-else ifdef TRACE
-  # "make TRACE=1": the #ifdef DEBUG trace blocks, printed to the output
-  OPTIMIZATION=-O0 -ggdb3 -DDEBUG
 endif
 
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
-SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) $(CPPFLAGS) $(CXXFLAGS)
+SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
+	-DSWIPE_VERSION='"$(VERSION)"' $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
-PROG=swipe mpiswipe
+PROG=swipe
 
-# mpiswipe (MPI version, needs mpicxx) is deprecated: it is no longer
-# built by default, run "make mpiswipe" to build it
 all : swipe
 
 # Installation directories (GNU conventions): make install PREFIX=...
@@ -135,22 +146,16 @@ OBJS = database.o asnparse.o align.o matrices.o \
 # files), so that editing any header, or blastkar_partial.c (included
 # by stats.cc), rebuilds the right objects.
 DEPFLAGS = -MMD -MP
-DEPFILES = swipe.d mpiswipe.d $(OBJS:.o=.d)
+DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)
 
-DEPS = Makefile
+DEPS = Makefile VERSION
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)
 
-mpiswipe : mpiswipe.o $(OBJS)
-	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS) $(MPI_LINK)
-
 %.o : %.cc $(DEPS)
 	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-mpiswipe.o : swipe.cc $(DEPS)
-	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DMPISWIPE $(MPI_COMPILE) -c -o $@ swipe.cc
 
 search7_ssse3.o : search7.cc $(DEPS)
 	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc

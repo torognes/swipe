@@ -22,6 +22,9 @@
  *
  * ===========================================================================*/
 
+#ifndef SWIPE_BLASTKAR_PARTIAL_H
+#define SWIPE_BLASTKAR_PARTIAL_H
+
 Int4
 BlastComputeLengthAdjustment(Nlm_FloatHi K,
                              Nlm_FloatHi logK,
@@ -31,3 +34,5 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
                              Int8 db_length,
                              Int4 db_num_seqs,
                              Int4 * length_adjustment);
+
+#endif  // SWIPE_BLASTKAR_PARTIAL_H

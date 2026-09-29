@@ -43,8 +43,9 @@ National Center for Biotechnology Information (NCBI).
 Please cite: Rognes T (2011) Faster Smith-Waterman database searches
 with inter-sequence SIMD parallelisation. BMC Bioinformatics 12, 221.
 
-Usage: ./[mpi]swipe [OPTIONS]
+Usage: ./swipe [OPTIONS]
   -h, --help                 show help
+      --version              show version
   -d, --db=FILE              sequence database base name (required)
   -i, --query=FILE           query sequence filename (stdin)
   -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)
@@ -88,6 +89,10 @@ filtering of low complexity regions (BLAST option "-F") is not implemented.
 Please pre-filter your query. SWIPE does not use the new sequence length
 adjustment statistics (FSC) introduced in BLAST 2.2.26.
 
+The BLAST option "-K" (--subalignments, the number of subalignments) is
+accepted for compatibility, but ignored: SWIPE reports one alignment per
+hit.
+
 The BLOSUM45, BLOSUM50, BLOSUM62, BLOSUM80, BLOSUM90, PAM30, PAM70 and PAM250
 matrices are "built-in". Other matrices may be specified with a file name.
 
@@ -108,8 +113,9 @@ specified organisms.
 SWIPE accepts only databases prepared using the formatdb or makeblastdb
 tools that are distributed together with NCBI BLAST and BLAST+. They
 can be downloaded at ftp://ftp.ncbi.nlm.nih.gov/blast/executables/
-from NCBI. For makeblastdb, please use the "-blastdb_version 4" option
-to make databases that are compatible with SWIPE.
+from NCBI. Databases in format version 4 and version 5 (the default of
+current makeblastdb versions, and the format of NCBI's pre-formatted
+databases) are accepted; version 5 is supported since SWIPE 2.2.0.
 
 The SWIPE distribution includes executable binaries for 64-bit Linux and
 Mac. SWIPE may be compiled from sources using either the GNU g++ compiler
@@ -119,9 +125,8 @@ are honoured (e.g. "make CXXFLAGS=-O2"). "make install" copies the
 binary to $(PREFIX)/bin (PREFIX is /usr/local by default; DESTDIR is
 supported), and "make uninstall" removes it.
 
-The MPI version of SWIPE (mpiswipe) is deprecated: it is no longer
-built by "make" ("make mpiswipe" builds it, with an Open MPI mpicxx),
-and it will be removed in version 2.2.0.
+The MPI version of SWIPE (mpiswipe) was removed in version 2.2.0
+(version 2.1.2 is the last one that includes it).
 
 SWIPE will only run on processors with the SSE2 instruction set and
 runs best on processors with the SSSE3 instruction set. Please see

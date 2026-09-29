@@ -23,11 +23,8 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
-typedef int Int4;
-typedef long Int8;
-typedef double Nlm_FloatHi;
-typedef int Boolean;
-typedef double array_of_8[8];
+using Boolean = int;
+using array_of_8 = double[8];
 #define FALSE 0
 #define TRUE 1
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -35,113 +32,130 @@ typedef double array_of_8[8];
 #define BLAST_MATRIX_BEST 1
 #define INT2_MAX 32767
 
-#include <math.h>
-#include <string.h>
-#include <stdio.h>
+#include "swipe.h"
+#include <cmath>
+#include <cstddef>  // std::size_t
+#include <cstring>
+#include <cstdio>
 
 #include "blastkar_partial.c"
 
-long stats_getparams_nt(long matchscore,
-			long mismatchscore, 
+namespace {
+
+// number of rows of a table of blastn statistics (a long, as the
+// count it replaces; the conversion is explicit for GCC 4.8's
+// -Wsign-conversion, which does not fold sizeof() divisions)
+template <std::size_t rows>
+constexpr auto row_count(array_of_8 const (& /*table*/)[rows]) -> long
+{
+  return static_cast<long>(rows);
+}
+
+}  // anonymous namespace
+
+auto stats_getparams_nt(long match_score,
+			long mismatch_score, 
 			long gopen,
 			long gextend,
 			double * lambda,
 			double * K,
 			double * H,
 			double * alpha,
-			double * beta)
+			double * beta) -> long
 {
-  const array_of_8 * bv;
-  long bm;
-  long gomax;
-  long gemax;
+  array_of_8 const * bv = nullptr;
+  long bm = 0;
+  long gomax = 0;
+  long gemax = 0;
 
-  if      ((matchscore == 1) && (mismatchscore == -5))
+  if      ((match_score == 1) && (mismatch_score == -5))
   {
     bv = blastn_values_1_5;
-    bm = sizeof(blastn_values_1_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_5);
     gomax = 3;
     gemax = 3;
   }
-  else if ((matchscore == 1) && (mismatchscore == -4))
+  else if ((match_score == 1) && (mismatch_score == -4))
   {
     bv = blastn_values_1_4;
-    bm = sizeof(blastn_values_1_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_4);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -7))
+  else if ((match_score == 2) && (mismatch_score == -7))
   {
     bv = blastn_values_2_7;
-    bm = sizeof(blastn_values_2_7) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_7);
     gomax = 4;
     gemax = 4;
   }
-  else if ((matchscore == 1) && (mismatchscore == -3))
+  else if ((match_score == 1) && (mismatch_score == -3))
   {
     bv = blastn_values_1_3;
-    bm = sizeof(blastn_values_1_3) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_3);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -5))
+  else if ((match_score == 2) && (mismatch_score == -5))
   {
     bv = blastn_values_2_5;
-    bm = sizeof(blastn_values_2_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_5);
     gomax = 4;
     gemax = 4;
   }
-  else if ((matchscore == 1) && (mismatchscore == -2))
+  else if ((match_score == 1) && (mismatch_score == -2))
   {
     bv = blastn_values_1_2;
-    bm = sizeof(blastn_values_1_2) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_2);
     gomax = 2;
     gemax = 2;
   }
-  else if ((matchscore == 2) && (mismatchscore == -3))
+  else if ((match_score == 2) && (mismatch_score == -3))
   {
     bv = blastn_values_2_3;
-    bm = sizeof(blastn_values_2_3) / sizeof(array_of_8);
+    bm = row_count(blastn_values_2_3);
     gomax = 6;
     gemax = 4;
   }
-  else if ((matchscore == 3) && (mismatchscore == -4))
+  else if ((match_score == 3) && (mismatch_score == -4))
   {
     bv = blastn_values_3_4;
-    bm = sizeof(blastn_values_3_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_3_4);
     gomax = 6;
     gemax = 3;
   }
-  else if ((matchscore == 4) && (mismatchscore == -5))
+  else if ((match_score == 4) && (mismatch_score == -5))
   {
     bv = blastn_values_4_5;
-    bm = sizeof(blastn_values_4_5) / sizeof(array_of_8);
+    bm = row_count(blastn_values_4_5);
     gomax = 4;
     gemax = 2;
   }
-  else if ((matchscore == 1) && (mismatchscore == -1))
+  else if ((match_score == 1) && (mismatch_score == -1))
   {
     bv = blastn_values_1_1;
-    bm = sizeof(blastn_values_1_1) / sizeof(array_of_8);
+    bm = row_count(blastn_values_1_1);
     gomax = 5;
     gemax = 5;
   }
-  else if ((matchscore == 3) && (mismatchscore == -2))
+  else if ((match_score == 3) && (mismatch_score == -2))
   {
     bv = blastn_values_3_2;
-    bm = sizeof(blastn_values_3_2) / sizeof(array_of_8);
+    bm = row_count(blastn_values_3_2);
     gomax = 12;
     gemax = 8;
   }
-  else if ((matchscore == 5) && (mismatchscore == -4))
+  else if ((match_score == 5) && (mismatch_score == -4))
   {
     bv = blastn_values_5_4;
-    bm = sizeof(blastn_values_5_4) / sizeof(array_of_8);
+    bm = row_count(blastn_values_5_4);
     gomax = 25;
     gemax = 10;
   }
   else
+  {
     return 0;
+  }
 
   if ((gopen >= gomax) && (gextend >= gemax))
   {
@@ -151,8 +165,8 @@ long stats_getparams_nt(long matchscore,
 
   for(long i = 0; i < bm; i++)
   {
-    if ( (fabs(bv[i][0] - ((double) gopen)) < 0.1) &&
-	 (fabs(bv[i][1] - ((double) gextend)) < 0.1) )
+    if ( (fabs(bv[i][0] - (static_cast<double>(gopen))) < 0.1) &&
+	 (fabs(bv[i][1] - (static_cast<double>(gextend))) < 0.1) )
     {
       * lambda = bv[i][2];
       * K = bv[i][3];
@@ -166,17 +180,17 @@ long stats_getparams_nt(long matchscore,
   return 0;
 }
 
-long stats_getparams(const char * matrix,
+auto stats_getparams(char const * matrix,
 		     long gopen,
 		     long gextend,
 		     double * lambda,
 		     double * K,
 		     double * H,
 		     double * alpha,
-		     double * beta)
+		     double * beta) -> long
 {
-  double (*mat)[8]; 
-  long val;
+  double (*mat)[8] = nullptr; 
+  long val = 0;
 
   if (strcasecmp(matrix, "BLOSUM45") == 0)
   {
@@ -192,11 +206,6 @@ long stats_getparams(const char * matrix,
   {
     mat = blosum62_values;
     val = BLOSUM62_VALUES_MAX;
-  }
-  else if (strcasecmp(matrix, "BLOSUM62_20") == 0)
-  {
-    mat = blosum62_20_values;
-    val = BLOSUM62_20_VALUES_MAX;
   }
   else if (strcasecmp(matrix, "BLOSUM80") == 0)
   {
@@ -224,12 +233,14 @@ long stats_getparams(const char * matrix,
     val = PAM250_VALUES_MAX;
   }
   else
+  {
     return 0;
+  }
 
   for (long i=0; i<val; i++)
   {
-    if ( (fabs(mat[i][0] - ((double) gopen)) < 0.1) &&
-	 (fabs(mat[i][1] - ((double) gextend)) < 0.1) )
+    if ( (fabs(mat[i][0] - (static_cast<double>(gopen))) < 0.1) &&
+	 (fabs(mat[i][1] - (static_cast<double>(gextend))) < 0.1) )
     {
       * lambda = mat[i][3];
       * K = mat[i][4];
@@ -246,13 +257,13 @@ long stats_getparams(const char * matrix,
   return 0;
 }
 
-long stats_getprefs(const char * matrix,
+auto stats_getprefs(char const * matrix,
 		    long * gopen,
-		    long * gextend)
+		    long * gextend) -> long
 {
-  double (*mat)[8]; 
-  long val;
-  Int4 *prefs;
+  double (*mat)[8] = nullptr; 
+  long val = 0;
+  Int4 *prefs = nullptr;
 
   if (strcasecmp(matrix, "BLOSUM45") == 0)
   {
@@ -271,12 +282,6 @@ long stats_getprefs(const char * matrix,
     mat = blosum62_values;
     val = BLOSUM62_VALUES_MAX;
     prefs = blosum62_prefs;
-  }
-  else if (strcasecmp(matrix, "BLOSUM62_20") == 0)
-  {
-    mat = blosum62_20_values;
-    val = BLOSUM62_20_VALUES_MAX;
-    prefs = blosum62_20_prefs;
   }
   else if (strcasecmp(matrix, "BLOSUM80") == 0)
   {
@@ -309,14 +314,16 @@ long stats_getprefs(const char * matrix,
     prefs = pam250_prefs;
   }
   else
+  {
     return 0;
+  }
 
   for (long i=0; i<val; i++)
   {
-    if (prefs[i])
+    if (prefs[i] != 0)
     {
-      * gopen = (long) mat[i][0];
-      * gextend = (long) mat[i][1];
+      * gopen = static_cast<long>(mat[i][0]);
+      * gextend = static_cast<long>(mat[i][1]);
       return 1;
     }
   }

@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <cassert>
+#include <cstddef>  // std::size_t
 #include <cstdio>  // std::getc, EOF
 #include <cstring>  // std::strcpy
 #include <string>
@@ -48,7 +50,7 @@ char map_sound[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   };
 
 char map_ncbi_aa[256] = 
@@ -68,7 +70,7 @@ char map_ncbi_aa[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   };
 
 char map_ncbi_nt4[256] = 
@@ -88,7 +90,7 @@ char map_ncbi_nt4[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   };
 
 char map_ncbi_nt16[256] = 
@@ -108,16 +110,22 @@ char map_ncbi_nt16[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   };
 
 
 char ntcompl[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
 char q_translate[16*16*16];
+
+}  // anonymous namespace
+
 char d_translate[16*16*16];
 
-const char * gencode_names[23] = 
+char const * gencode_names[23] = 
   {
     "Standard Code",
     "Vertebrate Mitochondrial Code",
@@ -125,8 +133,8 @@ const char * gencode_names[23] =
     "Mold, Protozoan, and Coelenterate Mitochondrial Code and Mycoplasma/Spiroplasma Code",
     "Invertebrate Mitochondrial Code",
     "Ciliate, Dasycladacean and Hexamita Nuclear Code",
-    NULL,
-    NULL,
+    nullptr,
+    nullptr,
     "Echinoderm and Flatworm Mitochondrial Code",
     "Euplotid Nuclear Code",
     "Bacterial, Archaeal and Plant Plastid Code",
@@ -135,16 +143,18 @@ const char * gencode_names[23] =
     "Alternative Flatworm Mitochondrial Code",
     "Blepharisma Nuclear Code",
     "Chlorophycean Mitochondrial Code",
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
     "Trematode Mitochondrial Code",
     "Scenedesmus obliquus Mitochondrial Code",
-    "Thraustochytrium Mitochondrial Code"
+    "Thraustochytrium Mitochondrial Code",
   };
 
-const char * code[23] =
+namespace {
+
+char const * code[23] =
   { 
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG",
@@ -152,8 +162,8 @@ const char * code[23] =
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSSSSVVVVAAAADDEEGGGG",
     "FFLLSSSSYYQQCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
-    NULL,
-    NULL,
+    nullptr,
+    nullptr,
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCCWLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
@@ -162,26 +172,30 @@ const char * code[23] =
     "FFLLSSSSYYY*CCWWLLLLPPPPHHQQRRRRIIIMTTTTNNNKSSSSVVVVAAAADDEEGGGG",
     "FFLLSSSSYY*QCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
-    NULL,
-    NULL,
-    NULL,
-    NULL,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNNKSSSSVVVVAAAADDEEGGGG",
     "FFLLSS*SYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
-    "FF*LSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG"
+    "FF*LSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
   };
   
 char remap[] = { 2, 1, 3, 0 };
+
+}  // anonymous namespace
   
 //                       00000000001111111111222222222233
 //                       01234567890123456789012345678901
-const char * sym_ncbi_nt4   = "acgt############################";
-const char * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
-const char * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
-const char * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
-const char * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
+char const * sym_ncbi_nt4   = "acgt############################";
+char const * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
+char const * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
+char const * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
+char const * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
+
+namespace {
 
 FILE * query_fp;
 
@@ -200,31 +214,41 @@ auto read_line(std::FILE * const fp, std::string & line) -> void
     {
       line.push_back(static_cast<char>(symbol));
       if (symbol == '\n')
-        break;
+      {
+	break;
+      }
     }
 }
 
-void query_init(const char * queryname, long symtype, long strands)
+}  // anonymous namespace
+
+auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void
 {
-  if (strcmp(queryname, "-") == 0)
+  if (strcmp(query_filename, "-") == 0)
+  {
     query_fp = stdin;
+  }
   else
-    query_fp = fopen(queryname, "r");
-  
-  if (!query_fp)
+  {
+    query_fp = fopen(query_filename, "r");
+  }
+
+  if (query_fp == nullptr)
+  {
     fatal("Cannot open query file.");
-  
-  query.description = 0;
+  }
+
+  query.description = nullptr;
   query.dlen = 0;
-  query.symtype = symtype;
+  query.symtype = symbol_type;
   query.strands = strands;
 
-  if (query.symtype == 5)
+  if (query.symtype == SymbolType::sound)
   {
     query.map = map_sound;
     query.sym = sym_sound;
   }
-  else if ((query.symtype == 1) || (query.symtype == 3))
+  else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     query.map = map_ncbi_aa;
     query.sym = sym_ncbi_aa;
@@ -237,13 +261,13 @@ void query_init(const char * queryname, long symtype, long strands)
 
   for(long s=0; s<2; s++)
   {
-    query.nt[s].seq = 0;
+    query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      query.aa[3*s+f].seq = 0;
-      query.aa[3*s+f].len = 0;
+      query.aa[(3*s)+f].seq = nullptr;
+      query.aa[(3*s)+f].len = 0;
     }
   }
 
@@ -253,45 +277,61 @@ void query_init(const char * queryname, long symtype, long strands)
   // first line was read as an empty query, and the rest of the file
   // was ignored
   while ((query_line == "\n") or (query_line == "\r\n"))
+  {
     read_line(query_fp, query_line);
+  }
 }
 
-void query_free()
+namespace {
+
+auto query_free() -> void
 {
-  if (query.description)
+  if (query.description != nullptr)
+  {
     free(query.description);
-  query.description = 0;
+  }
+  query.description = nullptr;
   query.dlen = 0;
 
   for(long s=0; s<2; s++)
   {
-    if (query.nt[s].seq)
+    if (query.nt[s].seq != nullptr)
+    {
       free(query.nt[s].seq);
-    query.nt[s].seq = 0;
+    }
+    query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      if (query.aa[3*s+f].seq)
-	free(query.aa[3*s+f].seq);
-      query.aa[3*s+f].seq = 0;
-      query.aa[3*s+f].len = 0;
+      if (query.aa[(3 * s) + f].seq != nullptr)
+      {
+	free(query.aa[(3 * s) + f].seq);
+      }
+      query.aa[(3*s)+f].seq = nullptr;
+      query.aa[(3*s)+f].len = 0;
     }
   }
 }
 
-void query_exit()
+}  // anonymous namespace
+
+auto query_exit() -> void
 {
   if (query_fp != stdin)
+  {
     fclose(query_fp);
+  }
 
   query_free();
 }
 
-int query_read()
+auto query_read() -> int
 {
   if (query_line.empty())
+  {
     return 0;
+  }
 
   query_free();
 
@@ -301,39 +341,48 @@ int query_read()
   // (\n, or \r\n: KI-21)
   std::string header(query_line, 0, query_line.find('\0'));
   if ((not header.empty()) and (header.back() == '\n'))
+  {
     header.pop_back();
+  }
   if ((not header.empty()) and (header.back() == '\r'))
+  {
     header.pop_back();
-  int len = static_cast<int>(header.size());
+  }
+  int const len = static_cast<int>(header.size());
 
   if (header[0] == '>')
   {
-    query.description = (char*) xmalloc(len);
+    query.description = static_cast<char*>(xmalloc(header.size()));
     std::strcpy(query.description, header.c_str() + 1);
     query.dlen = len-1;
     read_line(query_fp, query_line);
   }
   else
   {
-    query.description = (char*) xmalloc(1);
+    query.description = static_cast<char*>(xmalloc(1));
     query.description[0] = 0;
     query.dlen = 0;
   }
 
   int size = LINE_MAX;
-  char * query_sequence = (char *) xmalloc(size);
+  char * query_sequence = static_cast<char *>(xmalloc(static_cast<std::size_t>(size)));
   query_sequence[0] = 0;
   long query_length = 0;
  
-  char * map;
-  char m;
+  char * map = nullptr;
 
-  if (symtype == 5)
+  if (query.symtype == SymbolType::sound)
+  {
     map = map_sound;
-  else if ((symtype == 1) || (symtype == 3))
+  }
+  else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
+  {
     map = map_ncbi_aa;
+  }
   else
+  {
     map = map_ncbi_nt16;
+  }
 
   while((not query_line.empty()) and (query_line[0] != '>'))
   {
@@ -341,42 +390,43 @@ int query_read()
     // bytes above 0x7f must not be negative indexes (KI-19)
     while(int const c = static_cast<unsigned char>(*p++))
     {
-      if ((m = map[c]) >= 0)
+      char const symbol = map[c];
+      if (symbol >= 0)
       {
 	if (query_length + 1 >= size)
 	{
 	  size += LINE_MAX;
-	  query_sequence = (char*) xrealloc(query_sequence, size);
+	  query_sequence = static_cast<char*>(xrealloc(query_sequence, static_cast<std::size_t>(size)));
 	}
-	query_sequence[query_length++] = m;
+	query_sequence[query_length++] = symbol;
       }
     }
     read_line(query_fp, query_line);
   }
   query_sequence[query_length] = 0;
     
-  if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+  if ((query.symtype == SymbolType::blastn) || (query.symtype == SymbolType::blastx) || (query.symtype == SymbolType::tblastx))
   {
     query.nt[0].seq = query_sequence;
     query.nt[0].len = query_length;
 
-    if (query.strands & 2)
+    if (searches_strand(query.strands, 1))
     {
       //      printf("Reverse complement.\n");
       query.nt[1].seq = revcompl(query.nt[0].seq, query.nt[0].len);
       query.nt[1].len = query.nt[0].len;
     }
     
-    if ((symtype == 2) || (symtype == 4))
+    if ((query.symtype == SymbolType::blastx) || (query.symtype == SymbolType::tblastx))
     {
       for(long s=0; s<2; s++)
       {
-	if ((s+1) & query.strands)
+	if (searches_strand(query.strands, s))
 	{
 	  for(long f=0; f<3; f++)
 	  {
 	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
-		      & query.aa[3*s+f].seq, & query.aa[3*s+f].len);
+		      & query.aa[(3*s)+f].seq, & query.aa[(3*s)+f].len);
 	  }
 	}
       }
@@ -391,32 +441,40 @@ int query_read()
   return 1;
 }
 
-char * revcompl(char * seq, long len)
+auto revcompl(char const * seq, long len) -> char *
 {
-  char * rc = (char *) xmalloc(len+1);
-  for(long i=0; i<len; i++)
-    rc[i] = ntcompl[(int)(seq[len-1-i])];
+  char * rc = static_cast<char *>(xmalloc(static_cast<std::size_t>(len) + 1));
+  for (long i = 0; i < len; i++)
+  {
+    rc[i] = ntcompl[static_cast<int>(seq[len - 1 - i])];
+  }
   rc[len] = 0;
   return rc;
 }
 
-void translate_createtable(long tableno, char * table)
+namespace {
+
+auto translate_createtable(long tableno, char * table) -> void
 {
   /* initialize translation table */
 
-  for(long a=0; a<16; a++)
-    for(long b=0; b<16; b++)
+  for (long a = 0; a < 16; a++)
+  {
+    for (long b = 0; b < 16; b++)
+    {
       for(long c=0; c<16; c++)
       {
 	char aa = '-';
-	for(long i=0; i<4; i++)
-	  for(long j=0; j<4; j++)
+	for (long i = 0; i < 4; i++)
+	{
+	  for (long j = 0; j < 4; j++)
+	  {
 	    for(long k=0; k<4; k++)
 	    {
-	      if ((a & (1<<i)) && (b & (1<<j)) && (c & (1<<k)))
+	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
 	      {
-		long codon = remap[i]*16 + remap[j]*4 + remap[k];
-		char x = code[tableno-1][codon];
+		long const codon = (remap[i]*16) + (remap[j]*4) + remap[k];
+		char const x = code[tableno-1][codon];
 		if (aa == '-')
 		{
 		  aa = x;
@@ -452,52 +510,51 @@ void translate_createtable(long tableno, char * table)
 		}
 	      }
 	    }
-	
+	  }
+	}
+
 	if (aa == '-')
+	{
 	  aa = 'X';
+	}
 
-	table[256*a+16*b+c] = map_ncbi_aa[(int)aa];
+	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<int>(aa)];
       }
-
-#if 0
-  /* dump it */
-  
-  printf("          -ACMGRSVTWYHKDBN\n");
-  for(long x=0; x<16; x++)
-    for(long y=0; y<16; y++)
-    {
-      printf("%2ld %2ld %c %c ", x, y, sym_ncbi_nt16[x], sym_ncbi_nt16[y]);
-      for(long z=0; z<16; z++)
-      {
-	printf("%c", sym_ncbi_aa[table[256*x+16*y+z]]);
-      }
-      printf("\n");
     }
-#endif
+  }
+
 }
 
-void translate_init(long qtableno, long dtableno)
+}  // anonymous namespace
+
+auto translate_init(long qtableno, long dtableno) -> void
 {
   translate_createtable(qtableno, q_translate);
   translate_createtable(dtableno, d_translate);
 }
 
-void translate(char * dna, long dlen, 
+auto translate(char const * dna, long dlen, 
 	       long strand, long frame, long table,
-	       char ** protp, long * plenp)
+	       char ** protp, long * plenp) -> void
 {
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
-  char * ttable;
+  char * ttable = nullptr;
   if (table == 0)
+  {
     ttable = q_translate;
+  }
   else
+  {
     ttable = d_translate;
+  }
 
-  long pos, c;
+  long pos = 0;
+  long c = 0;
   long ppos = 0;
-  long plen = (dlen - frame) / 3;
-  char * prot = (char*) xmalloc(1+plen);
+  long const plen = (dlen - frame) / 3;
+  assert(plen >= 0);
+  char * prot = static_cast<char*>(xmalloc(1 + static_cast<std::size_t>(plen)));
 
   if (strand == 0)
   {
@@ -517,11 +574,11 @@ void translate(char * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[(int)(dna[pos--])];
+      c = ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[(int)(dna[pos--])];
+      c |= ntcompl[static_cast<int>(dna[pos--])];
       prot[ppos++] = ttable[c];
     }
   }
@@ -532,47 +589,20 @@ void translate(char * dna, long dlen,
 }
 
 
-void query_show()
+auto query_show() -> void
 {
-  int linewidth = 60;
-  for (unsigned i=0; i<strlen(query.description); i+=linewidth)
+  constexpr std::size_t linewidth = 60;
+  for (std::size_t i=0; i<strlen(query.description); i+=linewidth)
   {
-    if (i==0)
-      fprintf(out, "Query description: %-60.60s\n", query.description+i);
-    else
-      fprintf(out, "                   %-60.60s\n", query.description+i);
-  }
-
-#if 0
-  long qlen;
-  char * qseq;
-  if ((symtype == 0) || (symtype == 2) || (symtype == 4))
-  {
-    qseq = query.nt[0].seq;
-    qlen = query.nt[0].len;
-  }
-  else
-  {
-    qseq = query.aa[0].seq;
-    qlen = query.aa[0].len;
-  }
-
-  for (int j=0; j<qlen; j+=linewidth)
-  {
-    if (j==0)
-      fprintf(out, "Query sequence:    ");
-    else
-      fprintf(out, "                   ");
-
-    for(int k=0; k<linewidth; k++)
+    if (i == 0)
     {
-      if (j+k < qlen)
-	putc(query.sym[qseq[j+k]], out);
-      else
-	break;
+      fprintf(out, "Query description: %-60.60s\n", query.description+i);
     }
-    fprintf(out, "\n");
+    else
+    {
+      fprintf(out, "                   %-60.60s\n", query.description + i);
+    }
   }
-#endif
+
 }
 

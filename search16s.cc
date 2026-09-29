@@ -25,29 +25,12 @@
 
 #include "swipe.h"
 
-//#define DEBUG
+constexpr int CHANNELS = 8;
+constexpr int CDEPTH = 1;
 
-#define CHANNELS 8
-#define CDEPTH 1
-
-void dprofile_dump16s(WORD * dprofile)
-{
-  const char * s = sym_ncbi_aa;
-  printf("dprofile_word:\n");
-  for(int i=0; i<32; i++)
-  {
-    printf("%c: ",s[i]);
-    for(int k=0; k<CDEPTH; k++)
-    {
-      printf("[");
-      for(int j=0; j<CHANNELS; j++)
-	printf("%2d", (short) dprofile[CHANNELS*CDEPTH*i + CHANNELS*k + j]);
-      printf("]");
-    }
-    printf("\n");
-  }
-  exit(1);
-}
+// the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
+// does not fit in a signed short, -32768 has the same bits)
+constexpr short word_0x8000 = static_cast<short>(-32768);
 
 // Register usage
 // rdi:   hep
@@ -103,13 +86,16 @@ void dprofile_dump16s(WORD * dprofile)
   "        pmaxsw  " H ", " F "        \n"
 
 
-inline void donormal16s(volatile __m128i * Sm,  /* r9  */
-			__m128i * hep, /* rdi */
-			__m128i ** qp, /* rsi */
-			__m128i * Qm,  /* rdx */
-			__m128i * Rm,  /* rcx */
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
+inline auto donormal16s(volatile __m128i const * Sm,  /* r9  */
+			__m128i const * hep, /* rdi */
+			__m128i * const * qp, /* rsi */
+			__m128i const * Qm,  /* rdx */
+			__m128i const * Rm,  /* rcx */
 			long ql,       /* r8  */
-			__m128i * Zm)
+			__m128i const * Zm) -> void
 {
   __asm__
     __volatile__
@@ -157,17 +143,21 @@ inline void donormal16s(volatile __m128i * Sm,  /* r9  */
      );
 }
 
+}  // anonymous namespace
+
 /* not used: 1 2 3 5 6 7 9 10 11 */
 /* used 0 (H0) 4 (F0) 8 (N0) 12 (E) 13 (S) 14 (Q) 15 (R) */
 
-inline void domasked16s(volatile __m128i * Sm,
-			__m128i * hep,
-			__m128i ** qp,
-			__m128i * Qm, 
-			__m128i * Rm, 
+namespace {
+
+inline auto domasked16s(volatile __m128i const * Sm,
+			__m128i const * hep,
+			__m128i * const * qp,
+			__m128i const * Qm, 
+			__m128i const * Rm, 
 			long ql,      
-			__m128i * Zm,
-			__m128i * Mm)
+			__m128i const * Zm,
+			__m128i const * Mm) -> void
 {
   __asm__
     __volatile__
@@ -227,32 +217,62 @@ inline void domasked16s(volatile __m128i * Sm,
      );
 }
 
-inline void dprofile_fill16s(WORD * dprofile_word,
+inline auto dprofile_fill16s(WORD * dprofile_word,
 			     WORD * score_matrix_word,
-			     BYTE * dseq)
+			     BYTE const * dseq) -> void
 {
-  __m128i xmm0,  xmm1,  xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7;
-  __m128i xmm8,  xmm9,  xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
-  __m128i xmm16, xmm17, xmm18, xmm19, xmm20, xmm21, xmm22, xmm23;
-  __m128i xmm24, xmm25, xmm26, xmm27, xmm28, xmm29, xmm30, xmm31;
+  __m128i xmm0;
+  __m128i xmm1;
+  __m128i xmm2;
+  __m128i xmm3;
+  __m128i xmm4;
+  __m128i xmm5;
+  __m128i xmm6;
+  __m128i xmm7;
+  __m128i xmm8;
+  __m128i xmm9;
+  __m128i xmm10;
+  __m128i xmm11;
+  __m128i xmm12;
+  __m128i xmm13;
+  __m128i xmm14;
+  __m128i xmm15;
+  __m128i xmm16;
+  __m128i xmm17;
+  __m128i xmm18;
+  __m128i xmm19;
+  __m128i xmm20;
+  __m128i xmm21;
+  __m128i xmm22;
+  __m128i xmm23;
+  __m128i xmm24;
+  __m128i xmm25;
+  __m128i xmm26;
+  __m128i xmm27;
+  __m128i xmm28;
+  __m128i xmm29;
+  __m128i xmm30;
+  __m128i xmm31;
   
   for (int j=0; j<CDEPTH; j++)
   {
     int d[CHANNELS];
-    for(int z=0; z<CHANNELS; z++)
-      d[z] = dseq[j*CHANNELS+z] << 5;
-      
+    for (int z = 0; z < CHANNELS; z++)
+    {
+      d[z] = dseq[(j * CHANNELS) + z] << 5;
+    }
+
     //      for(int i=0; i<24; i += 8)
     for(int i=0; i<32; i += 8)
     {
-      xmm0  = _mm_load_si128((__m128i*)(score_matrix_word + d[0] + i));
-      xmm1  = _mm_load_si128((__m128i*)(score_matrix_word + d[1] + i));
-      xmm2  = _mm_load_si128((__m128i*)(score_matrix_word + d[2] + i));
-      xmm3  = _mm_load_si128((__m128i*)(score_matrix_word + d[3] + i));
-      xmm4  = _mm_load_si128((__m128i*)(score_matrix_word + d[4] + i));
-      xmm5  = _mm_load_si128((__m128i*)(score_matrix_word + d[5] + i));
-      xmm6  = _mm_load_si128((__m128i*)(score_matrix_word + d[6] + i));
-      xmm7  = _mm_load_si128((__m128i*)(score_matrix_word + d[7] + i));
+      xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
+      xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
+      xmm2  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
+      xmm3  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
+      xmm4  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
+      xmm5  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
+      xmm6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
+      xmm7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
       
       xmm8  = _mm_unpacklo_epi16(xmm0,  xmm1);
       xmm9  = _mm_unpackhi_epi16(xmm0,  xmm1);
@@ -281,36 +301,44 @@ inline void dprofile_fill16s(WORD * dprofile_word,
       xmm30 = _mm_unpacklo_epi64(xmm21, xmm23);
       xmm31 = _mm_unpackhi_epi64(xmm21, xmm23);
       
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+0) + CHANNELS*j), xmm24);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+1) + CHANNELS*j), xmm25);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+2) + CHANNELS*j), xmm26);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+3) + CHANNELS*j), xmm27);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+4) + CHANNELS*j), xmm28);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+5) + CHANNELS*j), xmm29);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+6) + CHANNELS*j), xmm30);
-      _mm_store_si128((__m128i*)(dprofile_word + CDEPTH*CHANNELS*(i+7) + CHANNELS*j), xmm31);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
     }
   }
-  //  dprofile_dump16s(dprofile_word);
 }
 
-void search16s(WORD * * q_start,
+}  // anonymous namespace
+
+auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
 	       WORD gap_extend_penalty,
 	       WORD * score_matrix,
 	       WORD * dprofile,
 	       WORD * hearray,
-	       struct db_thread_s * * dbta,
+	       struct db_thread_s * const * dbta,
 	       long sequences,
-	       long * seqnos,
+	       long const * seqnos,
 	       long * scores,
 	       long * bestpos,
 	       long * bestq,
-	       int qlen)
+	       int qlen) -> void
 {
   volatile __m128i S;
-  __m128i SL, Q, R, T, M, Z, T0;
-  __m128i *hep, **qp;
+  __m128i SL;
+  __m128i Q;
+  __m128i R;
+  __m128i T;
+  __m128i M;
+  __m128i Z;
+  __m128i T0;
+  __m128i *hep;
+  __m128i **qp;
   BYTE * d_begin[CHANNELS];
   BYTE * d_pos[CHANNELS];
   BYTE * d_end[CHANNELS];
@@ -319,23 +347,17 @@ void search16s(WORD * * q_start,
 
   __m128i dseqalloc[CDEPTH];
 
-  BYTE * dseq = (BYTE *) & dseqalloc;
+  BYTE * dseq = reinterpret_cast<BYTE *>(& dseqalloc);
   BYTE zero;
 
   long seq_id[CHANNELS];
   long next_id = 0;
   unsigned done;
   
-  Z = _mm_set_epi16(0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000);
-  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x8000);
-  Q  = _mm_set_epi16(gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty,
-		     gap_open_penalty, gap_open_penalty);
-  R  = _mm_set_epi16(gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty,
-		     gap_extend_penalty, gap_extend_penalty);
+  Z = _mm_set1_epi16(word_0x8000);
+  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
+  Q  = _mm_set1_epi16(static_cast<short>(gap_open_penalty));
+  R  = _mm_set1_epi16(static_cast<short>(gap_extend_penalty));
   
   zero = 0;
   done = 0;
@@ -343,13 +365,13 @@ void search16s(WORD * * q_start,
   S = Z;
   SL = Z;
   
-  hep = (__m128i*) hearray;
-  qp = (__m128i**) q_start;
+  hep = reinterpret_cast<__m128i*>(hearray);
+  qp = reinterpret_cast<__m128i**>(q_start);
       
   for(int a=0; a < qlen; a++)
   {
     hep[2*a] = Z;
-    hep[2*a+1] = Z;
+    hep[(2*a)+1] = Z;
   }
 
   for (int c=0; c<CHANNELS; c++)
@@ -364,21 +386,27 @@ void search16s(WORD * * q_start,
 
   int easy = 0;
 
-  while(1)
+  while(true)
   {
-    if (easy)
+    if (easy != 0)
     {
       for(int c=0; c<CHANNELS; c++)
       {
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_pos[c] < d_end[c])
-	    dseq[CHANNELS*j+c] = *(d_pos[c]++);
+	  {
+	    dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	  }
 	  else
-	    dseq[CHANNELS*j+c] = 0;
+	  {
+	    dseq[(CHANNELS * j) + c] = 0;
+	  }
 	}
 	if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
+	{
 	  easy = 0;
+	}
       }
 	
       dprofile_fill16s(dprofile, score_matrix, dseq);
@@ -387,36 +415,34 @@ void search16s(WORD * * q_start,
       
       /* save column address if new highscore */
 
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
-      if (mask)
+      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      if (mask != 0)
       {
-	for(int c=0; c<CHANNELS; c++)
-	  if (mask & (3 << 2*c))
+	for (int c = 0; c < CHANNELS; c++)
+	{
+	  if ((mask & (3 << 2 * c)) != 0)
+	  {
 	    d_best[c] = d_pos[c] - 1;
-	
+	  }
+	}
+
 	for(long i = qlen-1; i >= 0; i--)
 	{
-	  int m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], (__m128i)S));
-	  if (m2)
-	    for(int c=0; c<CHANNELS; c++)
-	      if (m2 & (3 << 2*c))
+	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
+	  if (m2 != 0)
+	  {
+	    for (int c = 0; c < CHANNELS; c++)
+	    {
+	      if ((m2 & (3 << 2 * c)) != 0)
+	      {
 		q_best[c] = i;
+	      }
+	    }
+	  }
 	}
       }
 
-#ifdef DEBUG
-      printf("E mask=%04x\n", mask);
-      printf("SL=");
-      vector_print_word((WORD*)&SL);
-      printf("\nS =");
-      vector_print_word((WORD*)&S);
-      printf("\nBe:");
-      for (int c=0; c<CHANNELS; c++)
-	printf(" %4ld", d_best[c]-d_begin[c]);
-      printf("\n");
-#endif
-
-      SL = (__m128i)S;
+      SL = S;
     }	  
     else
     {
@@ -433,24 +459,29 @@ void search16s(WORD * * q_start,
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_pos[c] < d_end[c])
-	      dseq[CHANNELS*j+c] = *(d_pos[c]++);
+	    {
+	      dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	    }
 	    else
-	      dseq[CHANNELS*j+c] = 0;
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
-		  
+
 	  if (d_pos[c] == d_end[c])
+	  {
 	    easy = 0;
-		  
+	  }
 	}
 	else
 	{
 	  M = _mm_xor_si128(M, T);
 		  
-	  long cand_id = seq_id[c];
+	  long const cand_id = seq_id[c];
 		  
 	  if (cand_id >= 0)
 	  {
-	    long score = ((WORD*)&S)[c] ^ 0x8000;
+	    long const score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];	    
 	    bestq[cand_id] = q_best[c];
@@ -460,51 +491,62 @@ void search16s(WORD * * q_start,
 	  if (next_id < sequences)
 	  {
 	    seq_id[c] = next_id;
-	    long seqnosf = seqnos[next_id];
+	    long const seqnosf = seqnos[next_id];
 	    char* address;
-	    long length, ntlen;
+	    long length;
+	    long ntlen;
 
-	    long strand = (seqnosf >> 2) & 1;
-	    long frame = seqnosf & 3;
-	    long seqno = seqnosf >> 3;
+	    long const strand = (seqnosf >> 2) & 1;
+	    long const frame = seqnosf & 3;
+	    long const seqno = seqnosf >> 3;
 
 	    db_mapsequences(dbta[c], seqno, seqno);
 
 	    db_getsequence(dbta[c], seqno, strand, frame, 
 			   & address, & length, & ntlen, c);
 		      
-	    d_begin[c] = (unsigned char*) address;
+	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
-	    d_end[c] = (unsigned char*) address + length - 1;
+	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
 	    q_best[c] = -1;
 	    next_id++;
 		      
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_pos[c] < d_end[c])
-		dseq[CHANNELS*j+c] = *(d_pos[c]++);
+	      {
+		dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
+	      }
 	      else
-		dseq[CHANNELS*j+c] = 0;
+	      {
+		dseq[(CHANNELS * j) + c] = 0;
+	      }
 	    }
 	    if (d_pos[c] == d_end[c])
+	    {
 	      easy = 0;
+	    }
 	  }
 	  else
 	  {
 	    seq_id[c] = -1;
 	    d_pos[c] = &zero;
 	    d_end[c] = d_pos[c];
-	    for (int j=0; j<CDEPTH; j++)
-	      dseq[CHANNELS*j+c] = 0;
+	    for (int j = 0; j < CDEPTH; j++)
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 	}
 	T = _mm_slli_si128(T, 2);
       }
 
       if (done == sequences)
+      {
 	break;
-      
+      }
+
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
       domasked16s(&S, hep, qp, &Q, &R, qlen, &Z, &M);
@@ -513,36 +555,34 @@ void search16s(WORD * * q_start,
 
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
-      int mask = _mm_movemask_epi8(_mm_cmpgt_epi16((__m128i)S, SL));
-      if (mask)
+      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      if (mask != 0)
       {
-	for(int c=0; c<CHANNELS; c++)
-	  if (mask & (3 << 2*c))
+	for (int c = 0; c < CHANNELS; c++)
+	{
+	  if ((mask & (3 << 2 * c)) != 0)
+	  {
 	    d_best[c] = d_pos[c] - 1;
-	
+	  }
+	}
+
 	for(long i = qlen-1; i >= 0; i--)
 	{
-	  int m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], (__m128i)S));
-	  if (m2)
-	    for(int c=0; c<CHANNELS; c++)
-	      if (m2 & (3 << 2*c))
+	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
+	  if (m2 != 0)
+	  {
+	    for (int c = 0; c < CHANNELS; c++)
+	    {
+	      if ((m2 & (3 << 2 * c)) != 0)
+	      {
 		q_best[c] = i;
+	      }
+	    }
+	  }
 	}
       }
 
-#ifdef DEBUG
-      printf("H mask=%04x\n", mask);
-      printf("SL=");
-      vector_print_word((WORD*)&SL);
-      printf("\nS =");
-      vector_print_word((WORD*)&S);
-      printf("\nBe:");
-      for (int c=0; c<CHANNELS; c++)
-	printf(" %4ld", d_best[c]-d_begin[c]);
-      printf("\n");
-#endif
-
-      SL = (__m128i)S;
+      SL = S;
     }
   }
 }

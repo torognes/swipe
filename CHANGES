@@ -1,3 +1,54 @@
+2026-09-28  Frédéric Mahé  <frederic.mahe@cirad.fr>
+        * Version 2.2.0 (in development)
+        * BLAST databases in format version 5 are accepted, in addition
+          to version 4: databases made by current versions of makeblastdb
+          (whose default is version 5) and NCBI's pre-formatted databases
+          can be searched directly, without "-blastdb_version 4". The
+          results are identical for both versions of the same sequences
+        * The MPI version of SWIPE (mpiswipe), deprecated in 2.1.2, is
+          removed: the "mpiswipe" target of the Makefile and the MPI code
+          are gone (GitHub #17). Version 2.1.2 is the last one with
+          mpiswipe
+        * New option --version: shows the version and the reference, and
+          exits with status 0
+        * README: the BLAST option -K (--subalignments) is documented as
+          accepted and ignored (as it always was)
+        * Fix: --help exited with status 1: it now exits with status 0,
+          as other GNU-style programs (KI-2)
+        * Fix: a gap open or gap extension penalty of zero (-G 0, -E 0)
+          was replaced by the default value of the score matrix or of
+          the symbol type, so that linear gap costs (e.g. -G 0 -E 2)
+          could not be used (KI-6, GitHub #12). Zero is now a valid
+          penalty; penalties that are not given still take the default
+          values, and both penalties cannot be zero. Statistics (E-values
+          and bit scores) are shown when BLAST has them for these gap
+          penalties (e.g. blastn, reward 1, penalty -3, -G 0 -E 2)
+        * Fix: with tblastn and tblastx (-p 3, -p 4), the simple XML output
+          (-m 7) reported the length of the translated database sequence
+          (<len>, in amino acids), whereas the other outputs report its
+          length in nucleotides. It is now in nucleotides too (KI-36)
+        * The name BLOSUM62_20 no longer selects statistical parameters
+          and default gap penalties: swipe has no built-in BLOSUM62_20
+          matrix, and none is distributed by NCBI, so -M BLOSUM62_20 used
+          to fail with "Cannot open score matrix file." unless such a file
+          existed. BLOSUM62_20 is now an unknown matrix name, like any
+          other file name (KI-15)
+        * Fix: database alias files with a TAXIDLIST or SEQIDLIST line
+          (written by blastdb_aliastool -taxidlist or -seqidlist) were
+          accepted, but the list was ignored and the whole database was
+          searched (KI-39). They are now rejected, as GILIST already was
+          ("TAXIDLIST in database alias files not implemented."); the
+          taxid list can be given with -x instead
+        * Fix: the simple XML output (-m 7) had one root element per query
+          (<result>): with several queries, it was not well-formed XML
+          (KI-26). All results are now inside one <results> element
+        * Fix: the effective database length of the search space (used by
+          E-values) was computed as an int product of the number of
+          sequences and the length adjustment, which overflows for large
+          databases (e.g. 50 million sequences and an adjustment of 100):
+          E-values were wrong for such databases (KI-40). It is now
+          computed with 64-bit integers
+
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2
         * The build date and time are no longer shown in the help message,

@@ -26,10 +26,11 @@
 #include "swipe.h"
 #include <algorithm>  // std::min, std::max
 #include <cassert>
+#include <cstddef>  // std::size_t
 #include <cstring>  // std::memcpy
 #include <limits>
 
-const char mat_blosum45[] = 
+char const mat_blosum45[] = 
 "# Entries for the BLOSUM45 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -2 -2  0 -1 -1 -1 -1 -5\n\
@@ -58,7 +59,7 @@ Z -1  1  0  1 -3  4  5 -2  0 -3 -2  1 -1 -3 -1  0 -1 -2 -2 -3  1 -2  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-const char mat_blosum50[] =
+char const mat_blosum50[] =
 "# Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5\n\
@@ -87,7 +88,7 @@ Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-const char mat_blosum62[] =
+char const mat_blosum62[] =
 "# Entries for the BLOSUM62 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  4 -1 -2 -2  0 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -3 -2  0 -2 -1 -1 -1 -4\n\
@@ -116,7 +117,7 @@ Z -1  0  0  1 -3  4  4 -2  0 -3 -3  1 -1 -3 -1  0 -1 -2 -2 -2  0 -3  4 -1 -4\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -4\n\
 * -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1\n";
 
-const char mat_blosum80[] =
+char const mat_blosum80[] =
 "# Entries for the BLOSUM80 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -2 -1 -1 -1  0 -2 -2 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -6\n\
@@ -145,7 +146,7 @@ Z -1  0  0  1 -4  4  5 -3  0 -4 -3  1 -1 -4 -2  0 -1 -3 -3 -3  0 -3  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-const char mat_blosum90[] =
+char const mat_blosum90[] =
 "# Entries for the BLOSUM90 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -3 -1 -1 -1  0 -2 -2 -2 -1 -2 -3 -1  1  0 -4 -3 -1 -2 -2 -1 -1 -6\n\
@@ -174,7 +175,7 @@ Z -1  0 -1  1 -5  5  5 -3  0 -4 -4  1 -2 -4 -2 -1 -1 -4 -3 -3  0 -4  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-const char mat_pam30[] =
+char const mat_pam30[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -211,7 +212,7 @@ X  -3  -6  -3  -5  -9  -5  -5  -5  -5  -5  -6  -5  -5  -8  -5  -3  -4 -11  -7  -
 * -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17   1\n";
 
 
-const char mat_pam70[] =
+char const mat_pam70[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -248,7 +249,7 @@ X  -2  -3  -2  -3  -6  -2  -3  -3  -3  -3  -4  -3  -3  -5  -3  -1  -2  -7  -5  -
 * -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11   1\n";
 
 
-const char mat_pam250[] =
+char const mat_pam250[] =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -283,7 +284,7 @@ B  0 -1  2  3 -4  1  3  0  1 -2 -3  1 -2 -4 -1  0  0 -5 -3 -2  3  2 -1\n\
 Z  0  0  1  3 -5  3  3  0  2 -2 -3  0 -2 -5  0  0 -1 -6 -4 -2  2  3 -1\n\
 X  0 -1  0 -1 -3 -1 -1 -1 -1 -1 -1 -1 -1 -2 -1  0  0 -4 -2 -1 -1 -1 -1\n";
 
-const char mat_identity_5_1[] =
+char const mat_identity_5_1[] =
 "#  Identity matrix with 31 symbols for sounds\n\
     A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z  a  b  c  d  e\n\
 A   5 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n\
@@ -319,62 +320,51 @@ d  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  5\n";
 
 long SCORELIMIT_7;
-long SCORELIMIT_8;
 long SCORELIMIT_16;
-long SCORELIMIT_32;
-long SCORELIMIT_63;
-char BIAS;
 
-char * score_matrix_7 = NULL;
-char * score_matrix_7t = NULL;
-unsigned char * score_matrix_8 = NULL;
-short * score_matrix_16 = NULL;
-unsigned int * score_matrix_32 = NULL;
-long * score_matrix_63 = NULL;
+char * score_matrix_7 = nullptr;
+char * score_matrix_7t = nullptr;
+short * score_matrix_16 = nullptr;
+long * score_matrix_63 = nullptr;
 
-void score_matrix_dump()
-{
-  fprintf(out, "     ");
-  for(int i=0; i<32; i++)
-    fprintf(out, "%2d", i);
-  fprintf(out, "\n");
-  fprintf(out, "     ");
-  for(int i=0; i<32; i++)
-    fprintf(out, " %c", sym_ncbi_aa[i]);
-  fprintf(out, "\n");
-  for(int i=0; i<32; i++)
-  {
-    fprintf(out, "%2d %c ", i, sym_ncbi_aa[i]);
-    for(int j=0; j<32; j++)
-      {
-	fprintf(out, "%2ld", score_matrix_63[(i<<5) + j]);
-      }
-    fprintf(out, "\n");
-  }
-}
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
 
-void score_matrix_read_file(const char * matrix)
+auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
 
-  int a, b, i, read, symbols;
-  long sc; 
-  char * map, * p, * q, c;
+  int a = 0;
+  int b = 0;
+  int i = 0;
+  int read = 0;
+  int symbols = 0;
+  long sc = 0; 
+  char * map = nullptr;
+  char * p = nullptr;
+  char * q = nullptr;
+  char c = 0;
 
   FILE * fp = fopen(matrix, "r");
 
-  if (!fp)
+  if (fp == nullptr)
+  {
     fatal("Cannot open score matrix file.");
-  
-  if (symtype == 5)
+  }
+
+  if (parameters.symtype == SymbolType::sound)
+  {
     map = map_sound;
+  }
   else
+  {
     map = map_ncbi_aa;
-  
+  }
+
   symbols = 0;
 
-  while(fgets(line, LINE_MAX, fp) != NULL)
+  while(fgets(line, LINE_MAX, fp) != nullptr)
     {
       p = line;
       c = *p++;
@@ -397,12 +387,14 @@ void score_matrix_read_file(const char * matrix)
 	  
 	  q = order;
 
-	  while ((c = *p++))
-	    if (strchr(" \t\n", c) == NULL)
+	  while ((c = *p++) != 0)
+	  {
+	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
+	  }
 
 	  break;
 	  
@@ -413,14 +405,18 @@ void score_matrix_read_file(const char * matrix)
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
+	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
+	      {
 		fatal("Problem parsing score matrix file.");
-	  
+	      }
+
 	      b = order[i];
-	  
-	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
-		score_matrix_63[(a<<5) + b] = sc;
-	  
+
+	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      {
+		score_matrix_63[(a << 5) + b] = sc;
+	      }
+
 	      p += read;
 	    }
 	  break;
@@ -430,36 +426,53 @@ void score_matrix_read_file(const char * matrix)
   fclose(fp);
 }
 
-void score_matrix_read_string(const char * matrix)
+auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
   char line[LINE_MAX];
   char order[LINE_MAX];
 
-  int a, b, i, read, symbols;
-  long sc; 
-  char * map, * p, * q, c;
+  int a = 0;
+  int b = 0;
+  int i = 0;
+  int read = 0;
+  int symbols = 0;
+  long sc = 0; 
+  char * map = nullptr;
+  char * p = nullptr;
+  char * q = nullptr;
+  char c = 0;
 
-  char * s = (char*) matrix;
+  char const * s = matrix;
 
-  if (!s)
+  if (s == nullptr)
+  {
     fatal("Cannot read score matrix string.");
-  
-  if (symtype == 5)
+  }
+
+  if (parameters.symtype == SymbolType::sound)
+  {
     map = map_sound;
+  }
   else
+  {
     map = map_ncbi_aa;
-  
+  }
+
   symbols = 0;
 
-  while(*s)
+  while((*s) != 0)
     {
-      char * nextline = strchr(s, '\n');
-      int linelen;
-      if (nextline)
-	linelen = nextline - s;
+      char const * nextline = strchr(s, '\n');
+      std::size_t linelen = 0;
+      if (nextline != nullptr)
+      {
+	linelen = static_cast<std::size_t>(nextline - s);
+      }
       else
+      {
 	linelen = strlen(s);
-      
+      }
+
       assert(linelen < LINE_MAX);
       std::memcpy(line, s, linelen);
       line[linelen] = 0;
@@ -484,12 +497,14 @@ void score_matrix_read_string(const char * matrix)
 	  
 	  q = order;
 
-	  while ((c = *p++))
-	    if (strchr(" \t\n", c) == NULL)
+	  while ((c = *p++) != 0)
+	  {
+	    if (strchr(" \t\n", c) == nullptr)
 	      {
 		*q++ = map[static_cast<unsigned char>(c)];
 		symbols++;
 	      }
+	  }
 
 	  break;
 	  
@@ -500,85 +515,114 @@ void score_matrix_read_string(const char * matrix)
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", & sc, & read) != 1)
+	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
+	      {
 		fatal("Problem parsing score matrix file.");
-	  
+	      }
+
 	      b = order[i];
-	  
-	      if ((a>=0) && (b>=0) && (a<32) && (b<32))
-		score_matrix_63[(a<<5) + b] = sc;
-	  
+
+	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      {
+		score_matrix_63[(a << 5) + b] = sc;
+	      }
+
 	      p += read;
 	    }
 	  break;
 	}
 
-      if (nextline)
-	s = nextline + 1;
-      else
-	s = s + strlen(s);
-
+	if (nextline != nullptr)
+	{
+	  s = nextline + 1;
+	}
+	else
+	{
+	  s = s + strlen(s);
+	}
     }
 }
 
 
-void score_matrix_read()
+auto score_matrix_read(Parameters const & parameters) -> void
 {
-  int a, b;
-  long sc, lo, hi; 
+  int a = 0;
+  int b = 0;
+  long sc = 0;
+  long lo = 0;
+  long hi = 0; 
   
-  score_matrix_7 = (char *) xmalloc(32*32*sizeof(char));
-  score_matrix_7t = (char *) xmalloc(32*32*sizeof(char));
-  score_matrix_8 = (unsigned char *) xmalloc(32*32*sizeof(char));
-  score_matrix_16 = (short *) xmalloc(32*32*sizeof(short));
-  score_matrix_32 = (unsigned int *) xmalloc(32*32*sizeof(unsigned int));
-  score_matrix_63 = (long *) xmalloc(32*32*sizeof(long));
+  score_matrix_7 = static_cast<char *>(xmalloc(32*32*sizeof(char)));
+  score_matrix_7t = static_cast<char *>(xmalloc(32*32*sizeof(char)));
+  score_matrix_16 = static_cast<short *>(xmalloc(32*32*sizeof(short)));
+  score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
   memset(score_matrix_63, -1, 32*32*8);
   
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    for(a=1;a<16;a++)
-      for(b=1;b<16;b++)
-	score_matrix_63[(a<<5) + b] = ((a==b) ? matchscore : mismatchscore);
+    for (a = 1; a < 16; a++)
+    {
+      for (b = 1; b < 16; b++)
+      {
+	score_matrix_63[(a << 5) + b] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
+      }
+    }
   }
-  else if (strcasecmp(matrixname, "blosum45")     == 0)
-    score_matrix_read_string(mat_blosum45);
-  else if (strcasecmp(matrixname, "blosum50")     == 0)
-    score_matrix_read_string(mat_blosum50);
-  else if (strcasecmp(matrixname, "blosum62")     == 0)
-    score_matrix_read_string(mat_blosum62);
-  else if (strcasecmp(matrixname, "blosum80")     == 0)
-    score_matrix_read_string(mat_blosum80);
-  else if (strcasecmp(matrixname, "blosum90")     == 0)
-    score_matrix_read_string(mat_blosum90);
-  else if (strcasecmp(matrixname, "pam30")        == 0)
-    score_matrix_read_string(mat_pam30);
-  else if (strcasecmp(matrixname, "pam70")        == 0)
-    score_matrix_read_string(mat_pam70);
-  else if (strcasecmp(matrixname, "pam250")       == 0)
-    score_matrix_read_string(mat_pam250);
-  else if (strcasecmp(matrixname, "identity_5_1") == 0)
-    score_matrix_read_string(mat_identity_5_1);
+  else if (strcasecmp(parameters.matrixname, "blosum45") == 0)
+  {
+    score_matrix_read_string(parameters, mat_blosum45);
+  }
+  else if (strcasecmp(parameters.matrixname, "blosum50") == 0)
+  {
+    score_matrix_read_string(parameters, mat_blosum50);
+  }
+  else if (strcasecmp(parameters.matrixname, "blosum62") == 0)
+  {
+    score_matrix_read_string(parameters, mat_blosum62);
+  }
+  else if (strcasecmp(parameters.matrixname, "blosum80") == 0)
+  {
+    score_matrix_read_string(parameters, mat_blosum80);
+  }
+  else if (strcasecmp(parameters.matrixname, "blosum90") == 0)
+  {
+    score_matrix_read_string(parameters, mat_blosum90);
+  }
+  else if (strcasecmp(parameters.matrixname, "pam30") == 0)
+  {
+    score_matrix_read_string(parameters, mat_pam30);
+  }
+  else if (strcasecmp(parameters.matrixname, "pam70") == 0)
+  {
+    score_matrix_read_string(parameters, mat_pam70);
+  }
+  else if (strcasecmp(parameters.matrixname, "pam250") == 0)
+  {
+    score_matrix_read_string(parameters, mat_pam250);
+  }
+  else if (strcasecmp(parameters.matrixname, "identity_5_1") == 0)
+  {
+    score_matrix_read_string(parameters, mat_identity_5_1);
+  }
   else
-    score_matrix_read_file(matrixname);
+  {
+    score_matrix_read_file(parameters, parameters.matrixname);
+  }
 
   hi = -100;
   lo = 100;
 
-  for(a=0;a<32;a++)
+  for (a = 0; a < 32; a++)
+  {
     for(b=0;b<32;b++)
       {
 	sc = score_matrix_63[(a<<5) + b];
-	if (sc < lo)
-	  lo = sc;
-	if (sc > hi)
-	  hi = sc;
+	lo = std::min(sc, lo);
+	hi = std::max(sc, hi);
       }
-  
+  }
 
-  BIAS = - lo;
   SCORELIMIT_7  = 128 - hi;
-  SCORELIMIT_8  = 256 - hi;
   SCORELIMIT_16 = 65536 - hi;
 
   // the 16-bit engine uses signed 16-bit scores and gap penalties:
@@ -587,11 +631,13 @@ void score_matrix_read()
   // the 63-bit engine)
   long const max_16 = std::numeric_limits<short>::max();
   long const min_16 = std::numeric_limits<short>::min();
-  if ((hi > max_16) or (lo < min_16) or (gapopenextend > max_16))
+  if ((hi > max_16) or (lo < min_16) or (parameters.gapopenextend > max_16))
+  {
     SCORELIMIT_16 = 0;
-  SCORELIMIT_32 = 4294967296 - hi;
-  
-  for(a=0;a<32;a++)
+  }
+
+  for (a = 0; a < 32; a++)
+  {
     for(b=0;b<32;b++)
     {
       sc = score_matrix_63[(a<<5) + b];
@@ -605,31 +651,27 @@ void score_matrix_read()
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
       score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
       score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
-      score_matrix_8 [(a<<5) + b] = (unsigned char) (BIAS + sc);
-      score_matrix_32[(a<<5) + b] = (unsigned int) sc;
-      score_matrix_16[(a<<5) + b] = (short) sc;
+      score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
     }
+  }
 }
 
-void score_matrix_init()
+}  // anonymous namespace
+
+auto score_matrix_init(Parameters const & parameters) -> void
 {
-  score_matrix_read();
-  //  score_matrix_dump();
+  score_matrix_read(parameters);
 }
 
-void score_matrix_free()
+auto score_matrix_free() -> void
 {
   free(score_matrix_7);
-  score_matrix_7 = NULL;
+  score_matrix_7 = nullptr;
   free(score_matrix_7t);
-  score_matrix_7t = NULL;
-  free(score_matrix_8);
-  score_matrix_8 = NULL;
+  score_matrix_7t = nullptr;
   free(score_matrix_16);
-  score_matrix_16 = NULL;
-  free(score_matrix_32);
-  score_matrix_32 = NULL;
+  score_matrix_16 = nullptr;
   free(score_matrix_63);
-  score_matrix_63 = NULL;
+  score_matrix_63 = nullptr;
 }
 

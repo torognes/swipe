@@ -24,28 +24,59 @@
 */
 
 #include "swipe.h"
+#include <cstddef>  // std::size_t
 
-// #define DEBUG
+constexpr int CHANNELS = 16;
+constexpr int CDEPTH = 4;
 
-#define CHANNELS 16
-#define CDEPTH 4
-#define MATRIXWIDTH 32
+// the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
+// fit in a signed char, -128 has the same bits)
+constexpr char byte_0x80 = static_cast<char>(-128);
 
 #ifdef SWIPE_SSSE3
 
-inline void dprofile_shuffle7(BYTE * dprofile,
+// only used by the SSSE3 version (the score profile is shuffled)
+#define MATRIXWIDTH 32
+
+inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
-			      BYTE * dseq_byte)
+			      BYTE * dseq_byte) -> void
 {
 #if MATRIXWIDTH > 16
-  __m128i a, b, c, d, x, y, m0, m1, m2, m3, m4, m5, m6, m7;
-  __m128i t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13;
+  __m128i a;
+  __m128i b;
+  __m128i c;
+  __m128i d;
+  __m128i x;
+  __m128i y;
+  __m128i m0;
+  __m128i m1;
+  __m128i m2;
+  __m128i m3;
+  __m128i m4;
+  __m128i m5;
+  __m128i m6;
+  __m128i m7;
+  __m128i t0;
+  __m128i t1;
+  __m128i t2;
+  __m128i t3;
+  __m128i t4;
+  __m128i t5;
+  __m128i t6;
+  __m128i t7;
+  __m128i t8;
+  __m128i t9;
+  __m128i t10;
+  __m128i t11;
+  __m128i t12;
+  __m128i t13;
   __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
 #else
   __m128i m0, m1, m2, m3, t0, t1, t2, t3, t4;
 #endif
 
-  __m128i * dseq = (__m128i*) dseq_byte;
+  auto * dseq = reinterpret_cast<__m128i*>(dseq_byte);
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions
@@ -59,8 +90,7 @@ inline void dprofile_shuffle7(BYTE * dprofile,
   x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
                    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
 
-  y = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-                   0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
+  y = _mm_set1_epi8(byte_0x80);
 
   a  = _mm_load_si128(dseq);
   t0 = _mm_and_si128(a, x);
@@ -91,8 +121,8 @@ inline void dprofile_shuffle7(BYTE * dprofile,
   m7 = _mm_or_si128(d, u5);
 
 #define profline(j)					\
-  t6  = _mm_load_si128((__m128i*)(score_matrix)+2*j);   \
-  t7  = _mm_load_si128((__m128i*)(score_matrix)+2*j+1); \
+  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*(j));   \
+  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*(j)+1); \
   t8  = _mm_shuffle_epi8(t6, m0);			\
   t9  = _mm_shuffle_epi8(t7, m1);			\
   t10 = _mm_shuffle_epi8(t6, m2);			\
@@ -105,10 +135,10 @@ inline void dprofile_shuffle7(BYTE * dprofile,
   t13 = _mm_or_si128(t10, t11);				\
   u12 = _mm_or_si128(u8,  u9);				\
   u13 = _mm_or_si128(u10, u11);				\
-  _mm_store_si128((__m128i*)(dprofile)+4*j,   t12);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+1, t13);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+2, u12);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+3, u13)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j),   t12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+1, t13);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+2, u12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+3, u13)
 
 #else
 
@@ -118,15 +148,15 @@ inline void dprofile_shuffle7(BYTE * dprofile,
   m3 = _mm_load_si128(dseq+3);
 
 #define profline(j)					\
-  t0 = _mm_load_si128((__m128i*)(score_matrix)+2*j);	\
+  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*j);	\
   t1 = _mm_shuffle_epi8(t0, m0);			\
   t2 = _mm_shuffle_epi8(t0, m1);			\
   t3 = _mm_shuffle_epi8(t0, m2);			\
   t4 = _mm_shuffle_epi8(t0, m3);			\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+0, t1);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+1, t2);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+2, t3);	\
-  _mm_store_si128((__m128i*)(dprofile)+4*j+3, t4)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+0, t1);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+1, t2);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+2, t3);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+3, t4)
 
 #endif
 
@@ -170,17 +200,30 @@ inline void dprofile_shuffle7(BYTE * dprofile,
 
 #endif
 
-  //  dprofile_dump7(dprofile);
 }
 
 #else
 
-inline void dprofile_fill7(BYTE * dprofile,
+inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE * score_matrix,
-			   BYTE * dseq)
+			   BYTE const * dseq) -> void
 {
-  __m128i xmm0,  xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7;
-  __m128i xmm8,  xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15;
+  __m128i xmm0;
+  __m128i xmm1;
+  __m128i xmm2;
+  __m128i xmm3;
+  __m128i xmm4;
+  __m128i xmm5;
+  __m128i xmm6;
+  __m128i xmm7;
+  __m128i xmm8;
+  __m128i xmm9;
+  __m128i xmm10;
+  __m128i xmm11;
+  __m128i xmm12;
+  __m128i xmm13;
+  __m128i xmm14;
+  __m128i xmm15;
   
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions
@@ -188,26 +231,28 @@ inline void dprofile_fill7(BYTE * dprofile,
   for(int j=0; j<CDEPTH; j++)
   {
     unsigned d[CHANNELS];
-    for(int i=0; i<CHANNELS; i++)
-      d[i] = dseq[j*CHANNELS+i] << 5;
-      
-    xmm0  = _mm_loadl_epi64((__m128i*)(score_matrix + d[0] ));
-    xmm2  = _mm_loadl_epi64((__m128i*)(score_matrix + d[2] ));
-    xmm4  = _mm_loadl_epi64((__m128i*)(score_matrix + d[4] ));
-    xmm6  = _mm_loadl_epi64((__m128i*)(score_matrix + d[6] ));
-    xmm8  = _mm_loadl_epi64((__m128i*)(score_matrix + d[8] ));
-    xmm10 = _mm_loadl_epi64((__m128i*)(score_matrix + d[10]));
-    xmm12 = _mm_loadl_epi64((__m128i*)(score_matrix + d[12]));
-    xmm14 = _mm_loadl_epi64((__m128i*)(score_matrix + d[14]));
+    for (int i = 0; i < CHANNELS; i++)
+    {
+      d[i] = static_cast<unsigned>(dseq[(j * CHANNELS) + i]) << 5;
+    }
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  *(__m128i*)(score_matrix + d[1] ));
-    xmm2  = _mm_unpacklo_epi8(xmm2,  *(__m128i*)(score_matrix + d[3] ));
-    xmm4  = _mm_unpacklo_epi8(xmm4,  *(__m128i*)(score_matrix + d[5] ));
-    xmm6  = _mm_unpacklo_epi8(xmm6,  *(__m128i*)(score_matrix + d[7] ));
-    xmm8  = _mm_unpacklo_epi8(xmm8,  *(__m128i*)(score_matrix + d[9] ));
-    xmm10 = _mm_unpacklo_epi8(xmm10, *(__m128i*)(score_matrix + d[11]));
-    xmm12 = _mm_unpacklo_epi8(xmm12, *(__m128i*)(score_matrix + d[13]));
-    xmm14 = _mm_unpacklo_epi8(xmm14, *(__m128i*)(score_matrix + d[15]));
+    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
+    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[2] ));
+    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[4] ));
+    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[6] ));
+    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[8] ));
+    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[10]));
+    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[12]));
+    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[14]));
+
+    xmm0  = _mm_unpacklo_epi8(xmm0,  *reinterpret_cast<__m128i*>(score_matrix + d[1] ));
+    xmm2  = _mm_unpacklo_epi8(xmm2,  *reinterpret_cast<__m128i*>(score_matrix + d[3] ));
+    xmm4  = _mm_unpacklo_epi8(xmm4,  *reinterpret_cast<__m128i*>(score_matrix + d[5] ));
+    xmm6  = _mm_unpacklo_epi8(xmm6,  *reinterpret_cast<__m128i*>(score_matrix + d[7] ));
+    xmm8  = _mm_unpacklo_epi8(xmm8,  *reinterpret_cast<__m128i*>(score_matrix + d[9] ));
+    xmm10 = _mm_unpacklo_epi8(xmm10, *reinterpret_cast<__m128i*>(score_matrix + d[11]));
+    xmm12 = _mm_unpacklo_epi8(xmm12, *reinterpret_cast<__m128i*>(score_matrix + d[13]));
+    xmm14 = _mm_unpacklo_epi8(xmm14, *reinterpret_cast<__m128i*>(score_matrix + d[15]));
       
     xmm1 = xmm0;
     xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
@@ -248,34 +293,34 @@ inline void dprofile_fill7(BYTE * dprofile,
     xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
     xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
 
-    _mm_store_si128((__m128i*)(dprofile+16*j+  0), xmm0);
-    _mm_store_si128((__m128i*)(dprofile+16*j+ 64), xmm3);
-    _mm_store_si128((__m128i*)(dprofile+16*j+128), xmm2);
-    _mm_store_si128((__m128i*)(dprofile+16*j+192), xmm7);
-    _mm_store_si128((__m128i*)(dprofile+16*j+256), xmm1);
-    _mm_store_si128((__m128i*)(dprofile+16*j+320), xmm11);
-    _mm_store_si128((__m128i*)(dprofile+16*j+384), xmm6);
-    _mm_store_si128((__m128i*)(dprofile+16*j+448), xmm15);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+  0), xmm0);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+ 64), xmm3);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+128), xmm2);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+192), xmm7);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+256), xmm1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+320), xmm11);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+384), xmm6);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+448), xmm15);
 
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[0 ]));
-    xmm1  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[1 ]));
-    xmm2  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[2 ]));
-    xmm3  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[3 ]));
-    xmm4  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[4 ]));
-    xmm5  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[5 ]));
-    xmm6  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[6 ]));
-    xmm7  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[7 ]));
-    xmm8  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[8 ]));
-    xmm9  = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[9 ]));
-    xmm10 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[10]));
-    xmm11 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[11]));
-    xmm12 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[12]));
-    xmm13 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[13]));
-    xmm14 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[14]));
-    xmm15 = _mm_loadl_epi64((__m128i*)(score_matrix + 8 + d[15]));
+    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[0 ]));
+    xmm1  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[1 ]));
+    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[2 ]));
+    xmm3  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[3 ]));
+    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[4 ]));
+    xmm5  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[5 ]));
+    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[6 ]));
+    xmm7  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[7 ]));
+    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[8 ]));
+    xmm9  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[9 ]));
+    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[10]));
+    xmm11 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[11]));
+    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[12]));
+    xmm13 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[13]));
+    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[14]));
+    xmm15 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[15]));
 
     xmm0  = _mm_unpacklo_epi8(xmm0,  xmm1);
     xmm2  = _mm_unpacklo_epi8(xmm2,  xmm3);
@@ -325,33 +370,33 @@ inline void dprofile_fill7(BYTE * dprofile,
     xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
     xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
 
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+  0), xmm0);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+ 64), xmm3);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+128), xmm2);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+192), xmm7);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+256), xmm1);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+320), xmm11);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+384), xmm6);
-    _mm_store_si128((__m128i*)(dprofile+16*j+512+448), xmm15);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+  0), xmm0);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+ 64), xmm3);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+128), xmm2);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+192), xmm7);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+256), xmm1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+320), xmm11);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+384), xmm6);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+448), xmm15);
 
 
-    xmm0  = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[0 ]));
-    xmm2  = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[2 ]));
-    xmm4  = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[4 ]));
-    xmm6  = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[6 ]));
-    xmm8  = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[8 ]));
-    xmm10 = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[10]));
-    xmm12 = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[12]));
-    xmm14 = _mm_loadl_epi64((__m128i*)(score_matrix + 16 + d[14]));
+    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[0 ]));
+    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[2 ]));
+    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[4 ]));
+    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[6 ]));
+    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[8 ]));
+    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[10]));
+    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[12]));
+    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[14]));
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  *(__m128i*)(score_matrix + 16 + d[1 ]));
-    xmm2  = _mm_unpacklo_epi8(xmm2,  *(__m128i*)(score_matrix + 16 + d[3 ]));
-    xmm4  = _mm_unpacklo_epi8(xmm4,  *(__m128i*)(score_matrix + 16 + d[5 ]));
-    xmm6  = _mm_unpacklo_epi8(xmm6,  *(__m128i*)(score_matrix + 16 + d[7 ]));
-    xmm8  = _mm_unpacklo_epi8(xmm8,  *(__m128i*)(score_matrix + 16 + d[9 ]));
-    xmm10 = _mm_unpacklo_epi8(xmm10, *(__m128i*)(score_matrix + 16 + d[11 ]));
-    xmm12 = _mm_unpacklo_epi8(xmm12, *(__m128i*)(score_matrix + 16 + d[13 ]));
-    xmm14 = _mm_unpacklo_epi8(xmm14, *(__m128i*)(score_matrix + 16 + d[15 ]));
+    xmm0  = _mm_unpacklo_epi8(xmm0,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[1 ]));
+    xmm2  = _mm_unpacklo_epi8(xmm2,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[3 ]));
+    xmm4  = _mm_unpacklo_epi8(xmm4,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[5 ]));
+    xmm6  = _mm_unpacklo_epi8(xmm6,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[7 ]));
+    xmm8  = _mm_unpacklo_epi8(xmm8,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[9 ]));
+    xmm10 = _mm_unpacklo_epi8(xmm10, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[11 ]));
+    xmm12 = _mm_unpacklo_epi8(xmm12, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[13 ]));
+    xmm14 = _mm_unpacklo_epi8(xmm14, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[15 ]));
       
     xmm1 = xmm0;
     xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
@@ -392,34 +437,34 @@ inline void dprofile_fill7(BYTE * dprofile,
     xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
     xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
 
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+  0), xmm0);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+ 64), xmm3);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+128), xmm2);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+192), xmm7);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+256), xmm1);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+320), xmm11);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+384), xmm6);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1024+448), xmm15);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+  0), xmm0);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+ 64), xmm3);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+128), xmm2);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+192), xmm7);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+256), xmm1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+320), xmm11);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+384), xmm6);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+448), xmm15);
 
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[0 ]));
-    xmm1  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[1 ]));
-    xmm2  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[2 ]));
-    xmm3  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[3 ]));
-    xmm4  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[4 ]));
-    xmm5  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[5 ]));
-    xmm6  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[6 ]));
-    xmm7  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[7 ]));
-    xmm8  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[8 ]));
-    xmm9  = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[9 ]));
-    xmm10 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[10]));
-    xmm11 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[11]));
-    xmm12 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[12]));
-    xmm13 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[13]));
-    xmm14 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[14]));
-    xmm15 = _mm_loadl_epi64((__m128i*)(score_matrix + 24 + d[15]));
+    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[0 ]));
+    xmm1  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[1 ]));
+    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[2 ]));
+    xmm3  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[3 ]));
+    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[4 ]));
+    xmm5  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[5 ]));
+    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[6 ]));
+    xmm7  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[7 ]));
+    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[8 ]));
+    xmm9  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[9 ]));
+    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[10]));
+    xmm11 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[11]));
+    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[12]));
+    xmm13 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[13]));
+    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[14]));
+    xmm15 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[15]));
 
     xmm0  = _mm_unpacklo_epi8(xmm0,  xmm1);
     xmm2  = _mm_unpacklo_epi8(xmm2,  xmm3);
@@ -469,66 +514,16 @@ inline void dprofile_fill7(BYTE * dprofile,
     xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
     xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
 
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+  0), xmm0);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+ 64), xmm3);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+128), xmm2);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+192), xmm7);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+256), xmm1);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+320), xmm11);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+384), xmm6);
-    _mm_store_si128((__m128i*)(dprofile+16*j+1536+448), xmm15);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+  0), xmm0);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+ 64), xmm3);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+128), xmm2);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+192), xmm7);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+256), xmm1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+320), xmm11);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+384), xmm6);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+448), xmm15);
   }
 
-  //  dprofile_dump7(dprofile);
-}
-
-void dprofile_dump7(BYTE * dprofile)
-{
-  const char * ss = sym_ncbi_aa;
-  //  char * ss = sym_sound;
-
-  printf("\ndprofile:\n");
-  for(int k=0; k<4; k++)
-  {
-    printf("k=%d 0 1 2 3 4 5 6 7 8 9 a b c d e f\n", k);
-    for(int i=0; i<32; i++)
-    {
-      printf("%c: ",ss[i]);
-      for(int j=0; j<16; j++)
-	printf("%2d", (char) dprofile[i*64+16*k+j]);
-      printf("\n");
-    }
-  }
-  printf("\n");
-  exit(1);
-}
-
-int dumpcounter = 0;
-char lines[4*16*1000];
-
-void dseq_dump7(BYTE * dseq)
-{
-  const char * s = sym_ncbi_aa;
-
-  if (dumpcounter < 21)
-  {
-    for(int i=0; i<CHANNELS; i++)
-    {
-      for(int j=0; j<CDEPTH; j++)
-      {
-	lines[4000*i+4*dumpcounter+j] = s[dseq[j*CHANNELS+i]];
-      }
-    }
-    dumpcounter++;
-  }
-  else
-  {
-    for(int i=0; i<16; i++)
-    {
-      printf("%.1000s\n", lines+4000*i);
-    }
-    exit(1);
-  }
 }
 
 #endif
@@ -594,24 +589,14 @@ void dseq_dump7(BYTE * dseq)
   "        pmaxub  " H ", %%xmm12     \n"               \
   "        pmaxub  " H ", " F "       \n"
 
-inline void donormal7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i ** qp,
-		      __m128i * Qm,
-		      __m128i * Rm,
+inline auto donormal7(__m128i const * Sm,
+		      __m128i const * hep,
+		      __m128i * const * qp,
+		      __m128i const * Qm,
+		      __m128i const * Rm,
 		      long ql,
-		      __m128i * Zm)
+		      __m128i const * Zm) -> void
 {
-#ifdef DEBUG
-  printf("donormal\n");
-  printf("Sm=%p\n", Sm);
-  printf("hep=%p\n", hep);
-  printf("qp=%p\n", qp);
-  printf("Qm=%p\n", Qm);
-  printf("Rm=%p\n", Rm);
-  printf("qlen=%ld\n", ql);
-  printf("Zm=%p\n", Zm);
-#endif
   
   __asm__
     __volatile__
@@ -668,27 +653,15 @@ inline void donormal7(__m128i * Sm,
      );
 }
 
-inline void domasked7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i ** qp,
-		      __m128i * Qm, 
-		      __m128i * Rm, 
+inline auto domasked7(__m128i const * Sm,
+		      __m128i const * hep,
+		      __m128i * const * qp,
+		      __m128i const * Qm, 
+		      __m128i const * Rm, 
 		      long ql,      
-		      __m128i * Zm,
-		      __m128i * Mm)
+		      __m128i const * Zm,
+		      __m128i const * Mm) -> void
 {
-  
-#ifdef DEBUG
-  printf("domasked\n");
-  printf("Sm=%p\n", Sm);
-  printf("hep=%p\n", hep);
-  printf("qp=%p\n", qp);
-  printf("Qm=%p\n", Qm);
-  printf("Rm=%p\n", Rm);
-  printf("qlen=%ld\n", ql);
-  printf("Zm=%p\n", Zm);
-  printf("Mm=%p\n", Mm);
-#endif
   
   __asm__
     __volatile__
@@ -766,57 +739,45 @@ search7
 	BYTE * hearray,
 	struct db_thread_s * dbt,
 	long sequences,
-	long * seqnos,
+	long const * seqnos,
 	long * scores,
 	long qlen)
 {
-  __m128i S, Q, R, T, M, Z, T0;
-  __m128i *hep, **qp;
+  __m128i S;
+  __m128i Q;
+  __m128i R;
+  __m128i T;
+  __m128i M;
+  __m128i Z;
+  __m128i T0;
+  __m128i *hep;
+  __m128i **qp;
   BYTE * d_begin[CHANNELS];
   BYTE * d_end[CHANNELS];
   
   __m128i dseqalloc[CDEPTH];
   
-  BYTE * dseq = (BYTE*) & dseqalloc;
+  BYTE * dseq = reinterpret_cast<BYTE*>(& dseqalloc);
   BYTE zero;
 
   long seq_id[CHANNELS];
   long next_id = 0;
   unsigned done;
   
-  memset(hearray, 0x80, qlen * 32);
+  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * 32);
 
-  Z  = _mm_set_epi8(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 
-		    0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80);
+  Z  = _mm_set1_epi8(byte_0x80);
   T0 = _mm_set_epi8(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80);
-  Q  = _mm_set_epi8(gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty,
-		    gap_open_penalty, gap_open_penalty);
-  R  = _mm_set_epi8(gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty,
-		    gap_extend_penalty, gap_extend_penalty);
+		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, byte_0x80);
+  Q  = _mm_set1_epi8(static_cast<char>(gap_open_penalty));
+  R  = _mm_set1_epi8(static_cast<char>(gap_extend_penalty));
   zero = 0;
   done = 0;
 
   S = Z;
 
-  hep = (__m128i*) hearray;
-  qp = (__m128i**) q_start;
-
-#ifdef DEBUG
-  //  printf("Searching %ld sequences...\n", sequences);
-#endif
+  hep = reinterpret_cast<__m128i*>(hearray);
+  qp = reinterpret_cast<__m128i**>(q_start);
 
   for (int c=0; c<CHANNELS; c++)
   {
@@ -827,9 +788,9 @@ search7
 
   int easy = 0;
 
-  while(1)
+  while(true)
   {
-    if (easy)
+    if (easy != 0)
     {
       // fill all channels
 
@@ -838,12 +799,18 @@ search7
 	for(int j=0; j<CDEPTH; j++)
 	{
 	  if (d_begin[c] < d_end[c])
-	    dseq[CHANNELS*j+c] = *(d_begin[c]++);
+	  {
+	    dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	  }
 	  else
-	    dseq[CHANNELS*j+c] = 0;
+	  {
+	    dseq[(CHANNELS * j) + c] = 0;
+	  }
 	}
 	if (d_begin[c] == d_end[c])
+	{
 	  easy = 0;
+	}
       }
 
 #ifdef SWIPE_SSSE3
@@ -872,12 +839,18 @@ search7
 	  for(int j=0; j<CDEPTH; j++)
 	  {
 	    if (d_begin[c] < d_end[c])
-	      dseq[CHANNELS*j+c] = *(d_begin[c]++);
+	    {
+	      dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	    }
 	    else
-	      dseq[CHANNELS*j+c] = 0;
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 	  if (d_begin[c] == d_end[c])
+	  {
 	    easy = 0;
+	  }
 	}
 	else
 	{
@@ -886,12 +859,12 @@ search7
 
 	  M = _mm_xor_si128(M, T);
 
-	  long cand_id = seq_id[c];
+	  long const cand_id = seq_id[c];
 		  
 	  if (cand_id >= 0)
 	  {
 	    // save score
-	    long score = ((BYTE*)&S)[c] - 0x80;
+	    long const score = (reinterpret_cast<BYTE*>(&S))[c] - 0x80;
 	    scores[cand_id] = score;
 	    done++;
 	  }
@@ -900,32 +873,39 @@ search7
 	  {
 	    // get next sequence
 	    seq_id[c] = next_id;
-	    long seqnosf = seqnos[next_id];
+	    long const seqnosf = seqnos[next_id];
 
 	    char* address;
-	    long length, ntlen;
-	    long strand = (seqnosf >> 2) & 1;
-	    long frame = seqnosf & 3;
-	    long seqno = seqnosf >> 3;
+	    long length;
+	    long ntlen;
+	    long const strand = (seqnosf >> 2) & 1;
+	    long const frame = seqnosf & 3;
+	    long const seqno = seqnosf >> 3;
 
 	    db_getsequence(dbt, seqno, strand, frame, 
 			   & address, & length, &ntlen, c);
 		      
 	    // printf("Seqno: %ld Address: %p\n", seqno, address);
-	    d_begin[c] = (unsigned char*) address;
-	    d_end[c] = (unsigned char*) address + length - 1;
+	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
+	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
 	    next_id++;
 		      
 	    // fill channel
 	    for(int j=0; j<CDEPTH; j++)
 	    {
 	      if (d_begin[c] < d_end[c])
-		dseq[CHANNELS*j+c] = *(d_begin[c]++);
+	      {
+		dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
+	      }
 	      else
-		dseq[CHANNELS*j+c] = 0;
+	      {
+		dseq[(CHANNELS * j) + c] = 0;
+	      }
 	    }
 	    if (d_begin[c] == d_end[c])
+	    {
 	      easy = 0;
+	    }
 	  }
 	  else
 	  {
@@ -933,8 +913,10 @@ search7
 	    seq_id[c] = -1;
 	    d_begin[c] = &zero;
 	    d_end[c] = d_begin[c];
-	    for (int j=0; j<CDEPTH; j++)
-	      dseq[CHANNELS*j+c] = 0;
+	    for (int j = 0; j < CDEPTH; j++)
+	    {
+	      dseq[(CHANNELS * j) + c] = 0;
+	    }
 	  }
 
 
@@ -944,8 +926,10 @@ search7
       }
 
       if (done == sequences)
+      {
 	break;
-	  
+      }
+
 #ifdef SWIPE_SSSE3
       dprofile_shuffle7(dprofile, score_matrix, dseq);
 #else

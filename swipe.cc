@@ -24,112 +24,57 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::min
+#include <algorithm>  // std::generate, std::min
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
+#include <cinttypes>  // PRId64
+#include <cstddef>  // std::size_t
+#include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
+#include <iterator>  // std::begin, std::end
 #include <limits>
+#include <mutex>  // std::mutex, std::lock_guard
+#include <string>  // std::string (fatal)
 #include <vector>
 
-/* ARGUMENTS AND THEIR DEFAULTS */
-
-#define DEFAULT_MAXMATCHES 250
-#define DEFAULT_ALIGNMENTS 100
-#define DEFAULT_MINSCORE 1
-#define DEFAULT_MAXSCORE (LONG_MAX)
-#define DEFAULT_QUERYNAME "-"
-#define DEFAULT_DATABASENAME ""
-#define DEFAULT_GAPOPEN 0
-#define DEFAULT_GAPEXTEND 0
-#define DEFAULT_MATRIXNAME "BLOSUM62"
-#define DEFAULT_MATCHSCORE 1
-#define DEFAULT_MISMATCHSCORE (-3)
-#define DEFAULT_THREADS 1
-#define DEFAULT_VIEW 0
-#define DEFAULT_SYMTYPE 1
-#define DEFAULT_SHOW_GIS 0
-#define DEFAULT_SHOW_TAXID 0
-#define DEFAULT_EXPECT 10.0
-#define DEFAULT_MINEXPECT 0.0
-#define DEFAULT_QUERYSTRANDS 3
-#define DEFAULT_QUERY_GENCODE 1
-#define DEFAULT_DB_GENCODE 1
-#define DEFAULT_SUBALIGNMENTS 1
-#define DEFAULT_DUMP 0
-#define DEFAULT_OUT stdout
-#define DEFAULT_EFFDBSIZE 0
-
-char * progname;
-const char * matrixname;
-const char * databasename;
-const char * queryname;
-char * taxidfilename;
-char * outfile = NULL;
-
-double expect;
-double minexpect;
-long minscore;
-long maxscore;
-long alignments;
-long maxmatches;
-long gapopen;
-long gapextend;
-long threads;
-long view;
-long symtype;
-long show_gis;
-long show_taxid;
-long matchscore;
-long mismatchscore;
-long gapopenextend;
-long querystrands;
-long query_gencode;
-long db_gencode;
-long subalignments;
-long dump;
-long effdbsize;
 
 /* Other variables */
 
 long queryno;
 
-long cpu_feature_sse2;
 long cpu_feature_ssse3;
 long cpu_feature_sse41;
 
-#define MAX_THREADS 256
+constexpr int max_threads = 256;
 
-pthread_mutex_t countmutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t workmutex = PTHREAD_MUTEX_INITIALIZER;
+long compute7;
 
-pthread_t pthread_id[MAX_THREADS];
+long totalhits;
 
-#ifdef MPISWIPE
-int mpirank, mpisize;
-#endif
+FILE * out = stdout;  // default output: stdout (--out FILE)
 
+struct time_info ti;
+
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
+
+long cpu_feature_sse2;
+std::mutex countmutex;
+std::mutex workmutex;
+pthread_t pthread_id[max_threads];
 long maxchunksize;
 long volnext;
 long seqnext;
 long * volchunks;
 long * volseqs;
-
-long compute7;
 long compute16;
 long compute32;
 long compute63;
-
 long rounds7;
 long rounds16;
 long rounds32;
 long rounds63;
-
-long totalhits;
-
-FILE * out = stdout;
-
-struct time_info ti;
 
 struct search_data
 {
@@ -138,7 +83,7 @@ struct search_data
 
   BYTE * dprofile;
   BYTE * hearray;
-  BYTE ** qtable[6];
+  BYTE ** qtable[6] {};  // nullptr: tables not allocated yet
 
   long * scores;
   long * bestpos;
@@ -162,131 +107,146 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-void fatal(const char * message)
+// what a worker thread gets from pthread_create(): the parameters,
+// read-only (the object lives until the threads are joined)
+struct WorkerArguments
 {
-  if (message)
+  Parameters const * parameters;
+};
+
+}  // anonymous namespace
+
+[[noreturn]] auto fatal(char const * message) noexcept -> void
+{
+  if (message != nullptr)
+  {
     fprintf(stderr, "%s\n", message);
+  }
   exit(1);
 }
 
-void fatal(const char * format, const char * message)
+[[noreturn]] auto fatal(std::string const & message) noexcept -> void
 {
-  fprintf(stderr, format, message);
-  fprintf(stderr, "\n");
-  exit(1);
+  fatal(message.c_str());
 }
 
-void * xmalloc(size_t size)
+auto xmalloc(size_t size) -> void *
 {
-  const size_t alignment = 16;
-  void * t = NULL;
-  if (posix_memalign(& t, alignment, size) != 0)
-    t = NULL;
-  
-  if (t==NULL)
+  size_t const alignment = 16;
+  void * t = nullptr;
+  if (posix_memalign(&t, alignment, size) != 0)
+  {
+    t = nullptr;
+  }
+
+  if (t == nullptr)
+  {
     fatal("Unable to allocate enough memory.");
+  }
 
   return t;
 }
 
-void * xrealloc(void *ptr, size_t size)
+auto xrealloc(void *ptr, size_t size) -> void *
 {
   void * t = realloc(ptr, size);
-  if (!t)
+  if (t == nullptr)
+  {
     fatal("Unable to allocate enough memory.");
+  }
   return t;
 }
 
+namespace {
+
 long alignedhits;
-long alignedall;
 long * hits_sorted;
 
 long align_volnext;
-long align_seqnext;
 
 long * align_volseqs;
 long * align_volchunks;
 
-void align_init(struct search_data * sdp)
+auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
 
-  for(int i=0; i<8; i++)
-    sdp->dbta[i] = db_thread_create();
+  std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
 
-  sdp->dprofile = (BYTE*) xmalloc(4*16*32);
+  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
-  
-  for(int i = 0; i < 6; i++)
-  {
-    sdp->qtable[i] = 0;
-  }
 
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+    for (int s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + 16*query.nt[s].seq[i];
+	  sdp->qtable[3*s][i] = sdp->dprofile + (16*query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
+    }
   }
-  else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + 16*query.aa[0].seq[i];
+      sdp->qtable[0][i] = sdp->dprofile + (16*query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == 2) || (symtype == 4))
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
-    for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+    for (int s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
 	for(int f=0; f<3; f++)
 	{
-	  qlen = query.aa[3*s+f].len;
-	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	  qlen = query.aa[(3*s)+f].len;
+	  sdp->qlen[(3*s)+f] = qlen;
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
-	    sdp->qtable[3*s+f][i] = sdp->dprofile + 16*query.aa[3*s+f].seq[i];
+	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (16*query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
+      }
+    }
   }
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = (BYTE*) xmalloc(hearraylen*32);
+  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  long listsize = maxchunksize * sizeof(long);
+  auto const listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
-  sdp->start_list = (long*) xmalloc(listsize);
-  sdp->start_hits = (long*) xmalloc(listsize);
-  sdp->in_list = (long*) xmalloc(listsize);
-  sdp->out_list = (long*) xmalloc(listsize);
-  sdp->scores = (long*) xmalloc(listsize);
-  sdp->bestpos = (long*) xmalloc(listsize);
-  sdp->bestq = (long*) xmalloc(listsize);
+  sdp->start_list = static_cast<long*>(xmalloc(listsize));
+  sdp->start_hits = static_cast<long*>(xmalloc(listsize));
+  sdp->in_list = static_cast<long*>(xmalloc(listsize));
+  sdp->out_list = static_cast<long*>(xmalloc(listsize));
+  sdp->scores = static_cast<long*>(xmalloc(listsize));
+  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
+  sdp->bestq = static_cast<long*>(xmalloc(listsize));
 
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -294,11 +254,11 @@ void align_init(struct search_data * sdp)
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 2)
+  else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -306,7 +266,7 @@ void align_init(struct search_data * sdp)
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 3)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -318,11 +278,11 @@ void align_init(struct search_data * sdp)
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == 4)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -344,20 +304,26 @@ void align_init(struct search_data * sdp)
   }
 }
 
-void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
+auto align_chunk(Parameters const & parameters, struct search_data * sdp, long hitfirst, long hitlast) -> void
 {
-  if (hitlast < alignments)
+  if (hitlast < parameters.alignments)
   {
 
     for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+    {
       for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
       {
 	sdp->start_count = 0;
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
-	  long hs = hits_sorted[hitno];
-	  long seqno, score, hqstrand, hqframe, hdstrand, hdframe;
+	  long const hs = hits_sorted[hitno];
+	  long seqno = 0;
+	  long score = 0;
+	  long hqstrand = 0;
+	  long hqframe = 0;
+	  long hdstrand = 0;
+	  long hdframe = 0;
 	
 	  hits_gethit(hs, & seqno, & score, & hqstrand, & hqframe, 
 		      & hdstrand, & hdframe);
@@ -371,62 +337,71 @@ void align_chunk(struct search_data * sdp, long hitfirst, long hitlast)
 	  }
 	}
 
-	if (sdp->start_count)
+	if (sdp->start_count != 0)
 	{
 	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
 
 
-	  BYTE ** qtable = sdp->qtable[3*qstrand+qframe];
-	  long qlen = sdp->qlen[3*qstrand+qframe];
+	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+	  long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
-	  pthread_mutex_lock(&countmutex);
-	  compute32 += sdp->in_count;
-	  rounds32++;
-	  pthread_mutex_unlock(&countmutex);
+	  {
+	    std::lock_guard<std::mutex> const lock(countmutex);
+	    compute32 += sdp->in_count;
+	    rounds32++;
+	  }
 	
-	  search16s((WORD**)qtable,
-		    gapopenextend,
-		    gapextend,
-		    (WORD*)(score_matrix_16),
-		    (WORD*)(sdp->dprofile),
-		    (WORD*)(sdp->hearray),
+	  // the 16-bit penalties are only used when they fit (KI-13:
+	  // otherwise no 16-bit result is accepted)
+	  search16s(reinterpret_cast<WORD**>(qtable),
+		    static_cast<WORD>(parameters.gapopenextend),
+		    static_cast<WORD>(parameters.gapextend),
+		    reinterpret_cast<WORD*>(score_matrix_16),
+		    reinterpret_cast<WORD*>(sdp->dprofile),
+		    reinterpret_cast<WORD*>(sdp->hearray),
 		    sdp->dbta,
 		    sdp->start_count,
 		    sdp->start_list,
 		    sdp->scores,
 		    sdp->bestpos,
 		    sdp->bestq,
-		    qlen);
+		    static_cast<int>(qlen));
 	
 	  for (int i=0; i<sdp->start_count; i++)
 	  {
-	    long pos = sdp->bestpos[i];
-	    long bestq = sdp->bestq[i];
+	    long const pos = sdp->bestpos[i];
+	    long const bestq = sdp->bestq[i];
 	  
 	    //	  fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 	  
-	    long hitno = sdp->start_hits[i];
-	  
+	    long const hitno = sdp->start_hits[i];
+
 	    if (sdp->scores[i] < SCORELIMIT_16)
+	    {
 	      hits_enter_align_hint(hitno, bestq, pos);
+	    }
 	  }
 	}
       }
-
+    }
   }
 
-  for(long hitno = hitfirst; hitno <= hitlast; hitno++)
-    hits_align(sdp->dbt, hits_sorted[hitno]);
+  for (long hitno = hitfirst; hitno <= hitlast; hitno++)
+  {
+    hits_align(parameters, sdp->dbt, hits_sorted[hitno]);
+  }
 }
 
-void align_done(struct search_data * sdp)
+auto align_done(struct search_data * sdp) -> void
 {
-  for(int i = 0; i < 6; i++)
+  for(auto * query_table : sdp->qtable)
   {
-    if (sdp->qtable[i])
-      free(sdp->qtable[i]);
+    if (query_table != nullptr)
+    {
+      free(query_table);
+    }
   }
 
   free(sdp->dprofile);
@@ -438,139 +413,126 @@ void align_done(struct search_data * sdp)
   free(sdp->start_hits);
   free(sdp->in_list);
   free(sdp->out_list);
-  
-  for(int i=0; i<8; i++)
-    db_thread_destruct(sdp->dbta[i]);
+
+  for (auto * db_thread : sdp->dbta)
+  {
+    db_thread_destruct(db_thread);
+  }
 
   db_thread_destruct(sdp->dbt);
 }
 
 
-void calc_chunks(long volcount, 
+auto calc_chunks(long volcount, 
 		 long par,
 		 long channels,
-		 long * volseqs,
-		 long * volchunks,
+		 long const * volume_sequences,
+		 long * volume_chunks,
 		 long * totalchunks,
-		 long * biggestchunk)
+		 long * biggestchunk) -> void
 {
-#ifdef DEBUG
-  fprintf(out, "Calculating chunk distribution among volumes\n");
-#endif
 
   long volsused = 0;
-  std::vector<long> chunksizes(volcount);
+  auto const volumes = static_cast<std::size_t>(volcount);
+  std::vector<long> chunksizes(volumes);
   long totalseqs = 0;
-  long maxchunksize = 0;
-  long vv = 0;
-  for(long v = 0; v < volcount; v++)
+  long biggest_chunk_size = 0;
+  std::size_t vv = 0;
+  for(std::size_t v = 0; v < volumes; v++)
   {
-    if (volseqs[v])
+    if (volume_sequences[v] != 0)
     {
-      totalseqs += volseqs[v];
+      totalseqs += volume_sequences[v];
       volsused++;
-      volchunks[v] = 1;
-      chunksizes[v] = volseqs[v];
-      if (chunksizes[v] > maxchunksize)
+      volume_chunks[v] = 1;
+      chunksizes[v] = volume_sequences[v];
+      if (chunksizes[v] > biggest_chunk_size)
       {
-	maxchunksize = chunksizes[v];
+	biggest_chunk_size = chunksizes[v];
 	vv = v;
       }
     }
     else
     {
       chunksizes[v] = 0;
-      volchunks[v] = 0;
+      volume_chunks[v] = 0;
     }
   }
 
   long upper = channels;
   if (totalseqs >= 4 * channels * par)
-    upper *= (long) (floor(sqrt((1.0 * totalseqs) / (channels * par))));
+  {
+    upper *= static_cast<long>(floor(sqrt((1.0 * static_cast<double>(totalseqs)) / static_cast<double>(channels * par))));
+  }
 
   long chunks = volsused;
-  long minchunks = totalseqs < par ? totalseqs : par;
+  long const minchunks = totalseqs < par ? totalseqs : par;
 
-  while((maxchunksize > upper) || (chunks < minchunks))
+  while((biggest_chunk_size > upper) || (chunks < minchunks))
   {
-    volchunks[vv]++;
+    volume_chunks[vv]++;
     chunks++;
-    chunksizes[vv] = (volseqs[vv] + volchunks[vv] - 1) / volchunks[vv];
+    chunksizes[vv] = (volume_sequences[vv] + volume_chunks[vv] - 1) / volume_chunks[vv];
 
-    maxchunksize = 0;
+    biggest_chunk_size = 0;
     vv = 0;
-    for(long v=0; v < volcount; v++)
+    for(std::size_t v = 0; v < volumes; v++)
     {
-      if (chunksizes[v] > maxchunksize)
+      if (chunksizes[v] > biggest_chunk_size)
       {
 	vv = v;
-	maxchunksize = chunksizes[v];
+	biggest_chunk_size = chunksizes[v];
       }
     }
   }
   
-#ifdef DEBUG
-#ifdef MPISWIPE
-  if (!mpirank)
-#endif
-  {
-    fprintf(out, "\n");
-    fprintf(out, "Chunk distribution:\n");
-    fprintf(out, "Total seqs: %ld\n", totalseqs);
-    fprintf(out, "Total chunks: %ld  Upper size limit: %ld\n", chunks, upper);
-    fprintf(out, "Vol Sequences Chunks Maxchunksize\n");
-    for(long v = 0; v < volcount; v++)
-    {
-      fprintf(out, "%3ld %9ld %6ld %12ld\n",
-	      v, volseqs[v], volchunks[v], chunksizes[v]);
-    }
-    fprintf(out, "\n");
-  }
-#endif
-  
-  *biggestchunk = maxchunksize;
+  *biggestchunk = biggest_chunk_size;
   *totalchunks = chunks;
 }
 
-void align_threads_init()
+auto align_threads_init(Parameters const & parameters) -> void
 {
-  long hits = hits_getcount();
+  long const hits = hits_getcount();
 
   hits_sorted = hits_sort();
 
-  long bins = 7;
+  long const bins = 7;
 
-  align_volseqs = (long*) xmalloc(bins*sizeof(long));
-  align_volchunks = (long*) xmalloc(bins*sizeof(long));
+  align_volseqs = static_cast<long*>(xmalloc(bins*sizeof(long)));
+  align_volchunks = static_cast<long*>(xmalloc(bins*sizeof(long)));
 
-  for(long i = 0; i<bins; i++)
+  for (long i = 0; i < bins; i++)
+  {
     align_volseqs[i] = 0;
+  }
 
   for(long i = 0; i<hits; i++)
   {
-    long seqno;
-    long score;
-    long qstrand;
-    long qframe;
-    long dstrand;
-    long dframe;
-    
-    if (i>=alignments)
+    long seqno = 0;
+    long score = 0;
+    long qstrand = 0;
+    long qframe = 0;
+    long dstrand = 0;
+    long dframe = 0;
+
+    if (i >= parameters.alignments)
+    {
       align_volseqs[6]++;
+    }
     else
     {
       hits_gethit(i, & seqno, & score,
 		  & qstrand, & qframe,
 		  & dstrand, & dframe);
       
-      align_volseqs[3*qstrand+qframe]++;
+      align_volseqs[(3*qstrand)+qframe]++;
     }
   }
 
-  long totalchunks;
+  long totalchunks = 0;
 
   calc_chunks(bins,
-	      threads,
+	      parameters.threads,
 	      8,
 	      align_volseqs,
 	      align_volchunks,
@@ -581,28 +543,30 @@ void align_threads_init()
   align_volnext = 0;
 
   while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+  {
     align_volnext++;
+  }
 }
 
-void align_threads_done()
+auto align_threads_done() -> void
 {
   free(hits_sorted);
   free(align_volchunks);
   free(align_volseqs);
 }
 
-int align_getwork(long * first, long * last)
+auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long bins = 7;
-  long volcount = bins;
+  long const bins = 7;
+  long const volcount = bins;
 
-  pthread_mutex_lock(&workmutex);
+  std::lock_guard<std::mutex> const lock(workmutex);
   if (align_volnext < volcount)
   {
-    long seqcount = align_volseqs[align_volnext];
-    long chunks = align_volchunks[align_volnext];
-    long chunksize = ((seqcount+chunks-1) / chunks);
+    long const seqcount = align_volseqs[align_volnext];
+    long const chunks = align_volchunks[align_volnext];
+    long const chunksize = ((seqcount+chunks-1) / chunks);
 
     * first = alignedhits;
     * last = alignedhits + chunksize - 1;
@@ -612,190 +576,171 @@ int align_getwork(long * first, long * last)
 
     align_volseqs[align_volnext] -= chunksize;
     align_volchunks[align_volnext]--;
-    
+
     while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+    {
       align_volnext++;
+    }
   }
-  pthread_mutex_unlock(&workmutex);
   return status;
 }
 
-void * align_worker(void *)
+auto align_worker(void * arguments) -> void *
 {
+  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   search_data sd;
-  align_init(&sd);
+  align_init(parameters, &sd);
 
-  long i, j;
-  while(align_getwork(&i, &j))
-    align_chunk(&sd, i, j);
-  
+  long i = 0;
+  long j = 0;
+  while (align_getwork(&i, &j) != 0)
+  {
+    align_chunk(parameters, &sd, i, j);
+  }
+
   align_done(&sd);
-  return 0;
+  return nullptr;
 }
 
-void align_threads()
+auto align_threads(Parameters const & parameters) -> void
 {
-  long t;
-  void * status;
+  long t = 0;
+  void * status = nullptr;
 
-  align_threads_init();
-  
-  for(t=0; t<threads; t++)
+  align_threads_init(parameters);
+
+  WorkerArguments arguments {&parameters};
+  for(t=0; t<parameters.threads; t++)
     {
-      if (pthread_create(pthread_id + t, 0, align_worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, align_worker, &arguments) != 0)
+      {
 	fatal("Cannot create thread.");
+      }
     }
   
-  for(t=0; t<threads; t++) {
-    if (pthread_join(pthread_id[t], &status))
+  for(t=0; t<parameters.threads; t++) {
+    if (pthread_join(pthread_id[t], &status) != 0)
+    {
       fatal("Cannot join thread.");
+    }
   }
 
   align_threads_done();
 }
 
-void args_getstring(int i, int argc, char **argv, char ** result, char * error)
+auto args_show(Parameters const & parameters) -> void
 {
-  if (i+1 < argc)
-    *result = argv[i+1];
-  else
-    fatal(error);
-}
-
-void args_getnum(int i, int argc, char **argv, long * result, char * error)
-{
-  if (i+1 < argc)
-    *result = atol(argv[i+1]);
-  else
-    fatal(error);
-}
-
-void args_show()
-{
-  if (view == 0)
+  if (parameters.view == OutputFormat::plain)
   {
     
-#ifndef MPISWIPE
-    if (! cpu_feature_ssse3)
+    if (cpu_feature_ssse3 == 0)
     {
       fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
-#endif
     
-    const char * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
+    char const * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
     
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
     
-    fprintf(out, "Database file:     %s\n", databasename);
+    fprintf(out, "Database file:     %s\n", parameters.databasename);
     fprintf(out, "Database title:    %s\n", db_gettitle());
     fprintf(out, "Database time:     %s\n", db_gettime());
     
-    if (db_ismasked())
+    if (db_ismasked() != 0)
       {
-	fprintf(out, "Database size:     %ld residues", db_getsymcount_masked());
-	fprintf(out, " in %ld sequences\n", db_getseqcount_masked());
+	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount_masked());
+	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount_masked());
       }
       else
       {
-	fprintf(out, "Database size:     %ld residues", db_getsymcount());
-	fprintf(out, " in %ld sequences\n", db_getseqcount());
+	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount());
+	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount());
       }
 
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
-      if (effdbsize > 0)
-	fprintf(out, "Effective db size: %ld\n", effdbsize);
+      if (parameters.effdbsize > 0)
+      {
+	fprintf(out, "Effective db size: %" PRId64 "\n", parameters.effdbsize);
+      }
 
-      fprintf(out, "Query file name:   %s\n", queryname);
+      fprintf(out, "Query file name:   %s\n", parameters.queryname);
 
-      long qlen;
-      if ((symtype == 0) || (symtype == 2) || (symtype == 4))
+      long qlen = 0;
+      if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
+      {
 	qlen = query.nt[0].len;
+      }
       else
+      {
 	qlen = query.aa[0].len;
-      
+      }
+
       fprintf(out, "Query length:      %ld residues\n", qlen);
 
       query_show();
 
-      if (symtype == 0)
+      if (parameters.symtype == SymbolType::blastn)
       {
 	fprintf(out, "Query strands:     ");
-	switch (querystrands)
+	switch (parameters.querystrands)
 	{
-	case 1:
+	case QueryStrands::plus:
 	  fprintf(out, "Plus");
 	  break;
-	case 2:
+	case QueryStrands::minus:
 	  fprintf(out, "Minus");
 	  break;
-	case 3:
+	case QueryStrands::both:
 	  fprintf(out, "Plus and minus");
+	  break;
+	default:
 	  break;
 	}
 	fprintf(out, "\n");
-	fprintf(out, "Score matrix:      %ld/%ld\n", matchscore, mismatchscore);
+	fprintf(out, "Score matrix:      %ld/%ld\n", parameters.matchscore, parameters.mismatchscore);
       }
       else
       {
-	fprintf(out, "Score matrix:      %s\n", matrixname);
+	fprintf(out, "Score matrix:      %s\n", parameters.matrixname);
       }
 
-      fprintf(out, "Gap penalty:       %ld+%ldk\n", gapopen, gapextend);
-      fprintf(out, "Max expect shown:  %-g\n", expect);
-      fprintf(out, "Min score shown:   %ld\n", minscore);
-      fprintf(out, "Max matches shown: %ld\n", maxmatches);
-      fprintf(out, "Alignments shown:  %ld\n", alignments);
-      fprintf(out, "Show gi's:         %ld\n", show_gis);
-      fprintf(out, "Show taxid's:      %ld\n", show_taxid);
-      fprintf(out, "Threads:           %ld\n", threads);
-      fprintf(out, "Symbol type:       %s\n", symtypestring[symtype]);
-      if ((symtype == 2) || (symtype == 4))
-	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[query_gencode-1], query_gencode);
-      if ((symtype == 3) || (symtype == 4))
-	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[db_gencode-1], db_gencode);
-      
-#if 0
-      if ((symtype == 2) || (symtype == 4))
+      fprintf(out, "Gap penalty:       %ld+%ldk\n", parameters.gapopen, parameters.gapextend);
+      fprintf(out, "Max expect shown:  %-g\n", parameters.expect);
+      fprintf(out, "Min score shown:   %ld\n", parameters.minscore);
+      fprintf(out, "Max matches shown: %ld\n", parameters.maxmatches);
+      fprintf(out, "Alignments shown:  %ld\n", parameters.alignments);
+      fprintf(out, "Show gi's:         %ld\n", parameters.show_gis);
+      fprintf(out, "Show taxid's:      %ld\n", parameters.show_taxid);
+      fprintf(out, "Threads:           %ld\n", parameters.threads);
+      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(parameters.symtype)]);
+      if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
-	for(long s=0; s<2; s++)
-	  for(long f=0; f<3; f++)
-	  {
-	    fprintf(out, "Translation of query, frame %c%ld:\n", s?'-':'+', f+1);
-	    //	    translate(query_, qlen, s, f, 0, & prot, & plen);
-	    
-	    long plen = query.aa[3*s+f].len;
-	    for (int j=0; j<plen; j+=60)
-	    {
-	      for(int k=0; k<60; k++)
-	      {
-		if (j+k < plen)
-		  putc(sym_ncbi_aa[query.aa[3*s+f].seq[j+k]], out);
-		else
-		  break;
-	      }
-	      fprintf(out, "\n");
-	    }
-	    fprintf(out, "\n");
-	  }
+	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[parameters.query_gencode - 1], parameters.query_gencode);
       }
-#endif
+      if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
+      {
+	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[parameters.db_gencode - 1], parameters.db_gencode);
+      }
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
-      if (taxidfilename)
-	fprintf(out, "Taxid filename:    %s\n", taxidfilename);
+      if (parameters.taxidfilename != nullptr)
+      {
+	fprintf(out, "Taxid filename:    %s\n", parameters.taxidfilename);
+      }
       fprintf(out, "\n");
     }
 }
   
-void args_usage()
+auto args_usage(char const * const program_name) -> void
 {
   /* options unused by BLAST: chkuxHN */
   /* options used by SWIPE:   chkuxHN  */
 
-  fprintf(out, "Usage: %s [OPTIONS]\n", progname);
+  fprintf(out, "Usage: %s [OPTIONS]\n", program_name);
   fprintf(out, "  -h, --help                 show help\n");
+  fprintf(out, "      --version              show version\n");
   fprintf(out, "  -d, --db=FILE              sequence database base name (required)\n");
   fprintf(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
   fprintf(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
@@ -809,7 +754,7 @@ void args_usage()
   fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
   fprintf(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
   fprintf(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
-  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", MAX_THREADS);
+  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", max_threads);
   fprintf(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
   fprintf(out, "  -I, --show_gis             show gi numbers in results (no)\n");
   fprintf(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
@@ -823,33 +768,38 @@ void args_usage()
   fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
-void args_help()
+auto args_version() -> void
 {
-  char title[] = "SWIPE " SWIPE_VERSION;
-  char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s\n\n%s\n\n", title, ref);
-#ifdef MPISWIPE
-  fprintf(out, "Note: mpiswipe is deprecated, and will be removed in SWIPE 2.2.0.\n\n");
-#endif
+  char const title[] = "SWIPE " SWIPE_VERSION;
+  char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
+  fprintf(out, "%s\n\n%s\n", title, ref);
+}
+
+auto args_help(char const * const program_name) -> void
+{
+  args_version();
+  fprintf(out, "\n");
   
-  args_usage();
+  args_usage(program_name);
 }
 
 // strict conversions of option values (KI-9): the whole value must be
 // a number, without trailing characters, and within the range of the
 // type; otherwise, swipe stops with the error message of the option
-static auto parse_long(char const * const text, char const * const message) -> long
+auto parse_long(char const * const text, char const * const message) -> long
 {
   assert(text != nullptr);
   char * end = nullptr;
   errno = 0;
   auto const value = std::strtol(text, &end, 10);
   if ((end == text) or (*end != '\0') or (errno == ERANGE))
+  {
     fatal(message);
+  }
   return value;
 }
 
-static auto parse_double(char const * const text, char const * const message) -> double
+auto parse_double(char const * const text, char const * const message) -> double
 {
   assert(text != nullptr);
   char * end = nullptr;
@@ -857,477 +807,540 @@ static auto parse_double(char const * const text, char const * const message) ->
   auto const value = std::strtod(text, &end);
   if ((end == text) or (*end != '\0') or (errno == ERANGE) or
       (not std::isfinite(value)))
+  {
     fatal(message);
+  }
   return value;
 }
 
 // the effective database size accepts the real notation of blastall's
 // -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
-static auto parse_dbsize(char const * const text) -> long
+auto parse_dbsize(char const * const text) -> std::int64_t
 {
   static char const message[] = "Illegal effective db size specified";
-  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<std::int64_t>::max());
   auto const value = parse_double(text, message);
-  if ((value < 0.0) or (value != std::floor(value)) or (value >= upper_limit))
+  if ((value < 0.0) or (std::floor(value) < value) or (value >= upper_limit))
+  {
     fatal(message);
-  return static_cast<long>(value);
+  }
+  return static_cast<std::int64_t>(value);
 }
 
-void args_init(int argc, char **argv)
+auto args_init(int argc, char * const * argv) -> Parameters
 {
-  /* Set defaults */
-  gapopen = DEFAULT_GAPOPEN;
-  gapextend = DEFAULT_GAPEXTEND;
-  matrixname = "";
-  queryname = DEFAULT_QUERYNAME;
-  databasename = DEFAULT_DATABASENAME;
-  minscore = DEFAULT_MINSCORE;
-  maxscore = DEFAULT_MAXSCORE;
-  maxmatches = DEFAULT_MAXMATCHES;
-  alignments = DEFAULT_ALIGNMENTS;
-  threads = DEFAULT_THREADS;
-  view = DEFAULT_VIEW;
-  symtype = DEFAULT_SYMTYPE;
-  show_gis = DEFAULT_SHOW_GIS;
-  show_taxid = DEFAULT_SHOW_TAXID;
-  expect = DEFAULT_EXPECT;
-  minexpect = DEFAULT_MINEXPECT;
-  taxidfilename = NULL;
-  matchscore = DEFAULT_MATCHSCORE;
-  mismatchscore = DEFAULT_MISMATCHSCORE;
-  querystrands = DEFAULT_QUERYSTRANDS;
-  query_gencode = DEFAULT_QUERY_GENCODE;
-  db_gencode = DEFAULT_DB_GENCODE;
-  subalignments = DEFAULT_SUBALIGNMENTS;
-  dump = DEFAULT_DUMP;
-  effdbsize = DEFAULT_EFFDBSIZE;
+  Parameters parameters;
 
-  progname = argv[0];
+  parameters.progname = argv[0];
 
   opterr = 1;
   char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
   static struct option long_options[] =
   {
-    {"db",               required_argument, NULL, 'd' },
-    {"query",            required_argument, NULL, 'i' },
-    {"matrix",           required_argument, NULL, 'M' },
-    {"penalty",          required_argument, NULL, 'q' },
-    {"reward",           required_argument, NULL, 'r' },
-    {"gapopen",          required_argument, NULL, 'G' },
-    {"gapextend",        required_argument, NULL, 'E' },
-    {"strand",           required_argument, NULL, 'S' },
-    {"num_descriptions", required_argument, NULL, 'v' },
-    {"num_alignments",   required_argument, NULL, 'b' },
-    {"min_score",        required_argument, NULL, 'c' },
-    {"max_score",        required_argument, NULL, 'u' },
-    {"evalue",           required_argument, NULL, 'e' },
-    {"minevalue",        required_argument, NULL, 'k' },
-    {"num_threads",      required_argument, NULL, 'a' },
-    {"outfmt",           required_argument, NULL, 'm' },
-    {"symtype",          required_argument, NULL, 'p' },
-    {"taxidlist",        required_argument, NULL, 'x' },
-    {"taxid",            required_argument, NULL, 'x' },  /* alias (2.1.1 and older) */
-    {"comp_based_stats", required_argument, NULL, 'C' },
-    {"query_gencode",    required_argument, NULL, 'Q' },
-    {"db_gencode",       required_argument, NULL, 'D' },
-    {"filter",           required_argument, NULL, 'F' },
-    {"subalignments",    required_argument, NULL, 'K' },
-    {"dump",             required_argument, NULL, 'N' },
-    {"out",              required_argument, NULL, 'o' },
-    {"dbsize",           required_argument, NULL, 'z' },
-    {"show_gis",         no_argument,       NULL, 'I' },
-    {"show_taxid",       no_argument,       NULL, 'H' },
-    {"help",             no_argument,       NULL, 'h' },
-    { 0, 0, 0, 0 }
+    {"db",               required_argument, nullptr, 'd' },
+    {"query",            required_argument, nullptr, 'i' },
+    {"matrix",           required_argument, nullptr, 'M' },
+    {"penalty",          required_argument, nullptr, 'q' },
+    {"reward",           required_argument, nullptr, 'r' },
+    {"gapopen",          required_argument, nullptr, 'G' },
+    {"gapextend",        required_argument, nullptr, 'E' },
+    {"strand",           required_argument, nullptr, 'S' },
+    {"num_descriptions", required_argument, nullptr, 'v' },
+    {"num_alignments",   required_argument, nullptr, 'b' },
+    {"min_score",        required_argument, nullptr, 'c' },
+    {"max_score",        required_argument, nullptr, 'u' },
+    {"evalue",           required_argument, nullptr, 'e' },
+    {"minevalue",        required_argument, nullptr, 'k' },
+    {"num_threads",      required_argument, nullptr, 'a' },
+    {"outfmt",           required_argument, nullptr, 'm' },
+    {"symtype",          required_argument, nullptr, 'p' },
+    {"taxidlist",        required_argument, nullptr, 'x' },
+    {"taxid",            required_argument, nullptr, 'x' },  /* alias (2.1.1 and older) */
+    {"comp_based_stats", required_argument, nullptr, 'C' },
+    {"query_gencode",    required_argument, nullptr, 'Q' },
+    {"db_gencode",       required_argument, nullptr, 'D' },
+    {"filter",           required_argument, nullptr, 'F' },
+    {"subalignments",    required_argument, nullptr, 'K' },
+    {"dump",             required_argument, nullptr, 'N' },
+    {"out",              required_argument, nullptr, 'o' },
+    {"dbsize",           required_argument, nullptr, 'z' },
+    {"show_gis",         no_argument,       nullptr, 'I' },
+    {"show_taxid",       no_argument,       nullptr, 'H' },
+    {"help",             no_argument,       nullptr, 'h' },
+    {"version",          no_argument,       nullptr, 'V' },
+    { nullptr, 0, nullptr, 0 },
   };
   
   int option_index = 0;
-  int c;
+  int c = 0;
+
+  // gap penalties not given on the command line take the default
+  // values of the score matrix or of the symbol type; a penalty of
+  // zero is a valid value (KI-6)
+  auto gapopen_given = false;
+  auto gapextend_given = false;
   
-  while (1)
+  while (true)
     {
       c = getopt_long(argc, argv, short_options, long_options, &option_index);
       if (c == -1)
+      {
 	break;
+      }
 
       switch(c)
 	{
 	case 'a':
 	  /* threads */
-	  threads = parse_long(optarg, "Illegal number of threads specified");
+	  parameters.threads = parse_long(optarg, "Illegal number of threads specified");
 	  break;
 	  
 	case 'b':
 	  /* alignments */
-	  alignments = parse_long(optarg, "Illegal number of alignments specified.");
+	  parameters.alignments = parse_long(optarg, "Illegal number of alignments specified.");
 	  break;
 	  
 	case 'c':
 	  /* min score threshold */
-	  minscore = parse_long(optarg, "Illegal minimum score specified.");
+	  parameters.minscore = parse_long(optarg, "Illegal minimum score specified.");
 	  break;
 	  
 	case 'C':
 	  /* composition-based adjustments */
-	  if ( (strcasecmp(optarg, "F") != 0) && (strcmp(optarg, "0") != 0) )
+	  if ((strcasecmp(optarg, "F") != 0) && (strcmp(optarg, "0") != 0))
+	  {
 	    fatal("Composition-based score adjustments not supported.");
+	  }
 	  break;
 
 	case 'd':
 	  /* database */
-	  databasename = optarg;
+	  parameters.databasename = optarg;
 	  break;
 	  
 	case 'D':
 	  /* database genetic code */
-	  db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
+	  parameters.db_gencode = parse_long(optarg, "Illegal database genetic code specified.");
 	  break;
 	  
 	case 'e':
 	  /* evalue */
-	  expect = parse_double(optarg, "Illegal expect value specified.");
+	  parameters.expect = parse_double(optarg, "Illegal expect value specified.");
 	  break;
 	  
 	case 'E':
 	  /* gap extend */
-	  gapextend = parse_long(optarg, "Illegal gap penalties.");
+	  parameters.gapextend = parse_long(optarg, "Illegal gap penalties.");
+	  gapextend_given = true;
 	  break;
 	  
 	case 'F':
 	  /* filter */
-	  if ( (strlen(optarg) != 0) && (strcasecmp(optarg, "F") != 0) )
+	  if ((strlen(optarg) != 0) && (strcasecmp(optarg, "F") != 0))
+	  {
 	    fatal("Query sequence filtering not supported.");
+	  }
 	  break;
 	  
 	case 'G':
 	  /* gap open */
-	  gapopen = parse_long(optarg, "Illegal gap penalties.");
+	  parameters.gapopen = parse_long(optarg, "Illegal gap penalties.");
+	  gapopen_given = true;
 	  break;
 	  
 	case 'h':
-	  args_help();
-	  exit(1);
+	  args_help(parameters.progname);
+	  exit(0);
+	  break;
+
+	case 'V':
+	  /* long option only: -v is --num_descriptions */
+	  args_version();
+	  exit(0);
 	  break;
 	  
 	case 'H':
 	  /* show_taxid */
-	  show_taxid = 1;
+	  parameters.show_taxid = 1;
 	  break;
 	  
 	case 'i':
 	  /* query */
-	  queryname = optarg;
+	  parameters.queryname = optarg;
 	  break;
 	  
 	case 'I':
 	  /* show_gis */
-	  show_gis = 1;
+	  parameters.show_gis = 1;
 	  break;
 	  
 	case 'k':
 	  /* min evalue threshold */
-	  minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
+	  parameters.minexpect = parse_double(optarg, "Illegal minimum expect value specified.");
 	  break;
 	  
 	case 'K':
 	  /* subalignments */
-	  subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
+	  parameters.subalignments = parse_long(optarg, "Illegal number of subalignments specified.");
 	  break;
 	  
 	case 'm':
 	  /* view */
-	  view = parse_long(optarg, "Illegal view type.");
+	  parameters.view = static_cast<OutputFormat>(parse_long(optarg, "Illegal view type."));
 	  break;
 	  
 	case 'M':
 	  /* matrix */
-	  matrixname = optarg;
+	  parameters.matrixname = optarg;
 	  break;
 	  
 	case 'N':
 	  /* dump */
-	  dump = parse_long(optarg, "Illegal dump mode.");
+	  parameters.dump = parse_long(optarg, "Illegal dump mode.");
 	  break;
 	  
 	case 'o':
 	  /* output file */
-	  outfile = optarg;
+	  parameters.outfile = optarg;
 	  break;
 	  
 	case 'p':
 	  /* symtype */
 	  if (strcmp(optarg, "blastn") == 0)
-	    symtype = 0;
+	  {
+	    parameters.symtype = SymbolType::blastn;
+	  }
 	  else if (strcmp(optarg, "blastp") == 0)
-	    symtype = 1;
+	  {
+	    parameters.symtype = SymbolType::blastp;
+	  }
 	  else if (strcmp(optarg, "blastx") == 0)
-	    symtype = 2;
+	  {
+	    parameters.symtype = SymbolType::blastx;
+	  }
 	  else if (strcmp(optarg, "tblastn") == 0)
-	    symtype = 3;
+	  {
+	    parameters.symtype = SymbolType::tblastn;
+	  }
 	  else if (strcmp(optarg, "tblastx") == 0)
-	    symtype = 4;
+	  {
+	    parameters.symtype = SymbolType::tblastx;
+	  }
 	  else if (strcmp(optarg, "sound") == 0)
-	    symtype = 5;
+	  {
+	    parameters.symtype = SymbolType::sound;
+	  }
 	  else
-	    symtype = parse_long(optarg, "Illegal symbol type.");
+	  {
+	    parameters.symtype = static_cast<SymbolType>(parse_long(optarg, "Illegal symbol type."));
+	  }
 	  break;
 	  
 	case 'q':
 	  /* penalty */
-	  mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
+	  parameters.mismatchscore = parse_long(optarg, "Illegal mismatch penalty specified.");
 	  break;
 	  
 	case 'Q':
 	  /* query genetic code */
-	  query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
+	  parameters.query_gencode = parse_long(optarg, "Illegal query genetic code specified.");
 	  break;
 	  
 	case 'r':
 	  /* reward */
-	  matchscore = parse_long(optarg, "Illegal match reward specified.");
+	  parameters.matchscore = parse_long(optarg, "Illegal match reward specified.");
 	  break;
 	  
 	case 'S':
 	  if (strcmp(optarg, "plus") == 0)
-	    querystrands = 1;
+	  {
+	    parameters.querystrands = QueryStrands::plus;
+	  }
 	  else if (strcmp(optarg, "minus") == 0)
-	    querystrands = 2;
+	  {
+	    parameters.querystrands = QueryStrands::minus;
+	  }
 	  else if (strcmp(optarg, "both") == 0)
-	    querystrands = 3;
+	  {
+	    parameters.querystrands = QueryStrands::both;
+	  }
 	  else
-	    querystrands = parse_long(optarg, "Illegal query strands specified.");
+	  {
+	    parameters.querystrands = static_cast<QueryStrands>(parse_long(optarg, "Illegal query strands specified."));
+	  }
 	  break;
 
 	case 'u':
 	  /* maxscore */
-	  maxscore = parse_long(optarg, "Illegal maximum score specified.");
+	  parameters.maxscore = parse_long(optarg, "Illegal maximum score specified.");
 	  break;
 	  
 	case 'v':
 	  /* max matches shown */
-	  maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
+	  parameters.maxmatches = parse_long(optarg, "Illegal number of descriptions specified.");
 	  break;
 	  
 	case 'x':
 	  /* taxid filename */
-	  taxidfilename = optarg;
+	  parameters.taxidfilename = optarg;
 	  break;
 	  
 	case 'z':
 	  /* effective db size */
-	  effdbsize = parse_dbsize(optarg);
+	  parameters.effdbsize = parse_dbsize(optarg);
 	  break;
 	  
 	case '?':
 	default:
-	  args_usage();
+	  args_usage(parameters.progname);
 	  exit(1);
 	  break;
 	}
     }
   
-  long gopen_default;
-  long gextend_default;
+  long gopen_default = 0;
+  long gextend_default = 0;
 
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    if (gapopen == 0)
-      gapopen = 5;
-    if (gapextend == 0)
-      gapextend = 2;
-  }
-  else if (symtype < 5)
-  {
-    if (strlen(matrixname) == 0)
-      matrixname = DEFAULT_MATRIXNAME;
-
-    if (stats_getprefs(matrixname, & gopen_default, & gextend_default))
+    if (not gapopen_given)
     {
-      if (gapopen == 0)
-	gapopen = gopen_default;
-      if (gapextend == 0)
-	gapextend = gextend_default;
+      parameters.gapopen = 5;
+    }
+    if (not gapextend_given)
+    {
+      parameters.gapextend = 2;
+    }
+  }
+  else if (parameters.symtype < SymbolType::sound)
+  {
+    if (strlen(parameters.matrixname) == 0)
+    {
+      parameters.matrixname = default_matrixname;
+    }
+
+    if (stats_getprefs(parameters.matrixname, & gopen_default, & gextend_default) != 0)
+    {
+      if (not gapopen_given)
+      {
+	parameters.gapopen = gopen_default;
+      }
+      if (not gapextend_given)
+      {
+	parameters.gapextend = gextend_default;
+      }
     }
     else
     {
-      if ((gapopen == 0) && (gapextend == 0))
+      // no default for this matrix: a penalty not given is zero
+      if ((not gapopen_given) && (not gapextend_given))
+      {
 	fatal("Unknown score matrix. Gap penalties must be specified (-G and -E).");
+      }
     }
   }
-  else if (symtype == 5)
+  else if (parameters.symtype == SymbolType::sound)
   {
-    if (strlen(matrixname) == 0)
-      matrixname = "IDENTITY_5_1";
-    if (gapopen == 0)
-      gapopen = 15;
-    if (gapextend == 0)
-      gapextend = 5;
+    if (strlen(parameters.matrixname) == 0)
+    {
+      parameters.matrixname = "IDENTITY_5_1";
+    }
+    if (not gapopen_given)
+    {
+      parameters.gapopen = 15;
+    }
+    if (not gapextend_given)
+    {
+      parameters.gapextend = 5;
+    }
   }
 
-  gapopenextend = gapopen + gapextend;
+  parameters.gapopenextend = parameters.gapopen + parameters.gapextend;
 
-  if (effdbsize < 0)
+  if (parameters.effdbsize < 0)
+  {
     fatal("Illegal effective db size specified");
+  }
 
-  if ((threads < 1) || (threads > MAX_THREADS))
+  if ((parameters.threads < 1) || (parameters.threads > max_threads))
+  {
     fatal("Illegal number of threads specified");
+  }
 
-  if (strlen(databasename) == 0)
+  if (strlen(parameters.databasename) == 0)
+  {
     fatal("No database specified.");
-  
-  if (!((view==0)||(view==7)||(view==8)||(view==9)||(view==99)))
+  }
+
+  if (!((parameters.view == OutputFormat::plain) || (parameters.view == OutputFormat::xml) || (parameters.view == OutputFormat::tabular) || (parameters.view == OutputFormat::tabular_with_comments) || (parameters.view == OutputFormat::paralign_xml)))
+  {
     fatal("Illegal view type.");
-  
-  if ((symtype < 0) || (symtype > 5))
+  }
+
+  if ((parameters.symtype < SymbolType::blastn) || (parameters.symtype > SymbolType::sound))
+  {
     fatal("Illegal symbol type.");
+  }
 
-  if ((gapopen < 0) || (gapextend < 0) || ((gapopen + gapextend) < 1))
+  if ((parameters.gapopen < 0) || (parameters.gapextend < 0) || ((parameters.gapopen + parameters.gapextend) < 1))
+  {
     fatal("Illegal gap penalties.");
+  }
 
-  if ((querystrands < 1) || (querystrands > 3))
+  if ((parameters.querystrands < QueryStrands::plus) || (parameters.querystrands > QueryStrands::both))
+  {
     fatal("Illegal query strands specified.");
+  }
 
-  if ((querystrands == 2) && ((symtype == 1) || (symtype == 3)))
+  if ((parameters.querystrands == QueryStrands::minus) && ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn)))
+  {
     fatal("Illegal strand specified for protein query.");
+  }
 
-  if ((query_gencode < 1)  || (query_gencode > 23) || (! gencode_names[query_gencode-1]))
+  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[parameters.query_gencode - 1] == nullptr))
+  {
     fatal("Illegal query genetic code specified.");
+  }
 
-  if ((db_gencode < 1) || (db_gencode > 23) || (! gencode_names[db_gencode-1]))
+  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[parameters.db_gencode - 1] == nullptr))
+  {
     fatal("Illegal database genetic code specified.");
+  }
 
-  if ((dump<0) || (dump>2))
+  if ((parameters.dump < 0) || (parameters.dump > 2))
+  {
     fatal("Illegal dump mode.");
+  }
 
   /* ranges of the result limits (KI-7, KI-9) */
-  if (maxmatches < 0)
+  if (parameters.maxmatches < 0)
+  {
     fatal("Illegal number of descriptions specified.");
+  }
 
-  if (alignments < 0)
+  if (parameters.alignments < 0)
+  {
     fatal("Illegal number of alignments specified.");
+  }
 
   /* scores below 1 are not alignments ("Internal error in align
      function.") */
-  if (minscore < 1)
+  if (parameters.minscore < 1)
+  {
     fatal("Illegal minimum score specified.");
+  }
 
-  if (maxscore < 0)
+  if (parameters.maxscore < 0)
+  {
     fatal("Illegal maximum score specified.");
+  }
 
-  if (expect <= 0.0)
+  if (parameters.expect <= 0.0)
+  {
     fatal("Illegal expect value specified.");
+  }
 
-  if (minexpect < 0.0)
+  if (parameters.minexpect < 0.0)
+  {
     fatal("Illegal minimum expect value specified.");
+  }
 
   /* the output file is opened (and truncated) only once all the
      options are checked (KI-8) */
-  if (outfile)
+  if (parameters.outfile != nullptr)
   {
-    FILE * f = fopen(outfile, "w");
-    if (! f)
+    FILE * f = fopen(parameters.outfile, "w");
+    if (f == nullptr)
+    {
       fatal("Unable to open output file for writing.");
+    }
     out = f;
   }
   
-  translate_init(query_gencode, db_gencode);
+  translate_init(parameters.query_gencode, parameters.db_gencode);
+
+  return parameters;
 }
 
-
-void vector_fill(BYTE * vector, BYTE value)
-{
-  memset(vector, value, 16);
-}
-
-void vector_print(BYTE * vector)
-{
-  for(int i=0; i<16; i++)
-    fprintf(out, " %02x", vector[i]);
-}
-
-void vector_print_word(WORD * vector)
-{
-  for(int i=0; i<8; i++)
-    fprintf(out, " %04x", vector[i]);
-}
-
-
-void search_init(struct search_data * sdp)
+auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
-  sdp->dprofile = (BYTE*) xmalloc(4*16*32);
+  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
   long qlen = 0;
   long hearraylen = 0;
-  
-  for(int i = 0; i < 6; i++)
-  {
-    sdp->qtable[i] = 0;
-  }
 
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+    for (int s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	for(int i=0; i<qlen; i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + 64*query.nt[s].seq[i];
+	  sdp->qtable[3*s][i] = sdp->dprofile + (64*query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
+    }
   }
-  else if ((symtype == 1) || (symtype == 3) || (symtype == 5))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
     for(int i=0; i<qlen; i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + 64*query.aa[0].seq[i];
+      sdp->qtable[0][i] = sdp->dprofile + (64*query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
-  else if ((symtype == 2) || (symtype == 4))
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
-    for(int s=0; s<2; s++)
-      if ((s+1) & querystrands)
+    for (int s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
 	for(int f=0; f<3; f++)
 	{
-	  qlen = query.aa[3*s+f].len;
-	  sdp->qlen[3*s+f] = qlen;
-	  sdp->qtable[3*s+f] = (BYTE**) xmalloc(qlen*sizeof(BYTE*));
+	  qlen = query.aa[(3*s)+f].len;
+	  sdp->qlen[(3*s)+f] = qlen;
+	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
 	  for(int i=0; i<qlen; i++)
 	  {
-	    sdp->qtable[3*s+f][i] = sdp->dprofile + 64*query.aa[3*s+f].seq[i];
+	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (64*query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
+      }
+    }
   }
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = (BYTE*) xmalloc(hearraylen*32);
+  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  long listsize = maxchunksize * sizeof(long);
-  if ((symtype == 3) || (symtype == 4))
-    listsize *= 6;
-
-  sdp->start_list = (long*) xmalloc(listsize);
-  sdp->in_list = (long*) xmalloc(listsize);
-  sdp->out_list = (long*) xmalloc(listsize);
-  sdp->scores = (long*) xmalloc(listsize);
-  sdp->bestpos = (long*) xmalloc(listsize);
-  sdp->bestq = (long*) xmalloc(listsize);
-
-  if (symtype == 0)
+  auto listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
+  if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    listsize *= 6;
+  }
+
+  sdp->start_list = static_cast<long*>(xmalloc(listsize));
+  sdp->in_list = static_cast<long*>(xmalloc(listsize));
+  sdp->out_list = static_cast<long*>(xmalloc(listsize));
+  sdp->scores = static_cast<long*>(xmalloc(listsize));
+  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
+  sdp->bestq = static_cast<long*>(xmalloc(listsize));
+
+  if (parameters.symtype == SymbolType::blastn)
+  {
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 0;
 
     sdp->dstrand1 = 0;
@@ -1335,11 +1348,11 @@ void search_init(struct search_data * sdp)
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 2)
+  else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1347,7 +1360,7 @@ void search_init(struct search_data * sdp)
     sdp->dstrand2 = 0;
     sdp->dframe2 = 0;
   }
-  else if (symtype == 3)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     sdp->qstrand1 = 0;
     sdp->qframe1 = 0;
@@ -1359,11 +1372,11 @@ void search_init(struct search_data * sdp)
     sdp->dstrand2 = 1;
     sdp->dframe2 = 2;
   }
-  else if (symtype == 4)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = querystrands == 2 ? 1 : 0;
+    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
     sdp->qframe1 = 0;
-    sdp->qstrand2 = querystrands == 1 ? 0 : 1;
+    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
     sdp->qframe2 = 2;
 
     sdp->dstrand1 = 0;
@@ -1386,12 +1399,14 @@ void search_init(struct search_data * sdp)
 
 }
 
-void search_done(struct search_data * sdp)
+auto search_done(struct search_data * sdp) -> void
 {
-  for(int i = 0; i < 6; i++)
+  for(auto * query_table : sdp->qtable)
   {
-    if (sdp->qtable[i])
-      free(sdp->qtable[i]);
+    if (query_table != nullptr)
+    {
+      free(query_table);
+    }
   }
 
   free(sdp->dprofile);
@@ -1405,17 +1420,17 @@ void search_done(struct search_data * sdp)
   db_thread_destruct(sdp->dbt);
 }
 
-int search_getwork(long * first, long * last)
+auto search_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long volcount = db_getvolumecount();
+  long const volcount = db_getvolumecount();
   
-  pthread_mutex_lock(&workmutex);
+  std::lock_guard<std::mutex> const lock(workmutex);
   if (volnext < volcount)
   {
-    long seqcount = volseqs[volnext];
-    long chunks = volchunks[volnext];
-    long chunksize = ((seqcount+chunks-1) / chunks);
+    long const seqcount = volseqs[volnext];
+    long const chunks = volchunks[volnext];
+    long const chunksize = ((seqcount+chunks-1) / chunks);
 
     * first = seqnext;
     * last = seqnext + chunksize - 1;
@@ -1426,43 +1441,59 @@ int search_getwork(long * first, long * last)
 
     volseqs[volnext] -= chunksize;
     volchunks[volnext]--;
-    
+
     while ((volnext < volcount) && (volchunks[volnext] == 0))
+    {
       volnext++;
+    }
   }
-  pthread_mutex_unlock(&workmutex);
   return status;
 }
 
 
-void search_chunk(struct search_data * sdp)
+// blastn: a hit of the reverse complement of the query is entered as
+// a hit of the query on the reverse strand of the database sequence
+auto reported_strands(SymbolType const symbol_type, HitStrands const & strands) -> HitStrands
+{
+  if ((symbol_type == SymbolType::blastn) && (strands.qstrand != 0))
+  {
+    return {0, 0, 1, 0};
+  }
+  return strands;
+}
+
+auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> void
 {
   // the 7-bit engine uses signed bytes: gap penalties are clamped to
   // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
   // penalty of 127 already takes any score down to zero. The 16-bit
   // and 63-bit engines, and the alignments, use the real penalties
   long const max_7 = std::numeric_limits<signed char>::max();
-  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(gapopenextend, max_7));
-  BYTE const gapextend_7 = static_cast<BYTE>(std::min(gapextend, max_7));
+  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(parameters.gapopenextend, max_7));
+  BYTE const gapextend_7 = static_cast<BYTE>(std::min(parameters.gapextend, max_7));
 
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
-  
-  if(taxidfilename)
+
+  if (parameters.taxidfilename != nullptr)
+  {
     db_mapheaders(sdp->dbt, sdp->seqfirst, sdp->seqlast);
-  
+  }
+
   sdp->start_count = 0;
   for(long seqno = sdp->seqfirst; seqno <= sdp->seqlast; seqno++)
   {
-    if (db_check_inclusion(sdp->dbt, seqno))
+    if (db_check_inclusion(sdp->dbt, seqno) != 0)
     {
-      if ((symtype == 3) || (symtype == 4))
+      if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
-	for(long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
+	for (long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
+	{
 	  for(long dframe = sdp->dframe1; dframe <= sdp->dframe2; dframe++)
 	  {
 	    sdp->start_list[sdp->start_count++] =
 	      (seqno << 3) | (dstrand << 2) | dframe;
 	  }
+	}
       }
       else
       {
@@ -1470,29 +1501,28 @@ void search_chunk(struct search_data * sdp)
       }
     }
   }
-  
+
   if (sdp->start_count == 0)
+  {
     return;
-  
-  long s1 = sdp->start_list[0] >> 3;
-  long s2 = sdp->start_list[sdp->start_count-1] >> 3;
+  }
+
+  long const s1 = sdp->start_list[0] >> 3;
+  long const s2 = sdp->start_list[sdp->start_count-1] >> 3;
   
   // fprintf(out, "Mapping seqnos %ld to %ld\n", s1, s2);
 
   db_mapsequences(sdp->dbt, s1, s2);
 
   for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+  {
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
-      long dstrand, dframe;
-      
       sdp->out_count = sdp->start_count;
-      memcpy(sdp->out_list, sdp->start_list, sdp->start_count * sizeof(long));
+      memcpy(sdp->out_list, sdp->start_list, static_cast<std::size_t>(sdp->start_count) * sizeof(long));
       
-      BYTE ** qtable = sdp->qtable[3*qstrand+qframe];
-      long qlen = sdp->qlen[3*qstrand+qframe];
-      
-#if 1
+      BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+      long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
       /* 7-bit search */
 	  
@@ -1503,18 +1533,20 @@ void search_chunk(struct search_data * sdp)
 	  
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute7 += sdp->in_count;
-	rounds7++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute7 += sdp->in_count;
+	  rounds7++;
+	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
-	    
-	if (cpu_feature_ssse3)
+
+	if (cpu_feature_ssse3 != 0)
+	{
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
-			(BYTE*) score_matrix_7t,
+			reinterpret_cast<BYTE*>(score_matrix_7t),
 			sdp->dprofile,
 			sdp->hearray,
 			sdp->dbt,
@@ -1522,11 +1554,13 @@ void search_chunk(struct search_data * sdp)
 			sdp->in_list,
 			sdp->scores,
 			qlen);
+	}
 	else
+	{
 	  search7(qtable,
 		  gapopenextend_7,
 		  gapextend_7,
-		  (BYTE*) score_matrix_7,
+		  reinterpret_cast<BYTE *>(score_matrix_7),
 		  sdp->dprofile,
 		  sdp->hearray,
 		  sdp->dbt,
@@ -1534,24 +1568,23 @@ void search_chunk(struct search_data * sdp)
 		  sdp->in_list,
 		  sdp->scores,
 		  qlen);
-	
+	}
+
 	sdp->out_count = 0;
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long score = sdp->scores[i];
+	  long const seqnosf = sdp->in_list[i];
+	  long const score = sdp->scores[i];
       
 	  if (score < SCORELIMIT_7)
 	  {
-	    long seqno = seqnosf >> 3;
-	    dstrand = (seqnosf >> 2) & 1;
-	    dframe = seqnosf & 3;
+	    long const seqno = seqnosf >> 3;
+	    long const dstrand = (seqnosf >> 2) & 1;
+	    long const dframe = seqnosf & 3;
 
-	    if ((symtype == 0) && qstrand)
-	      hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
-	    else
-	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
+	    hits_enter(seqno, score,
+		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1559,9 +1592,6 @@ void search_chunk(struct search_data * sdp)
 	  }
 	}
       }
-#endif
-
-#if 1
 
       /* 16-bit search */
 	  
@@ -1572,44 +1602,41 @@ void search_chunk(struct search_data * sdp)
   
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute16 += sdp->in_count;
-	rounds16++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute16 += sdp->in_count;
+	  rounds16++;
+	}
 	  
-	search16((WORD**)qtable,
-		 gapopenextend,
-		 gapextend,
-		 (WORD*)(score_matrix_16),
-		 (WORD*)(sdp->dprofile),
-		 (WORD*)(sdp->hearray),
+	// the 16-bit penalties are only used when they fit (KI-13:
+	// otherwise no 16-bit result is accepted)
+	search16(reinterpret_cast<WORD**>(qtable),
+		 static_cast<WORD>(parameters.gapopenextend),
+		 static_cast<WORD>(parameters.gapextend),
+		 reinterpret_cast<WORD*>(score_matrix_16),
+		 reinterpret_cast<WORD*>(sdp->dprofile),
+		 reinterpret_cast<WORD*>(sdp->hearray),
 		 sdp->dbt,
 		 sdp->in_count,
 		 sdp->in_list,
 		 sdp->scores,
 		 sdp->bestpos,
-		 qlen);
+		 static_cast<int>(qlen));
     
 	sdp->out_count = 0;
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long score = sdp->scores[i];
+	  long const seqnosf = sdp->in_list[i];
+	  long const score = sdp->scores[i];
 	  if (score < SCORELIMIT_16)
 	  {
-	    long seqno = seqnosf >> 3;
-	    dstrand = (seqnosf >> 2) & 1;
-	    dframe = seqnosf & 3;
-		
-	    long pos = sdp->bestpos[i];
-	    
-	    //	    fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
+	    long const seqno = seqnosf >> 3;
+	    long const dstrand = (seqnosf >> 2) & 1;
+	    long const dframe = seqnosf & 3;
 
-	    if ((symtype == 0) && qstrand)
-	      hits_enter(seqno, score, 0, 0, 1, 0, pos, -1);
-	    else
-	      hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, -1);
+	    hits_enter(seqno, score,
+		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	  }
 	  else
 	  {
@@ -1617,10 +1644,7 @@ void search_chunk(struct search_data * sdp)
 	  }
 	}
       }
-#endif
       
-#if 1
-
       /* 63-bit search */
 
       sdp->tmp_list = sdp->in_list;
@@ -1630,78 +1654,84 @@ void search_chunk(struct search_data * sdp)
   
       if (sdp->in_count > 0)
       {
-	pthread_mutex_lock(&countmutex);
-	compute63 += sdp->in_count;
-	rounds63++;
-	pthread_mutex_unlock(&countmutex);
+	{
+	  std::lock_guard<std::mutex> const lock(countmutex);
+	  compute63 += sdp->in_count;
+	  rounds63++;
+	}
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
-	  long seqnosf = sdp->in_list[i];
-	  long seqno = seqnosf >> 3;
-	  dstrand = (seqnosf >> 2) & 1;
-	  dframe = seqnosf & 3;
+	  long const seqnosf = sdp->in_list[i];
+	  long const seqno = seqnosf >> 3;
+	  long const dstrand = (seqnosf >> 2) & 1;
+	  long const dframe = seqnosf & 3;
       
-	  char * address;
-	  long length;
-	  long ntlen;
+	  char * address = nullptr;
+	  long length = 0;
+	  long ntlen = 0;
 	  db_getsequence(sdp->dbt, seqno, dstrand, dframe, 
 			 & address, & length, & ntlen, 0);
 	  char * dbegin = address;
-	  char * dend = address + length - 1;
+	  char const * dend = address + length - 1;
       
-	  char * q;
-	  if (symtype == 0)
+	  char * q = nullptr;
+	  if (parameters.symtype == SymbolType::blastn)
+	  {
 	    q = query.nt[qstrand].seq;
+	  }
 	  else
-	    q = query.aa[3*qstrand+qframe].seq;
+	  {
+	    q = query.aa[(3 * qstrand) + qframe].seq;
+	  }
 
-	  long score = fullsw(dbegin,
+	  long const score = fullsw(dbegin,
 			      dend,
-			      (char*) q, 
-			      (char*) q + qlen,
-			      (long*) sdp->hearray,
+			      q, 
+			      q + qlen,
+			      reinterpret_cast<long*>(sdp->hearray),
 			      score_matrix_63,
-			      gapopenextend,
-			      gapextend);
+			      parameters.gapopenextend,
+			      parameters.gapextend);
 
-	  if ((symtype == 0) && qstrand)
-	    hits_enter(seqno, score, 0, 0, 1, 0, -1, -1);
-	  else
-	    hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, -1, -1);
+	  hits_enter(seqno, score,
+		     reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
 	}
       }
   
-#endif
     }
+  }
 }
 
 
-void * worker(void *)
+auto worker(void * arguments) -> void *
 {
+  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   struct search_data sd;
-  search_init(&sd);
+  search_init(parameters, &sd);
 
-  while(search_getwork(&sd.seqfirst, &sd.seqlast))
-    search_chunk(&sd);
+  while (search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
+  {
+    search_chunk(parameters, &sd);
+  }
 
   search_done(&sd);
-  return 0;
+  return nullptr;
 }
 
 
-void prepare_search(long par)
+auto prepare_search(long par) -> void
 {
   volnext = 0;
   seqnext = 0;
 
-#if 1
-
-  long volcount = db_getvolumecount();
-  for(long v = 0; v < volcount; v++)
+  long const volcount = db_getvolumecount();
+  for (long v = 0; v < volcount; v++)
+  {
     volseqs[v] = db_getseqcount_volume(v);
+  }
 
-  long totalchunks;
+  long totalchunks = 0;
 
   calc_chunks(volcount,
 	      par,
@@ -1712,95 +1742,60 @@ void prepare_search(long par)
 	      & maxchunksize);
 
   while ((volnext < volcount) && (volchunks[volnext] == 0))
+  {
     volnext++;
-  
-#else
-  long seqcount = db_getseqcount();
-
-  long chunkcount;
-  if (seqcount >= 16*par)
-  {
-    chunkcount = par * (long) (floor(sqrt((1.0 * seqcount) / (16 * par))));
   }
-  else if (seqcount >= par)
-  {
-    chunkcount = par;
-  }
-  else
-  {
-    chunkcount = seqcount;
-  }
-
-//  fprintf(out, "Chunkcount: %ld\n", chunkcount);
-
-  long volcount = db_getvolumecount();
-  long rest_chunks = chunkcount;
-  long rest_seqcount = seqcount;
-  
-  //  fprintf(out, "Seqcount, chunkcount, ratio (total): %ld, %ld, %f\n", seqcount, chunkcount, 1.0 * seqcount / chunkcount);
-
-  maxchunksize = 0;
-
-  for(long i = 0; i < volcount; i++)
-  {
-    long volsize = db_getseqcount_volume(i);
-    long volchunk = ((rest_chunks * volsize) + rest_seqcount - 1) / rest_seqcount;
-    
-    volseqs[i] = volsize;
-    volchunks[i] = volchunk;
-
-    long chunksize = (volsize + volchunk -1) / volchunk;
-
-    if (chunksize > maxchunksize)
-      maxchunksize = chunksize;
-
-    // fprintf(out, "Seqcount, chunkcount, ratio (%ld): %ld, %ld, %f\n", i, volsize, volchunk, 1.0 * volsize / volchunk);
-
-    rest_chunks -= volchunk;
-    rest_seqcount -= volsize;
-  }
-#endif
 }
 
-void run_threads()
+auto run_threads(Parameters const & parameters) -> void
 {
-  long t;
-  void * status;
+  long t = 0;
+  void * status = nullptr;
 
-  for(t=0; t<threads; t++)
+  WorkerArguments arguments {&parameters};
+  for(t=0; t<parameters.threads; t++)
     {
-      if (pthread_create(pthread_id + t, 0, worker, (void *)t))
+      if (pthread_create(pthread_id + t, nullptr, worker, &arguments) != 0)
+      {
 	fatal("Cannot create thread.");
+      }
     }
   
-  for(t=0; t<threads; t++) {
-    if (pthread_join(pthread_id[t], &status))
+  for(t=0; t<parameters.threads; t++) {
+    if (pthread_join(pthread_id[t], &status) != 0)
+    {
       fatal("Cannot join thread.");
+    }
   }
 }
+
+}  // anonymous namespace
 
 #define cpuid(l1,l2,a,b,c,d)						\
   __asm__ __volatile__							\
     ("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (l1), "c" (l2));
 
-void cpu_features()
+namespace {
+
+auto cpu_features() -> void
 {
-  unsigned int a __attribute__ ((unused));
-  unsigned int b __attribute__ ((unused));
-  unsigned int c,d;
+  unsigned int a __attribute__ ((unused)) = 0;
+  unsigned int b __attribute__ ((unused)) = 0;
+  unsigned int c = 0;
+  unsigned int d = 0;
   cpuid(1,0,a,b,c,d);
   cpu_feature_sse2  = (d >> 26) & 1;
   cpu_feature_ssse3 = (c >>  9) & 1;
   cpu_feature_sse41 = (c >> 19) & 1;
 }
 
-void clock_start(struct time_info * tip)
+auto clock_start(struct time_info * tip) -> void
 {
   time(& tip->t1);                 /* time(2)   */
   tip->clock1 = std::chrono::steady_clock::now();
 }
 
-void clock_stop(struct time_info * tip)
+auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
 {
   struct tm tms;
   char const timeformat[] = "%a, %e %b %Y %T UTC";
@@ -1816,701 +1811,69 @@ void clock_stop(struct time_info * tip)
 
   tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
   
-  double speed = ((double)db_getsymcount_masked());
+  double speed = (static_cast<double>(db_getsymcount_masked()));
 
-  if (symtype == 0)
+  if (parameters.symtype == SymbolType::blastn)
   {
-    speed *= query.nt[0].len;
-    if (querystrands == 3)
+    speed *= static_cast<double>(query.nt[0].len);
+    if (parameters.querystrands == QueryStrands::both)
+    {
       speed *= 2;
+    }
   }
-  else if ((symtype == 1) || (symtype == 5))
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::sound))
   {
     /* sound queries are stored as amino acid queries (KI-33) */
-    speed *= query.aa[0].len;
+    speed *= static_cast<double>(query.aa[0].len);
   }
-  else if (symtype == 2)
+  else if (parameters.symtype == SymbolType::blastx)
   {
-    speed *= query.nt[0].len;
-    if (querystrands == 3)
+    speed *= static_cast<double>(query.nt[0].len);
+    if (parameters.querystrands == QueryStrands::both)
+    {
       speed *= 2;
+    }
   }
-  else if (symtype == 3)
+  else if (parameters.symtype == SymbolType::tblastn)
   {
     speed *= 2;
-    speed *= query.aa[0].len;
+    speed *= static_cast<double>(query.aa[0].len);
   }
-  else if (symtype == 4)
+  else if (parameters.symtype == SymbolType::tblastx)
   {
     speed *= 2;
-    speed *= query.nt[0].len;
-    if (querystrands == 3)
+    speed *= static_cast<double>(query.nt[0].len);
+    if (parameters.querystrands == QueryStrands::both)
+    {
       speed *= 2;
+    }
   }
   /* the speed is unknown when no time elapsed (KI-33) */
   tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
   
-  if (view == 0)
+  if (parameters.view == OutputFormat::plain)
   {
     fprintf(out, "Search started:    %s\n", tip->starttime.data());
     fprintf(out, "Search completed:  %s\n", tip->endtime.data());
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
+    {
       fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+    }
     else
+    {
       fprintf(out, "Speed:             n/a\n");
+    }
     fprintf(out, "\n");
   }
 }
 
 
-#ifdef MPISWIPE
 
-#define tag_die 0
-#define tag_search 1
-#define tag_search_done 2
-#define tag_search_get 3
-#define tag_search_report 4
-#define tag_align 5
-#define tag_align_init 11
-#define tag_align_done 6
-#define tag_align_get 7
-#define tag_align_report 8
-#define tag_features 9
-#define tag_stats 10
-#define tag_align_header 11
-#define tag_align_seq 12
-#define tag_align_coord 13
-#define tag_align_string 14
-
-void master(int size)
+auto work(Parameters const & parameters) -> void
 {
-  long nodes_with_sse2 = cpu_feature_sse2;
-  long nodes_with_ssse3 = cpu_feature_ssse3;
-
-  for(int i=1; i < size; i++)
-  {
-    long features;
-    MPI_Status s;
-    MPI_Recv(&features, 1, MPI_LONG, MPI_ANY_SOURCE, tag_features, 
-	     MPI_COMM_WORLD, &s);
-    nodes_with_sse2 += features >> 1;
-    nodes_with_ssse3 += features & 1;
-  }
-
-  if (nodes_with_sse2 < size)
-    fatal("Sorry, some nodes lack SSE2.");
-  
-  if (nodes_with_ssse3 < size)
-  {
-    fprintf(out, "Performance reduced because %ld nodes lack SSSE3.\n",
-	   size - nodes_with_ssse3);
-  }
-  
-  if (size < 2)
-    fatal("Cannot run on a single node.");
-
-  args_show();
-
-
-  /* master node, job distributor */
-
-  //fprintf(out, "This is the master.\n");
-
-  /* init */
-  
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
-
-  prepare_search(size-1);
-
-  if (view==0)
-    {
-      fprintf(out, "Searching...");
-      fflush(out);
-    }
-
-  long slaves_active = 0;
-  long first = 0;
-  long last = 0;
-  
-  long buffersize = 1024;
-
-  //  fprintf(out, "master buffersize: %ld.\n", buffersize);
-  
-  char * buffer = (char*) xmalloc(buffersize);
-  long * longbuffer = (long*) buffer;
-
-  compute7 = 0;
-  compute16 = 0;
-  compute32 = 0;
-  compute63 = 0;
-  rounds7 = 0;
-  rounds16 = 0;
-  rounds32 = 0;
-  rounds63 = 0;
-  totalhits = 0;
-
-  clock_start(&ti);
-  
-  /* phase 1 - searching */
-
-  for (int i = 1; i < size; i++)
-  {
-    if (search_getwork(&first, &last))
-    {
-      longbuffer[0] = first;
-      longbuffer[1] = last;
-      /* To be made non-blocking with mpi_isend.
-	 Need individual buffers. 
-	 Need request list. */
-      MPI_Send(longbuffer, 2, MPI_LONG, i, tag_search, MPI_COMM_WORLD);
-      //      fprintf(out, "Asking slave %d to search from %ld to %ld.\n", i, first, last);
-      slaves_active++;
-    }	
-    else
-      break;
-  }
-  
-  while(slaves_active)
-  {
-    long morework = search_getwork(&first, &last);
-
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-    
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Received message with tag %d and length %d from node %d.\n",
-	   tag, len, source);
-#endif
-
-    switch(tag)
-    {
-
-    case tag_search_done:
-
-      if (morework)
-      {
-	longbuffer[0] = first;
-	longbuffer[1] = last;
-	MPI_Send(longbuffer, 2, MPI_LONG, source, tag_search, MPI_COMM_WORLD);
-	//	fprintf(out, "Asking slave %d to search from %ld to %ld.\n", source, first, last);
-      }	
-      else
-      {
-	MPI_Send(0, 0, MPI_CHAR, source, tag_search_get, MPI_COMM_WORLD);
-	//	fprintf(out, "Asking slave %d to send results\n", source);
-      }
-      break;
-
-    case tag_search_report:
-      
-#ifdef DEBUG
-      fprintf(out, "Master receiving %d hits from slave %d.\n", len/56, source);
-#endif
-
-      for (int i = 0; i < (long)(len/sizeof(long)); i+=8)
-      {
-
-	long seqno = longbuffer[i+0];
-	long score = longbuffer[i+1];
-	long qstrand = longbuffer[i+2];
-	long qframe = longbuffer[i+3];
-	long dstrand = longbuffer[i+4];
-	long dframe = longbuffer[i+5];
-	long pos = longbuffer[i+6];
-	long bestq = longbuffer[i+7];
-
-	//	fprintf(out, "seqno=%ld\n", seqno);
-	if ((symtype == 0) && qstrand)
-	  hits_enter(seqno, score, 0, 0, 1, 0, pos, bestq);
-	else
-	  hits_enter(seqno, score, qstrand, qframe, dstrand, dframe, pos, bestq);
-      }
-      
-      break;
-
-    case tag_stats:
-      
-      rounds7 += longbuffer[0];
-      rounds16 += longbuffer[1];
-      rounds32 += longbuffer[2];
-      rounds63 += longbuffer[3];
-      compute7 += longbuffer[4];
-      compute16 += longbuffer[5];
-      compute32 += longbuffer[6];
-      compute63 += longbuffer[7];
-      totalhits += longbuffer[8];
-      
-      slaves_active--;
-
-      break;
-    }
-  }
-
-  if (view == 0)
-    fprintf(out, "...............................................done\n\n");
-
-  clock_stop(&ti);
-
-#if 0
-  if (view == 0)
-  {
-    fprintf(out, "Computed (7bit):   %ld sequences in %ld rounds\n", compute7, rounds7);
-    fprintf(out, "Computed (16bit):  %ld sequences in %ld rounds\n", compute16, rounds16);
-    //    fprintf(out, "Computed (32bit):  %ld sequences in %ld rounds\n", compute32, rounds32);
-    fprintf(out, "Computed (63bit):  %ld sequences in %ld rounds\n", compute63, rounds63);
-    fprintf(out, "\n");
-  }
-#endif
-  
-  /* phase 2 - aligning */
-
-  //OK master: align_threads_init();
-  // slaves: align_init(&sd);
-  // master: align_getwork -> slaves (i,j)
-  // slaves: align_chunk(&sd, i, j)
-  // slaves: align_done(&sd);
-  //OK master: align_threads_done();
-  
-
-  long hitno = 0;
-  long n = hits_getcount();
-  long showalignments = n < alignments ? n : alignments;
-  long * node_job = (long *) xmalloc(size * sizeof(long));
-  long seqno, score, qstrand, qframe, dstrand, dframe;
-  
-  align_threads_init();
-
-  //  if (view == 0)
-  //    clock_start(&ti);
-
-  while ((hitno < n) && (hitno < size - 1))
-  {
-    hits_gethit(hitno, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-    longbuffer[0] = seqno;
-    longbuffer[1] = hitno < showalignments;
-    longbuffer[2] = qstrand;
-    longbuffer[3] = qframe;
-    longbuffer[4] = dstrand;
-    longbuffer[5] = dframe;
-    node_job[hitno+1] = hitno;
-#ifdef DEBUG
-    fprintf(out, "Asking node %ld to align hitno %ld seqno %ld.\n", hitno+1, hitno, seqno);
-#endif
-    MPI_Send(longbuffer, 6, MPI_LONG, hitno+1, tag_align, MPI_COMM_WORLD);
-    slaves_active++;
-    hitno++;
-  }
-
-  while(slaves_active)
-  {
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Received message with tag %d and length %d from node %d.\n",
-	   tag, len, source);
-#endif
-
-    switch(tag)
-    {
-
-    case tag_align_seq:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving sequence from node %d\n", source);
-#endif
-      hits_enter_seq(node_job[source], buffer, len);
-      break;
-
-    case tag_align_coord:
-      
-#ifdef DEBUG
-      fprintf(out, "Receiving coord from node %d\n", source);
-#endif
-      hits_enter_align_coord(node_job[source],
-			     longbuffer[0],
-			     longbuffer[1],
-			     longbuffer[2],
-			     longbuffer[3],
-			     longbuffer[4]);
-      break;
-
-    case tag_align_string:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving alignment from node %d\n", source);
-#endif
-      hits_enter_align_string(node_job[source], buffer, len);
-      break;
-
-    case tag_align_header:
-
-#ifdef DEBUG
-      fprintf(out, "Receiving header from node %d (hitno %ld)\n", source, node_job[source]);
-#endif
-      hits_enter_header(node_job[source], buffer, len);
-      
-      if (hitno < n)
-      {
-	hits_gethit(hitno, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-	longbuffer[0] = seqno;
-	longbuffer[1] = hitno < showalignments;
-	longbuffer[2] = qstrand;
-	longbuffer[3] = qframe;
-	longbuffer[4] = dstrand;
-	longbuffer[5] = dframe;
-	node_job[source] = hitno;
-#ifdef DEBUG
-	fprintf(out, "Asking node %d to align hitno %ld seqno %ld.\n", source, hitno, seqno);
-#endif
-	MPI_Send(longbuffer, 6, MPI_LONG, source, tag_align, MPI_COMM_WORLD);
-	hitno++;
-      }
-      else
-	slaves_active--;
-      break;
-
-    }
-  }
-
-  //  if (view == 0)
-  //    clock_stop(&ti);
-
-#ifdef DEBUG
-  fprintf(out, "Showing hits.\n");
-#endif
-
-  hits_show(view, show_gis);
-  
-#ifdef DEBUG
-  fprintf(out, "Shown hits.\n");
-#endif
-
-  /* ask all slaves to terminate. */
-  for (int i=1; i < size; i++)
-    MPI_Send(0, 0, MPI_CHAR, i, tag_die, MPI_COMM_WORLD);
-    
-  hits_exit();
-
-  align_threads_done();
-
-  free(node_job);
-  free(buffer);
-
-#ifdef DEBUG
-  fprintf(out, "Master completed.\n");
-#endif
-}
-
-void slave(int rank, int size)
-{
-  (void) rank; /* avoid warning */
-  
-  long features = cpu_feature_sse2 * 2 + cpu_feature_ssse3;
-  MPI_Send(&features, 1, MPI_LONG, 0, tag_features, MPI_COMM_WORLD);
-
-  //  fprintf(out, "Node %d: SSE2: %ld SSSE3: %ld\n", rank, cpu_feature_sse2, cpu_feature_ssse3);
-  //  fprintf(out, "This is slave no %d.\n", rank);
-
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, 0);
-
-  prepare_search(size-1);
-
-  long morework = 1;
-
-  long buffersize = 1024;
-  char * buffer = (char*) xmalloc(buffersize);
-  long * longbuffer = (long*) buffer;
-  
-  //  fprintf(out, "buffersize: %ld.\n", buffersize);
-
-  //OK master: align_threads_init();
-  // slaves: align_init(&sd);
-  // master: align_getwork -> slaves (i,j)
-  // slaves: align_chunk(&sd, i, j)
-  // slaves: align_done(&sd);
-  //OK master: align_threads_done();
-
-  struct search_data sd;
-
-  search_init(&sd);
-
-  totalhits = 0;
-  compute7 = 0;
-  compute16 = 0;
-  compute32 = 0;
-  compute63 = 0;
-  rounds7 = 0;
-  rounds16 = 0;
-  rounds32 = 0;
-  rounds63 = 0;
-
-  struct db_thread_s * t = db_thread_create();
-
-  while (morework)
-  {
-    MPI_Status status;
-    int source;
-    int tag;
-    int len;
-
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, & status);
-
-    source = status.MPI_SOURCE;
-    tag = status.MPI_TAG;
-    MPI_Get_count(& status, MPI_CHAR, & len);
-    
-    if (buffersize < len)
-    {
-      buffersize = len;
-#ifdef DEBUG
-      fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-      buffer = (char *) xrealloc(buffer, buffersize);
-      longbuffer = (long*) buffer;
-    }
-    
-    MPI_Recv(buffer, buffersize, MPI_CHAR, source, tag, MPI_COMM_WORLD, NULL);
-    
-#ifdef DEBUG
-    fprintf(out, "Slave %d receiving message with tag %d from source %d of length %d.\n",
-    	   rank, tag, source, len);
-#endif
-
-    long n;
-
-    long seqno;
-    long qframe;
-    long qstrand;
-    long dframe;
-    long dstrand;
-    long score;
-    long do_align;
-
-    long align_q_start;
-    long align_q_end;
-    long align_d_start;
-    long align_d_end;
-
-    long header_len;
-    long seq_len;
-    long ntlen;
-    long alignment_len;
-    char * header;
-    char * seq;
-    char * alignment;
-    
-    switch(tag)
-    {
-
-    case tag_search:
-      
-      sd.seqfirst = longbuffer[0];
-      sd.seqlast = longbuffer[1];
-
-      // fprintf(out, "Slave %d doing search from %d to %d.\n",
-      //	     rank, sd.seqfirst, sd.seqlast);
-
-      search_chunk(&sd);
-      
-      MPI_Send(0, 0, MPI_CHAR, 0, tag_search_done, MPI_COMM_WORLD);
-      
-      //      fprintf(out, "Slave %d reporting finished search.\n", rank);
-      break;
-
-    case tag_search_get:
-      
-      //      fprintf(out, "Slave %d sending %d results...\n", rank, hits_count);
-
-      n = hits_getcount();
-      
-      if (buffersize < (long)(8*n*sizeof(long)))
-      {
-	buffersize = 8*n*sizeof(long);
-#ifdef DEBUG
-	fprintf(out, "resizing buffer to length %ld.\n", buffersize);
-#endif
-	buffer = (char *) xrealloc(buffer, buffersize);
-	longbuffer = (long*) buffer;
-      }
-      
-      for(long i=0; i < n; i++)
-      {
-	hits_gethit(i, & seqno, & score, & qstrand, & qframe, & dstrand, & dframe);
-
-	//	fprintf(out, "slave sending seqno=%ld\n", seqno);
-
-	longbuffer[8*i+0] = seqno;
-	longbuffer[8*i+1] = score;
-	longbuffer[8*i+2] = qstrand;
-	longbuffer[8*i+3] = qframe;
-	longbuffer[8*i+4] = dstrand;
-	longbuffer[8*i+5] = dframe;
-	longbuffer[8*i+6] = -1;
-	longbuffer[8*i+7] = -1;
-      }
-
-      MPI_Send(longbuffer, 8*n, MPI_LONG, 0, tag_search_report, MPI_COMM_WORLD);
-
-      longbuffer[0] = rounds7;
-      longbuffer[1] = rounds16;
-      longbuffer[2] = rounds32;
-      longbuffer[3] = rounds63;
-      longbuffer[4] = compute7;
-      longbuffer[5] = compute16;
-      longbuffer[6] = compute32;
-      longbuffer[7] = compute63;
-      longbuffer[8] = totalhits;
-
-      MPI_Send(longbuffer, 9, MPI_LONG, 0, tag_stats, MPI_COMM_WORLD);
-
-      break;
-
-    case tag_align:
-
-      seqno = longbuffer[0];
-      do_align = longbuffer[1];
-      qstrand = longbuffer[2];
-      qframe = longbuffer[3];
-      dstrand = longbuffer[4];
-      dframe = longbuffer[5];
-
-      if (do_align)
-      {
-	db_mapsequences(t, seqno, seqno);
-	db_getsequence(t, seqno, dstrand, dframe, 
-		       & seq, & seq_len, & ntlen, 0);
-
-	char * dseq = seq;
-	long dlen = seq_len - 1;
-
-	char * qseq;
-	long qlen;
-
-	if (symtype == 0)
-	{
-	  qseq = query.nt[0].seq;
-	  qlen = query.nt[0].len;
-	}
-	else
-	{
-	  qseq = query.aa[3*qstrand + qframe].seq;
-	  qlen = query.aa[3*qstrand + qframe].len;
-	}
-
-	long align_score;
-
-	// give no hint of alignment end
-	
-	align_q_end = 0;
-	align_d_end = 0;
-	align_score = 0;
-
-	align(qseq,
-	      dseq,
-	      qlen,
-	      dlen,
-	      score_matrix_63,
-	      gapopen,
-	      gapextend,
-	      & align_q_start,
-	      & align_d_start,
-	      & align_q_end,
-	      & align_d_end,
-	      & alignment,
-	      & align_score);
-	
-	MPI_Send(dseq, dlen, MPI_CHAR, 0, tag_align_seq, MPI_COMM_WORLD);
-
-	longbuffer[0] = align_q_start;
-	longbuffer[1] = align_q_end;
-	longbuffer[2] = align_d_start;
-	longbuffer[3] = align_d_end;
-	longbuffer[4] = ntlen;
-	MPI_Send(longbuffer, 5, MPI_LONG, 0, tag_align_coord, MPI_COMM_WORLD);
-	
- 	alignment_len = strlen(alignment);
-	MPI_Send(alignment, alignment_len+1, MPI_CHAR, 0, tag_align_string, MPI_COMM_WORLD);
-	free(alignment);
-      }
-
-      db_mapheaders(t, seqno, seqno);
-      db_getheader(t, seqno, & header, & header_len);
-#ifdef DEBUG
-      fprintf(out, "Node %d sending header of length %ld.\n", rank, header_len);
-#endif
-      MPI_Send(header, header_len, MPI_CHAR, 0, tag_align_header, MPI_COMM_WORLD);
-      
-      break;
-
-    case tag_die:
-      //      fprintf(out, "Slave %d asked to die.\n", rank);
-      morework = 0;
-      break;
-
-    }
-  }
-
-
-  db_thread_destruct(t);
-  
-  //  fprintf(out, "Slave %d dies.\n", rank);
-
-  search_done(&sd);
-
-  free(buffer);
-
-  hits_exit();
-
-}
-
-#endif
-
-void work()
-{
-  args_show();
-  hits_init(maxmatches, alignments, minscore, maxscore, minexpect, expect, view==0);
+  args_show(parameters);
+  hits_init(parameters);
 
   compute7 = 0;
   compute16 = 0;
@@ -2523,9 +1886,9 @@ void work()
 
   //  totalhits = 0;
 
-  prepare_search(threads);
+  prepare_search(parameters.threads);
 
-  if (view==0)
+  if (parameters.view==OutputFormat::plain)
   {
     fprintf(out, "Searching...");
     fflush(out);
@@ -2533,153 +1896,92 @@ void work()
 
   clock_start(&ti);
   
-  run_threads();
+  run_threads(parameters);
  
-#if 1
-  if (view == 0)
+  if (parameters.view == OutputFormat::plain)
+  {
     fprintf(out, "...............................................done\n\n");
-#endif
+  }
  
-  clock_stop(&ti);
-
-#if 0
-  if (view == 0)
-  {
-    fprintf(out, "Computed (7bit):   %ld sequences in %ld rounds\n", compute7, rounds7);
-    fprintf(out, "Computed (16bit):  %ld sequences in %ld rounds\n", compute16, rounds16);
-    fprintf(out, "Computed (63bit):  %ld sequences in %ld rounds\n", compute63, rounds63);
-    //    fprintf(out, "Total hits:        %ld\n", totalhits);
-    fprintf(out, "\n");
-  }
-#endif
-
-#if 0
-  if (view==0)
-  {
-    fprintf(out, "Aligning...");
-    fflush(out);
-  }
-#endif
+  clock_stop(parameters, &ti);
 
   //  if (view == 0)
   //    clock_start(&ti);
 
-  align_threads();
+  align_threads(parameters);
   
-#if 0
-  if (view == 0)
-    fprintf(out, "...............................................done\n\n");
-#endif
- 
   //  if (view == 0)
   //    clock_stop(&ti);
 
-  hits_show(view, show_gis);
+  hits_show(parameters);
   hits_exit();
 }
 
-int main(int argc, char**argv)
+}  // anonymous namespace
+
+auto main(int argc, char**argv) -> int
 {
-#ifdef MPISWIPE
-  int rc = MPI_Init(&argc, &argv);
-  if (rc != MPI_SUCCESS)
-    fatal("Unable to initialize MPI.");
-  
-  int rank;
-  int size;
-  MPI_Comm_rank(MPI_COMM_WORLD, & rank);
-  MPI_Comm_size(MPI_COMM_WORLD, & size);
-
-  mpirank = rank;
-  mpisize = size;
-
-#endif
 
   cpu_features();
 
-#ifndef MPISWIPE
-  if (! cpu_feature_sse2)
+  if (cpu_feature_sse2 == 0)
+  {
     fatal("This program requires a processor with SSE2.");
-#endif
+  }
 
-  args_init(argc,argv);
+  auto const parameters = args_init(argc, argv);
 
-  db_open(symtype, databasename, taxidfilename);
+  db_open(parameters);
   
-  volchunks = (long*) xmalloc(db_getvolumecount() * sizeof(long));
-  volseqs   = (long*) xmalloc(db_getvolumecount() * sizeof(long));
+  volchunks = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
+  volseqs   = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
 
-  if(dump)
+  if(parameters.dump != 0)
   {
     struct db_thread_s * t = db_thread_create();
-    long seqcount = db_getseqcount();
-    for (long i=0; i < seqcount; i++)
-      db_show_fasta(t, i, 0, 0, dump-1);
+    long const seqcount = db_getseqcount();
+    for (long i = 0; i < seqcount; i++)
+    {
+      db_show_fasta(t, i, 0, 0, parameters.dump - 1);
+    }
     db_thread_destruct(t);
   }
   else
   {
-    score_matrix_init();
+    score_matrix_init(parameters);
 
     queryno = 0;
     
-    query_init(queryname, symtype, querystrands);
+    query_init(parameters.queryname, parameters.symtype, parameters.querystrands);
     
-#ifdef MPISWIPE
-    if (!mpirank)
-#endif
     {
-      hits_show_begin(view);
+      hits_show_begin(parameters.view);
     }
     
-    while (query_read())
+    while (query_read() != 0)
     {
       
-#ifdef MPISWIPE
-      if (rank == 0)
-	master(size);
-      else
-	slave(rank,size);
-#else
-      work();
-#endif
+      work(parameters);
       
       queryno++;
     }
     
-#ifdef MPISWIPE
-    if (!mpirank)
-#endif
     {
-      hits_show_end(view);
+      hits_show_end(parameters.view);
     }
     
     query_exit();
 
-#ifdef DEBUG
-    fprintf(out, "Freeing score matrix\n");
-#endif
     score_matrix_free();
   }
   
   free(volchunks);
   free(volseqs);
 
-#ifdef DEBUG
-  fprintf(out, "Closing db\n");
-#endif
   db_close();
 
-#ifdef MPISWIPE
-#ifdef DEBUG
-  fprintf(out, "Finalizing (rank %d).\n", rank);
-#endif
-  MPI_Finalize();
-#ifdef DEBUG
-  fprintf(out, "Finalized (rank %d).\n", rank);
-#endif
-#endif
-  
-  if (outfile)
+  if (parameters.outfile != nullptr)
+  {
     fclose(out);
+  }
 }

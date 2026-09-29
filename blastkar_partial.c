@@ -99,20 +99,20 @@ add two lines before the return at the end of the function:
 
 #define BLOSUM45_VALUES_MAX 14
 static Nlm_FloatHi  blosum45_values[BLOSUM45_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.2291, 0.0924, 0.2514, 0.9113, -5.7},
-    {13, 3, (Nlm_FloatHi) INT2_MAX, 0.207, 0.049, 0.14, 1.5, -22},
-    {12, 3, (Nlm_FloatHi) INT2_MAX, 0.199, 0.039, 0.11, 1.8, -34},
-    {11, 3, (Nlm_FloatHi) INT2_MAX, 0.190, 0.031, 0.095, 2.0, -38},
-    {10, 3, (Nlm_FloatHi) INT2_MAX, 0.179, 0.023, 0.075, 2.4, -51},
-    {16, 2, (Nlm_FloatHi) INT2_MAX, 0.210, 0.051, 0.14, 1.5, -24},
-    {15, 2, (Nlm_FloatHi) INT2_MAX, 0.203, 0.041, 0.12, 1.7, -31},
-    {14, 2, (Nlm_FloatHi) INT2_MAX, 0.195, 0.032, 0.10, 1.9, -36},
-    {13, 2, (Nlm_FloatHi) INT2_MAX, 0.185, 0.024, 0.084, 2.2, -45},
-    {12, 2, (Nlm_FloatHi) INT2_MAX, 0.171, 0.016, 0.061, 2.8, -65},
-    {19, 1, (Nlm_FloatHi) INT2_MAX, 0.205, 0.040, 0.11, 1.9, -43},
-    {18, 1, (Nlm_FloatHi) INT2_MAX, 0.198, 0.032, 0.10, 2.0, -43},
-    {17, 1, (Nlm_FloatHi) INT2_MAX, 0.189, 0.024, 0.079, 2.4, -57},
-    {16, 1, (Nlm_FloatHi) INT2_MAX, 0.176, 0.016, 0.063, 2.8, -67},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2291, 0.0924, 0.2514, 0.9113, -5.7},
+    {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.207, 0.049, 0.14, 1.5, -22},
+    {12, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.199, 0.039, 0.11, 1.8, -34},
+    {11, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.190, 0.031, 0.095, 2.0, -38},
+    {10, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.179, 0.023, 0.075, 2.4, -51},
+    {16, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.210, 0.051, 0.14, 1.5, -24},
+    {15, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.203, 0.041, 0.12, 1.7, -31},
+    {14, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.195, 0.032, 0.10, 1.9, -36},
+    {13, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.185, 0.024, 0.084, 2.2, -45},
+    {12, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.016, 0.061, 2.8, -65},
+    {19, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.205, 0.040, 0.11, 1.9, -43},
+    {18, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.198, 0.032, 0.10, 2.0, -43},
+    {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.189, 0.024, 0.079, 2.4, -57},
+    {16, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.176, 0.016, 0.063, 2.8, -67},
 };
 
 static Int4 blosum45_prefs[BLOSUM45_VALUES_MAX] = {
@@ -135,22 +135,22 @@ BLAST_MATRIX_NOMINAL
 
 #define BLOSUM50_VALUES_MAX 16
 static Nlm_FloatHi  blosum50_values[BLOSUM50_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.2318, 0.112, 0.3362, 0.6895, -4.0},
-    {13, 3, (Nlm_FloatHi) INT2_MAX, 0.212, 0.063, 0.19, 1.1, -16},
-    {12, 3, (Nlm_FloatHi) INT2_MAX, 0.206, 0.055, 0.17, 1.2, -18},
-    {11, 3, (Nlm_FloatHi) INT2_MAX, 0.197, 0.042, 0.14, 1.4, -25},
-    {10, 3, (Nlm_FloatHi) INT2_MAX, 0.186, 0.031, 0.11, 1.7, -34},
-    {9, 3, (Nlm_FloatHi) INT2_MAX, 0.172, 0.022, 0.082, 2.1, -48},
-    {16, 2, (Nlm_FloatHi) INT2_MAX, 0.215, 0.066, 0.20, 1.05, -15},
-    {15, 2, (Nlm_FloatHi) INT2_MAX, 0.210, 0.058, 0.17, 1.2, -20},
-    {14, 2, (Nlm_FloatHi) INT2_MAX, 0.202, 0.045, 0.14, 1.4, -27},
-    {13, 2, (Nlm_FloatHi) INT2_MAX, 0.193, 0.035, 0.12, 1.6, -32},
-    {12, 2, (Nlm_FloatHi) INT2_MAX, 0.181, 0.025, 0.095, 1.9, -41},
-    {19, 1, (Nlm_FloatHi) INT2_MAX, 0.212, 0.057, 0.18, 1.2, -21},
-    {18, 1, (Nlm_FloatHi) INT2_MAX, 0.207, 0.050, 0.15, 1.4, -28},
-    {17, 1, (Nlm_FloatHi) INT2_MAX, 0.198, 0.037, 0.12, 1.6, -33},
-    {16, 1, (Nlm_FloatHi) INT2_MAX, 0.186, 0.025, 0.10, 1.9, -42},
-    {15, 1, (Nlm_FloatHi) INT2_MAX, 0.171, 0.015, 0.063, 2.7, -76},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2318, 0.112, 0.3362, 0.6895, -4.0},
+    {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.212, 0.063, 0.19, 1.1, -16},
+    {12, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.206, 0.055, 0.17, 1.2, -18},
+    {11, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.197, 0.042, 0.14, 1.4, -25},
+    {10, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.186, 0.031, 0.11, 1.7, -34},
+    {9, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.172, 0.022, 0.082, 2.1, -48},
+    {16, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.215, 0.066, 0.20, 1.05, -15},
+    {15, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.210, 0.058, 0.17, 1.2, -20},
+    {14, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.202, 0.045, 0.14, 1.4, -27},
+    {13, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.193, 0.035, 0.12, 1.6, -32},
+    {12, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.181, 0.025, 0.095, 1.9, -41},
+    {19, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.212, 0.057, 0.18, 1.2, -21},
+    {18, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.207, 0.050, 0.15, 1.4, -28},
+    {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.198, 0.037, 0.12, 1.6, -33},
+    {16, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.186, 0.025, 0.10, 1.9, -42},
+    {15, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.015, 0.063, 2.7, -76},
 };
 
 static Int4 blosum50_prefs[BLOSUM50_VALUES_MAX] = {
@@ -174,18 +174,18 @@ BLAST_MATRIX_NOMINAL
 
 #define BLOSUM62_VALUES_MAX 12
 static Nlm_FloatHi  blosum62_values[BLOSUM62_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.3176, 0.134, 0.4012, 0.7916, -3.2},
-    {11, 2, (Nlm_FloatHi) INT2_MAX, 0.297, 0.082, 0.27, 1.1, -10},
-    {10, 2, (Nlm_FloatHi) INT2_MAX, 0.291, 0.075, 0.23, 1.3, -15},
-    {9, 2, (Nlm_FloatHi) INT2_MAX, 0.279, 0.058, 0.19, 1.5, -19},
-    {8, 2, (Nlm_FloatHi) INT2_MAX, 0.264, 0.045, 0.15, 1.8, -26},
-    {7, 2, (Nlm_FloatHi) INT2_MAX, 0.239, 0.027, 0.10, 2.5, -46},
-    {6, 2, (Nlm_FloatHi) INT2_MAX, 0.201, 0.012, 0.061, 3.3, -58},
-    {13, 1, (Nlm_FloatHi) INT2_MAX, 0.292, 0.071, 0.23, 1.2, -11},
-    {12, 1, (Nlm_FloatHi) INT2_MAX, 0.283, 0.059, 0.19, 1.5, -19},
-    {11, 1, (Nlm_FloatHi) INT2_MAX, 0.267, 0.041, 0.14, 1.9, -30},
-    {10, 1, (Nlm_FloatHi) INT2_MAX, 0.243, 0.024, 0.10, 2.5, -44},
-    {9, 1, (Nlm_FloatHi) INT2_MAX, 0.206, 0.010, 0.052, 4.0, -87},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3176, 0.134, 0.4012, 0.7916, -3.2},
+    {11, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.297, 0.082, 0.27, 1.1, -10},
+    {10, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.291, 0.075, 0.23, 1.3, -15},
+    {9, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.279, 0.058, 0.19, 1.5, -19},
+    {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.264, 0.045, 0.15, 1.8, -26},
+    {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.239, 0.027, 0.10, 2.5, -46},
+    {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.201, 0.012, 0.061, 3.3, -58},
+    {13, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.292, 0.071, 0.23, 1.2, -11},
+    {12, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.283, 0.059, 0.19, 1.5, -19},
+    {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.267, 0.041, 0.14, 1.9, -30},
+    {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.243, 0.024, 0.10, 2.5, -44},
+    {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.206, 0.010, 0.052, 4.0, -87},
 };
 
 static Int4 blosum62_prefs[BLOSUM62_VALUES_MAX] = {
@@ -206,16 +206,16 @@ static Int4 blosum62_prefs[BLOSUM62_VALUES_MAX] = {
 
 #define BLOSUM80_VALUES_MAX 10
 static Nlm_FloatHi  blosum80_values[BLOSUM80_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.3430, 0.177, 0.6568, 0.5222, -1.6},
-    {25, 2, (Nlm_FloatHi) INT2_MAX, 0.342, 0.17, 0.66, 0.52, -1.6},
-    {13, 2, (Nlm_FloatHi) INT2_MAX, 0.336, 0.15, 0.57, 0.59, -3},
-    {9, 2, (Nlm_FloatHi) INT2_MAX, 0.319, 0.11, 0.42, 0.76, -6},
-    {8, 2, (Nlm_FloatHi) INT2_MAX, 0.308, 0.090, 0.35, 0.89, -9},
-    {7, 2, (Nlm_FloatHi) INT2_MAX, 0.293, 0.070, 0.27, 1.1, -14},
-    {6, 2, (Nlm_FloatHi) INT2_MAX, 0.268, 0.045, 0.19, 1.4, -19},
-    {11, 1, (Nlm_FloatHi) INT2_MAX, 0.314, 0.095, 0.35, 0.90, -9},
-    {10, 1, (Nlm_FloatHi) INT2_MAX, 0.299, 0.071, 0.27, 1.1, -14},
-    {9, 1, (Nlm_FloatHi) INT2_MAX, 0.279, 0.048, 0.20, 1.4, -19},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3430, 0.177, 0.6568, 0.5222, -1.6},
+    {25, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.342, 0.17, 0.66, 0.52, -1.6},
+    {13, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.336, 0.15, 0.57, 0.59, -3},
+    {9, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.319, 0.11, 0.42, 0.76, -6},
+    {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.308, 0.090, 0.35, 0.89, -9},
+    {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.293, 0.070, 0.27, 1.1, -14},
+    {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.268, 0.045, 0.19, 1.4, -19},
+    {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.314, 0.095, 0.35, 0.90, -9},
+    {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.299, 0.071, 0.27, 1.1, -14},
+    {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.279, 0.048, 0.20, 1.4, -19},
 };
 
 static Int4 blosum80_prefs[BLOSUM80_VALUES_MAX] = {
@@ -232,14 +232,14 @@ static Int4 blosum80_prefs[BLOSUM80_VALUES_MAX] = {
 
 #define BLOSUM90_VALUES_MAX 8
 static Nlm_FloatHi  blosum90_values[BLOSUM90_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.3346, 0.190, 0.7547, 0.4434, -1.4},
-    {9, 2, (Nlm_FloatHi) INT2_MAX, 0.310, 0.12, 0.46, 0.67, -6},
-    {8, 2, (Nlm_FloatHi) INT2_MAX, 0.300, 0.099, 0.39, 0.76, -7},
-    {7, 2, (Nlm_FloatHi) INT2_MAX, 0.283, 0.072, 0.30, 0.93, -11},
-    {6, 2, (Nlm_FloatHi) INT2_MAX, 0.259, 0.048, 0.22, 1.2, -16},
-    {11, 1, (Nlm_FloatHi) INT2_MAX, 0.302, 0.093, 0.39, 0.78, -8},
-    {10, 1, (Nlm_FloatHi) INT2_MAX, 0.290, 0.075, 0.28, 1.04, -15},
-    {9, 1, (Nlm_FloatHi) INT2_MAX, 0.265, 0.044, 0.20, 1.3, -19},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3346, 0.190, 0.7547, 0.4434, -1.4},
+    {9, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.310, 0.12, 0.46, 0.67, -6},
+    {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.300, 0.099, 0.39, 0.76, -7},
+    {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.283, 0.072, 0.30, 0.93, -11},
+    {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.259, 0.048, 0.22, 1.2, -16},
+    {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.302, 0.093, 0.39, 0.78, -8},
+    {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.290, 0.075, 0.28, 1.04, -15},
+    {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.265, 0.044, 0.20, 1.3, -19},
 };
 
 static Int4 blosum90_prefs[BLOSUM90_VALUES_MAX] = {
@@ -255,22 +255,22 @@ static Int4 blosum90_prefs[BLOSUM90_VALUES_MAX] = {
 
 #define PAM250_VALUES_MAX 16
 static Nlm_FloatHi  pam250_values[PAM250_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.2252, 0.0868, 0.2223, 0.98, -5.0},
-    {15, 3, (Nlm_FloatHi) INT2_MAX, 0.205, 0.049, 0.13, 1.6, -23},
-    {14, 3, (Nlm_FloatHi) INT2_MAX, 0.200, 0.043, 0.12, 1.7, -26},
-    {13, 3, (Nlm_FloatHi) INT2_MAX, 0.194, 0.036, 0.10, 1.9, -31},
-    {12, 3, (Nlm_FloatHi) INT2_MAX, 0.186, 0.029, 0.085, 2.2, -41},
-    {11, 3, (Nlm_FloatHi) INT2_MAX, 0.174, 0.020, 0.070, 2.5, -48},
-    {17, 2, (Nlm_FloatHi) INT2_MAX, 0.204, 0.047, 0.12, 1.7, -28},
-    {16, 2, (Nlm_FloatHi) INT2_MAX, 0.198, 0.038, 0.11, 1.8, -29},
-    {15, 2, (Nlm_FloatHi) INT2_MAX, 0.191, 0.031, 0.087, 2.2, -44},
-    {14, 2, (Nlm_FloatHi) INT2_MAX, 0.182, 0.024, 0.073, 2.5, -53},
-    {13, 2, (Nlm_FloatHi) INT2_MAX, 0.171, 0.017, 0.059, 2.9, -64},
-    {21, 1, (Nlm_FloatHi) INT2_MAX, 0.205, 0.045, 0.11, 1.8, -34},
-    {20, 1, (Nlm_FloatHi) INT2_MAX, 0.199, 0.037, 0.10, 1.9, -35},
-    {19, 1, (Nlm_FloatHi) INT2_MAX, 0.192, 0.029, 0.083, 2.3, -52},
-    {18, 1, (Nlm_FloatHi) INT2_MAX, 0.183, 0.021, 0.070, 2.6, -60},
-    {17, 1, (Nlm_FloatHi) INT2_MAX, 0.171, 0.014, 0.052, 3.3, -86},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2252, 0.0868, 0.2223, 0.98, -5.0},
+    {15, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.205, 0.049, 0.13, 1.6, -23},
+    {14, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.200, 0.043, 0.12, 1.7, -26},
+    {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.194, 0.036, 0.10, 1.9, -31},
+    {12, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.186, 0.029, 0.085, 2.2, -41},
+    {11, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.174, 0.020, 0.070, 2.5, -48},
+    {17, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.204, 0.047, 0.12, 1.7, -28},
+    {16, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.198, 0.038, 0.11, 1.8, -29},
+    {15, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.191, 0.031, 0.087, 2.2, -44},
+    {14, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.182, 0.024, 0.073, 2.5, -53},
+    {13, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.017, 0.059, 2.9, -64},
+    {21, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.205, 0.045, 0.11, 1.8, -34},
+    {20, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.199, 0.037, 0.10, 1.9, -35},
+    {19, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.192, 0.029, 0.083, 2.3, -52},
+    {18, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.183, 0.021, 0.070, 2.6, -60},
+    {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.014, 0.052, 3.3, -86},
 };
 
 static Int4 pam250_prefs[PAM250_VALUES_MAX] = {
@@ -294,13 +294,13 @@ BLAST_MATRIX_NOMINAL
 
 #define PAM30_VALUES_MAX 7
 static Nlm_FloatHi  pam30_values[PAM30_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.3400, 0.283, 1.754, 0.1938, -0.3},
-    {7, 2, (Nlm_FloatHi) INT2_MAX, 0.305, 0.15, 0.87, 0.35, -3},
-    {6, 2, (Nlm_FloatHi) INT2_MAX, 0.287, 0.11, 0.68, 0.42, -4},
-    {5, 2, (Nlm_FloatHi) INT2_MAX, 0.264, 0.079, 0.45, 0.59, -7},
-    {10, 1, (Nlm_FloatHi) INT2_MAX, 0.309, 0.15, 0.88, 0.35, -3},
-    {9, 1, (Nlm_FloatHi) INT2_MAX, 0.294, 0.11, 0.61, 0.48, -6},
-    {8, 1, (Nlm_FloatHi) INT2_MAX, 0.270, 0.072, 0.40, 0.68, -10},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3400, 0.283, 1.754, 0.1938, -0.3},
+    {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.305, 0.15, 0.87, 0.35, -3},
+    {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.287, 0.11, 0.68, 0.42, -4},
+    {5, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.264, 0.079, 0.45, 0.59, -7},
+    {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.309, 0.15, 0.88, 0.35, -3},
+    {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.294, 0.11, 0.61, 0.48, -6},
+    {8, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.270, 0.072, 0.40, 0.68, -10},
 };
 
 static Int4 pam30_prefs[PAM30_VALUES_MAX] = {
@@ -316,13 +316,13 @@ BLAST_MATRIX_NOMINAL,
 
 #define PAM70_VALUES_MAX 7
 static Nlm_FloatHi  pam70_values[PAM70_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.3345, 0.229, 1.029, 0.3250,   -0.7},
-    {8, 2, (Nlm_FloatHi) INT2_MAX, 0.301, 0.12, 0.54, 0.56, -5},
-    {7, 2, (Nlm_FloatHi) INT2_MAX, 0.286, 0.093, 0.43, 0.67, -7},
-    {6, 2, (Nlm_FloatHi) INT2_MAX, 0.264, 0.064, 0.29, 0.90, -12},
-    {11, 1, (Nlm_FloatHi) INT2_MAX, 0.305, 0.12, 0.52, 0.59, -6},
-    {10, 1, (Nlm_FloatHi) INT2_MAX, 0.291, 0.091, 0.41, 0.71, -9},
-    {9, 1, (Nlm_FloatHi) INT2_MAX, 0.270, 0.060, 0.28, 0.97, -14},
+    {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3345, 0.229, 1.029, 0.3250,   -0.7},
+    {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.301, 0.12, 0.54, 0.56, -5},
+    {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.286, 0.093, 0.43, 0.67, -7},
+    {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.264, 0.064, 0.29, 0.90, -12},
+    {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.305, 0.12, 0.52, 0.59, -6},
+    {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.291, 0.091, 0.41, 0.71, -9},
+    {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.270, 0.060, 0.28, 0.97, -14},
 };
 
 static Int4 pam70_prefs[PAM70_VALUES_MAX] = {
@@ -332,145 +332,6 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_BEST,
-BLAST_MATRIX_NOMINAL
-};
-
-
-
-#define BLOSUM62_20_VALUES_MAX 65
-static Nlm_FloatHi  blosum62_20_values[BLOSUM62_20_VALUES_MAX][8] = {
-    {(Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, (Nlm_FloatHi) INT2_MAX, 0.03391, 0.125, 0.4544, 0.07462, -3.2},
-    {100, 12, (Nlm_FloatHi) INT2_MAX, 0.0300, 0.056, 0.21, 0.14, -15},
-    {95, 12, (Nlm_FloatHi) INT2_MAX, 0.0291, 0.047, 0.18, 0.16, -20},
-    {90, 12, (Nlm_FloatHi) INT2_MAX, 0.0280, 0.038, 0.15, 0.19, -28},
-    {85, 12, (Nlm_FloatHi) INT2_MAX, 0.0267, 0.030, 0.13, 0.21, -31},
-    {80, 12, (Nlm_FloatHi) INT2_MAX, 0.0250, 0.021, 0.10, 0.25, -39},
-    {105, 11, (Nlm_FloatHi) INT2_MAX, 0.0301, 0.056, 0.22, 0.14, -16},
-    {100, 11, (Nlm_FloatHi) INT2_MAX, 0.0294, 0.049, 0.20, 0.15, -17},
-    {95, 11, (Nlm_FloatHi) INT2_MAX, 0.0285, 0.042, 0.16, 0.18, -25},
-    {90, 11, (Nlm_FloatHi) INT2_MAX, 0.0271, 0.031, 0.14, 0.20, -28},
-    {85, 11, (Nlm_FloatHi) INT2_MAX, 0.0256, 0.023, 0.10, 0.26, -46},
-    {115, 10, (Nlm_FloatHi) INT2_MAX, 0.0308, 0.062, 0.22, 0.14, -20},
-    {110, 10, (Nlm_FloatHi) INT2_MAX, 0.0302, 0.056, 0.19, 0.16, -26},
-    {105, 10, (Nlm_FloatHi) INT2_MAX, 0.0296, 0.050, 0.17, 0.17, -27},
-    {100, 10, (Nlm_FloatHi) INT2_MAX, 0.0286, 0.041, 0.15, 0.19, -32},
-    {95, 10, (Nlm_FloatHi) INT2_MAX, 0.0272, 0.030, 0.13, 0.21, -35},
-    {90, 10, (Nlm_FloatHi) INT2_MAX, 0.0257, 0.022, 0.11, 0.24, -40},
-    {85, 10, (Nlm_FloatHi) INT2_MAX, 0.0242, 0.017, 0.083, 0.29, -51},
-    {115, 9, (Nlm_FloatHi) INT2_MAX, 0.0306, 0.061, 0.24, 0.13, -14},
-    {110, 9, (Nlm_FloatHi) INT2_MAX, 0.0299, 0.053, 0.19, 0.16, -23},
-    {105, 9, (Nlm_FloatHi) INT2_MAX, 0.0289, 0.043, 0.17, 0.17, -23},
-    {100, 9, (Nlm_FloatHi) INT2_MAX, 0.0279, 0.036, 0.14, 0.20, -31},
-    {95, 9, (Nlm_FloatHi) INT2_MAX, 0.0266, 0.028, 0.12, 0.23, -37},
-    {120, 8, (Nlm_FloatHi) INT2_MAX, 0.0307, 0.062, 0.22, 0.14, -18},
-    {115, 8, (Nlm_FloatHi) INT2_MAX, 0.0300, 0.053, 0.20, 0.15, -19},
-    {110, 8, (Nlm_FloatHi) INT2_MAX, 0.0292, 0.046, 0.17, 0.17, -23},
-    {105, 8, (Nlm_FloatHi) INT2_MAX, 0.0280, 0.035, 0.14, 0.20, -31},
-    {100, 8, (Nlm_FloatHi) INT2_MAX, 0.0266, 0.026, 0.12, 0.23, -37},
-    {125, 7, (Nlm_FloatHi) INT2_MAX, 0.0306, 0.058, 0.22, 0.14, -18},
-    {120, 7, (Nlm_FloatHi) INT2_MAX, 0.0300, 0.052, 0.19, 0.16, -23},
-    {115, 7, (Nlm_FloatHi) INT2_MAX, 0.0292, 0.044, 0.17, 0.17, -24},
-    {110, 7, (Nlm_FloatHi) INT2_MAX, 0.0279, 0.032, 0.14, 0.20, -31},
-    {105, 7, (Nlm_FloatHi) INT2_MAX, 0.0267, 0.026, 0.11, 0.24, -41},
-    {120,10,5, 0.0298, 0.049, 0.19, 0.16, -21},
-    {115,10,5, 0.0290, 0.042, 0.16, 0.18, -25},
-    {110,10,5, 0.0279, 0.033, 0.13, 0.21, -32},
-    {105,10,5, 0.0264, 0.024, 0.10, 0.26, -46},
-    {100,10,5, 0.0250, 0.018, 0.081, 0.31, -56},
-    {125,10,4, 0.0301, 0.053, 0.18, 0.17, -25},
-    {120,10,4, 0.0292, 0.043, 0.15, 0.20, -33},
-    {115,10,4, 0.0282, 0.035, 0.13, 0.22, -36},
-    {110,10,4, 0.0270, 0.027, 0.11, 0.25, -41},
-    {105,10,4, 0.0254, 0.020, 0.079, 0.32, -60},
-    {130,10,3, 0.0300, 0.051, 0.17, 0.18, -27},
-    {125,10,3, 0.0290, 0.040, 0.13, 0.22, -38},
-    {120,10,3, 0.0278, 0.030, 0.11, 0.25, -44},
-    {115,10,3, 0.0267, 0.025, 0.092, 0.29, -52},
-    {110,10,3, 0.0252, 0.018, 0.070, 0.36, -70},
-    {135,10,2, 0.0292, 0.040, 0.13, 0.22, -35},
-    {130,10,2, 0.0283, 0.034, 0.10, 0.28, -51},
-    {125,10,2, 0.0269, 0.024, 0.077, 0.35, -71},
-    {120,10,2, 0.0253, 0.017, 0.059, 0.43, -90},
-    {115,10,2, 0.0234, 0.011, 0.043, 0.55, -121},
-    {100,14,3, 0.0258, 0.023, 0.087, 0.33, -59},
-    {105,13,3, 0.0263, 0.024, 0.085, 0.31, -57},
-    {110,12,3, 0.0271, 0.028, 0.093, 0.29, -54},
-    {115,11,3, 0.0275, 0.030, 0.10, 0.27, -49},
-    {125,9,3, 0.0283, 0.034, 0.12, 0.23, -38},
-    {130,8,3, 0.0287, 0.037, 0.12, 0.23, -40},
-    {125,7,3, 0.0287, 0.036, 0.12, 0.24, -44},
-    {140,6,3, 0.0285, 0.033, 0.12, 0.23, -40},
-    {105,14,3, 0.0270, 0.028, 0.10, 0.27, -46},
-    {110,13,3, 0.0279, 0.034, 0.10, 0.27, -50},
-    {115,12,3, 0.0282, 0.035, 0.12, 0.24, -42},
-    {120,11,3, 0.0286, 0.037, 0.12, 0.24, -44},
-};
-
-static Int4 blosum62_20_prefs[BLOSUM62_20_VALUES_MAX] = {
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_BEST,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
 };
 
@@ -668,7 +529,7 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
 #ifdef ORIGINAL_NCBI_CODE
     Nlm_FloatHi m = query_length, n = db_length, N = db_num_seqs;
 #else
-    Nlm_FloatHi m = query_length, n = (double) db_length, N = db_num_seqs;
+    Nlm_FloatHi m = query_length, n = static_cast<double>(db_length), N = db_num_seqs;
 #endif
 
     Nlm_FloatHi ell;            /* A float value of the length adjustment */
@@ -729,19 +590,19 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
         /* If ell_fixed is the (unknown) true fixed point, then we
          * wish to set (*length_adjustment) to floor(ell_fixed).  We
          * assume that floor(ell_min) = floor(ell_fixed) */
-        *length_adjustment = (Int4) ell_min;
+        *length_adjustment = static_cast<Int4>(ell_min);
         /* But verify that ceil(ell_min) != floor(ell_fixed) */
         ell = ceil(ell_min);
         if( ell <= ell_max ) {
           ss = (m - ell) * (n - N * ell);
           if(alpha_d_lambda * (logK + log(ss)) + beta >= ell) {
             /* ceil(ell_min) == floor(ell_fixed) */
-            *length_adjustment = (Int4) ell;
+            *length_adjustment = static_cast<Int4>(ell);
           }
         }
     } else { /* else the iteration did not converge. */
         /* Use the best value seen so far */
-        *length_adjustment = (Int4) ell_min;
+        *length_adjustment = static_cast<Int4>(ell_min);
     }
 
     return converged ? 0 : 1;

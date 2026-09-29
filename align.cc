@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::max
+#include <cstddef>  // std::size_t
 
 // These functions are based on the following articles:
 // - Huang, Hardison & Miller (1990) CABIOS 6:373-381
@@ -33,38 +35,38 @@
 // a (of length M) is the query sequence
 // b (of length N) is the database sequence
 
-#define MAX(a,b) (a > b ? a : b)
+// anonymous namespace: limit visibility and usage to this translation unit
+namespace {
 
-void region(char * a_seq,
-	    char * b_seq,
+auto region(char const * a_seq,
+	    char const * b_seq,
 	    long M,
 	    long N,
-	    long * scorematrix,
+	    long const * scorematrix,
 	    long q,
 	    long r,
 	    long * a_begin,
 	    long * b_begin,
 	    long * a_end,
 	    long * b_end,
-	    long * s)
+	    long * s) -> void
 {
   
-  long * HH = (long *) xmalloc(N * sizeof(long));
-  long * EE = (long *) xmalloc(N * sizeof(long));
+  long * HH = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
+  long * EE = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
 
-  long i, j;
+  long i = 0;
+  long j = 0;
 
   long score = 0;
 
   // Forward pass
 
-#if 1
-  if (*s)
+  if ((*s) != 0)
   {
     score = *s;
   }
   else
-#endif
   {
 
     for (j = 0; j < N; j++)
@@ -80,17 +82,14 @@ void region(char * a_seq,
       long f = - q;
       for (j = 0; j < N; j++)
       {
-	f = MAX(f, h - q) - r;
-	EE[j] = MAX(EE[j], HH[j] - q) - r;
+	f = std::max(f, h - q) - r;
+	EE[j] = std::max(EE[j], HH[j] - q) - r;
 	
-	h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
+	h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 	
-	if (h < 0)
-	  h = 0;
-	if (f > h)
-	  h = f;
-	if (EE[j] > h)
-	  h = EE[j];
+	h = std::max<long>(h, 0);
+	h = std::max(f, h);
+	h = std::max(EE[j], h);
 	
 	p = HH[j];
 	
@@ -120,22 +119,24 @@ void region(char * a_seq,
     {
       long h = -1;
       long f = -1;
-      long p;
+      long p = 0;
       if (i == *a_end)
+      {
 	p = 0;
+      }
       else
+      {
 	p = -1;
+      }
       for (j = *b_end; j >= 0; j--)
 	{
-	  f = MAX(f, h - q) - r;
-	  EE[j] = MAX(EE[j], HH[j] - q) - r;
+	  f = std::max(f, h - q) - r;
+	  EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	  h = p + (scorematrix + (b_seq[j]<<5))[(int)(a_seq[i])];
+	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 
-	  if (f > h)
-	    h = f;
-	  if (EE[j] > h)
-	    h = EE[j];
+	  h = std::max(f, h);
+	  h = std::max(EE[j], h);
 
 
 	  p = HH[j];
@@ -148,7 +149,9 @@ void region(char * a_seq,
 	      *a_begin = i;
 	      *b_begin = j;
 	      if (Cost >= score)
+	      {
 		goto Found;
+	      }
 	    }
 	}
     }
@@ -172,29 +175,29 @@ struct aligner_info
   long size;
 };
 
-void init(struct aligner_info * aip)
+auto init(struct aligner_info * aip) -> void
 {
   aip->op = 0;
   aip->count = 0;
   aip->size = 64;
-  aip->alignment = (char*) xmalloc(aip->size);
+  aip->alignment = static_cast<char*>(xmalloc(static_cast<std::size_t>(aip->size)));
   aip->length = 0;
 }
 
-void push(struct aligner_info * aip)
+auto push(struct aligner_info * aip) -> void
 {
   if (aip->count > 0)
   {
-    while (1)
+    while (true)
     {
-      long rest = aip->size - aip->length;
-      int n = snprintf(aip->alignment + aip->length,
-		       rest,
+      long const rest = aip->size - aip->length;
+      int const n = snprintf(aip->alignment + aip->length,
+		       static_cast<std::size_t>(rest),
 		       "%c%ld", aip->op, aip->count);
       if ((n < 0) || (n >= rest))
       {
 	aip->size += 64;
-	aip->alignment = (char*) xrealloc(aip->alignment, aip->size);
+	aip->alignment = static_cast<char*>(xrealloc(aip->alignment, static_cast<std::size_t>(aip->size)));
 	//	fprintf(stderr, "Reallocating memory for alignment: %ld\n", aip->size);
       }
       else
@@ -206,34 +209,36 @@ void push(struct aligner_info * aip)
   }
 }
 
-void newop(struct aligner_info * aip, char op, long len)
+auto newop(struct aligner_info * aip, char op, long len) -> void
 {
   if (aip->op == op)
+  {
     aip->count += len;
+  }
   else
-    {
-      push(aip);
-      aip->op = op;
-      aip->count = len;
-    }
+  {
+    push(aip);
+    aip->op = op;
+    aip->count = len;
+  }
 }
 
-void delete_a(struct aligner_info * aip, long len)
+auto delete_a(struct aligner_info * aip, long len) -> void
 {
   newop(aip, 'D', len);
 }
 
-void insert_b(struct aligner_info * aip, long len)
+auto insert_b(struct aligner_info * aip, long len) -> void
 {
   newop(aip, 'I', len);
 }
 
-void match(struct aligner_info * aip)
+auto match(struct aligner_info * aip) -> void
 {
   newop(aip, 'M', 1);
 }
 
-void diff(struct aligner_info * aip,
+auto diff(struct aligner_info * aip,
 	  char * a_seq,
 	  char * b_seq,
 	  long M,
@@ -244,14 +249,16 @@ void diff(struct aligner_info * aip,
 	  long q,
 	  long r,
 	  long tb,
-	  long te)
+	  long te) -> void
 {
   long MaxScore = 0;
 
   if (N == 0)
     {
       if (M > 0)
+      {
 	delete_a(aip, M);
+      }
     }
   else if (M == 0)
     {
@@ -266,7 +273,7 @@ void diff(struct aligner_info * aip,
       // tb = 0 or q depending on whether a gap is already open on left of B
       // te = 0 or q depending on whether a gap is already open on right of B
 
-      long J;
+      long J = 0;
 
       if (tb <= te)
 	{
@@ -274,7 +281,7 @@ void diff(struct aligner_info * aip,
 	  // A----
 	  // -BBBB
 
-	  MaxScore = - tb - (1 + N) * r - q;
+	  MaxScore = - tb - ((1 + N) * r) - q;
 	  J = -1;
 	}
       else
@@ -283,7 +290,7 @@ void diff(struct aligner_info * aip,
 	  // ----A
 	  // BBBB-
 
-	  MaxScore = - q - (1 + N) * r - te;
+	  MaxScore = - q - ((1 + N) * r) - te;
 	  J = N;
 	}
 
@@ -293,12 +300,16 @@ void diff(struct aligner_info * aip,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[(int)(a_seq[a_pos])] - r * (N-1);
+	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - (r * (N-1));
 
 	  if (j > 0)
+	  {
 	    Score -= q;
-	  if (j < N-1)
+	  }
+	  if (j < N - 1)
+	  {
 	    Score -= q;
+	  }
 
 	  if (Score > MaxScore)
 	    {
@@ -320,23 +331,28 @@ void diff(struct aligner_info * aip,
       else
 	{
 	  if (J > 0)
+	  {
 	    insert_b(aip, J);
+	  }
 	  match(aip);
-	  if (J < N-1)
-	    insert_b(aip, N-1-J);
+	  if (J < N - 1)
+	  {
+	    insert_b(aip, N - 1 - J);
+	  }
 	}
     }
   else
     {
 
-      long I = M/2;
-      long i, j;
-      long t;
+      long const I = M/2;
+      long i = 0;
+      long j = 0;
+      long t = 0;
 
       // Compute HH & EE in forward phase with tb
 
-      long * HH = (long *) xmalloc((N+1) * sizeof(long));
-      long * EE = (long *) xmalloc((N+1) * sizeof(long));
+      long * HH = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      long * EE = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
 
       HH[0] = 0;
       t = -q;
@@ -357,15 +373,13 @@ void diff(struct aligner_info * aip,
 
 	  for (j = 1; j <= N; j++)
 	    {
-	      f = MAX(f, h - q) - r;
-	      EE[j] = MAX(EE[j], HH[j] - q) - r;
+	      f = std::max(f, h - q) - r;
+	      EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[(int)(a_seq[a_pos+i-1])];
+	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[static_cast<int>(a_seq[a_pos+i-1])];
 
-	      if (f > h)
-		h = f;
-	      if (EE[j] > h)
-		h = EE[j];
+	      h = std::max(f, h);
+	      h = std::max(EE[j], h);
 	      p = HH[j];
 	      HH[j] = h;
 	    }
@@ -375,8 +389,8 @@ void diff(struct aligner_info * aip,
 
       // Compute XX & YY in reverse phase with te
 
-      long * XX = (long *) xmalloc((N+1) * sizeof(long));
-      long * YY = (long *) xmalloc((N+1) * sizeof(long));
+      long * XX = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      long * YY = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
 
       XX[0] = 0;
       t = -q;
@@ -398,15 +412,13 @@ void diff(struct aligner_info * aip,
 
 	  for (j = 1; j <= N; j++)
 	    {
-	      f = MAX(f, h - q) - r;
-	      YY[j] = MAX(YY[j], XX[j] - q) - r;
+	      f = std::max(f, h - q) - r;
+	      YY[j] = std::max(YY[j], XX[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[(int)(a_seq[a_pos+M-i])];
+	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[static_cast<int>(a_seq[a_pos+M-i])];
 
-	      if (f > h)
-		h = f;
-	      if (YY[j] > h)
-		h = YY[j];
+	      h = std::max(f, h);
+	      h = std::max(YY[j], h);
 	      p = XX[j];
 	      XX[j] = h;
 	    }
@@ -422,7 +434,7 @@ void diff(struct aligner_info * aip,
 
       for (j=0; j <= N; j++)
 	{
-	  long Score = HH[j] + XX[N-j];
+	  long const Score = HH[j] + XX[N-j];
 	  if (Score > MaxScore)
 	    {
 	      MaxScore = Score;
@@ -436,7 +448,7 @@ void diff(struct aligner_info * aip,
 
       for (j=0; j <= N; j++)
 	{
-	  long Score = EE[j] + YY[N-j] + q;
+	  long const Score = EE[j] + YY[N-j] + q;
 	  if (Score >= MaxScore)
 	    {
 	      MaxScore = Score;
@@ -466,7 +478,9 @@ void diff(struct aligner_info * aip,
     }
 }
 
-void align(char * a_seq,
+}  // anonymous namespace
+
+auto align(char * a_seq,
 	   char * b_seq,
 	   long M,
 	   long N,
@@ -478,7 +492,7 @@ void align(char * a_seq,
 	   long * a_end,
 	   long * b_end,
 	   char ** alignment,
-	   long * s)
+	   long * s) -> void
 {
   struct aligner_info ai;
 
