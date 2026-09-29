@@ -198,8 +198,11 @@ using mapp = db_map_t *;
 
 struct db_thread_s
 {
-  mapp map_seq;
-  mapp map_hdr;
+  // the windows over the sequence and header files: a cache, remapped
+  // by db_mapsequences() and db_mapheaders() (mutable: they take a
+  // const db thread)
+  mutable db_map_s map_seq;
+  mutable db_map_s map_hdr;
   apt parser;
   // per channel (c) of db_getsequence(): the decompressed nucleotide
   // sequence, and its reverse complement or translation
@@ -227,23 +230,11 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
   }
 }
 
-auto db_map_create() -> mapp
-{
-  return new db_map_s();
-}
-
-auto db_map_destruct(mapp m) -> void
-{
-  delete m;
-}
-
 }  // anonymous namespace
 
 auto db_thread_create() -> db_thread_t *
 {
   auto * t = new db_thread_s();
-  t->map_seq = db_map_create();
-  t->map_hdr = db_map_create();
   t->parser = parser_create(db_main.show_taxid);
   return t;
 }
@@ -251,8 +242,6 @@ auto db_thread_create() -> db_thread_t *
 auto db_thread_destruct(struct db_thread_s * t) -> void
 {
   parser_destruct(t->parser);
-  db_map_destruct(t->map_seq);
-  db_map_destruct(t->map_hdr);
   delete t;
 }
 
@@ -1101,7 +1090,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
 
   // unmap if some map exist
   
-  mapp m = t->map_seq;
+  mapp m = &t->map_seq;
 
   m->region.reset();
 
@@ -1150,7 +1139,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 {
   // unmap if some map exist
   
-  mapp m = t->map_hdr;
+  mapp m = &t->map_hdr;
 
   m->region.reset();
 
@@ -1250,7 +1239,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s)));
   long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s + 1)));
   long const length = offset2 - offset1;
-  char * address = std::next(t->map_seq->region.data(), offset1 - t->map_seq->map_offset);
+  char * address = std::next(t->map_seq.region.data(), offset1 - t->map_seq.map_offset);
 
   if ((db_main.symtype==SymbolType::blastn)||(db_main.symtype==SymbolType::tblastn)||(db_main.symtype==SymbolType::tblastx))
   {
@@ -1421,7 +1410,7 @@ auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * len
   long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s)));
   long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s + 1)));
   *length = offset2 - offset1;
-  *address = std::next(t->map_hdr->region.data(), offset1 - t->map_hdr->map_offset);
+  *address = std::next(t->map_hdr.region.data(), offset1 - t->map_hdr.map_offset);
 }
 
 auto db_parse_header(db_thread_t const * t, char * address, long length, 
