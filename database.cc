@@ -395,18 +395,18 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
-      auto const start = strspn(line+6, " \t");
-      auto const titlelen = strcspn(line+6+start, "\r\n");
-      al_info->title.assign(line+6+start, titlelen);
+      char const * const text = std::next(line, 6);
+      char const * const title = std::next(text, static_cast<std::ptrdiff_t>(strspn(text, " \t")));
+      al_info->title.assign(title, strcspn(title, "\r\n"));
       title_found = true;
     }
     else if (strncmp(line, "DBLIST", 6) == 0)
     {
-      al_info->dblist = getnames(line+6);
+      al_info->dblist = getnames(std::next(line, 6));
     }
     else if (strncmp(line, "OIDLIST", 7) == 0)
     {
-      al_info->oidlist = getnames(line+7);
+      al_info->oidlist = getnames(std::next(line, 7));
     }
     else if (strncmp(line, "GILIST", 6) == 0)
     {
@@ -426,19 +426,19 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
     }
     else if (strncmp(line, "LENGTH ", 7) == 0)
     {
-      al_info->length = alias_number(line + 7, "LENGTH");
+      al_info->length = alias_number(std::next(line, 7), "LENGTH");
     }
     else if (strncmp(line, "NSEQ ", 5) == 0)
     {
-      al_info->nseq = alias_number(line + 5, "NSEQ");
+      al_info->nseq = alias_number(std::next(line, 5), "NSEQ");
     }
     else if (strncmp(line, "MAXOID ", 7) == 0)
     {
-      al_info->maxoid = alias_number(line + 7, "MAXOID");
+      al_info->maxoid = alias_number(std::next(line, 7), "MAXOID");
     }
     else if (strncmp(line, "MEMB_BIT ", 9) == 0)
     {
-      al_info->memb_bit = alias_number(line + 9, "MEMB_BIT");
+      al_info->memb_bit = alias_number(std::next(line, 9), "MEMB_BIT");
     }
   }
 
@@ -557,51 +557,51 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     fatal("Illegal database version (must be 4 or 5).");
   }
 
-  p += 4;
+  p = std::next(p, 4);
   volume->symtype = load_uint32_be(p);
-  p += 4;
+  p = std::next(p, 4);
   if (volume->version == 5)
   {
     check_xin_room(p, 8);
-    p += 4;  // volume number
+    p = std::next(p, 4);  // volume number
   }
   long const titlelen = load_uint32_be(p);
-  p += 4;
+  p = std::next(p, 4);
   check_xin_room(p, titlelen + 4);
   // up to the first NUL, as strncpy() did
   volume->title.assign(p, std::find(p, std::next(p, titlelen), '\0'));
-  p += titlelen;
+  p = std::next(p, titlelen);
   if (volume->version == 5)
   {
     long const lmdb_name_length = load_uint32_be(p);
-    p += 4;
+    p = std::next(p, 4);
     check_xin_room(p, lmdb_name_length + 4);
-    p += lmdb_name_length;  // LMDB file name
+    p = std::next(p, lmdb_name_length);  // LMDB file name
   }
   unsigned const datelen = load_uint32_be(p);
-  p += 4;
+  p = std::next(p, 4);
   check_xin_room(p, datelen);
   volume->time.assign(p, std::find(p, std::next(p, datelen), '\0'));
-  p += datelen;
+  p = std::next(p, datelen);
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
   {
-    p++;
+    p = std::next(p);
   }
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
   {
-    p++;
+    p = std::next(p);
   }
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
   {
-    p++;
+    p = std::next(p);
   }
   check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
-  p += 4;
+  p = std::next(p, 4);
   volume->symcount = static_cast<std::int64_t>(load_uint64_host(p));
-  p += 8;
+  p = std::next(p, 8);
   volume->longest = load_uint32_be(p);
-  p += 4;
+  p = std::next(p, 4);
   volume->offset_xhr = p - volume->xin_map.data();
   volume->offset_xsq = volume->offset_xhr + (4 * (volume->seqcount + 1));
   volume->offset_amb = volume->offset_xsq + (4 * (volume->seqcount + 1));
@@ -1296,7 +1296,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     for(long j=0; j < nt_length/4; j++)
     {
       auto const b = static_cast<unsigned char>(address[j]);
-      *((reinterpret_cast<unsigned int*>(nt))+j) = decompress_nt[b];
+      *std::next(reinterpret_cast<unsigned int *>(nt), j) = decompress_nt[b];
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)
