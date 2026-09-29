@@ -96,22 +96,32 @@ auto xmalloc(size_t size) -> void *
 }
 
 
-#define cpuid(l1,l2,a,b,c,d)						\
-  __asm__ __volatile__							\
-    ("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (l1), "c" (l2));
-
 namespace {
+
+// the four registers set by the cpuid instruction
+struct CpuidRegisters
+{
+  unsigned int eax = 0;
+  unsigned int ebx = 0;
+  unsigned int ecx = 0;
+  unsigned int edx = 0;
+};
+
+auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegisters
+{
+  CpuidRegisters registers;
+  __asm__ __volatile__
+    ("cpuid" : "=a" (registers.eax), "=b" (registers.ebx),
+     "=c" (registers.ecx), "=d" (registers.edx) : "a" (leaf), "c" (subleaf));
+  return registers;
+}
 
 auto cpu_features() -> void
 {
-  unsigned int a __attribute__ ((unused)) = 0;
-  unsigned int b __attribute__ ((unused)) = 0;
-  unsigned int c = 0;
-  unsigned int d = 0;
-  cpuid(1,0,a,b,c,d);
-  cpu_feature_sse2  = (d >> 26) & 1;
-  cpu_feature_ssse3 = (c >>  9) & 1;
-  cpu_feature_sse41 = (c >> 19) & 1;
+  CpuidRegisters const registers = cpuid(1, 0);
+  cpu_feature_sse2  = (registers.edx >> 26) & 1;
+  cpu_feature_ssse3 = (registers.ecx >>  9) & 1;
+  cpu_feature_sse41 = (registers.ecx >> 19) & 1;
 }
 
 auto clock_start(struct time_info * tip) -> void
