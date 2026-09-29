@@ -24,7 +24,7 @@
 */
 
 #include "search_data.h"
-#include <algorithm>  // std::copy_n, std::min
+#include <algorithm>  // std::copy_n, std::max, std::min
 #include <cmath>  // std::floor, std::sqrt
 #include <cstddef>  // std::size_t
 #include <functional>  // std::cref
@@ -104,7 +104,9 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * 32);
+  // at least one row: the kernels memset() the array, and an empty
+  // Buffer has no storage (a null data(), for an empty query)
+  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * 32);
 
   auto listsize = static_cast<std::size_t>(maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
