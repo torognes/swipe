@@ -24,7 +24,8 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::all_of, std::max, std::min
+#include <algorithm>  // std::all_of, std::find, std::max, std::min
+#include <array>
 #include <cctype>  // std::isdigit, std::isspace
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
@@ -155,10 +156,10 @@ struct db_thread_s
   mapp map_seq;
   mapp map_hdr;
   apt parser;
-  char * ntbuffer[16];
-  char * xxbuffer[16];
-  long ntbuffersize[16];
-  long xxbuffersize[16];
+  // per channel (c) of db_getsequence(): the decompressed nucleotide
+  // sequence, and its reverse complement or translation
+  std::array<Buffer<char>, 16> ntbuffer;
+  std::array<Buffer<char>, 16> xxbuffer;
 };
 using db_thread_t = db_thread_s;
 
@@ -204,17 +205,10 @@ auto db_map_destruct(mapp m) -> void
 
 auto db_thread_create() -> db_thread_t *
 {
-  auto * t = static_cast<struct db_thread_s *>(xmalloc(sizeof(struct db_thread_s)));
+  auto * t = new db_thread_s();
   t->map_seq = db_map_create();
   t->map_hdr = db_map_create();
   t->parser = parser_create(db_main.show_taxid);
-  for(int c=0; c<16; c++)
-  {
-    t->ntbuffersize[c] = 0;
-    t->ntbuffer[c] = nullptr;
-    t->xxbuffersize[c] = 0;
-    t->xxbuffer[c] = nullptr;
-  }
   return t;
 }
 
@@ -223,22 +217,7 @@ auto db_thread_destruct(struct db_thread_s * t) -> void
   parser_destruct(t->parser);
   db_map_destruct(t->map_seq);
   db_map_destruct(t->map_hdr);
-  for(int c=0; c<16; c++)
-  {
-    if (t->ntbuffer[c] != nullptr)
-    {
-      free(t->ntbuffer[c]);
-    }
-    t->ntbuffersize[c] = 0;
-    t->ntbuffer[c] = nullptr;
-    if (t->xxbuffer[c] != nullptr)
-    {
-      free(t->xxbuffer[c]);
-    }
-    t->xxbuffersize[c] = 0;
-    t->xxbuffer[c] = nullptr;
-  }
-  free(t);
+  delete t;
 }
 
 constexpr long MAXVOLUMES = 256;
@@ -1285,26 +1264,28 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     unsigned char const last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
     long const nt_length = (4 * (aoff - 1)) + (last & 3);
   
-    if (t->ntbuffersize[c] < nt_length + 1)
+    auto & ntbuffer = t->ntbuffer[static_cast<std::size_t>(c)];
+    auto & xxbuffer = t->xxbuffer[static_cast<std::size_t>(c)];
+    if (ntbuffer.size() < static_cast<std::size_t>(nt_length + 1))
     {
-      t->ntbuffersize[c] = nt_length+1;
-      t->ntbuffer[c] = static_cast<char*>(xrealloc(t->ntbuffer[c], static_cast<std::size_t>(t->ntbuffersize[c])));
+      ntbuffer.resize(static_cast<std::size_t>(nt_length + 1));
       //      printf("Reallocating large buffer (%ld) for channel %d\n", 
       //	     t->ntbuffersize[c], c);
     }
+    char * const nt = ntbuffer.data();
 
     for(long j=0; j < nt_length/4; j++)
     {
       auto const b = static_cast<unsigned char>(address[j]);
-      *((reinterpret_cast<unsigned int*>(t->ntbuffer[c]))+j) = decompress_nt[b];
+      *((reinterpret_cast<unsigned int*>(nt))+j) = decompress_nt[b];
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)
     {
       auto const b = static_cast<unsigned char>(address[i/4]);
-      t->ntbuffer[c][i] = static_cast<char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
+      nt[i] = static_cast<char>(1 << ((b >> ((3-(i&3))<<1)) & 3));
     }
-    t->ntbuffer[c][nt_length] = 0;
+    nt[nt_length] = 0;
     
     if (amb_bytes > 0)
     {
@@ -1330,7 +1311,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	  for (unsigned long rr = 0; rr < r; rr++)
 	  {
-	    t->ntbuffer[c][o + rr] = static_cast<char>(n);
+	    nt[o + rr] = static_cast<char>(n);
 	  }
 	}
       }
@@ -1348,7 +1329,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	  for (unsigned int rr = 0; rr < r; rr++)
 	  {
-	    t->ntbuffer[c][o + rr] = static_cast<char>(n);
+	    nt[o + rr] = static_cast<char>(n);
 	  }
 	}
       }
@@ -1360,34 +1341,32 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       {
 	/* reverse-complement */
 
-	if (t->xxbuffersize[c] < nt_length + 1)
+	if (xxbuffer.size() < static_cast<std::size_t>(nt_length + 1))
 	{
-	  t->xxbuffersize[c] = nt_length+1;
-	  t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], static_cast<std::size_t>(t->xxbuffersize[c])));
+	  xxbuffer.resize(static_cast<std::size_t>(nt_length + 1));
 	}
+	char * const xx = xxbuffer.data();
 
 	for (long i = 0; i < nt_length; i++)
 	{
-	  t->xxbuffer[c][i] = ntcompl[static_cast<int>(t->ntbuffer[c][nt_length - 1 - i])];
+	  xx[i] = ntcompl[static_cast<int>(nt[nt_length - 1 - i])];
 	}
-	t->xxbuffer[c][nt_length] = 0;
+	xx[nt_length] = 0;
 
 	/* deallocate ntbuffer if big */
-	if (t->ntbuffersize[c] > 1000000)
+	if (ntbuffer.size() > 1000000)
 	{
 	  //	printf("Deallocating large buffer (%ld) for channel %d\n", 
 	  //	       t->ntbuffersize[c], c);
-	  t->ntbuffersize[c] = 0;
-	  free(t->ntbuffer[c]);
-	  t->ntbuffer[c] = nullptr;
+	  ntbuffer = Buffer<char>();
 	}
 
-	*addressp = t->xxbuffer[c];
+	*addressp = xx;
 	*lengthp = nt_length + 1;
       }
       else
       {
-	*addressp = t->ntbuffer[c];
+	*addressp = nt;
 	*lengthp = nt_length + 1;
       }
     }
@@ -1398,32 +1377,30 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
       long const plen = (nt_length - frame) / 3;
       
-      if (t->xxbuffersize[c] < plen + 1)
+      if (xxbuffer.size() < static_cast<std::size_t>(plen + 1))
       {
-	t->xxbuffersize[c] = plen + 1;
-	t->xxbuffer[c] = static_cast<char*>(xrealloc(t->xxbuffer[c], static_cast<std::size_t>(t->xxbuffersize[c])));
+	xxbuffer.resize(static_cast<std::size_t>(plen + 1));
       }
+      char * const xx = xxbuffer.data();
       
-      db_translate(t->ntbuffer[c], nt_length, strand, frame, t->xxbuffer[c]);
+      db_translate(nt, nt_length, strand, frame, xx);
 
       /* deallocate ntbuffer if big */
       
-      if (t->ntbuffersize[c] > 1000000)
+      if (ntbuffer.size() > 1000000)
       {
 	//	printf("Deallocating large buffer (%ld) for channel %d\n", 
 	//	       t->ntbuffersize[c], c);
-	t->ntbuffersize[c] = 0;
-	free(t->ntbuffer[c]);
-	t->ntbuffer[c] = nullptr;
+	ntbuffer = Buffer<char>();
       }
       
-      *addressp = t->xxbuffer[c];
+      *addressp = xx;
       *lengthp = plen + 1;
       *ntlenp = nt_length;
     }
     else
     {
-      *addressp = t->ntbuffer[c];
+      *addressp = nt;
       *lengthp = nt_length + 1;
     }
 
