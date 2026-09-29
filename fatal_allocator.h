@@ -24,13 +24,16 @@
 */
 
 // imported from vsearch (src/utils/fatal_allocator.hpp, commit
-// a7cb99e6), with swipe's xmalloc() and free()
+// a7cb99e6), with swipe's xmalloc() and free(); swipe addition: the
+// construct() members (default initialization)
 
 #ifndef SWIPE_FATAL_ALLOCATOR_H
 #define SWIPE_FATAL_ALLOCATOR_H
 
 #include <cstddef>  // std::size_t
 #include <cstdlib>  // std::free
+#include <new>  // placement new
+#include <utility>  // std::forward
 #include <vector>
 
 
@@ -69,6 +72,23 @@ struct FatalAllocator
   auto deallocate(Element * const pointer, std::size_t const /*count*/) noexcept -> void
   {
     std::free(static_cast<void *>(pointer));
+  }
+
+  // swipe addition: the elements of a Buffer are default-initialized,
+  // not value-initialized, so that resize() does not zero-fill a Buffer
+  // of a trivial type, exactly as the xmalloc() buffers it replaces
+  // (the code writes every element before reading it; the valgrind
+  // checks of the test-suite would report a read of an unset element)
+  template <class Other>
+  auto construct(Other * const pointer) -> void
+  {
+    ::new (static_cast<void *>(pointer)) Other;
+  }
+
+  template <class Other, class... Arguments>
+  auto construct(Other * const pointer, Arguments &&... arguments) -> void
+  {
+    ::new (static_cast<void *>(pointer)) Other(std::forward<Arguments>(arguments)...);
   }
 };
 
