@@ -81,13 +81,6 @@ long volnext;
 long seqnext;
 long * volchunks;
 long * volseqs;
-long compute16;
-long compute32;
-long compute63;
-long rounds7;
-long rounds16;
-long rounds32;
-long rounds63;
 
 struct search_data
 {
@@ -353,12 +346,6 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
-	  {
-	    std::lock_guard<std::mutex> const lock(countmutex);
-	    compute32 += sdp->in_count;
-	    rounds32++;
-	  }
-	
 	  // the 16-bit penalties are only used when they fit (KI-13:
 	  // otherwise no 16-bit result is accepted)
 	  search16s(reinterpret_cast<WORD**>(qtable),
@@ -1531,7 +1518,6 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	{
 	  std::lock_guard<std::mutex> const lock(countmutex);
 	  compute7 += sdp->in_count;
-	  rounds7++;
 	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
@@ -1597,11 +1583,6 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
   
       if (sdp->in_count > 0)
       {
-	{
-	  std::lock_guard<std::mutex> const lock(countmutex);
-	  compute16 += sdp->in_count;
-	  rounds16++;
-	}
 	  
 	// the 16-bit penalties are only used when they fit (KI-13:
 	// otherwise no 16-bit result is accepted)
@@ -1649,11 +1630,6 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
   
       if (sdp->in_count > 0)
       {
-	{
-	  std::lock_guard<std::mutex> const lock(countmutex);
-	  compute63 += sdp->in_count;
-	  rounds63++;
-	}
     
 	for (int i=0; i<sdp->in_count; i++)
 	{
@@ -1861,13 +1837,6 @@ auto work(Parameters const & parameters) -> void
   hits_init(parameters);
 
   compute7 = 0;
-  compute16 = 0;
-  compute32 = 0;
-  compute63 = 0;
-  rounds7 = 0;
-  rounds16 = 0;
-  rounds32 = 0;
-  rounds63 = 0;
 
   //  totalhits = 0;
 
