@@ -26,12 +26,14 @@
 #include "swipe.h"
 #include <algorithm>  // std::all_of, std::max, std::min
 #include <cctype>  // std::isdigit, std::isspace
-#include <cstddef>  // std::size_t
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoll, std::strtoul
 #include <cstring>  // std::memcpy
 #include <iterator>  // std::next
+#include <memory>  // std::unique_ptr
 #include <string>
+#include <vector>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
@@ -42,15 +44,13 @@ unsigned int decompress_nt[256];
 
 struct al_info
 {
-  char * title;
-  long dblist_len;
-  char * * dblist;
-  long oidlist_len;
-  char * * oidlist;
-  long memb_bit;
-  std::int64_t length;  // residues (LENGTH)
-  long maxoid;
-  long nseq;
+  std::string title;
+  std::vector<std::string> dblist;
+  std::vector<std::string> oidlist;
+  long memb_bit = 0;
+  std::int64_t length = 0;  // residues (LENGTH)
+  long maxoid = 0;
+  long nseq = 0;
 };
 using al_info_t = al_info;
 
@@ -323,44 +323,27 @@ auto db_init(db_main_t * v) -> void
 }
 
 
-auto getnames(char * line, char * * * names) -> long
+// the names of a DBLIST or OIDLIST line: words separated by white
+// space or double quotes
+auto getnames(char const * line) -> std::vector<std::string>
 {
-  char ws[] = " \t\r\n\"";
-  long n = 0;
-
-  long namecount = 0;
+  char const ws[] = " \t\r\n\"";
+  std::vector<std::string> names;
 
   char const * p = line;
   while (true)
   {
     auto const wslen = strspn(p, ws);
-    auto const namelen = strcspn(p + wslen, ws);
-    if (namelen > 0)
-    {
-      namecount++;
-      p += wslen + namelen;
-    }
-    else
+    auto const namelen = strcspn(std::next(p, static_cast<std::ptrdiff_t>(wslen)), ws);
+    if (namelen == 0)
     {
       break;
     }
+    names.emplace_back(std::next(p, static_cast<std::ptrdiff_t>(wslen)), namelen);
+    p = std::next(p, static_cast<std::ptrdiff_t>(wslen + namelen));
   }
-  
-  * names = static_cast<char**>(xmalloc(static_cast<std::size_t>(namecount) * sizeof(char*)));
 
-  while (n < namecount)
-  {
-    auto const wslen = strspn(line, ws);
-    auto const namelen = strcspn(line + wslen, ws);
-    char * name = static_cast<char*>(xmalloc(namelen + 1));
-    strncpy(name, line+wslen, namelen);
-    name[namelen] = 0;
-    (*names)[n] = name;
-    n++;
-    line += wslen + namelen;
-  }
-  
-  return namecount;
+  return names;
 }
 
 }  // anonymous namespace
@@ -370,7 +353,7 @@ auto getnames(char * line, char * * * names) -> long
 
 namespace {
 
-auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
+auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique_ptr<al_info_t>
 {
   // open an alias file and read contents
 
@@ -385,17 +368,8 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
 
   // al file exists
 
-  auto * al_info = static_cast<al_info_t *>(xmalloc(sizeof(al_info_t)));
-
-  al_info->dblist_len = 0;
-  al_info->oidlist_len = 0;
-  al_info->title = nullptr;
-  al_info->dblist = nullptr;
-  al_info->oidlist = nullptr;
-  al_info->length = 0;
-  al_info->nseq = 0;
-  al_info->maxoid = 0;
-  al_info->memb_bit = 0;
+  std::unique_ptr<al_info_t> al_info(new al_info_t());
+  auto title_found = false;
 
   char line[10000];
   while (fgets(line, 10000, db_file_xal) != nullptr)
@@ -404,17 +378,16 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
     {
       auto const start = strspn(line+6, " \t");
       auto const titlelen = strcspn(line+6+start, "\r\n");
-      al_info->title = static_cast<char*>(xmalloc(titlelen + 1));
-      strncpy(al_info->title, line+6+start, titlelen);
-      al_info->title[titlelen] = 0;
+      al_info->title.assign(line+6+start, titlelen);
+      title_found = true;
     }
     else if (strncmp(line, "DBLIST", 6) == 0)
     {
-      al_info->dblist_len = getnames(line+6, & al_info->dblist);
+      al_info->dblist = getnames(line+6);
     }
     else if (strncmp(line, "OIDLIST", 7) == 0)
     {
-      al_info->oidlist_len = getnames(line+7, & al_info->oidlist);
+      al_info->oidlist = getnames(line+7);
     }
     else if (strncmp(line, "GILIST", 6) == 0)
     {
@@ -450,9 +423,9 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
     }
   }
 
-  if (al_info->title == nullptr)
+  if (not title_found)
   {
-    al_info->title = strdup(basename);
+    al_info->title = basename;
   }
 
   fclose(db_file_xal);
@@ -461,33 +434,6 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
   return al_info;
 }
 
-
-auto db_close_al(al_info_t * a) -> void
-{
-  if (a->title != nullptr)
-  {
-    free(a->title);
-    a->title = nullptr;
-  }
-  if (a->dblist != nullptr)
-  {
-    for (long i = 0; i < a->dblist_len; i++)
-    {
-      free(a->dblist[i]);
-    }
-    free(a->dblist);
-    a->dblist = nullptr;
-  }
-  if (a->oidlist != nullptr)
-  {
-    for (long i = 0; i < a->oidlist_len; i++)
-    {
-      free(a->oidlist[i]);
-    }
-    free(a->oidlist);
-    a->oidlist = nullptr;
-  }
-}
 
 // numbers stored in the database files, read at any alignment: a cast
 // to an integer pointer is undefined behaviour when the address is not
@@ -708,7 +654,7 @@ auto get_path(char const * basename) -> std::string
   return name.substr(0, last_slash + 1);
 }
 
-auto addpath(std::string const & path, char const * base) -> std::string
+auto addpath(std::string const & path, std::string const & base) -> std::string
 {
   return path + base;
 }
@@ -792,10 +738,10 @@ auto db_check_msk(long seqno) -> long
   return member;
 }
 
-auto db_set_masked_info(db_volume_t * v, al_info_t const * ai, char * mskfile) -> void
+auto db_set_masked_info(db_volume_t * v, al_info_t const * ai, std::string const & mskfile) -> void
 {
   v->masked_mskfile  = addpath(db_main.path, mskfile);
-  v->masked_title    = strdup(ai->title);
+  v->masked_title    = strdup(ai->title.c_str());
   v->masked_length   = ai->length;
   v->masked_nseq     = ai->nseq;
   v->masked_maxoid   = ai->maxoid;
@@ -927,7 +873,7 @@ auto db_open(Parameters const & parameters) -> void
   SymbolType const symbol_type = parameters.symtype;
   char const * const basename = parameters.databasename;
   char * const taxidfilename = parameters.taxidfilename;
-  al_info_t * ai = nullptr;
+  std::unique_ptr<al_info_t> ai;
 
   db_init(& db_main);
   db_main.show_taxid = parameters.show_taxid;
@@ -942,22 +888,22 @@ auto db_open(Parameters const & parameters) -> void
   ai = db_read_alias(symbol_type, basename);
   if (ai != nullptr)
   {
-    db_main.title = strdup(ai->title);
+    db_main.title = strdup(ai->title.c_str());
     db_main.memb_bit = ai->memb_bit;
 
-    for(long i=0; i<ai->dblist_len; i++)
+    for (std::size_t i = 0; i < ai->dblist.size(); i++)
     {
       std::string const basename2 = addpath(db_main.path, ai->dblist[i]);
       
-      al_info_t * ai2 = db_read_alias(symbol_type, basename2.c_str());
+      auto const ai2 = db_read_alias(symbol_type, basename2.c_str());
       if (ai2 != nullptr)
       {
-	if ((ai->memb_bit != 0) && ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1)))
+	if ((ai->memb_bit != 0) && ((ai2->oidlist.size() != 1) || (ai2->dblist.size() != 1)))
 	{
 	  fatal("Illegal alias file (2).");
 	}
 
-	for(long j=0; j < ai2->dblist_len; j++)
+	for (std::size_t j = 0; j < ai2->dblist.size(); j++)
 	{
 	  std::string const basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
@@ -966,7 +912,7 @@ auto db_open(Parameters const & parameters) -> void
 	  
 	  if (ai->memb_bit != 0)
 	  {
-	    db_set_masked_info(db_volume + vol, ai2, ai2->oidlist[j]);
+	    db_set_masked_info(db_volume + vol, ai2.get(), ai2->oidlist[j]);
 	    db_open_msk(db_volume + vol);
 	  }
 	  
@@ -981,20 +927,16 @@ auto db_open(Parameters const & parameters) -> void
 	  vol++;
 	  
 	}
-	
-	db_close_al(ai2);
-	free(ai2);
-	ai2 = nullptr;
       }
       else
       {
-        if (ai->oidlist_len == 0)
+        if (ai->oidlist.empty())
           {
             ai->memb_bit = 0;
             db_main.memb_bit = 0;
           }
 
-	  if ((ai->memb_bit != 0) && ((ai->oidlist_len != 1) || (ai->dblist_len != 1)))
+	  if ((ai->memb_bit != 0) && ((ai->oidlist.size() != 1) || (ai->dblist.size() != 1)))
 	  {
 	    fatal("Illegal alias file (1).");
 	  }
@@ -1004,7 +946,7 @@ auto db_open(Parameters const & parameters) -> void
 	
 	if (ai->memb_bit != 0)
 	{
-	  db_set_masked_info(db_volume + vol, ai, ai->oidlist[i]);
+	  db_set_masked_info(db_volume + vol, ai.get(), ai->oidlist[i]);
 	  db_open_msk(db_volume + vol);
 	}
 
@@ -1020,10 +962,6 @@ auto db_open(Parameters const & parameters) -> void
       }
       
     }
-    
-    db_close_al(ai);
-    free(ai);
-    ai = nullptr;
   }
   else
   {
