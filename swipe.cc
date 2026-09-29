@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include "search_data.h"  // prepare_search, run_threads, align_threads
 #include <cstddef>  // size_t
+#include <cstdio>  // std::fclose, std::ferror, std::fflush
 #include <cstdlib>  // exit, posix_memalign
 #include <string>  // std::string (fatal)
 
@@ -301,8 +302,16 @@ auto main(int argc, char**argv) -> int
   
   db_close();
 
-  if (parameters.outfile != nullptr)
+  /* A write error (full disk, quota, broken pipe) is often deferred by
+     stdio until the buffer is flushed, so check fflush and the error
+     flag before closing; fclose also flushes and can report the same
+     error (as vsearch's CheckedCloseOutputHandle) */
+  if ((std::fflush(out) != 0) or (std::ferror(out) != 0))
   {
-    fclose(out);
+    fatal("Unable to write to output file (disk full, quota exceeded, or broken pipe?)");
+  }
+  if ((parameters.outfile != nullptr) and (std::fclose(out) != 0))
+  {
+    fatal("Unable to close output file (disk full or quota exceeded?)");
   }
 }

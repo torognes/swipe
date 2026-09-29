@@ -64,6 +64,10 @@
           value that is not a number, is followed by other characters,
           is out of range (or, in an alias file, negative) is now a fatal
           error; it was read as 0, truncated or clamped (KI-43)
+        * A write error on the output (full disk, quota exceeded, broken
+          pipe), on standard output or on the file of -o, ends with the
+          message "Unable to write to output file (...)" and status 1, as
+          the manual page says; it went unnoticed, with status 0
         * The identifiers and titles of database sequences are no longer
           truncated: titles were cut at 2,048 characters, identifiers
           and the list of identifiers of a sequence at 2,047, and a
