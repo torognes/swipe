@@ -37,7 +37,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <arpa/inet.h>
-#include <pthread.h>
 #include <getopt.h>
 #include <cmath>
 #include <x86intrin.h>

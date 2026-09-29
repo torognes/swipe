@@ -32,10 +32,12 @@
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
+#include <functional>  // std::cref
 #include <iterator>  // std::begin, std::end
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <string>  // std::string (fatal)
+#include <thread>
 #include <vector>
 
 
@@ -74,7 +76,6 @@ namespace {
 long cpu_feature_sse2;
 std::mutex countmutex;
 std::mutex workmutex;
-pthread_t pthread_id[max_threads];
 long maxchunksize;
 long volnext;
 long seqnext;
@@ -117,13 +118,6 @@ struct search_data
 
   long qstrand1, qstrand2, qframe1, qframe2;
   long dstrand1, dstrand2, dframe1, dframe2;
-};
-
-// what a worker thread gets from pthread_create(): the parameters,
-// read-only (the object lives until the threads are joined)
-struct WorkerArguments
-{
-  Parameters const * parameters;
 };
 
 }  // anonymous namespace
@@ -597,9 +591,8 @@ auto align_getwork(long * first, long * last) -> int
   return status;
 }
 
-auto align_worker(void * arguments) -> void *
+auto align_worker(Parameters const & parameters) -> void
 {
-  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   search_data sd;
   align_init(parameters, &sd);
 
@@ -611,30 +604,21 @@ auto align_worker(void * arguments) -> void *
   }
 
   align_done(&sd);
-  return nullptr;
 }
 
 auto align_threads(Parameters const & parameters) -> void
 {
-  long t = 0;
-  void * status = nullptr;
-
   align_threads_init(parameters);
 
-  WorkerArguments arguments {&parameters};
-  for(t=0; t<parameters.threads; t++)
-    {
-      if (pthread_create(pthread_id + t, nullptr, align_worker, &arguments) != 0)
-      {
-	fatal("Cannot create thread.");
-      }
-    }
-  
-  for(t=0; t<parameters.threads; t++) {
-    if (pthread_join(pthread_id[t], &status) != 0)
-    {
-      fatal("Cannot join thread.");
-    }
+  std::vector<std::thread> workers;
+  workers.reserve(static_cast<std::size_t>(parameters.threads));
+  for (long t = 0; t < parameters.threads; t++)
+  {
+    workers.emplace_back(align_worker, std::cref(parameters));
+  }
+  for (auto & worker_thread : workers)
+  {
+    worker_thread.join();
   }
 
   align_threads_done();
@@ -1715,9 +1699,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 }
 
 
-auto worker(void * arguments) -> void *
+auto worker(Parameters const & parameters) -> void
 {
-  auto const & parameters = *static_cast<WorkerArguments const *>(arguments)->parameters;
   struct search_data sd;
   search_init(parameters, &sd);
 
@@ -1727,7 +1710,6 @@ auto worker(void * arguments) -> void *
   }
 
   search_done(&sd);
-  return nullptr;
 }
 
 
@@ -1760,23 +1742,15 @@ auto prepare_search(long par) -> void
 
 auto run_threads(Parameters const & parameters) -> void
 {
-  long t = 0;
-  void * status = nullptr;
-
-  WorkerArguments arguments {&parameters};
-  for(t=0; t<parameters.threads; t++)
-    {
-      if (pthread_create(pthread_id + t, nullptr, worker, &arguments) != 0)
-      {
-	fatal("Cannot create thread.");
-      }
-    }
-  
-  for(t=0; t<parameters.threads; t++) {
-    if (pthread_join(pthread_id[t], &status) != 0)
-    {
-      fatal("Cannot join thread.");
-    }
+  std::vector<std::thread> workers;
+  workers.reserve(static_cast<std::size_t>(parameters.threads));
+  for (long t = 0; t < parameters.threads; t++)
+  {
+    workers.emplace_back(worker, std::cref(parameters));
+  }
+  for (auto & worker_thread : workers)
+  {
+    worker_thread.join();
   }
 }
 

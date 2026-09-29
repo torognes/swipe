@@ -31,7 +31,7 @@ ifeq ($(VERSION),)
   $(error cannot read the version number from ./VERSION)
 endif
 
-COMMON=-g -pthread
+COMMON=-g -fno-exceptions -pthread
 
 # Warnings of every recipe. The extra ones are known to every
 # supported compiler (GCC 4.8.5 and later, clang), and swipe builds

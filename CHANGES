@@ -18,6 +18,11 @@
           by "make install" with the binary
         * README.md rewritten: quick start, install (binaries, Homebrew,
           compilation), shell completion, versions
+        * Threads are standard C++ threads (std::thread) instead of POSIX
+          threads, and swipe is compiled without exception handling
+          (-fno-exceptions), as swarm and vsearch: in the unlikely case
+          that a thread cannot be created, swipe now aborts instead of
+          exiting with "Cannot create thread." and status 1
         * Fix: --help exited with status 1: it now exits with status 0,
           as other GNU-style programs (KI-2)
         * Fix: a gap open or gap extension penalty of zero (-G 0, -E 0)
