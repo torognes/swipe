@@ -447,7 +447,7 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
     al_info->title = basename;
   }
 
-  fclose(db_file_xal);
+  static_cast<void>(fclose(db_file_xal));  // an input file
 
 
   return al_info;
@@ -864,7 +864,7 @@ auto db_read_taxid_file(char const * filename) -> void
 
   //  fprintf(out, "Read %ld taxid's.\n", lines);
   static_cast<void>(lines);  // only read by the trace above
-  fclose(db_main.taxid_file);
+  static_cast<void>(fclose(db_main.taxid_file));  // an input file
 }
 
 }  // anonymous namespace

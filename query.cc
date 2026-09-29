@@ -314,7 +314,7 @@ auto query_exit() -> void
 {
   if (query_fp != stdin)
   {
-    fclose(query_fp);
+    static_cast<void>(fclose(query_fp));  // an input file
   }
 
   query_free();

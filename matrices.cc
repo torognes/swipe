@@ -451,7 +451,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	}
     }
     
-  fclose(fp);
+  static_cast<void>(fclose(fp));  // an input file
 }
 
 auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
