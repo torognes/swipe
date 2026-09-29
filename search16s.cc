@@ -25,8 +25,8 @@
 
 #include "swipe.h"
 
-constexpr int CHANNELS = 8;
-constexpr int CDEPTH = 1;
+constexpr long CHANNELS = 8;
+constexpr long CDEPTH = 1;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
@@ -254,7 +254,7 @@ inline auto dprofile_fill16s(WORD * dprofile_word,
   __m128i xmm30;
   __m128i xmm31;
   
-  for (int j=0; j<CDEPTH; j++)
+  for (long j=0; j<CDEPTH; j++)
   {
     int d[CHANNELS];
     for (int z = 0; z < CHANNELS; z++)
@@ -263,7 +263,7 @@ inline auto dprofile_fill16s(WORD * dprofile_word,
     }
 
     //      for(int i=0; i<24; i += 8)
-    for(int i=0; i<32; i += 8)
+    for(long i=0; i<32; i += 8)
     {
       xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
       xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
@@ -337,38 +337,32 @@ auto search16s(WORD * * q_start,
   __m128i M;
   __m128i Z;
   __m128i T0;
-  __m128i *hep;
-  __m128i **qp;
-  BYTE * d_begin[CHANNELS];
-  BYTE * d_pos[CHANNELS];
-  BYTE * d_end[CHANNELS];
-  BYTE * d_best[CHANNELS];
+  __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
+  __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
+  BYTE const * d_begin[CHANNELS];
+  BYTE const * d_pos[CHANNELS];
+  BYTE const * d_end[CHANNELS];
+  BYTE const * d_best[CHANNELS];
   long q_best[CHANNELS];
 
   __m128i dseqalloc[CDEPTH];
 
   BYTE * dseq = reinterpret_cast<BYTE *>(& dseqalloc);
-  BYTE zero;
+  BYTE const zero = 0;
 
   long seq_id[CHANNELS];
   long next_id = 0;
-  unsigned done;
+  unsigned done = 0;
   
   Z = _mm_set1_epi16(word_0x8000);
   T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
   Q  = _mm_set1_epi16(static_cast<short>(gap_open_penalty));
   R  = _mm_set1_epi16(static_cast<short>(gap_extend_penalty));
   
-  zero = 0;
-  done = 0;
-  
   S = Z;
   SL = Z;
-  
-  hep = reinterpret_cast<__m128i*>(hearray);
-  qp = reinterpret_cast<__m128i**>(q_start);
       
-  for(int a=0; a < qlen; a++)
+  for(long a=0; a < qlen; a++)
   {
     hep[2*a] = Z;
     hep[(2*a)+1] = Z;
@@ -492,9 +486,7 @@ auto search16s(WORD * * q_start,
 	  {
 	    seq_id[c] = next_id;
 	    long const seqnosf = seqnos[next_id];
-	    char* address;
-	    long length;
-	    long ntlen;
+	    long ntlen = 0;
 
 	    long const strand = (seqnosf >> 2) & 1;
 	    long const frame = seqnosf & 3;
@@ -502,13 +494,13 @@ auto search16s(WORD * * q_start,
 
 	    db_mapsequences(dbta[c], seqno, seqno);
 
-	    db_getsequence(dbta[c], seqno, strand, frame, 
-			   & address, & length, & ntlen, c);
+	    View<char> const sequence =
+	      db_getsequence(dbta[c], seqno, strand, frame, & ntlen, c);
 		      
-	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
+	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
-	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
+	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
 	    q_best[c] = -1;
 	    next_id++;
 		      

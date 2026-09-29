@@ -24,12 +24,13 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // as_c_string, fprint, fprint_integer
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
-#include <cinttypes>  // PRId64
 #include <cmath>  // std::floor, std::isfinite
 #include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
+#include <cstring>  // std::strlen
 #include <limits>
 #include <string>
 
@@ -44,7 +45,7 @@ auto args_show(Parameters const & parameters) -> void
     
     if (cpu_feature_ssse3 == 0)
     {
-      fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
+      fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
     
     char const * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
@@ -52,29 +53,49 @@ auto args_show(Parameters const & parameters) -> void
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
     
-    fprintf(out, "Database file:     %s\n", parameters.databasename);
-    fprintf(out, "Database title:    %s\n", db_gettitle());
-    fprintf(out, "Database time:     %s\n", db_gettime());
+    fprint(out, "Database file:     ");
+    fprint(out, as_c_string(parameters.databasename));
+    fprint(out, '\n');
+    fprint(out, "Database title:    ");
+    fprint(out, as_c_string(db_gettitle()));
+    fprint(out, '\n');
+    fprint(out, "Database time:     ");
+    fprint(out, as_c_string(db_gettime()));
+    fprint(out, '\n');
     
     if (db_ismasked() != 0)
       {
-	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount_masked());
-	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount_masked());
+	fprint(out, "Database size:     ");
+	fprint_integer(out, db_getsymcount_masked());
+	fprint(out, " residues");
+	fprint(out, " in ");
+	fprint_integer(out, db_getseqcount_masked());
+	fprint(out, " sequences\n");
       }
       else
       {
-	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount());
-	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount());
+	fprint(out, "Database size:     ");
+	fprint_integer(out, db_getsymcount());
+	fprint(out, " residues");
+	fprint(out, " in ");
+	fprint_integer(out, db_getseqcount());
+	fprint(out, " sequences\n");
       }
 
-      fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
+      fprint(out, "Longest db seq:    ");
+      fprint_integer(out, db_getlongest());
+      fprint(out, " residues\n");
 
       if (parameters.effdbsize > 0)
       {
-	fprintf(out, "Effective db size: %" PRId64 "\n", parameters.effdbsize);
+	fprint(out, "Effective db size: ");
+	fprint_integer(out, parameters.effdbsize);
+	fprint(out, "\n");
       }
 
-      fprintf(out, "Query file name:   %s\n", parameters.queryname);
+      fprint(out, "Query file name:   ");
+      fprint(out, as_c_string(parameters.queryname));
+      fprint(out, '\n');
 
       long qlen = 0;
       if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -86,59 +107,95 @@ auto args_show(Parameters const & parameters) -> void
 	qlen = query.aa[0].len;
       }
 
-      fprintf(out, "Query length:      %ld residues\n", qlen);
+      fprint(out, "Query length:      ");
+      fprint_integer(out, qlen);
+      fprint(out, " residues\n");
 
       query_show();
 
       if (parameters.symtype == SymbolType::blastn)
       {
-	fprintf(out, "Query strands:     ");
+	fprint(out, "Query strands:     ");
 	switch (parameters.querystrands)
 	{
 	case QueryStrands::plus:
-	  fprintf(out, "Plus");
+	  fprint(out, "Plus");
 	  break;
 	case QueryStrands::minus:
-	  fprintf(out, "Minus");
+	  fprint(out, "Minus");
 	  break;
 	case QueryStrands::both:
-	  fprintf(out, "Plus and minus");
+	  fprint(out, "Plus and minus");
 	  break;
 	default:
 	  break;
 	}
-	fprintf(out, "\n");
-	fprintf(out, "Score matrix:      %ld/%ld\n", parameters.matchscore, parameters.mismatchscore);
+	fprint(out, "\n");
+	fprint(out, "Score matrix:      ");
+	fprint_integer(out, parameters.matchscore);
+	fprint(out, '/');
+	fprint_integer(out, parameters.mismatchscore);
+	fprint(out, '\n');
       }
       else
       {
-	fprintf(out, "Score matrix:      %s\n", parameters.matrixname);
+	fprint(out, "Score matrix:      ");
+	fprint(out, as_c_string(parameters.matrixname));
+	fprint(out, '\n');
       }
 
-      fprintf(out, "Gap penalty:       %ld+%ldk\n", parameters.gapopen, parameters.gapextend);
+      fprint(out, "Gap penalty:       ");
+      fprint_integer(out, parameters.gapopen);
+      fprint(out, '+');
+      fprint_integer(out, parameters.gapextend);
+      fprint(out, "k\n");
       fprintf(out, "Max expect shown:  %-g\n", parameters.expect);
-      fprintf(out, "Min score shown:   %ld\n", parameters.minscore);
-      fprintf(out, "Max matches shown: %ld\n", parameters.maxmatches);
-      fprintf(out, "Alignments shown:  %ld\n", parameters.alignments);
-      fprintf(out, "Show gi's:         %ld\n", parameters.show_gis);
-      fprintf(out, "Show taxid's:      %ld\n", parameters.show_taxid);
-      fprintf(out, "Threads:           %ld\n", parameters.threads);
-      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(parameters.symtype)]);
+      fprint(out, "Min score shown:   ");
+      fprint_integer(out, parameters.minscore);
+      fprint(out, "\n");
+      fprint(out, "Max matches shown: ");
+      fprint_integer(out, parameters.maxmatches);
+      fprint(out, "\n");
+      fprint(out, "Alignments shown:  ");
+      fprint_integer(out, parameters.alignments);
+      fprint(out, "\n");
+      fprint(out, "Show gi's:         ");
+      fprint_integer(out, parameters.show_gis);
+      fprint(out, "\n");
+      fprint(out, "Show taxid's:      ");
+      fprint_integer(out, parameters.show_taxid);
+      fprint(out, "\n");
+      fprint(out, "Threads:           ");
+      fprint_integer(out, parameters.threads);
+      fprint(out, "\n");
+      fprint(out, "Symbol type:       ");
+      fprint(out, as_c_string(symtypestring[static_cast<long>(parameters.symtype)]));
+      fprint(out, '\n');
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[parameters.query_gencode - 1], parameters.query_gencode);
+	fprint(out, "Query genetic code:");
+	fprint(out, as_c_string(gencode_names[parameters.query_gencode - 1]));
+	fprint(out, " (");
+	fprint_integer(out, parameters.query_gencode);
+	fprint(out, ")\n");
       }
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[parameters.db_gencode - 1], parameters.db_gencode);
+	fprint(out, "DB genetic code:   ");
+	fprint(out, as_c_string(gencode_names[parameters.db_gencode - 1]));
+	fprint(out, " (");
+	fprint_integer(out, parameters.db_gencode);
+	fprint(out, ")\n");
       }
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
       if (parameters.taxidfilename != nullptr)
       {
-	fprintf(out, "Taxid filename:    %s\n", parameters.taxidfilename);
+	fprint(out, "Taxid filename:    ");
+	fprint(out, as_c_string(parameters.taxidfilename));
+	fprint(out, '\n');
       }
-      fprintf(out, "\n");
+      fprint(out, "\n");
     }
 }
   
@@ -151,46 +208,53 @@ auto args_usage(char const * const program_name) -> void
   /* options unused by BLAST: chkuxHN */
   /* options used by SWIPE:   chkuxHN  */
 
-  fprintf(out, "Usage: %s [OPTIONS]\n", program_name);
-  fprintf(out, "  -h, --help                 show help\n");
-  fprintf(out, "      --version              show version\n");
-  fprintf(out, "  -d, --db=FILE              sequence database base name (required)\n");
-  fprintf(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
-  fprintf(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
-  fprintf(out, "  -q, --penalty=NUM          penalty for nucleotide mismatch (-3)\n");
-  fprintf(out, "  -r, --reward=NUM           reward for nucleotide match (1)\n");
-  fprintf(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
-  fprintf(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
-  fprintf(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
-  fprintf(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
-  fprintf(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
-  fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
-  fprintf(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
-  fprintf(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
-  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", max_threads);
-  fprintf(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
-  fprintf(out, "  -I, --show_gis             show gi numbers in results (no)\n");
-  fprintf(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
-  fprintf(out, "  -S, --strand=NAME/NUM      query strands to search [1-3] (3)\n");
-  fprintf(out, "  -Q, --query_gencode=NUM    query genetic code [1-23] (1)\n");
-  fprintf(out, "  -D, --db_gencode=NUM       database genetic code [1-23] (1)\n");
-  fprintf(out, "  -x, --taxidlist=FILE       taxid list filename (none)\n");
-  fprintf(out, "  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)\n");
-  fprintf(out, "  -H, --show_taxid           show taxid etc in results (no)\n");
-  fprintf(out, "  -o, --out=FILE             output file (stdout)\n");
-  fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
+  fprint(out, "Usage: ");
+  fprint(out, as_c_string(program_name));
+  fprint(out, " [OPTIONS]\n");
+  fprint(out, "  -h, --help                 show help\n");
+  fprint(out, "      --version              show version\n");
+  fprint(out, "  -d, --db=FILE              sequence database base name (required)\n");
+  fprint(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
+  fprint(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
+  fprint(out, "  -q, --penalty=NUM          penalty for nucleotide mismatch (-3)\n");
+  fprint(out, "  -r, --reward=NUM           reward for nucleotide match (1)\n");
+  fprint(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
+  fprint(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
+  fprint(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
+  fprint(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
+  fprint(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
+  fprint(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
+  fprint(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
+  fprint(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
+  fprint(out, "  -a, --num_threads=NUM      number of threads to use [1-");
+  fprint_integer(out, max_threads);
+  fprint(out, "] (1)\n");
+  fprint(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
+  fprint(out, "  -I, --show_gis             show gi numbers in results (no)\n");
+  fprint(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
+  fprint(out, "  -S, --strand=NAME/NUM      query strands to search [1-3] (3)\n");
+  fprint(out, "  -Q, --query_gencode=NUM    query genetic code [1-23] (1)\n");
+  fprint(out, "  -D, --db_gencode=NUM       database genetic code [1-23] (1)\n");
+  fprint(out, "  -x, --taxidlist=FILE       taxid list filename (none)\n");
+  fprint(out, "  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)\n");
+  fprint(out, "  -H, --show_taxid           show taxid etc in results (no)\n");
+  fprint(out, "  -o, --out=FILE             output file (stdout)\n");
+  fprint(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
 auto args_version() -> void
 {
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s\n\n%s\n", swipe_name_and_version, ref);
+  fprint(out, as_c_string(swipe_name_and_version));
+  fprint(out, "\n\n");
+  fprint(out, ref);
+  fprint(out, '\n');
 }
 
 auto args_help(char const * const program_name) -> void
 {
   args_version();
-  fprintf(out, "\n");
+  fprint(out, "\n");
   
   args_usage(program_name);
 }

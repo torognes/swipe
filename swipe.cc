@@ -25,7 +25,10 @@
 
 #include "swipe.h"
 #include "search_data.h"  // prepare_search, run_threads, align_threads
+#include "print_view.h"  // as_c_string, fprint
+#include <cassert>
 #include <cstddef>  // size_t
+#include <cstdio>  // std::fclose, std::ferror, std::fflush
 #include <cstdlib>  // exit, posix_memalign
 #include <string>  // std::string (fatal)
 
@@ -96,27 +99,37 @@ auto xmalloc(size_t size) -> void *
 }
 
 
-#define cpuid(l1,l2,a,b,c,d)						\
-  __asm__ __volatile__							\
-    ("cpuid": "=a" (a), "=b" (b), "=c" (c), "=d" (d) : "a" (l1), "c" (l2));
-
 namespace {
+
+// the four registers set by the cpuid instruction
+struct CpuidRegisters
+{
+  unsigned int eax = 0;
+  unsigned int ebx = 0;
+  unsigned int ecx = 0;
+  unsigned int edx = 0;
+};
+
+auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegisters
+{
+  CpuidRegisters registers;
+  __asm__ __volatile__
+    ("cpuid" : "=a" (registers.eax), "=b" (registers.ebx),
+     "=c" (registers.ecx), "=d" (registers.edx) : "a" (leaf), "c" (subleaf));
+  return registers;
+}
 
 auto cpu_features() -> void
 {
-  unsigned int a __attribute__ ((unused)) = 0;
-  unsigned int b __attribute__ ((unused)) = 0;
-  unsigned int c = 0;
-  unsigned int d = 0;
-  cpuid(1,0,a,b,c,d);
-  cpu_feature_sse2  = (d >> 26) & 1;
-  cpu_feature_ssse3 = (c >>  9) & 1;
-  cpu_feature_sse41 = (c >> 19) & 1;
+  CpuidRegisters const registers = cpuid(1, 0);
+  cpu_feature_sse2  = (registers.edx >> 26) & 1;
+  cpu_feature_ssse3 = (registers.ecx >>  9) & 1;
+  cpu_feature_sse41 = (registers.ecx >> 19) & 1;
 }
 
 auto clock_start(struct time_info * tip) -> void
 {
-  time(& tip->t1);                 /* time(2)   */
+  static_cast<void>(time(& tip->t1));  /* time(2)   */
   tip->clock1 = std::chrono::steady_clock::now();
 }
 
@@ -126,13 +139,19 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
   char const timeformat[] = "%a, %e %b %Y %T UTC";
 
   tip->clock2 = std::chrono::steady_clock::now();
-  time(& tip->t2);
+  static_cast<void>(time(& tip->t2));
 
+  // strftime() returns 0 when the buffer is too small (its contents
+  // are then undefined): the buffers hold the longest date
   gmtime_r(&tip->t1, & tms);
-  strftime(tip->starttime.data(), tip->starttime.size(), timeformat, & tms);
+  auto const start_length = strftime(tip->starttime.data(), tip->starttime.size(), timeformat, & tms);
+  assert(start_length != 0);
+  static_cast<void>(start_length);
   
   gmtime_r(&tip->t2, & tms);
-  strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
+  auto const end_length = strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
+  assert(end_length != 0);
+  static_cast<void>(end_length);
 
   tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
   
@@ -178,8 +197,12 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
   
   if (parameters.view == OutputFormat::plain)
   {
-    fprintf(out, "Search started:    %s\n", tip->starttime.data());
-    fprintf(out, "Search completed:  %s\n", tip->endtime.data());
+    fprint(out, "Search started:    ");
+    fprint(out, as_c_string(tip->starttime.data()));
+    fprint(out, '\n');
+    fprint(out, "Search completed:  ");
+    fprint(out, as_c_string(tip->endtime.data()));
+    fprint(out, '\n');
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
     {
@@ -187,9 +210,9 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
     }
     else
     {
-      fprintf(out, "Speed:             n/a\n");
+      fprint(out, "Speed:             n/a\n");
     }
-    fprintf(out, "\n");
+    fprint(out, '\n');
   }
 }
 
@@ -208,8 +231,8 @@ auto work(Parameters const & parameters) -> void
 
   if (parameters.view==OutputFormat::plain)
   {
-    fprintf(out, "Searching...");
-    fflush(out);
+    fprint(out, "Searching...");
+    static_cast<void>(fflush(out));  // a write error is reported at the end (main())
   }
 
   clock_start(&ti);
@@ -218,7 +241,7 @@ auto work(Parameters const & parameters) -> void
  
   if (parameters.view == OutputFormat::plain)
   {
-    fprintf(out, "...............................................done\n\n");
+    fprint(out, "...............................................done\n\n");
   }
  
   clock_stop(parameters, &ti);
@@ -291,8 +314,16 @@ auto main(int argc, char**argv) -> int
   
   db_close();
 
-  if (parameters.outfile != nullptr)
+  /* A write error (full disk, quota, broken pipe) is often deferred by
+     stdio until the buffer is flushed, so check fflush and the error
+     flag before closing; fclose also flushes and can report the same
+     error (as vsearch's CheckedCloseOutputHandle) */
+  if ((std::fflush(out) != 0) or (std::ferror(out) != 0))
   {
-    fclose(out);
+    fatal("Unable to write to output file (disk full, quota exceeded, or broken pipe?)");
+  }
+  if ((parameters.outfile != nullptr) and (std::fclose(out) != 0))
+  {
+    fatal("Unable to close output file (disk full or quota exceeded?)");
   }
 }

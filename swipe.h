@@ -46,6 +46,7 @@
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
+#include "view.h"  // View
 
 
 #ifdef __APPLE__
@@ -312,7 +313,7 @@ auto search16s(WORD * * q_start,
 	       long * bestq,
 	       int qlen) -> void;
 
-auto fullsw(char * dseq,
+auto fullsw(char const * dseq,
 	    char const * dend,
 	    char * qseq,
 	    char const * qend,
@@ -377,12 +378,12 @@ struct HeaderLayout
   Escaping escaping = Escaping::none;
 };
 
-auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
+auto parse_header(apt p, View<char> header, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
+auto parse_getdeflines(apt p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
 
-auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+auto parse_getdeflinecount(apt p, View<char> header,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
 auto db_open(Parameters const & parameters) -> void;
@@ -407,11 +408,11 @@ auto db_thread_destruct(struct db_thread_s * t) -> void;
 
 auto db_check_taxid(long taxid) -> long;
 
-auto db_parse_header(struct db_thread_s const * t, char * address, long length,
+auto db_parse_header(struct db_thread_s const * t, View<char> header,
 		     long show_gis,
 		     long * deflines, std::vector<std::string> * deflinetable) -> void;
 
-auto db_showheader(struct db_thread_s const * t, char * address, long length,
+auto db_showheader(struct db_thread_s const * t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
@@ -425,10 +426,12 @@ auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
-auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void;
-auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
-		  long * length) -> void;
+// the residues of a sequence (GitHub #27: without the separator that
+// follows it); ntlenp receives its length in nucleotides
+auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
+		    long * ntlenp, int c) -> View<char>;
+// the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
+auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
 
 auto hits_init(Parameters const & parameters) -> void;
 // strands and frames of a hit: query and database sequence

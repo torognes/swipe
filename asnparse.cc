@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // fprint
 #include <algorithm>  // std::min
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -36,8 +37,8 @@
 
 struct asnparse_info
 {
-  unsigned char * header_p;
-  unsigned char * header_end;
+  unsigned char const * header_p;
+  unsigned char const * header_end;
   
   std::string parsed_string;
   unsigned long parsed_integer;
@@ -412,7 +413,8 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA4)
   {
-    match_obj(p,0xA5);
+    // the hour [4] (KI-41: it was matched with the tag of the minute)
+    match_obj(p,0xA4);
     parse_integer(p);
     match_obj(p,0);
   }
@@ -789,13 +791,13 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	  {
 	    while(col < 1 + p->indent)
 	    {
-	      putc(' ', out);
+	      fprint(out, ' ');
 	      col++;
 	    }
 	  }
 	  else
 	  {
-	    putc((x != 0) ? ' ' : '>', out);
+	    fprint(out, (x != 0) ? ' ' : '>');
 	    col++;
 	  }
 	}
@@ -817,7 +819,7 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	    }
 	    else
 	    {
-	      putc(defline[pos], out);
+	      fprint(out, defline[pos]);
 	    }
 	    pos++;
 	    col++;
@@ -830,14 +832,14 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	{
 	  while(col < p->linelen)
 	  {
-	    putc(' ', out);
+	    fprint(out, ' ');
 	    col++;
 	  }
 	}
 
 	if (p->maxdeflines > 1)
 	{
-	  putc('\n', out);
+	  fprint(out, '\n');
 	}
 
 	line++;
@@ -894,7 +896,7 @@ auto parser_destruct(apt p) -> void
   delete p;
 }
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
+auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
 {
   p->show_gis = show_gis;
   p->indent = 0;
@@ -905,8 +907,8 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   p->maxdeflines = LONG_MAX;
   p->text = DeflineText::full;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
@@ -917,7 +919,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   *deflinesp = deflines;
 }
 
-auto parse_header(apt p, unsigned char * buf, long len, long memb, 
+auto parse_header(apt p, View<char> const header, long memb, 
 		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
 {
   p->escaping = layout.escaping;
@@ -931,8 +933,8 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   p->maxdeflines = layout.maxdeflines;
   p->text = layout.text;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
@@ -944,15 +946,15 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   return deflines2;
 }
 
-auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+auto parse_getdeflinecount(apt p, View<char> const header,
 			   long memb, long(*f_checktaxid)(long)) -> long
 {
   p->show_gis = 0;
   p->memb = static_cast<unsigned long>(memb);
   p->f_checktaxid = f_checktaxid;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
