@@ -22,6 +22,19 @@
  *
  * ===========================================================================*/
 
+// swipe: compiled as its own translation unit (it was #included by
+// stats.cc); the NCBI names used below
+#include "swipe.h"
+#include <algorithm>  // std::find_if, std::max
+#include <array>
+#include <cmath>  // std::ceil, std::log, std::sqrt
+#include <strings.h>  // strcasecmp
+
+constexpr Int4 BLAST_MATRIX_NOMINAL = 0;
+constexpr Int4 BLAST_MATRIX_BEST = 1;
+constexpr Int4 INT2_MAX = 32767;
+
+
 
 /**************************************************************************************
 
@@ -606,4 +619,80 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     }
 
     return converged ? 0 : 1;
+}
+
+
+/* swipe additions: the tables of a score matrix, found by its name
+   (case-insensitive), and those of a blastn score pair, with the gap
+   costs from which the ungapped parameters apply (gap_open_max,
+   gap_extend_max, the first row). Views are empty for an unknown name
+   or pair. */
+
+namespace {
+
+struct MatrixTables
+{
+  char const * name;
+  View<array_of_8> values;
+  View<Int4> prefs;
+};
+
+struct BlastnPair
+{
+  long match_score;
+  long mismatch_score;
+  BlastnTables tables;
+};
+
+auto matrix_tables(char const * const matrix) -> MatrixTables
+{
+  static std::array<MatrixTables, 8> const known {{
+      { "BLOSUM45", make_view(blosum45_values), make_view(blosum45_prefs) },
+      { "BLOSUM50", make_view(blosum50_values), make_view(blosum50_prefs) },
+      { "BLOSUM62", make_view(blosum62_values), make_view(blosum62_prefs) },
+      { "BLOSUM80", make_view(blosum80_values), make_view(blosum80_prefs) },
+      { "BLOSUM90", make_view(blosum90_values), make_view(blosum90_prefs) },
+      { "PAM30", make_view(pam30_values), make_view(pam30_prefs) },
+      { "PAM70", make_view(pam70_values), make_view(pam70_prefs) },
+      { "PAM250", make_view(pam250_values), make_view(pam250_prefs) } }};
+  auto const found = std::find_if(known.begin(), known.end(),
+                                  [matrix](MatrixTables const & tables) {
+                                    return strcasecmp(matrix, tables.name) == 0;
+                                  });
+  return (found == known.end()) ? MatrixTables{"", View<array_of_8>{}, View<Int4>{}} : *found;
+}
+
+}  // anonymous namespace
+
+auto blast_matrix_values(char const * const matrix) -> View<array_of_8>
+{
+  return matrix_tables(matrix).values;
+}
+
+auto blast_matrix_prefs(char const * const matrix) -> View<Int4>
+{
+  return matrix_tables(matrix).prefs;
+}
+
+auto blastn_tables(long const match_score, long const mismatch_score) -> BlastnTables
+{
+  static std::array<BlastnPair, 12> const known {{
+      { 1, -5, { make_view(blastn_values_1_5), 3, 3 } },
+      { 1, -4, { make_view(blastn_values_1_4), 2, 2 } },
+      { 2, -7, { make_view(blastn_values_2_7), 4, 4 } },
+      { 1, -3, { make_view(blastn_values_1_3), 2, 2 } },
+      { 2, -5, { make_view(blastn_values_2_5), 4, 4 } },
+      { 1, -2, { make_view(blastn_values_1_2), 2, 2 } },
+      { 2, -3, { make_view(blastn_values_2_3), 6, 4 } },
+      { 3, -4, { make_view(blastn_values_3_4), 6, 3 } },
+      { 4, -5, { make_view(blastn_values_4_5), 4, 2 } },
+      { 1, -1, { make_view(blastn_values_1_1), 5, 5 } },
+      { 3, -2, { make_view(blastn_values_3_2), 12, 8 } },
+      { 5, -4, { make_view(blastn_values_5_4), 25, 10 } } }};
+  auto const found = std::find_if(known.begin(), known.end(),
+                                  [match_score, mismatch_score](BlastnPair const & pair) {
+                                    return (pair.match_score == match_score) and
+                                      (pair.mismatch_score == mismatch_score);
+                                  });
+  return (found == known.end()) ? BlastnTables{View<array_of_8>{}, 0, 0} : found->tables;
 }

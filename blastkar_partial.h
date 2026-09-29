@@ -25,6 +25,23 @@
 #ifndef SWIPE_BLASTKAR_PARTIAL_H
 #define SWIPE_BLASTKAR_PARTIAL_H
 
+// a row of statistical parameters (NCBI's tables: gap open, gap
+// extension, then the Karlin-Altschul parameters)
+using array_of_8 = std::array<double, 8>;
+
+// the tables of a score matrix and of a blastn score pair (swipe
+// additions, in blastkar_partial.cc): empty views when unknown
+struct BlastnTables
+{
+  View<array_of_8> values;
+  long gap_open_max;  // from these gap costs on, the ungapped row
+  long gap_extend_max;
+};
+
+auto blast_matrix_values(char const * matrix) -> View<array_of_8>;
+auto blast_matrix_prefs(char const * matrix) -> View<Int4>;
+auto blastn_tables(long match_score, long mismatch_score) -> BlastnTables;
+
 Int4
 BlastComputeLengthAdjustment(Nlm_FloatHi K,
                              Nlm_FloatHi logK,

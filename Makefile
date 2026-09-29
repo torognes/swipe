@@ -160,12 +160,11 @@ distclean : clean
 	rm -f compile_commands.json
 
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
-	stats.o hits.o query.o \
+	stats.o blastkar_partial.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
 # Header dependencies are generated alongside each object (*.d
-# files), so that editing any header, or blastkar_partial.cc (included
-# by stats.cc), rebuilds the right objects.
+# files), so that editing any header rebuilds the right objects.
 DEPFLAGS = -MMD -MP
 DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)

@@ -24,20 +24,8 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::max
-#include <array>
 #include <cmath>
 #include <cstddef>  // std::size_t
-#include <cstring>
-#include <cstdio>
-
-// the NCBI names used by blastkar_partial.cc
-using array_of_8 = std::array<double, 8>;  // a row of statistical parameters
-constexpr Int4 BLAST_MATRIX_NOMINAL = 0;
-constexpr Int4 BLAST_MATRIX_BEST = 1;
-constexpr Int4 INT2_MAX = 32767;
-
-#include "blastkar_partial.cc"
 
 auto stats_getparams_nt(long match_score,
 			long mismatch_score, 
@@ -49,88 +37,14 @@ auto stats_getparams_nt(long match_score,
 			double * alpha,
 			double * beta) -> long
 {
-  View<array_of_8> bv;
-  long gomax = 0;
-  long gemax = 0;
-
-  if      ((match_score == 1) && (mismatch_score == -5))
-  {
-    bv = make_view(blastn_values_1_5);
-    gomax = 3;
-    gemax = 3;
-  }
-  else if ((match_score == 1) && (mismatch_score == -4))
-  {
-    bv = make_view(blastn_values_1_4);
-    gomax = 2;
-    gemax = 2;
-  }
-  else if ((match_score == 2) && (mismatch_score == -7))
-  {
-    bv = make_view(blastn_values_2_7);
-    gomax = 4;
-    gemax = 4;
-  }
-  else if ((match_score == 1) && (mismatch_score == -3))
-  {
-    bv = make_view(blastn_values_1_3);
-    gomax = 2;
-    gemax = 2;
-  }
-  else if ((match_score == 2) && (mismatch_score == -5))
-  {
-    bv = make_view(blastn_values_2_5);
-    gomax = 4;
-    gemax = 4;
-  }
-  else if ((match_score == 1) && (mismatch_score == -2))
-  {
-    bv = make_view(blastn_values_1_2);
-    gomax = 2;
-    gemax = 2;
-  }
-  else if ((match_score == 2) && (mismatch_score == -3))
-  {
-    bv = make_view(blastn_values_2_3);
-    gomax = 6;
-    gemax = 4;
-  }
-  else if ((match_score == 3) && (mismatch_score == -4))
-  {
-    bv = make_view(blastn_values_3_4);
-    gomax = 6;
-    gemax = 3;
-  }
-  else if ((match_score == 4) && (mismatch_score == -5))
-  {
-    bv = make_view(blastn_values_4_5);
-    gomax = 4;
-    gemax = 2;
-  }
-  else if ((match_score == 1) && (mismatch_score == -1))
-  {
-    bv = make_view(blastn_values_1_1);
-    gomax = 5;
-    gemax = 5;
-  }
-  else if ((match_score == 3) && (mismatch_score == -2))
-  {
-    bv = make_view(blastn_values_3_2);
-    gomax = 12;
-    gemax = 8;
-  }
-  else if ((match_score == 5) && (mismatch_score == -4))
-  {
-    bv = make_view(blastn_values_5_4);
-    gomax = 25;
-    gemax = 10;
-  }
-  else
+  BlastnTables const tables = blastn_tables(match_score, mismatch_score);
+  View<array_of_8> const bv = tables.values;
+  if (bv.empty())
   {
     return 0;
   }
 
-  if ((gopen >= gomax) && (gextend >= gemax))
+  if ((gopen >= tables.gap_open_max) && (gextend >= tables.gap_extend_max))
   {
     gopen = 0;
     gextend = 0;
@@ -162,41 +76,8 @@ auto stats_getparams(char const * matrix,
 		     double * alpha,
 		     double * beta) -> long
 {
-  View<array_of_8> mat;
-
-  if (strcasecmp(matrix, "BLOSUM45") == 0)
-  {
-    mat = make_view(blosum45_values);
-  }
-  else if (strcasecmp(matrix, "BLOSUM50") == 0)
-  {
-    mat = make_view(blosum50_values);
-  }
-  else if (strcasecmp(matrix, "BLOSUM62") == 0)
-  {
-    mat = make_view(blosum62_values);
-  }
-  else if (strcasecmp(matrix, "BLOSUM80") == 0)
-  {
-    mat = make_view(blosum80_values);
-  }
-  else if (strcasecmp(matrix, "BLOSUM90") == 0)
-  {
-    mat = make_view(blosum90_values);
-  }
-  else if (strcasecmp(matrix, "PAM30") == 0)
-  {
-    mat = make_view(pam30_values);
-  }
-  else if (strcasecmp(matrix, "PAM70") == 0)
-  {
-    mat = make_view(pam70_values);
-  }
-  else if (strcasecmp(matrix, "PAM250") == 0)
-  {
-    mat = make_view(pam250_values);
-  }
-  else
+  View<array_of_8> const mat = blast_matrix_values(matrix);
+  if (mat.empty())
   {
     return 0;
   }
@@ -225,50 +106,9 @@ auto stats_getprefs(char const * matrix,
 		    long * gopen,
 		    long * gextend) -> long
 {
-  View<array_of_8> mat;
-  View<Int4> prefs;
-
-  if (strcasecmp(matrix, "BLOSUM45") == 0)
-  {
-    mat = make_view(blosum45_values);
-    prefs = make_view(blosum45_prefs);
-  }
-  else if (strcasecmp(matrix, "BLOSUM50") == 0)
-  {
-    mat = make_view(blosum50_values);
-    prefs = make_view(blosum50_prefs);
-  }
-  else if (strcasecmp(matrix, "BLOSUM62") == 0)
-  {
-    mat = make_view(blosum62_values);
-    prefs = make_view(blosum62_prefs);
-  }
-  else if (strcasecmp(matrix, "BLOSUM80") == 0)
-  {
-    mat = make_view(blosum80_values);
-    prefs = make_view(blosum80_prefs);
-  }
-  else if (strcasecmp(matrix, "BLOSUM90") == 0)
-  {
-    mat = make_view(blosum90_values);
-    prefs = make_view(blosum90_prefs);
-  }
-  else if (strcasecmp(matrix, "PAM30") == 0)
-  {
-    mat = make_view(pam30_values);
-    prefs = make_view(pam30_prefs);
-  }
-  else if (strcasecmp(matrix, "PAM70") == 0)
-  {
-    mat = make_view(pam70_values);
-    prefs = make_view(pam70_prefs);
-  }
-  else if (strcasecmp(matrix, "PAM250") == 0)
-  {
-    mat = make_view(pam250_values);
-    prefs = make_view(pam250_prefs);
-  }
-  else
+  View<array_of_8> const mat = blast_matrix_values(matrix);
+  View<Int4> const prefs = blast_matrix_prefs(matrix);
+  if (mat.empty())
   {
     return 0;
   }
