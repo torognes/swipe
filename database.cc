@@ -781,17 +781,16 @@ auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
-  auto const byteno = static_cast<long>(taxid / 8);
-  long const bitno = taxid & 7;
+  auto const index = static_cast<std::size_t>(taxid / 8);
+  auto const bitno = static_cast<unsigned int>(taxid & 7);
     
-  auto const index = static_cast<std::size_t>(byteno);
   if (index >= db_main.taxid_bitmap.size())
   {
     db_main.taxid_bitmap.resize(index + 1, 0);  // new bytes zero-filled
   }
     
   unsigned char const v = db_main.taxid_bitmap[index];
-  db_main.taxid_bitmap[index] = static_cast<unsigned char>(v | (1 << bitno));
+  db_main.taxid_bitmap[index] = static_cast<unsigned char>(v | (1U << bitno));
 }
 
 auto db_read_taxid_file(char const * filename) -> void
