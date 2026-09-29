@@ -168,7 +168,6 @@ struct Parameters
   std::int64_t effdbsize = default_effdbsize;
 };
 
-auto xrealloc(void *ptr, size_t size) -> void *;
 
 
 extern long cpu_feature_ssse3;

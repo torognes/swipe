@@ -148,16 +148,6 @@ auto xmalloc(size_t size) -> void *
   return t;
 }
 
-auto xrealloc(void *ptr, size_t size) -> void *
-{
-  void * t = realloc(ptr, size);
-  if (t == nullptr)
-  {
-    fatal("Unable to allocate enough memory.");
-  }
-  return t;
-}
-
 namespace {
 
 long alignedhits;
