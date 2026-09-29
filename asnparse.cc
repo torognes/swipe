@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include "print_view.h"  // fprint
 #include <algorithm>  // std::min
+#include <array>
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstring>  // std::memcpy, std::strlen
@@ -535,9 +536,9 @@ auto parse_seq_id(apt p) -> void
 {
   /* http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5 */
 
-  char const * dbstr[] = 
-    { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
-      "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", };
+  static constexpr std::array<char const *, 20> dbstr {{
+      "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
+      "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", }};
 
   p->id.clear();
   p->name.clear();
@@ -547,10 +548,10 @@ auto parse_seq_id(apt p) -> void
   unsigned char const object = p->obj;
   match_obj(p,object);
   
-  char db[4] = "";
+  char const * db = "";
   if ((object >= 0xA0) && (object <= 0xB3))
   {
-    strcpy(db, dbstr[object-0xA0]);
+    db = dbstr[static_cast<std::size_t>(object - 0xA0)];
   }
   
   switch(object)
