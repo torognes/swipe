@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include "fatal_allocator.h"  // Buffer
 #include <algorithm>  // std::copy_n, std::generate, std::min
+#include <array>
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
@@ -79,10 +80,10 @@ long cpu_feature_sse2;
 std::mutex countmutex;
 std::mutex workmutex;
 long maxchunksize;
-long volnext;
+std::size_t volnext;
 long seqnext;
-long * volchunks;
-long * volseqs;
+Buffer<long> volchunks;
+Buffer<long> volseqs;
 
 struct search_data
 {
@@ -162,10 +163,13 @@ namespace {
 long alignedhits;
 Buffer<long> hits_sorted;
 
-long align_volnext;
+std::size_t align_volnext;
 
-long * align_volseqs;
-long * align_volchunks;
+// the alignment work is distributed in 7 bins: one per query strand
+// and frame (3 x 2), and one for the hits that are not aligned
+constexpr std::size_t align_bins = 7;
+std::array<long, align_bins> align_volseqs {};
+std::array<long, align_bins> align_volchunks {};
 
 auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
@@ -473,15 +477,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   hits_sorted = hits_sort();
 
-  long const bins = 7;
-
-  align_volseqs = static_cast<long*>(xmalloc(bins*sizeof(long)));
-  align_volchunks = static_cast<long*>(xmalloc(bins*sizeof(long)));
-
-  for (long i = 0; i < bins; i++)
-  {
-    align_volseqs[i] = 0;
-  }
+  align_volseqs.fill(0);
 
   for(long i = 0; i<hits; i++)
   {
@@ -502,24 +498,24 @@ auto align_threads_init(Parameters const & parameters) -> void
 		  & qstrand, & qframe,
 		  & dstrand, & dframe);
       
-      align_volseqs[(3*qstrand)+qframe]++;
+      align_volseqs[static_cast<std::size_t>((3*qstrand)+qframe)]++;
     }
   }
 
   long totalchunks = 0;
 
-  calc_chunks(bins,
+  calc_chunks(static_cast<long>(align_bins),
 	      parameters.threads,
 	      8,
-	      align_volseqs,
-	      align_volchunks,
+	      align_volseqs.data(),
+	      align_volchunks.data(),
 	      & totalchunks,
 	      & maxchunksize);
 
   alignedhits = 0;
   align_volnext = 0;
 
-  while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+  while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
   {
     align_volnext++;
   }
@@ -528,18 +524,14 @@ auto align_threads_init(Parameters const & parameters) -> void
 auto align_threads_done() -> void
 {
   hits_sorted = Buffer<long>();
-  free(align_volchunks);
-  free(align_volseqs);
 }
 
 auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long const bins = 7;
-  long const volcount = bins;
 
   std::lock_guard<std::mutex> const lock(workmutex);
-  if (align_volnext < volcount)
+  if (align_volnext < align_bins)
   {
     long const seqcount = align_volseqs[align_volnext];
     long const chunks = align_volchunks[align_volnext];
@@ -554,7 +546,7 @@ auto align_getwork(long * first, long * last) -> int
     align_volseqs[align_volnext] -= chunksize;
     align_volchunks[align_volnext]--;
 
-    while ((align_volnext < bins) && (align_volchunks[align_volnext] == 0))
+    while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
     {
       align_volnext++;
     }
@@ -1373,7 +1365,7 @@ auto search_done(struct search_data * sdp) -> void
 auto search_getwork(long * first, long * last) -> int
 {
   int status = 0;
-  long const volcount = db_getvolumecount();
+  auto const volcount = static_cast<std::size_t>(db_getvolumecount());
   
   std::lock_guard<std::mutex> const lock(workmutex);
   if (volnext < volcount)
@@ -1656,19 +1648,19 @@ auto prepare_search(long par) -> void
   volnext = 0;
   seqnext = 0;
 
-  long const volcount = db_getvolumecount();
-  for (long v = 0; v < volcount; v++)
+  auto const volcount = static_cast<std::size_t>(db_getvolumecount());
+  for (std::size_t v = 0; v < volcount; v++)
   {
-    volseqs[v] = db_getseqcount_volume(v);
+    volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
   }
 
   long totalchunks = 0;
 
-  calc_chunks(volcount,
+  calc_chunks(static_cast<long>(volcount),
 	      par,
 	      16,
-	      volseqs,
-	      volchunks,
+	      volseqs.data(),
+	      volchunks.data(),
 	      & totalchunks,
 	      & maxchunksize);
 
@@ -1849,8 +1841,8 @@ auto main(int argc, char**argv) -> int
 
   db_open(parameters);
   
-  volchunks = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
-  volseqs   = static_cast<long*>(xmalloc(static_cast<std::size_t>(db_getvolumecount()) * sizeof(long)));
+  volchunks.resize(static_cast<std::size_t>(db_getvolumecount()));
+  volseqs.resize(static_cast<std::size_t>(db_getvolumecount()));
 
   if(parameters.dump != 0)
   {
@@ -1891,9 +1883,6 @@ auto main(int argc, char**argv) -> int
     score_matrix_free();
   }
   
-  free(volchunks);
-  free(volseqs);
-
   db_close();
 
   if (parameters.outfile != nullptr)
