@@ -442,7 +442,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const score = fullsw(dbegin,
 			      dend,
 			      q, 
-			      q + qlen,
+			      std::next(q, qlen),
 			      reinterpret_cast<long*>(sdp->hearray.data()),
 			      score_matrix_63,
 			      parameters.gapopenextend,

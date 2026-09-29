@@ -32,6 +32,7 @@
 #include <cstddef>  // std::size_t
 #include <cstdlib>  // std::strtol
 #include <cstring>  // std::memcpy
+#include <iterator>  // std::next
 #include <limits>
 
 // the built-in score matrices, in the NCBI format read by
@@ -405,7 +406,8 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
   while(fgets(line.data(), LINE_MAX, fp) != nullptr)
     {
       p = line.data();
-      c = *p++;
+      c = *p;
+      p = std::next(p);
       
       switch(c)
 	{
@@ -425,11 +427,13 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	  
 	  q = order.data();
 
-	  while ((c = *p++) != 0)
+	  while ((c = *p) != 0)
 	  {
+	    p = std::next(p);
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
-		*q++ = map[static_cast<unsigned char>(c)];
+		*q = map[static_cast<unsigned char>(c)];
+		q = std::next(q);
 		symbols++;
 	      }
 	  }
@@ -511,7 +515,8 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
       line[linelen] = 0;
 
       p = line.data();
-      c = *p++;
+      c = *p;
+      p = std::next(p);
       
       switch(c)
 	{
@@ -530,11 +535,13 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	  
 	  q = order.data();
 
-	  while ((c = *p++) != 0)
+	  while ((c = *p) != 0)
 	  {
+	    p = std::next(p);
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
-		*q++ = map[static_cast<unsigned char>(c)];
+		*q = map[static_cast<unsigned char>(c)];
+		q = std::next(q);
 		symbols++;
 	      }
 	  }
@@ -563,11 +570,11 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
 	if (nextline != nullptr)
 	{
-	  s = nextline + 1;
+	  s = std::next(nextline);
 	}
 	else
 	{
-	  s = s + strlen(s);
+	  s = std::next(s, static_cast<std::ptrdiff_t>(strlen(s)));
 	}
     }
 }

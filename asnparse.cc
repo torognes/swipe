@@ -93,7 +93,8 @@ auto nextch(apt p) -> void
 {
   if (p->header_p < p->header_end)
   {
-    p->ch = *p->header_p++;
+    p->ch = *p->header_p;
+    p->header_p = std::next(p->header_p);
   }
   else
   {
@@ -776,7 +777,7 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 
       if ((show < strlen(defline)) && (show >= 3))
       {
-	strcpy(defline+show-3, "...");
+	strcpy(std::next(defline, static_cast<std::ptrdiff_t>(show - 3)), "...");
       }
 
       long line = 0;

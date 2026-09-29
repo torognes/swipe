@@ -354,10 +354,11 @@ auto query_read() -> int
 
   while((not query_line.empty()) and (query_line[0] != '>'))
   {
-    char const * p = query_line.c_str();
-    // bytes above 0x7f must not be negative indexes (KI-19)
-    while(int const c = static_cast<unsigned char>(*p++))
+    // up to a NUL, as the loop over c_str() it replaces
+    for (char const character : as_c_string(query_line))
     {
+      // bytes above 0x7f must not be negative indexes (KI-19)
+      int const c = static_cast<unsigned char>(character);
       char const symbol = map[c];
       if (symbol >= 0)
       {

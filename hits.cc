@@ -1026,7 +1026,7 @@ auto show_align(AlignedHit const & hit) -> void
   AlignmentLines lines(hit);
   
   char const * p = hit.alignment;
-  char const * e = hit.alignment + strlen(hit.alignment);
+  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
   
   while(p < e)
   {
@@ -1153,7 +1153,7 @@ auto count_align(AlignedHit const & hit,
   long d_pos = hit.d_align_start;
   
   char const * p = hit.alignment;
-  char const * e = hit.alignment + strlen(hit.alignment);
+  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
 
   while(p < e)
   {
@@ -1340,7 +1340,7 @@ auto hits_defline_split(char * defline,
 
   if (*p == '|')
   {
-    p++;
+    p = std::next(p);
   }
 
   char * r = strchr(p, ' ');
@@ -1348,7 +1348,7 @@ auto hits_defline_split(char * defline,
   {
     *linklen = static_cast<std::size_t>(r - p);
     *link = p;
-    *rest = r+1;
+    *rest = std::next(r);
   }
   else
   {
@@ -1900,9 +1900,7 @@ auto ends_query_id(char const symbol) -> bool
 
 auto show_description(char const *desc) -> void
 {
-  char const *dptr = nullptr;
-
-  for (dptr = desc; not ends_query_id(*dptr); dptr++)
+  for (char const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
   {
     fprint(out, *dptr);
   }
@@ -1913,7 +1911,7 @@ auto show_description(char const *desc) -> void
 // (KI-27)
 auto show_description_xml(char const * const desc) -> void
 {
-  for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
+  for (auto const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
   {
     xml_putc(*dptr);
   }
