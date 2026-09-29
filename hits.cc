@@ -79,7 +79,7 @@ double ungapped_H = 0;
 }  // anonymous namespace
 
 /* gap penalties of the ungapped rows of the NCBI score matrix tables
-   (INT2_MAX, see blastkar_partial.c) */
+   (INT2_MAX, see blastkar_partial.cc) */
 constexpr long ungapped_penalty = 32767;
 
 namespace {

@@ -164,7 +164,7 @@ OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o 
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
 # Header dependencies are generated alongside each object (*.d
-# files), so that editing any header, or blastkar_partial.c (included
+# files), so that editing any header, or blastkar_partial.cc (included
 # by stats.cc), rebuilds the right objects.
 DEPFLAGS = -MMD -MP
 DEPFILES = swipe.d $(OBJS:.o=.d)

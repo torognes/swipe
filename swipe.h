@@ -490,7 +490,7 @@ auto stats_getprefs(char const * matrix,
 		    long * gextend) -> long;
 
 
-// the NCBI integer types of blastkar_partial.c: 4 and 8 bytes
+// the NCBI integer types of blastkar_partial.ccc: 4 and 8 bytes
 using Int4 = std::int32_t;
 using Int8 = std::int64_t;
 using Nlm_FloatHi = double;

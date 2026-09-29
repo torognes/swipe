@@ -31,13 +31,13 @@
 #include <cstring>
 #include <cstdio>
 
-// the NCBI names used by blastkar_partial.c
+// the NCBI names used by blastkar_partial.cc
 using array_of_8 = std::array<double, 8>;  // a row of statistical parameters
 constexpr Int4 BLAST_MATRIX_NOMINAL = 0;
 constexpr Int4 BLAST_MATRIX_BEST = 1;
 constexpr Int4 INT2_MAX = 32767;
 
-#include "blastkar_partial.c"
+#include "blastkar_partial.cc"
 
 auto stats_getparams_nt(long match_score,
 			long mismatch_score, 
