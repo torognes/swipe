@@ -24,10 +24,11 @@
 */
 
 #include "swipe.h"
+#include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
-constexpr long CHANNELS = 16;
-constexpr long CDEPTH = 4;
+constexpr std::size_t CHANNELS = 16;
+constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
 // fit in a signed char, -128 has the same bits)
@@ -228,10 +229,10 @@ inline auto dprofile_fill7(BYTE * dprofile,
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions
 
-  for(long j=0; j<CDEPTH; j++)
+  for (std::size_t j = 0; j < CDEPTH; j++)
   {
-    unsigned d[CHANNELS];
-    for (int i = 0; i < CHANNELS; i++)
+    std::array<unsigned, CHANNELS> d;
+    for (std::size_t i = 0; i < CHANNELS; i++)
     {
       d[i] = static_cast<unsigned>(dseq[(j * CHANNELS) + i]) << 5;
     }
@@ -752,15 +753,16 @@ search7
   __m128i T0;
   __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
   __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
-  BYTE const * d_begin[CHANNELS];
-  BYTE const * d_end[CHANNELS];
+  std::array<BYTE const *, CHANNELS> d_begin;
+  std::array<BYTE const *, CHANNELS> d_end;
   
-  __m128i dseqalloc[CDEPTH];
+  // the database residues of the channels, 16-byte aligned for the loads
+  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
   
-  BYTE * dseq = reinterpret_cast<BYTE*>(& dseqalloc);
+  BYTE * dseq = dseqalloc.data();
   BYTE const zero = 0;
 
-  long seq_id[CHANNELS];
+  std::array<long, CHANNELS> seq_id;
   long next_id = 0;
   unsigned done = 0;
   
@@ -774,7 +776,7 @@ search7
 
   S = Z;
 
-  for (int c=0; c<CHANNELS; c++)
+  for (std::size_t c = 0; c < CHANNELS; c++)
   {
     d_begin[c] = &zero;
     d_end[c] = d_begin[c];
@@ -789,9 +791,9 @@ search7
     {
       // fill all channels
 
-      for(int c=0; c<CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
-	for(int j=0; j<CDEPTH; j++)
+	for (std::size_t j = 0; j < CDEPTH; j++)
 	{
 	  if (d_begin[c] < d_end[c])
 	  {
@@ -825,13 +827,13 @@ search7
 
       M = _mm_setzero_si128();
       T = T0;
-      for (int c=0; c<CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if (d_begin[c] < d_end[c])
 	{
 	  // this channel has more sequence
 
-	  for(int j=0; j<CDEPTH; j++)
+	  for (std::size_t j = 0; j < CDEPTH; j++)
 	  {
 	    if (d_begin[c] < d_end[c])
 	    {
@@ -884,7 +886,7 @@ search7
 	    next_id++;
 		      
 	    // fill channel
-	    for(int j=0; j<CDEPTH; j++)
+	    for (std::size_t j = 0; j < CDEPTH; j++)
 	    {
 	      if (d_begin[c] < d_end[c])
 	      {
@@ -906,7 +908,7 @@ search7
 	    seq_id[c] = -1;
 	    d_begin[c] = &zero;
 	    d_end[c] = d_begin[c];
-	    for (int j = 0; j < CDEPTH; j++)
+	    for (std::size_t j = 0; j < CDEPTH; j++)
 	    {
 	      dseq[(CHANNELS * j) + c] = 0;
 	    }

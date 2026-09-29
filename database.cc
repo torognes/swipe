@@ -1258,7 +1258,7 @@ auto db_translate(char const * dna, long dlen,
 }  // anonymous namespace
 
 auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
-		    long * ntlenp, int c) -> View<char>
+		    long * ntlenp, std::size_t c) -> View<char>
 {
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 

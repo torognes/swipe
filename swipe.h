@@ -437,7 +437,7 @@ constexpr long untranslated_frame = -1;
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
-		    long * ntlenp, int c) -> View<char>;
+		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
 auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
 
