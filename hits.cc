@@ -95,6 +95,22 @@ auto percentage(long const part, long const whole) -> double
   return 100.0 * static_cast<double>(part) / static_cast<double>(whole);
 }
 
+// effective length of the database in the search space: its length
+// minus the length adjustment of each of its sequences, computed in
+// long (KI-40: an int product overflowed for large databases)
+constexpr auto effective_db_length(long const db_length,
+                                   long const sequence_count,
+                                   long const length_adjustment) -> long
+{
+  return db_length - (sequence_count * length_adjustment);
+}
+
+static_assert(effective_db_length(1000, 10, 3) == 970, "search space");
+// 50 million sequences, adjustment of 100: the product (5e9) does not
+// fit in an int (KI-40)
+static_assert(effective_db_length(20000000000L, 50000000L, 100L) == 15000000000L,
+              "search space of a large database (KI-40)");
+
 struct hits_entry
 {
   char * alignment;
@@ -415,17 +431,17 @@ auto hits_init(Parameters const & parameters) -> void
     h->alignment = nullptr;
   }
 
-  int seqcount = 0;
+  long seqcount = 0;
   long symcount = 0;
 
   if (db_ismasked() != 0)
   {
-    seqcount = static_cast<int>(db_getseqcount_masked());
+    seqcount = db_getseqcount_masked();
     symcount = db_getsymcount_masked();
   }
   else
   {
-    seqcount = static_cast<int>(db_getseqcount());
+    seqcount = db_getseqcount();
     symcount = db_getsymcount();
   }
 
@@ -479,7 +495,7 @@ auto hits_init(Parameters const & parameters) -> void
 				   beta,
 				   static_cast<Int4>(qlen),
 				   dlen,
-				   seqcount,
+				   static_cast<Int4>(seqcount),
 				   & lenadj);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
@@ -492,7 +508,7 @@ auto hits_init(Parameters const & parameters) -> void
       }
       else
       {
-	n = dlen - (seqcount * lenadj);
+	n = effective_db_length(dlen, seqcount, lenadj);
       }
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
@@ -562,7 +578,7 @@ auto hits_init(Parameters const & parameters) -> void
 				   beta,
 				   static_cast<Int4>(qlen),
 				   dlen,
-				   seqcount,
+				   static_cast<Int4>(seqcount),
 				   & lenadj);
 
       m = qlen - lenadj;
@@ -573,7 +589,7 @@ auto hits_init(Parameters const & parameters) -> void
       }
       else
       {
-	n = dlen - (seqcount * lenadj);
+	n = effective_db_length(dlen, seqcount, lenadj);
       }
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);

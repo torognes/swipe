@@ -40,6 +40,12 @@
         * Fix: the simple XML output (-m 7) had one root element per query
           (<result>): with several queries, it was not well-formed XML
           (KI-26). All results are now inside one <results> element
+        * Fix: the effective database length of the search space (used by
+          E-values) was computed as an int product of the number of
+          sequences and the length adjustment, which overflows for large
+          databases (e.g. 50 million sequences and an adjustment of 100):
+          E-values were wrong for such databases (KI-40). It is now
+          computed in long
 
 2026-09-27  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.1.2
