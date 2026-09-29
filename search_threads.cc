@@ -26,7 +26,7 @@
 #include "search_data.h"
 #include <algorithm>  // std::copy_n, std::max, std::min
 #include <cmath>  // std::floor, std::sqrt
-#include <cstddef>  // std::size_t
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
 #include <iterator>  // std::next
 #include <limits>
@@ -46,16 +46,20 @@ long seqnext;
 Buffer<long> volchunks;
 Buffer<long> volseqs;
 
+// the bytes of a symbol's row in the score profile of search7() and
+// search16(): 4 database residues x 16 bytes of lanes
+constexpr std::ptrdiff_t profile_row_bytes = 64;
+
 auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
-  sdp->dprofile.resize(4 * 16 * 32);
+  sdp->dprofile.resize(profile_bytes);
   long qlen = 0;
   long hearraylen = 0;
 
   if (parameters.symtype == SymbolType::blastn)
   {
-    for (int s = 0; s < 2; s++)
+    for (long s = 0; s < 2; s++)
     {
       if (searches_strand(parameters.querystrands, s))
       {
@@ -64,7 +68,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 	sdp->qtable[3*s].resize(static_cast<std::size_t>(qlen));
 	for (std::size_t i = 0; i < sdp->qtable[3*s].size(); i++)
 	{
-	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), 64 * query.nt[s].seq[i]);
+	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -77,24 +81,24 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
     sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
     for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
     {
-      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), 64 * query.aa[0].seq[i]);
+      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
   else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
-    for (int s = 0; s < 2; s++)
+    for (long s = 0; s < 2; s++)
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	for(int f=0; f<3; f++)
+	for(long f=0; f<3; f++)
 	{
 	  qlen = query.aa[(3*s)+f].len;
 	  sdp->qlen[(3*s)+f] = qlen;
 	  sdp->qtable[(3*s)+f].resize(static_cast<std::size_t>(qlen));
 	  for (std::size_t i = 0; i < sdp->qtable[(3*s)+f].size(); i++)
 	  {
-	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), 64 * query.aa[(3*s)+f].seq[i]);
+	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}

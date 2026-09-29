@@ -34,12 +34,16 @@
 #include "fatal_allocator.h"  // Buffer
 #include <cstddef>  // std::size_t
 
+// the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
+// database residues x 16 bytes of lanes)
+constexpr std::size_t profile_bytes = std::size_t{32} * 64;
+
 struct search_data
 {
   struct db_thread_s * dbt;
   struct db_thread_s * dbta[8];
 
-  Buffer<BYTE> dprofile;
+  Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;
   Buffer<BYTE *> qtable[6];  // empty: tables not allocated
 
