@@ -34,17 +34,11 @@
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
-/* gi,db,name,ac etc needs considerable less space */
-
-constexpr long MAXSTRING = 2048;
-constexpr long MAXDEFLINESTRING = 10240;
-
 struct asnparse_info
 {
   unsigned char * header_p;
   unsigned char * header_end;
   
-  /* strings are read up to MAXSTRING characters, plus a null byte */
   std::string parsed_string;
   unsigned long parsed_integer;
   
@@ -92,17 +86,6 @@ struct asnparse_info
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
-
-// dst += src, cut so that dst has at most max_length characters (as
-// the former append_bounded() into a buffer of max_length + 1 bytes)
-auto append_capped(std::string & dst, std::string const & src,
-                   std::size_t const max_length) -> void
-{
-  if (dst.size() < max_length)
-  {
-    dst.append(src, 0, max_length - dst.size());
-  }
-}
 
 auto nextch(apt p) -> void
 {
@@ -214,10 +197,7 @@ auto parse_visiblestring(apt p) -> void
   while (i < length)
     {
       //      printf("%02x ", ch);
-      if (p->parsed_string.size() < MAXSTRING)
-	{
-	  p->parsed_string += static_cast<char>(p->ch);
-	}
+      p->parsed_string += static_cast<char>(p->ch);
       nextch(p);
       i++;
     }
@@ -513,10 +493,10 @@ auto parse_pdb_seq_id(apt p) -> void
   match_obj(p,0);
 }
 
-// p->id = id, truncated if necessary
+// p->id = id
 auto set_id(apt p, std::string const & id) -> void
 {
-  p->id.assign(id, 0, MAXSTRING - 1);
+  p->id = id;
 }
 
 auto show_seq_id(apt p, char const * dbi) -> void
@@ -697,9 +677,9 @@ auto parse_blast_def_line(apt p) -> void
 	parse_seq_id(p);
 	if (not seqids.empty())
 	{
-	  append_capped(seqids, "|", MAXSTRING - 1);
+	  seqids += "|";
 	}
-	append_capped(seqids, p->id, MAXSTRING - 1);
+	seqids += p->id;
       }
       match_obj(p,0x00);
       match_obj(p,0x00);
@@ -772,12 +752,6 @@ auto parse_blast_def_line(apt p) -> void
     {
       p->defline += " ";
     }
-
-  long const zzz = static_cast<long>(p->defline.size() + p->title.size());
-  if (zzz >= MAXDEFLINESTRING)
-  {
-    fatal("Error: defline too long");
-  }
 
   p->defline += p->title;
 }

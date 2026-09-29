@@ -52,6 +52,11 @@
         * Fix: the simple XML output (-m 7) had one root element per query
           (<result>): with several queries, it was not well-formed XML
           (KI-26). All results are now inside one <results> element
+        * The identifiers and titles of database sequences are no longer
+          truncated: titles were cut at 2,048 characters, identifiers
+          and the list of identifiers of a sequence at 2,047, and a
+          defline longer than 10,240 characters ended with "Error:
+          defline too long". They are now read and shown whole
         * Fix: the effective database length of the search space (used by
           E-values) was computed as an int product of the number of
           sequences and the length adjustment, which overflows for large
