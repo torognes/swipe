@@ -30,6 +30,7 @@
 #include <cstring>  // std::memcpy, std::strlen
 #include <iterator>  // std::next
 #include <string>
+#include <vector>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 
@@ -851,13 +852,13 @@ auto parse_blast_def_line(apt p) -> void
   append_bounded(p->defline, sizeof(p->defline), p->title);
 }
 
-auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
+auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable) -> long
 {
   for(long x=0; x<deflines; x++)
   {
     if (x < p->maxdeflines)
     {
-      char * defline = deflinetable[x];
+      char * defline = &deflinetable[static_cast<std::size_t>(x)][0];
 
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
@@ -939,25 +940,20 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
       }
     }
     
-    free(deflinetable[x]);
   }
 
-  free(deflinetable);
   
   return deflines;
 }
 
-auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
+auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable) -> long
 {
   match_obj(p,0x30);
   long deflines = 0;
-  long size = 0;
-  char * * table = nullptr;
 
   if (deflinetable != nullptr)
   {
-    size = 8;
-    table = static_cast<char**>(xmalloc(static_cast<std::size_t>(size) * sizeof(char*)));
+    deflinetable->clear();
   }
     
   while (p->obj != 0U)
@@ -968,26 +964,13 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
       {
 	if (deflinetable != nullptr)
 	{
-	  if (deflines >= size)
-	  {
-	    size += 8;
-	    table = static_cast<char**>(xrealloc(table, static_cast<std::size_t>(size) * sizeof(char*)));
-	  }
-	  
-	  char * newdefline = static_cast<char*>(xmalloc(strlen(p->defline)+1));
-	  strcpy(newdefline, p->defline);
-	  table[deflines] = newdefline;
+	  deflinetable->emplace_back(p->defline);
 	}
 	deflines++;
       }
     }
   
   match_obj(p,0x00);
-
-  if (deflinetable != nullptr)
-  {
-    *deflinetable = table;
-  }
 
   return deflines;
 }
@@ -1006,7 +989,7 @@ auto parser_destruct(apt p) -> void
   free(p);
 }
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, char *** deflinetablep) -> void
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
 {
   p->show_gis = show_gis;
   p->indent = 0;
@@ -1025,10 +1008,8 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable = nullptr;
-  long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
+  long const deflines = parse_blast_def_line_set_new(p, deflinetablep);
 
-  *deflinetablep = deflinetable;
   *deflinesp = deflines;
 }
 
@@ -1054,7 +1035,7 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable = nullptr;
+  std::vector<std::string> deflinetable;
   long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
   long const deflines2 = show_deflines(p, deflines, deflinetable);
   return deflines2;

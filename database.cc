@@ -1610,7 +1610,7 @@ auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * len
 
 auto db_parse_header(db_thread_t const * t, char * address, long length, 
 		     long show_gis, 
-		     long * deflines, char *** deflinetable) -> void
+		     long * deflines, std::vector<std::string> * deflinetable) -> void
 {
   parse_getdeflines(t->parser, reinterpret_cast<unsigned char*>(address), length,
 		    db_main.memb_bit, & db_check_taxid, show_gis,
@@ -1699,7 +1699,7 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
   db_getheader(t, seqno, & address, & length);
 
   long deflines = 0;
-  char ** deflinetable = nullptr;
+  std::vector<std::string> deflinetable;
 
   db_parse_header(t, address, length, 1,
 		  & deflines, & deflinetable);
@@ -1712,7 +1712,7 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
     {
       if (split != 0)
       {
-	fprintf(out, ">%s\n", deflinetable[i]);
+	fprintf(out, ">%s\n", deflinetable[static_cast<std::size_t>(i)].c_str());
 	db_print_seq(t, seqno, strand, frame);
       }
       else
@@ -1721,19 +1721,16 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
 	{
 	  fprintf(out, " ");
 	}
-	fprintf(out, ">%s", deflinetable[i]);
+	fprintf(out, ">%s", deflinetable[static_cast<std::size_t>(i)].c_str());
 	if (i==deflines-1)
 	{
 	  fprintf(out, "\n");
 	  db_print_seq(t, seqno, strand, frame);
 	}
       }
-
-      free(deflinetable[i]);
     }
     
   }
 
-  free(deflinetable);
 }
 

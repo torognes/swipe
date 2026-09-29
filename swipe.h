@@ -44,6 +44,7 @@
 #include <chrono>
 #include <ctime>
 #include <string>
+#include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
 
 
@@ -376,7 +377,7 @@ struct HeaderLayout
 auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable) -> void;
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
 
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
@@ -405,7 +406,7 @@ auto db_check_taxid(long taxid) -> long;
 
 auto db_parse_header(struct db_thread_s const * t, char * address, long length,
 		     long show_gis,
-		     long * deflines, char *** deflinetable) -> void;
+		     long * deflines, std::vector<std::string> * deflinetable) -> void;
 
 auto db_showheader(struct db_thread_s const * t, char * address, long length,
 		   HeaderLayout const & layout) -> void;

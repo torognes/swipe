@@ -39,6 +39,7 @@
 #include <numeric>  // std::iota
 #include <string>
 #include <utility>  // std::move
+#include <vector>
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -1512,14 +1513,14 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     make_anchor(anchor, 200, query.symtype, queryno, i);
 
     long deflines = 0;
-    char ** deflinetable = nullptr;
+    std::vector<std::string> deflinetable;
     long gi = 0;
     char * link = nullptr;
     char * title = nullptr;
     std::size_t linklen = 0;
     db_parse_header(t, hit_entry(i).header_address.data(), hit_entry(i).header_length,
 		    1, & deflines, & deflinetable);
-    hits_defline_split(deflinetable[0], 
+    hits_defline_split(&deflinetable[0][0], 
 		       & gi,
 		       & link, & linklen,
 		       & title);
@@ -1572,11 +1573,6 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprintf(out, "\t\t\t\t<shortVersionEValue>%.2g</shortVersionEValue>\n", e);
     fprintf(out, "\t\t\t</shortVersionHit>\n");
 
-    for (int d = 0; d < deflines; d++)
-    {
-      free(deflinetable[d]);
-    }
-    free(deflinetable);
   }
 
   fprintf(out, "\t\t</shortVersionHits>\n");
@@ -1595,7 +1591,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprintf(out, "\t\t\t\t<longVersionAnchor>%s</longVersionAnchor>\n", anchor);
       
       long deflines = 0;
-      char ** deflinetable = nullptr;
+      std::vector<std::string> deflinetable;
       long gi = 0;
       char * link = nullptr;
       char * title = nullptr;
@@ -1606,7 +1602,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       
       for (int d=0; d < deflines; d++)
       {
-	hits_defline_split(deflinetable[d], 
+	hits_defline_split(&deflinetable[static_cast<std::size_t>(d)][0], 
 			   & gi,
 			   & link, & linklen,
 			   & title);
@@ -1631,11 +1627,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprintf(out, "\t\t\t\t\t<longVersionName>");
 	xml_print(title);
 	fprintf(out, "</longVersionName>\n");
-      
-	free(deflinetable[d]);
       }
-    
-      free(deflinetable);
         
       fprintf(out, "\t\t\t\t</linkContainer>\n");
     
