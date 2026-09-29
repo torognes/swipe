@@ -33,6 +33,7 @@
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t, INT64_C
 #include <cstdlib>  // std::strtol
+#include <cstring>  // std::strncmp
 #include <initializer_list>
 #include <iterator>  // std::next
 #include <limits>
@@ -1297,17 +1298,25 @@ auto hits_defline_split(char * defline,
 			char ** rest) -> void
 {
   char * p = defline;
-  int len = 0;
 
   *link = nullptr;
   *linklen = 0;
   *rest = nullptr;
   
-  int const m = sscanf(p, "gi|%ld%n", gi, & len);
-  if (m > 0)
+  // "gi|" and a number, as the header parser writes them (set_id(),
+  // asnparse.cc); *gi is left unchanged otherwise
+  constexpr std::size_t gi_prefix_length = 3;
+  if (std::strncmp(p, "gi|", gi_prefix_length) == 0)
   {
-    //  if (len > 0)
-    p += len;
+    char * const number = std::next(p, gi_prefix_length);
+    char * end = nullptr;
+    long const value = std::strtol(number, & end, 10);
+    if (end != number)
+    {
+      //  if (len > 0)
+      *gi = value;
+      p = end;
+    }
   }
 
   if (*p == '|')
