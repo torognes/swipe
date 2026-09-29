@@ -539,11 +539,8 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
 {
     Int4 i = 0;                 /* iteration index */
     const Int4 maxits = 20;     /* maximum allowed iterations */
-#ifdef ORIGINAL_NCBI_CODE
-    Nlm_FloatHi m = query_length, n = db_length, N = db_num_seqs;
-#else
+    // swipe: db_length is converted explicitly (NCBI: implicitly)
     Nlm_FloatHi m = query_length, n = static_cast<double>(db_length), N = db_num_seqs;
-#endif
 
     Nlm_FloatHi ell = 0;        /* A float value of the length adjustment */
     Nlm_FloatHi ss = 0;         /* effective size of the search space */
@@ -582,11 +579,10 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
                 converged = true;
                 break;
             }
-#ifdef ORIGINAL_NCBI_CODE
-            if(ell_min == ell_max) { /* There are no more points to check */
-#else
+            // swipe: >= where NCBI tests ell_min == ell_max (a
+            // floating-point equality; >= also ends the search if
+            // ell_min passes ell_max)
             if(ell_min >= ell_max) { /* There are no more points to check */
-#endif
                 break;
             }
         } else { /* else ell is greater than the true fixed point */
