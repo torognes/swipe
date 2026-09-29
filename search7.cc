@@ -750,19 +750,19 @@ search7
   __m128i M;
   __m128i Z;
   __m128i T0;
-  __m128i *hep;
-  __m128i **qp;
+  __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
+  __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
   BYTE const * d_begin[CHANNELS];
   BYTE const * d_end[CHANNELS];
   
   __m128i dseqalloc[CDEPTH];
   
   BYTE * dseq = reinterpret_cast<BYTE*>(& dseqalloc);
-  BYTE zero;
+  BYTE const zero = 0;
 
   long seq_id[CHANNELS];
   long next_id = 0;
-  unsigned done;
+  unsigned done = 0;
   
   memset(hearray, 0x80, static_cast<std::size_t>(qlen) * 32);
 
@@ -771,13 +771,8 @@ search7
 		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, byte_0x80);
   Q  = _mm_set1_epi8(static_cast<char>(gap_open_penalty));
   R  = _mm_set1_epi8(static_cast<char>(gap_extend_penalty));
-  zero = 0;
-  done = 0;
 
   S = Z;
-
-  hep = reinterpret_cast<__m128i*>(hearray);
-  qp = reinterpret_cast<__m128i**>(q_start);
 
   for (int c=0; c<CHANNELS; c++)
   {
@@ -875,7 +870,7 @@ search7
 	    seq_id[c] = next_id;
 	    long const seqnosf = seqnos[next_id];
 
-	    long ntlen;
+	    long ntlen = 0;
 	    long const strand = (seqnosf >> 2) & 1;
 	    long const frame = seqnosf & 3;
 	    long const seqno = seqnosf >> 3;
