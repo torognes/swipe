@@ -139,7 +139,6 @@ struct hits_entry
   long align_q_end;
   long align_d_start;
   long align_d_end;
-  long header_length;
 };
 
 Buffer<hits_entry> hits_list;
@@ -402,12 +401,6 @@ auto hits_init(Parameters const & parameters) -> void
   hits_list.clear();
   hits_list.resize(static_cast<std::size_t>(keephits));
 
-  for(int i=0; i<keephits; i++)
-  {
-    struct hits_entry * h = &hit_entry(i);
-    h->header_length = 0;
-  }
-
   std::int64_t seqcount = 0;
   std::int64_t symcount = 0;
 
@@ -654,7 +647,6 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   db_mapheaders(t, h->seqno, h->seqno);
 
   View<char> const header = db_getheader(t, h->seqno);
-  h->header_length = static_cast<long>(header.size());
   h->header_address.assign(header.begin(), header.end());
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
@@ -1516,7 +1508,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     char * link = nullptr;
     char * title = nullptr;
     std::size_t linklen = 0;
-    db_parse_header(t, View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)},
+    db_parse_header(t, make_view(hit_entry(i).header_address),
 		    1, & deflines, & deflinetable);
     hits_defline_split(&deflinetable[0][0], 
 		       & gi,
@@ -1594,7 +1586,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       char * link = nullptr;
       char * title = nullptr;
       std::size_t linklen = 0;
-      db_parse_header(t, View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)},
+      db_parse_header(t, make_view(hit_entry(i).header_address),
 		      1, & deflines, & deflinetable);
       fprintf(out, "\t\t\t\t<linkContainer>\n");
       
@@ -1800,7 +1792,7 @@ auto hits_show_xml(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = show_gis;
     layout.escaping = Escaping::xml;
-    db_showheader(t, View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)}, layout);
+    db_showheader(t, make_view(hit_entry(i).header_address), layout);
     fprintf(out, "</name>\n");
     fprintf(out, "      <len>%ld</len>\n", dlen);
     fprintf(out, "      <score>%ld</score>\n", score);
@@ -1868,7 +1860,7 @@ auto hits_show_tsv(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = 1;
     layout.text = DeflineText::identifier;
-    db_showheader(t, View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)}, layout);
+    db_showheader(t, make_view(hit_entry(i).header_address), layout);
     
     long identities = 0;
     long positives = 0;
@@ -1950,7 +1942,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
-		      View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)}, layout);
+		      make_view(hit_entry(i).header_address), layout);
 
 	long const score = hit_entry(i).score;
 
@@ -2004,7 +1996,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.indent = 10;
 	layout.linelen = 79;
 	layout.maxdeflines = LONG_MAX;
-	db_showheader(t, View<char>{hit_entry(i).header_address.data(), static_cast<std::size_t>(hit_entry(i).header_length)}, layout);
+	db_showheader(t, make_view(hit_entry(i).header_address), layout);
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  fprintf(out, "          Length = %ld\n", hit_entry(i).dlennt);
