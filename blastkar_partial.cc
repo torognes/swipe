@@ -142,7 +142,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL
+BLAST_MATRIX_NOMINAL,
 }};
 
 
@@ -182,7 +182,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL
+BLAST_MATRIX_NOMINAL,
 }};
 
 constexpr Int4 BLOSUM62_VALUES_MAX = 12;
@@ -240,7 +240,7 @@ static std::array<Int4, BLOSUM80_VALUES_MAX> const blosum80_prefs {{
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_BEST,
-    BLAST_MATRIX_NOMINAL
+    BLAST_MATRIX_NOMINAL,
 }};
 
 constexpr Int4 BLOSUM90_VALUES_MAX = 8;
@@ -263,7 +263,7 @@ static std::array<Int4, BLOSUM90_VALUES_MAX> const blosum90_prefs {{
 	BLAST_MATRIX_NOMINAL,
 	BLAST_MATRIX_NOMINAL,
 	BLAST_MATRIX_BEST,
-	BLAST_MATRIX_NOMINAL
+	BLAST_MATRIX_NOMINAL,
 }};
 
 constexpr Int4 PAM250_VALUES_MAX = 16;
@@ -302,7 +302,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
-BLAST_MATRIX_NOMINAL
+BLAST_MATRIX_NOMINAL,
 }};
 
 constexpr Int4 PAM30_VALUES_MAX = 7;
@@ -345,7 +345,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_BEST,
-BLAST_MATRIX_NOMINAL
+BLAST_MATRIX_NOMINAL,
 }};
 
 
@@ -371,7 +371,7 @@ BLAST_MATRIX_NOMINAL
 /** Karlin-Altschul parameter values for substitution scores 1 and -5. */
 static std::array<array_of_8, 2> const blastn_values_1_5 {{
   { 0, 0, 1.39, 0.747, 1.38, 1.00,  0, 100 },
-  { 3, 3, 1.39, 0.747, 1.38, 1.00,  0, 100 }
+  { 3, 3, 1.39, 0.747, 1.38, 1.00,  0, 100 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -4. */
@@ -380,7 +380,7 @@ static std::array<array_of_8, 5> const blastn_values_1_4 {{
   { 1, 2,  1.36,  0.67,  1.2,  1.1,  0,  98 },
   { 0, 2,  1.26,  0.43, 0.90,  1.4, -1,  91 },
   { 2, 1,  1.35,  0.61,  1.1,  1.2, -1,  98 },
-  { 1, 1,  1.22,  0.35, 0.72,  1.7, -3,  88 }
+  { 1, 1,  1.22,  0.35, 0.72,  1.7, -3,  88 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -7.
@@ -392,7 +392,7 @@ static std::array<array_of_8, 5> const blastn_values_2_7 {{
   { 2, 4,  0.68, 0.67,  1.2,  0.55,  0,  99 },
   { 0, 4,  0.63, 0.43, 0.90,   0.7, -1,  91 },
   { 4, 2, 0.675, 0.62,  1.1,   0.6, -1,  98 },
-  { 2, 2,  0.61, 0.35, 0.72,   1.7, -3,  88 }
+  { 2, 2,  0.61, 0.35, 0.72,   1.7, -3,  88 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -3. */
@@ -402,7 +402,7 @@ static std::array<array_of_8, 6> const blastn_values_1_3 {{
   { 1, 2,  1.35,  0.64,  1.1,  1.2, -1,  98 },
   { 0, 2,  1.25,  0.42, 0.83,  1.5, -2,  91 },
   { 2, 1,  1.34,  0.60,  1.1,  1.2, -1,  97 },
-  { 1, 1,  1.21,  0.34, 0.71,  1.7, -2,  88 }
+  { 1, 1,  1.21,  0.34, 0.71,  1.7, -2,  88 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -5.
@@ -414,7 +414,7 @@ static std::array<array_of_8, 5> const blastn_values_2_5 {{
   { 2, 4,  0.67, 0.59,  1.1,  0.6, -1, 98 },
   { 0, 4,  0.62, 0.39, 0.78,  0.8, -2, 91 },
   { 4, 2,  0.67, 0.61,  1.0, 0.65, -2, 98 },
-  { 2, 2,  0.56, 0.32, 0.59, 0.95, -4, 82 }
+  { 2, 2,  0.56, 0.32, 0.59, 0.95, -4, 82 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -2. */
@@ -425,7 +425,7 @@ static std::array<array_of_8, 7> const blastn_values_1_2 {{
   { 0, 2, 1.19, 0.34, 0.66, 1.8, -3, 89 },
   { 3, 1, 1.32, 0.57,  1.0, 1.3, -1, 99 },
   { 2, 1, 1.29, 0.49, 0.92, 1.4, -1, 96 },
-  { 1, 1, 1.14, 0.26, 0.52, 2.2, -5, 85 }
+  { 1, 1, 1.14, 0.26, 0.52, 2.2, -5, 85 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -3.
@@ -441,7 +441,7 @@ static std::array<array_of_8, 9> const blastn_values_2_3 {{
   { 6, 2,  0.63, 0.42, 0.84, 0.75, -2, 99 },
   { 5, 2, 0.625, 0.41, 0.78,  0.8, -2, 99 },
   { 4, 2,  0.61, 0.35, 0.68,  0.9, -3, 96 },
-  { 2, 2, 0.515, 0.14, 0.33, 1.55, -9, 81 }
+  { 2, 2, 0.515, 0.14, 0.33, 1.55, -9, 81 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 3 and -4. */
@@ -451,7 +451,7 @@ static std::array<array_of_8, 6> const blastn_values_3_4 {{
   { 4, 3, 0.351, 0.14, 0.35, 1.0, -9, 86},
   { 6, 2, 0.362, 0.16, 0.45, 0.8, -4, 88},
   { 5, 2, 0.330, 0.092, 0.28, 1.2, -13, 81},
-  { 4, 2, 0.281, 0.046, 0.16, 1.8, -23, 69}
+  { 4, 2, 0.281, 0.046, 0.16, 1.8, -23, 69},
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 4 and -5. */
@@ -460,7 +460,7 @@ static std::array<array_of_8, 5> const blastn_values_4_5 {{
   { 6, 5, 0.28,  0.21, 0.47, 0.6 , -7, 93 },
   { 5, 5, 0.27,  0.17, 0.39, 0.7,  -9, 90 },
   { 4, 5, 0.25,  0.10, 0.31, 0.8, -10, 83 },
-  { 3, 5, 0.23, 0.065, 0.25, 0.9, -11, 76 }
+  { 3, 5, 0.23, 0.065, 0.25, 0.9, -11, 76 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -1. */
@@ -471,18 +471,18 @@ static std::array<array_of_8, 7> const blastn_values_1_1 {{
   { 0,  2, 0.80, 0.064, 0.17, 4.8, -16, 72 },
   { 4,  1, 1.08,  0.28, 0.54, 2.0,  -2, 98 },
   { 3,  1, 1.06,  0.25, 0.46, 2.3,  -4, 96 },
-  { 2,  1, 0.99,  0.17, 0.30, 3.3, -10, 90 }
+  { 2,  1, 0.99,  0.17, 0.30, 3.3, -10, 90 },
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 3 and -2. */
 static std::array<array_of_8, 1> const blastn_values_3_2 {{
-  {  5,  5, 0.208, 0.030, 0.072, 2.9, -47, 77}
+  {  5,  5, 0.208, 0.030, 0.072, 2.9, -47, 77},
 }};
 
 /** Karlin-Altschul parameter values for substitution scores 5 and -4. */
 static std::array<array_of_8, 2> const blastn_values_5_4 {{
   { 10, 6, 0.163, 0.068, 0.16, 1.0, -19, 85 },
-  {  8, 6, 0.146, 0.039, 0.11, 1.3, -29, 76 }
+  {  8, 6, 0.146, 0.039, 0.11, 1.3, -29, 76 },
 }};
 
 
@@ -669,7 +669,7 @@ auto matrix_tables(char const * const matrix) -> MatrixTables
       { "BLOSUM90", make_view(blosum90_values), make_view(blosum90_prefs) },
       { "PAM30", make_view(pam30_values), make_view(pam30_prefs) },
       { "PAM70", make_view(pam70_values), make_view(pam70_prefs) },
-      { "PAM250", make_view(pam250_values), make_view(pam250_prefs) } }};
+      { "PAM250", make_view(pam250_values), make_view(pam250_prefs) }, }};
   auto const found = std::find_if(known.begin(), known.end(),
                                   [matrix](MatrixTables const & tables) {
                                     return strcasecmp(matrix, tables.name) == 0;
@@ -703,7 +703,7 @@ auto blastn_tables(long const match_score, long const mismatch_score) -> BlastnT
       { 4, -5, { make_view(blastn_values_4_5), 4, 2 } },
       { 1, -1, { make_view(blastn_values_1_1), 5, 5 } },
       { 3, -2, { make_view(blastn_values_3_2), 12, 8 } },
-      { 5, -4, { make_view(blastn_values_5_4), 25, 10 } } }};
+      { 5, -4, { make_view(blastn_values_5_4), 25, 10 } }, }};
   auto const found = std::find_if(known.begin(), known.end(),
                                   [match_score, mismatch_score](BlastnPair const & pair) {
                                     return (pair.match_score == match_score) and
