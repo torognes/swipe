@@ -31,7 +31,7 @@ ifeq ($(VERSION),)
   $(error cannot read the version number from ./VERSION)
 endif
 
-COMMON=-g -pthread
+COMMON=-g -fno-exceptions -pthread
 
 # Warnings of every recipe. The extra ones are known to every
 # supported compiler (GCC 4.8.5 and later, clang), and swipe builds
@@ -106,7 +106,7 @@ endif
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
 SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
-	-DSWIPE_VERSION='"$(VERSION)"' $(CPPFLAGS) $(CXXFLAGS)
+	$(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe
@@ -117,20 +117,41 @@ all : swipe
 # DESTDIR is prepended for staged installs (packaging)
 PREFIX ?= /usr/local
 exec_prefix := $(PREFIX)
+datarootdir := $(PREFIX)/share
 bindir := $(exec_prefix)/bin
+mandir := $(datarootdir)/man
+man1dir := $(mandir)/man1
+bashcompdir ?= $(datarootdir)/bash-completion/completions
+zshcompdir ?= $(datarootdir)/zsh/site-functions
+
+MAN := man/swipe.1
+BASH_COMPLETION := completion/swipe.bash
+ZSH_COMPLETION := completion/_swipe
 
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+INSTALL_DATA ?= $(INSTALL) -m 0644
 MKDIR_P ?= $(INSTALL) -d
 
-.PHONY : all clean distclean install uninstall
+.PHONY : all clean distclean install install-completion uninstall
 
-install : swipe
+install : swipe $(MAN) install-completion
 	$(MKDIR_P) $(DESTDIR)$(bindir)
 	$(INSTALL_PROGRAM) swipe $(DESTDIR)$(bindir)/swipe
+	$(MKDIR_P) $(DESTDIR)$(man1dir)
+	$(INSTALL_DATA) $(MAN) $(DESTDIR)$(man1dir)/swipe.1
+
+install-completion : $(BASH_COMPLETION) $(ZSH_COMPLETION)
+	$(MKDIR_P) $(DESTDIR)$(bashcompdir)
+	$(INSTALL_DATA) $(BASH_COMPLETION) $(DESTDIR)$(bashcompdir)/swipe
+	$(MKDIR_P) $(DESTDIR)$(zshcompdir)
+	$(INSTALL_DATA) $(ZSH_COMPLETION) $(DESTDIR)$(zshcompdir)/_swipe
 
 uninstall :
 	rm -f $(DESTDIR)$(bindir)/swipe
+	rm -f $(DESTDIR)$(man1dir)/swipe.1
+	rm -f $(DESTDIR)$(bashcompdir)/swipe
+	rm -f $(DESTDIR)$(zshcompdir)/_swipe
 
 clean :
 	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov
@@ -138,7 +159,7 @@ clean :
 distclean : clean
 	rm -f compile_commands.json
 
-OBJS = database.o asnparse.o align.o matrices.o \
+OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
@@ -149,7 +170,13 @@ DEPFLAGS = -MMD -MP
 DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)
 
-DEPS = Makefile VERSION
+DEPS = Makefile
+
+# the version number (file VERSION) is only compiled into swipe.o,
+# which defines swipe_name_and_version for the other files: a new
+# version rebuilds swipe.o only
+swipe.o : VERSION_DEFINE = -DSWIPE_VERSION='"$(VERSION)"'
+swipe.o : VERSION
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)

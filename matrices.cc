@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::min, std::max
+#include <array>
 #include <cassert>
 #include <cstddef>  // std::size_t
 #include <cstring>  // std::memcpy
@@ -322,10 +323,23 @@ e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 long SCORELIMIT_7;
 long SCORELIMIT_16;
 
-char * score_matrix_7 = nullptr;
-char * score_matrix_7t = nullptr;
-short * score_matrix_16 = nullptr;
-long * score_matrix_63 = nullptr;
+// the score matrices, 32 x 32 (static storage, 16-byte aligned for the
+// SIMD kernels), and the pointers the other files read them through
+constexpr std::size_t score_matrix_size = 32 * 32;
+
+namespace {
+
+alignas(16) std::array<char, score_matrix_size> score_matrix_7_storage {{}};
+alignas(16) std::array<char, score_matrix_size> score_matrix_7t_storage {{}};
+alignas(16) std::array<short, score_matrix_size> score_matrix_16_storage {{}};
+alignas(16) std::array<long, score_matrix_size> score_matrix_63_storage {{}};
+
+}  // anonymous namespace
+
+extern char * const score_matrix_7 = score_matrix_7_storage.data();
+extern char * const score_matrix_7t = score_matrix_7t_storage.data();
+extern short * const score_matrix_16 = score_matrix_16_storage.data();
+extern long * const score_matrix_63 = score_matrix_63_storage.data();
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -552,11 +566,7 @@ auto score_matrix_read(Parameters const & parameters) -> void
   long lo = 0;
   long hi = 0; 
   
-  score_matrix_7 = static_cast<char *>(xmalloc(32*32*sizeof(char)));
-  score_matrix_7t = static_cast<char *>(xmalloc(32*32*sizeof(char)));
-  score_matrix_16 = static_cast<short *>(xmalloc(32*32*sizeof(short)));
-  score_matrix_63 = static_cast<long *>(xmalloc(32*32*sizeof(long)));
-  memset(score_matrix_63, -1, 32*32*8);
+  score_matrix_63_storage.fill(-1);
   
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -661,17 +671,5 @@ auto score_matrix_read(Parameters const & parameters) -> void
 auto score_matrix_init(Parameters const & parameters) -> void
 {
   score_matrix_read(parameters);
-}
-
-auto score_matrix_free() -> void
-{
-  free(score_matrix_7);
-  score_matrix_7 = nullptr;
-  free(score_matrix_7t);
-  score_matrix_7t = nullptr;
-  free(score_matrix_16);
-  score_matrix_16 = nullptr;
-  free(score_matrix_63);
-  score_matrix_63 = nullptr;
 }
 

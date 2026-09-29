@@ -122,8 +122,12 @@ Mac. SWIPE may be compiled from sources using either the GNU g++ compiler
 (version 4.8.5 or later) or the LLVM Clang compiler ("make", or "make
 CXX=clang++"). The usual variables CXX, CXXFLAGS, CPPFLAGS and LDFLAGS
 are honoured (e.g. "make CXXFLAGS=-O2"). "make install" copies the
-binary to $(PREFIX)/bin (PREFIX is /usr/local by default; DESTDIR is
-supported), and "make uninstall" removes it.
+binary to $(PREFIX)/bin, the manual page to $(PREFIX)/share/man/man1,
+and the bash and zsh completions to $(PREFIX)/share/bash-completion/
+completions and $(PREFIX)/share/zsh/site-functions (PREFIX is
+/usr/local by default; DESTDIR, bashcompdir and zshcompdir are
+supported), and "make uninstall" removes them. The manual page can be
+read before installation with "man ./man/swipe.1".
 
 The MPI version of SWIPE (mpiswipe) was removed in version 2.2.0
 (version 2.1.2 is the last one that includes it).

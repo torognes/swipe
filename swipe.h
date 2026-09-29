@@ -37,7 +37,6 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <arpa/inet.h>
-#include <pthread.h>
 #include <getopt.h>
 #include <cmath>
 #include <x86intrin.h>
@@ -45,6 +44,8 @@
 #include <chrono>
 #include <ctime>
 #include <string>
+#include <vector>
+#include "fatal_allocator.h"  // Buffer, xmalloc
 
 
 #ifdef __APPLE__
@@ -59,15 +60,8 @@
 #define LINE_MAX 2048
 #endif
 
-// the version number is read from the file VERSION by the Makefile
-#ifndef SWIPE_VERSION
-#ifdef __CPPCHECK__
-// static analysis with cppcheck, run without the Makefile's flags
-#define SWIPE_VERSION "0.0.0"
-#else
-#error "SWIPE_VERSION is not defined: build swipe with make"
-#endif
-#endif
+// "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
+extern char const swipe_name_and_version[];
 
 // Should be 32bits integer
 using UINT32 = unsigned int;
@@ -174,14 +168,16 @@ struct Parameters
   std::int64_t effdbsize = default_effdbsize;
 };
 
-auto xmalloc(size_t size) -> void *;
-auto xrealloc(void *ptr, size_t size) -> void *;
+// options.cc
+auto args_init(int argc, char * const * argv) -> Parameters;
+auto args_show(Parameters const & parameters) -> void;
+
 
 
 extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
-extern long * score_matrix_63;
+extern long * const score_matrix_63;
 extern long totalhits;
 extern char const * gencode_names[];
 extern long queryno;
@@ -215,21 +211,22 @@ extern char const mat_pam250[];
 extern long SCORELIMIT_7;
 extern long SCORELIMIT_16;
 
-extern char * score_matrix_7;
-extern char * score_matrix_7t;
-extern short * score_matrix_16;
+extern char * const score_matrix_7;
+extern char * const score_matrix_7t;
+extern short * const score_matrix_16;
 
 struct sequence
 {
-  char * seq;
+  char * seq;  // storage.data(), or nullptr
   long len;
+  Buffer<char> storage;  // owns seq
 };
 
 struct query_s
 {
   struct sequence nt[2]; /* 2 strands */
   struct sequence aa[6]; /* 6 frames */
-  char * description;
+  std::string description;
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
@@ -335,7 +332,7 @@ auto align(char * a_seq,
 	   long * b_begin,
 	   long * a_end,
 	   long * b_end,
-	   char ** alignment,
+	   std::string & alignment,
 	   long * s) -> void;
 
 auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;
@@ -344,13 +341,12 @@ auto query_read() -> int;
 auto query_show() -> void;
 
 auto score_matrix_init(Parameters const & parameters) -> void;
-auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(char const * seq, long len) -> char *;
+auto revcompl(char const * seq, long len) -> Buffer<char>;
 auto translate(char const * dna, long dlen,
                long strand, long frame, long table,
-               char ** protp, long * plenp) -> void;
+               Buffer<char> & protein, long * plenp) -> void;
 
 struct asnparse_info;
 using apt = asnparse_info *;
@@ -384,7 +380,7 @@ struct HeaderLayout
 auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, char *** deflinetable) -> void;
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
 
 auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
                            long memb, long(*f_checktaxid)(long)) -> long;
@@ -396,8 +392,8 @@ auto db_getseqcount_masked() -> std::int64_t;
 auto db_getsymcount() -> std::int64_t;
 auto db_getsymcount_masked() -> std::int64_t;
 auto db_getlongest() -> long;
-auto db_gettitle() -> char*;
-auto db_gettime() -> char*;
+auto db_gettitle() -> char const *;
+auto db_gettime() -> char const *;
 auto db_getvolumecount() -> long;
 auto db_getseqcount_volume(long v) -> long;
 auto db_getseqcount_volume_masked(long v) -> long;
@@ -413,7 +409,7 @@ auto db_check_taxid(long taxid) -> long;
 
 auto db_parse_header(struct db_thread_s const * t, char * address, long length,
 		     long show_gis,
-		     long * deflines, char *** deflinetable) -> void;
+		     long * deflines, std::vector<std::string> * deflinetable) -> void;
 
 auto db_showheader(struct db_thread_s const * t, char * address, long length,
 		   HeaderLayout const & layout) -> void;
@@ -445,7 +441,7 @@ struct HitStrands
 };
 
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
-auto hits_sort() -> long *;
+auto hits_sort() -> Buffer<long>;
 auto hits_getcount() -> long;
 auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;
@@ -456,26 +452,7 @@ auto hits_exit() -> void;
 auto hits_gethit(long i, long * seqno, long * score, 
 		 long * qstrand, long * qframe,
 		 long * dstrand, long * dframe) -> void;
-auto hits_getfull(long i, 
-		  long * seqno, 
-		  long * score,
-		  long * align_q_start,
-		  long * align_q_end,
-		  long * align_d_start,
-		  long * align_d_end,
-		  char ** header, long * header_len,
-		  char ** seq, long * seq_len,
-		  char ** align, long * align_len) -> void;
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
-auto hits_enter_header(long i, char const * header, long header_len) -> void;
-auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void;
-auto hits_enter_align_coord(long i,
-			    long align_q_start,
-			    long align_q_end,
-			    long align_d_start,
-			    long align_d_end,
-			    long dlennt) -> void;
-auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void;
 
 
 auto stats_getparams_nt(long match_score,

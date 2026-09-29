@@ -30,57 +30,47 @@
 #include <cstring>  // std::memcpy, std::strlen
 #include <iterator>  // std::next
 #include <string>
+#include <vector>
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
-
-/* gi,db,name,ac etc needs considerable less space */
-
-constexpr long MAXSTRING = 2048;
-constexpr long MAXDEFLINESTRING = 10240;
 
 struct asnparse_info
 {
   unsigned char * header_p;
   unsigned char * header_end;
   
-  /* strings are read up to MAXSTRING characters, plus a null byte */
-  char parsed_string[MAXSTRING + 1];
-  unsigned long parsed_string_length;
+  std::string parsed_string;
   unsigned long parsed_integer;
   
   unsigned char ch;
   unsigned char obj;
   unsigned char len;
   
-  unsigned long gi;
-  char database[MAXSTRING];
-  char name[MAXSTRING + 1];
-  char accession[MAXSTRING + 1];
-  char release[MAXSTRING + 1];
+  std::string name;
+  std::string accession;
+  std::string release;
   unsigned long version;
   unsigned long taxid;
   unsigned long memberships;
   unsigned long links;
   
-  char date[MAXSTRING];
-  char pdb_molid[MAXSTRING + 1];
+  std::string pdb_molid;
   long pdb_chain;
-  char pdb_chain_id[MAXSTRING + 1];
+  std::string pdb_chain_id;
   
-  char gnl_db[MAXSTRING + 1];
-  char gnl_id_string[MAXSTRING + 1];
+  std::string gnl_db;
+  std::string gnl_id_string;
   unsigned long gnl_id_integer;
   
   unsigned long pat_sequence;
-  char pat_country[MAXSTRING + 1];
+  std::string pat_country;
   unsigned long pat_granted;
-  char pat_id[MAXSTRING + 1];
-  char pat_doctype[MAXSTRING + 1];
+  std::string pat_id;
 
-  char id[MAXSTRING];
-  char title[MAXDEFLINESTRING];
+  std::string id;
+  std::string title;
   
-  char defline[MAXDEFLINESTRING];
+  std::string defline;
 
   long show_gis;
   long show_taxid;
@@ -96,19 +86,6 @@ struct asnparse_info
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
-
-// append src to the null-terminated string dst (capacity: size
-// bytes), truncating src if necessary
-auto append_bounded(char * const dst, std::size_t const size,
-                    char const * const src) -> void
-{
-  assert(size > 0);
-  auto const used = std::strlen(dst);
-  assert(used < size);
-  auto const count = std::min(std::strlen(src), size - used - 1);
-  std::memcpy(std::next(dst, static_cast<std::ptrdiff_t>(used)), src, count);
-  *std::next(dst, static_cast<std::ptrdiff_t>(used + count)) = '\0';
-}
 
 auto nextch(apt p) -> void
 {
@@ -215,22 +192,16 @@ auto parse_visiblestring(apt p) -> void
   //  printf("length=%lu ", length);
 
   unsigned int i = 0;
-  p->parsed_string_length = 0;
-  p->parsed_string[0] = 0;
+  p->parsed_string.clear();
   
   while (i < length)
     {
       //      printf("%02x ", ch);
-      if (p->parsed_string_length < MAXSTRING)
-	{
-	  p->parsed_string[p->parsed_string_length] = static_cast<char>(p->ch);
-	  p->parsed_string_length++;
-	}
+      p->parsed_string += static_cast<char>(p->ch);
       nextch(p);
       i++;
     }
 
-  p->parsed_string[p->parsed_string_length] = 0;
 
   //  printf("(len=%lu, psl=%lu) ", length, parsed_string_length);
 
@@ -240,7 +211,7 @@ auto parse_visiblestring(apt p) -> void
 auto parse_object_id(apt p) -> void
 {
   p->gnl_id_integer = 0;
-  p->gnl_id_string[0] = 0;
+  p->gnl_id_string.clear();
 
   switch(p->obj)
   {
@@ -253,7 +224,7 @@ auto parse_object_id(apt p) -> void
   case 0xA1:
     match_obj(p, 0xA1);
     parse_visiblestring(p);
-    strcpy(p->gnl_id_string, p->parsed_string);
+    p->gnl_id_string = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p, 0);
     break;
   default:
@@ -263,13 +234,13 @@ auto parse_object_id(apt p) -> void
 
 auto parse_dbtag(apt p) -> void
 {
-  p->gnl_db[0] = 0;
+  p->gnl_db.clear();
 
   match_obj(p,0x30);
 
   match_obj(p,0xA0);
   parse_visiblestring(p);
-  strcpy(p->gnl_db, p->parsed_string);
+  p->gnl_db = p->parsed_string.c_str();  // up to a NUL, as strcpy()
   match_obj(p,0);
 
   match_obj(p,0xA1);
@@ -281,16 +252,15 @@ auto parse_dbtag(apt p) -> void
 
 auto parse_id_pat(apt p) -> void
 {
-  p->pat_country[0] = 0;
-  p->pat_id[0] = 0;
-  p->pat_doctype[0] = 0;
+  p->pat_country.clear();
+  p->pat_id.clear();
 
   match_obj(p,0x30);
 
   /* Country */
   match_obj(p,0xA0);
   parse_visiblestring(p);
-  strcpy(p->pat_country, p->parsed_string);
+  p->pat_country = p->parsed_string.c_str();  // up to a NUL, as strcpy()
   match_obj(p,0);
 
   /* id */
@@ -302,7 +272,7 @@ auto parse_id_pat(apt p) -> void
     /* granted patent number */
     p->pat_granted = 1;
     parse_visiblestring(p);
-    strcpy(p->pat_id, p->parsed_string);
+    p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
     break;
   case 0xA1:
@@ -310,7 +280,7 @@ auto parse_id_pat(apt p) -> void
     /* patent application number */
     p->pat_granted = 0;
     parse_visiblestring(p);
-    strcpy(p->pat_id, p->parsed_string);
+    p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
     break;
   default:
@@ -323,7 +293,6 @@ auto parse_id_pat(apt p) -> void
     /* doc type */
     match_obj(p,0xA2);
     parse_visiblestring(p);
-    strcpy(p->pat_doctype, p->parsed_string);
     match_obj(p,0);
   }
 
@@ -350,9 +319,9 @@ auto parse_patent_seq_id(apt p) -> void
 
 auto parse_textseq_id(apt p) -> void
 {
-  p->name[0] = 0;
-  p->accession[0] = 0;
-  p->release[0] = 0;
+  p->name.clear();
+  p->accession.clear();
+  p->release.clear();
   p->version = 0;
 
   match_obj(p,p->obj);
@@ -360,21 +329,21 @@ auto parse_textseq_id(apt p) -> void
   {
     match_obj(p,0xA0);
     parse_visiblestring(p);
-    strcpy(p->name, p->parsed_string);
+    p->name = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
   }
   if (p->obj == 0xA1)
   {
     match_obj(p,0xA1);
     parse_visiblestring(p);
-    strcpy(p->accession, p->parsed_string);
+    p->accession = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
   }
   if (p->obj == 0xA2)
   {
     match_obj(p,0xA2);
     parse_visiblestring(p);
-    strcpy(p->release, p->parsed_string);
+    p->release = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
   }
   if (p->obj == 0xA3)
@@ -414,29 +383,16 @@ auto parse_gi_import_id(apt p) -> void
 
 auto parse_date_std(apt p) -> void
 {
-  char temp[MAXSTRING];
-  long year = 0;
-  long month = 0;
-  long day = 0;
-  long hour = -1;
-  long min = -1;
-  long sec = -1;
-  char season[MAXSTRING + 1] = "";
-  p->date[0] = 0;
-  temp[0] = 0;
-
   match_obj(p,0x30);
 
   match_obj(p,0xA0);
   parse_integer(p); // year
-  year = static_cast<long>(p->parsed_integer);
   match_obj(p,0);
 
   if (p->obj == 0xA1)
   {
     match_obj(p,0xA1);
     parse_integer(p);
-    month = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -444,7 +400,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA2);
     parse_integer(p);
-    day = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -452,7 +407,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA3);
     parse_visiblestring(p);
-    strcpy(season, p->parsed_string);
     match_obj(p,0);
   }
 
@@ -460,7 +414,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    hour = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -468,7 +421,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    min = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -476,48 +428,10 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA6);
     parse_integer(p);
-    sec = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
   match_obj(p,0);
-
-  snprintf(p->date, sizeof(p->date), "%04ld", year);
-  if (month > 0)
-  {
-    snprintf(temp, sizeof(temp), "-%02ld", month);
-    append_bounded(p->date, sizeof(p->date), temp);
-
-    if (day > 0)
-    {
-      snprintf(temp, sizeof(temp), "-%02ld", day);
-      append_bounded(p->date, sizeof(p->date), temp);
-    }
-  }
-  if (strlen(season) != 0U)
-  {
-    append_bounded(p->date, sizeof(p->date), " ");
-    append_bounded(p->date, sizeof(p->date), season);
-  }
-  if (hour >= 0)
-  {
-    snprintf(temp, sizeof(temp), " %02ld", hour);
-    append_bounded(p->date, sizeof(p->date), temp);
-
-    if (min >= 0)
-    {
-      snprintf(temp, sizeof(temp), ":%02ld", min);
-      append_bounded(p->date, sizeof(p->date), temp);
-
-      if (sec >= 0)
-      {
-	snprintf(temp, sizeof(temp), ":%02ld", sec);
-	append_bounded(p->date, sizeof(p->date), temp);
-      }
-    }
-  }
-
-  //  fprintf(stderr, "Date: %s\n", p->date);
 }
 
 auto parse_date(apt p) -> void
@@ -540,16 +454,15 @@ auto parse_date(apt p) -> void
 
 auto parse_pdb_seq_id(apt p) -> void
 {
-  p->pdb_molid[0]=0;
+  p->pdb_molid.clear();
   p->pdb_chain = 32;
-  p->pdb_chain_id[0] = 0;
-  p->date[0] = 0;
+  p->pdb_chain_id.clear();
 
   match_obj(p,0x30);
 
   match_obj(p,0xA0);
   parse_visiblestring(p);
-  strcpy(p->pdb_molid, p->parsed_string);
+  p->pdb_molid = p->parsed_string.c_str();  // up to a NUL, as strcpy()
   match_obj(p,0);
 
   if (p->obj == 0xA1)
@@ -573,24 +486,23 @@ auto parse_pdb_seq_id(apt p) -> void
   {
     match_obj(p,0xA3);
     parse_visiblestring(p);
-    strcpy(p->pdb_chain_id, p->parsed_string);
+    p->pdb_chain_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
     match_obj(p,0);
   }
 
   match_obj(p,0);
 }
 
-// p->id = id, truncated if necessary
+// p->id = id
 auto set_id(apt p, std::string const & id) -> void
 {
-  p->id[0] = '\0';
-  append_bounded(p->id, sizeof(p->id), id.c_str());
+  p->id = id;
 }
 
 auto show_seq_id(apt p, char const * dbi) -> void
 {
   char const * db = dbi;
-  if ((strcmp(db, "sp") == 0) && (strcmp(p->release, "unreviewed") == 0))
+  if ((strcmp(db, "sp") == 0) && (p->release == "unreviewed"))
   {
     db = "tr";
   }
@@ -625,9 +537,9 @@ auto parse_seq_id(apt p) -> void
     { "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
       "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", };
 
-  p->id[0] = 0;
-  p->name[0] = 0;
-  p->accession[0] = 0;
+  p->id.clear();
+  p->name.clear();
+  p->accession.clear();
   p->version = 0;
 
   unsigned char const object = p->obj;
@@ -665,7 +577,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xA0:
     parse_object_id(p);
-    if ((*p->gnl_id_string) != 0)
+    if (not p->gnl_id_string.empty())
     {
       set_id(p, std::string(db) + "|" + p->gnl_id_string);
     }
@@ -687,7 +599,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xAA:
     parse_dbtag(p);
-    if ((*p->gnl_id_string) != 0)
+    if (not p->gnl_id_string.empty())
     {
       set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
     }
@@ -708,7 +620,7 @@ auto parse_seq_id(apt p) -> void
 
   case 0xAE:
     parse_pdb_seq_id(p);
-    if (p->pdb_chain_id[0] != 0)
+    if (not p->pdb_chain_id.empty())
     {
       // the chain name is shown as is, as done by BLAST+ (KI-22)
       set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + p->pdb_chain_id);
@@ -740,11 +652,10 @@ auto parse_blast_def_line(apt p) -> void
     fatal("Missing defline.");
   }
 
-  char seqids[MAXSTRING];
+  std::string seqids;
 
-  p->defline[0] = 0;
-  strcpy(p->title, "unnamed protein product");
-  seqids[0] = 0;
+  p->defline.clear();
+  p->title = "unnamed protein product";
   p->taxid = 0;
   p->memberships = 0;
   p->links = 0;
@@ -753,7 +664,7 @@ auto parse_blast_def_line(apt p) -> void
     {
       match_obj(p,0xA0);
       parse_visiblestring(p);
-      strcpy(p->title, p->parsed_string);
+      p->title = p->parsed_string.c_str();  // up to a NUL, as strcpy()
       match_obj(p,0x00);
     }
 
@@ -764,11 +675,11 @@ auto parse_blast_def_line(apt p) -> void
       while(p->obj != 0U)
       {
 	parse_seq_id(p);
-	if (strlen(seqids) != 0U)
+	if (not seqids.empty())
 	{
-	  append_bounded(seqids, sizeof(seqids), "|");
+	  seqids += "|";
 	}
-	append_bounded(seqids, sizeof(seqids), p->id);
+	seqids += p->id;
       }
       match_obj(p,0x00);
       match_obj(p,0x00);
@@ -819,45 +730,39 @@ auto parse_blast_def_line(apt p) -> void
 
   match_obj(p,0);
   
-  strcat(p->defline, seqids);
+  p->defline += seqids;
   
   if (p->show_taxid != 0)
     {
       if (p->taxid != 0U)
 	{
-	  strcat(p->defline, ("|taxid|" + std::to_string(p->taxid)).c_str());
+	  p->defline += "|taxid|" + std::to_string(p->taxid);
 	}
       if (p->links != 0U)
 	{
-	  strcat(p->defline, ("|link|" + std::to_string(p->links)).c_str());
+	  p->defline += "|link|" + std::to_string(p->links);
 	}
       if (p->memberships != 0U)
 	{
-	  strcat(p->defline, ("|memb|" + std::to_string(p->memberships)).c_str());
+	  p->defline += "|memb|" + std::to_string(p->memberships);
 	}
     }
 
-    if ((strlen(p->defline) != 0U) && (strlen(p->title) != 0U))
+    if ((not p->defline.empty()) && (not p->title.empty()))
     {
-      strcat(p->defline, " ");
+      p->defline += " ";
     }
 
-  long const zzz = static_cast<long>(strlen(p->defline) + strlen(p->title));
-  if (zzz >= MAXDEFLINESTRING)
-  {
-    fatal("Error: defline too long");
-  }
-
-  append_bounded(p->defline, sizeof(p->defline), p->title);
+  p->defline += p->title;
 }
 
-auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
+auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable) -> long
 {
   for(long x=0; x<deflines; x++)
   {
     if (x < p->maxdeflines)
     {
-      char * defline = deflinetable[x];
+      char * defline = &deflinetable[static_cast<std::size_t>(x)][0];
 
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
@@ -939,55 +844,37 @@ auto show_deflines(apt p, long deflines, char ** deflinetable) -> long
       }
     }
     
-    free(deflinetable[x]);
   }
 
-  free(deflinetable);
   
   return deflines;
 }
 
-auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
+auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable) -> long
 {
   match_obj(p,0x30);
   long deflines = 0;
-  long size = 0;
-  char * * table = nullptr;
 
   if (deflinetable != nullptr)
   {
-    size = 8;
-    table = static_cast<char**>(xmalloc(static_cast<std::size_t>(size) * sizeof(char*)));
+    deflinetable->clear();
   }
     
   while (p->obj != 0U)
     {
-      p->defline[0] = 0;
+      p->defline.clear();
       parse_blast_def_line(p);
       if ((p->f_checktaxid(static_cast<long>(p->taxid)) != 0) && ((p->memberships & p->memb) == p->memb))
       {
 	if (deflinetable != nullptr)
 	{
-	  if (deflines >= size)
-	  {
-	    size += 8;
-	    table = static_cast<char**>(xrealloc(table, static_cast<std::size_t>(size) * sizeof(char*)));
-	  }
-	  
-	  char * newdefline = static_cast<char*>(xmalloc(strlen(p->defline)+1));
-	  strcpy(newdefline, p->defline);
-	  table[deflines] = newdefline;
+	  deflinetable->emplace_back(p->defline);
 	}
 	deflines++;
       }
     }
   
   match_obj(p,0x00);
-
-  if (deflinetable != nullptr)
-  {
-    *deflinetable = table;
-  }
 
   return deflines;
 }
@@ -996,17 +883,18 @@ auto parse_blast_def_line_set_new(apt p, char *** deflinetable) -> long
 
 auto parser_create(long const show_taxid) -> apt
 {
-  auto * p = static_cast<apt>(xmalloc(sizeof(struct asnparse_info)));
+  // default-initialized (not zero-filled), as the former xmalloc()
+  auto * p = new asnparse_info;
   p->show_taxid = show_taxid;
   return p;
 }
 
 auto parser_destruct(apt p) -> void
 {
-  free(p);
+  delete p;
 }
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, char *** deflinetablep) -> void
+auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
 {
   p->show_gis = show_gis;
   p->indent = 0;
@@ -1019,16 +907,13 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
 
   p->header_p = buf;
   p->header_end = buf + len;
-  p->parsed_string_length = 0;
-  p->parsed_string[0] = 0;
+  p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable = nullptr;
-  long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
+  long const deflines = parse_blast_def_line_set_new(p, deflinetablep);
 
-  *deflinetablep = deflinetable;
   *deflinesp = deflines;
 }
 
@@ -1048,13 +933,12 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
 
   p->header_p = buf;
   p->header_end = buf + len;
-  p->parsed_string_length = 0;
-  p->parsed_string[0] = 0;
+  p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
   nextobj(p);
 
-  char ** deflinetable = nullptr;
+  std::vector<std::string> deflinetable;
   long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
   long const deflines2 = show_deflines(p, deflines, deflinetable);
   return deflines2;
@@ -1069,8 +953,7 @@ auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
 
   p->header_p = buf;
   p->header_end = buf + len;
-  p->parsed_string_length = 0;
-  p->parsed_string[0] = 0;
+  p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
   nextobj(p);

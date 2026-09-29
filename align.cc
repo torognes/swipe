@@ -26,6 +26,8 @@
 #include "swipe.h"
 #include <algorithm>  // std::max
 #include <cstddef>  // std::size_t
+#include <string>  // std::string, std::to_string
+#include <utility>  // std::move
 
 // These functions are based on the following articles:
 // - Huang, Hardison & Miller (1990) CABIOS 6:373-381
@@ -52,8 +54,10 @@ auto region(char const * a_seq,
 	    long * s) -> void
 {
   
-  long * HH = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
-  long * EE = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
+  Buffer<long> hh_buffer(static_cast<std::size_t>(N));
+  Buffer<long> ee_buffer(static_cast<std::size_t>(N));
+  long * HH = hh_buffer.data();
+  long * EE = ee_buffer.data();
 
   long i = 0;
   long j = 0;
@@ -160,9 +164,6 @@ auto region(char const * a_seq,
 
  Found:
 
-  free(EE);
-  free(HH);
-
   *s = score;
 }
 
@@ -170,42 +171,23 @@ struct aligner_info
 {
   char op;
   long count;
-  char * alignment;
-  long length;
-  long size;
+  std::string alignment;
 };
 
 auto init(struct aligner_info * aip) -> void
 {
   aip->op = 0;
   aip->count = 0;
-  aip->size = 64;
-  aip->alignment = static_cast<char*>(xmalloc(static_cast<std::size_t>(aip->size)));
-  aip->length = 0;
+  aip->alignment.clear();
 }
 
 auto push(struct aligner_info * aip) -> void
 {
   if (aip->count > 0)
   {
-    while (true)
-    {
-      long const rest = aip->size - aip->length;
-      int const n = snprintf(aip->alignment + aip->length,
-		       static_cast<std::size_t>(rest),
-		       "%c%ld", aip->op, aip->count);
-      if ((n < 0) || (n >= rest))
-      {
-	aip->size += 64;
-	aip->alignment = static_cast<char*>(xrealloc(aip->alignment, static_cast<std::size_t>(aip->size)));
-	//	fprintf(stderr, "Reallocating memory for alignment: %ld\n", aip->size);
-      }
-      else
-      {
-	aip->length += n;
-	break;
-      }
-    }
+    // the operation and its length, as "%c%ld" (e.g. M12)
+    aip->alignment += aip->op;
+    aip->alignment += std::to_string(aip->count);
   }
 }
 
@@ -351,8 +333,10 @@ auto diff(struct aligner_info * aip,
 
       // Compute HH & EE in forward phase with tb
 
-      long * HH = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
-      long * EE = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      Buffer<long> hh_buffer(static_cast<std::size_t>(N) + 1);
+      Buffer<long> ee_buffer(static_cast<std::size_t>(N) + 1);
+      long * HH = hh_buffer.data();
+      long * EE = ee_buffer.data();
 
       HH[0] = 0;
       t = -q;
@@ -389,8 +373,10 @@ auto diff(struct aligner_info * aip,
 
       // Compute XX & YY in reverse phase with te
 
-      long * XX = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
-      long * YY = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      Buffer<long> xx_buffer(static_cast<std::size_t>(N) + 1);
+      Buffer<long> yy_buffer(static_cast<std::size_t>(N) + 1);
+      long * XX = xx_buffer.data();
+      long * YY = yy_buffer.data();
 
       XX[0] = 0;
       t = -q;
@@ -443,8 +429,9 @@ auto diff(struct aligner_info * aip,
 	    }
 	}
 
-      free(HH);
-      free(XX);
+      // released before the recursive calls (peak memory: one level)
+      hh_buffer = Buffer<long>();
+      xx_buffer = Buffer<long>();
 
       for (j=0; j <= N; j++)
 	{
@@ -457,8 +444,8 @@ auto diff(struct aligner_info * aip,
 	    }
 	}
 
-      free(EE);
-      free(YY);
+      ee_buffer = Buffer<long>();
+      yy_buffer = Buffer<long>();
 
       if (P == 0)
 	{
@@ -491,7 +478,7 @@ auto align(char * a_seq,
 	   long * b_begin,
 	   long * a_end,
 	   long * b_end,
-	   char ** alignment,
+	   std::string & alignment,
 	   long * s) -> void
 {
   struct aligner_info ai;
@@ -528,6 +515,6 @@ auto align(char * a_seq,
 
   push(& ai);
 
-  *alignment = ai.alignment;
+  alignment = std::move(ai.alignment);
   *s = score;
 }

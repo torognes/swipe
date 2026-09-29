@@ -10,6 +10,7 @@
 #                  Makefile (SWIPE_VERSION), the version "swipe -h" prints
 #   CHANGES        the first entry ("* Version X.Y.Z"), which must no
 #                  longer be marked "(in development)"
+#   man/swipe.1    the .TH header ("version X.Y.Z")
 #   CITATION.cff   what Zenodo and citation managers read (checked when
 #                  present: it arrives with GitHub PR #39)
 #   the git tag    what the release page is built from
@@ -26,11 +27,17 @@ header=$(sed -n '1p' VERSION)
 changes_line=$(grep -m 1 '^[[:space:]]*\* Version ' CHANGES || true)
 changes=$(printf '%s\n' "${changes_line}" | sed -n 's/^[[:space:]]*\* Version \([^ ]*\).*/\1/p')
 
+man=$(sed -n 's/^\.TH .*"version \([^"]*\)".*/\1/p' man/swipe.1)
+
 test -n "${header}" || fail "cannot read the version number from VERSION"
 test -n "${changes}" || fail "cannot read the first version entry of CHANGES"
+test -n "${man}" || fail "cannot read the version from the .TH header of man/swipe.1"
 
 echo "VERSION:      ${header}" >&2
 echo "CHANGES:      ${changes}" >&2
+echo "man/swipe.1:  ${man}" >&2
+
+test "${header}" = "${man}" || fail "man/swipe.1 says ${man}, VERSION says ${header}"
 
 test "${header}" = "${changes}" || fail "CHANGES says ${changes}, VERSION says ${header}"
 case "${changes_line}" in

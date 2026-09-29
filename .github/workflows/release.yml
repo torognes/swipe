@@ -129,8 +129,10 @@ jobs:
     - name: Package
       timeout-minutes: 5
       run: |
-        mkdir -p "${ASSET}/bin" assets
+        mkdir -p "${ASSET}/bin" "${ASSET}/man" "${ASSET}/completion" assets
         cp swipe "${ASSET}/bin/"
+        cp man/swipe.1 "${ASSET}/man/"
+        cp completion/swipe.bash completion/_swipe "${ASSET}/completion/"
         cp README README.md CHANGES COPYING scoring.pdf "${ASSET}/"
         test ! -f CITATION.cff || cp CITATION.cff "${ASSET}/"
         tar --format=ustar --owner=0 --group=0 --numeric-owner \
