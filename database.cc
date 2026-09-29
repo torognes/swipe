@@ -32,7 +32,7 @@
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoll, std::strtoul
 #include <cstring>  // std::memcpy
-#include <iterator>  // std::next
+#include <iterator>  // std::distance, std::next
 #include <memory>  // std::unique_ptr
 #include <string>
 #include <vector>
@@ -42,7 +42,7 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-unsigned int decompress_nt[256];
+std::array<unsigned int, 256> decompress_nt {{}};
 
 struct al_info
 {
@@ -250,15 +250,16 @@ constexpr long MAXVOLUMES = 256;
 
 namespace {
 
-db_volume_t db_volume[MAXVOLUMES];
+std::array<db_volume_t, MAXVOLUMES> db_volume;
 
-auto db_volume_init(db_volume_t * v) -> void
+auto volume_at(long const vol) -> db_volume_t &
 {
-  if (v - db_volume >= MAXVOLUMES)
-  {
-    fatal("Too many database volumes.");
-  }
+  assert(vol >= 0);
+  return db_volume[static_cast<std::size_t>(vol)];
+}
 
+auto db_volume_reset(db_volume_t * v) -> void
+{
   v->symtype = -1;
   v->version = 0;
   v->title.clear();
@@ -290,6 +291,19 @@ auto db_volume_init(db_volume_t * v) -> void
   v->msk_map.reset();
 }
 
+// the volume vol, reset
+auto db_volume_new(long const vol) -> db_volume_t *
+{
+  if (vol >= MAXVOLUMES)
+  {
+    fatal("Too many database volumes.");
+  }
+
+  db_volume_t * const v = & volume_at(vol);
+  db_volume_reset(v);
+  return v;
+}
+
 auto db_init(db_main_t * v) -> void
 {
   v->volumecount = 0;
@@ -313,7 +327,7 @@ auto db_init(db_main_t * v) -> void
 // space or double quotes
 auto getnames(char const * line) -> std::vector<std::string>
 {
-  char const ws[] = " \t\r\n\"";
+  char const * const ws = " \t\r\n\"";
   std::vector<std::string> names;
 
   char const * p = line;
@@ -357,8 +371,10 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
   std::unique_ptr<al_info_t> al_info(new al_info_t());
   auto title_found = false;
 
-  char line[10000];
-  while (fgets(line, 10000, db_file_xal) != nullptr)
+  constexpr int line_size = 10000;  // longer lines: read in pieces
+  std::array<char, line_size> buffer {{}};
+  char * const line = buffer.data();
+  while (fgets(line, line_size, db_file_xal) != nullptr)
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
@@ -449,7 +465,7 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
 
 auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * volume) -> long
 {
-  db_volume_init(volume);
+  db_volume_reset(volume);
 
 
   std::string name_pin(basename);
@@ -646,19 +662,16 @@ auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
   // linear search
 
   long s = seqno;
-  db_volume_t * v = db_volume;
-  db_volume_t const * e = v + db_main.volumecount;
-  
-  while(v < e)
+  for (long vol = 0; vol < db_main.volumecount; vol++)
   {
-    if (s < v->seqcount)
+    db_volume_t & v = volume_at(vol);
+    if (s < v.seqcount)
     {
-      *vp = v;
+      *vp = & v;
       *sp = s;
       return;
     }
-    s -= v->seqcount;
-    v++;
+    s -= v.seqcount;
   }
   *vp = nullptr;
   *sp = 0;
@@ -672,7 +685,7 @@ auto db_getvolume(long seqno) -> long
   long dummy = 0;
   db_volume_t * vp = nullptr;
   seqno_volume(seqno, & dummy, & vp);
-  return vp - db_volume;
+  return std::distance(db_volume.data(), vp);
 }
 
 namespace {
@@ -878,22 +891,22 @@ auto db_open(Parameters const & parameters) -> void
 	{
 	  std::string const basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
-	  db_volume_init(db_volume + vol);
-	  db_open_xin(symbol_type, basename3.c_str(), db_volume + vol);
+	  db_volume_t * const v = db_volume_new(vol);
+	  db_open_xin(symbol_type, basename3.c_str(), v);
 	  
 	  if (ai->memb_bit != 0)
 	  {
-	    db_set_masked_info(db_volume + vol, ai2.get(), ai2->oidlist[j]);
-	    db_open_msk(db_volume + vol);
+	    db_set_masked_info(v, ai2.get(), ai2->oidlist[j]);
+	    db_open_msk(v);
 	  }
 	  
 
-	  db_main.seqcount += db_volume[vol].seqcount;
-	  db_main.symcount += db_volume[vol].symcount;
-	  db_main.masked_seqcount += db_volume[vol].masked_nseq;
-	  db_main.masked_symcount += db_volume[vol].masked_length;
+	  db_main.seqcount += v->seqcount;
+	  db_main.symcount += v->symcount;
+	  db_main.masked_seqcount += v->masked_nseq;
+	  db_main.masked_symcount += v->masked_length;
 	  
-	  db_main.longest = std::max(db_volume[vol].longest, db_main.longest);
+	  db_main.longest = std::max(v->longest, db_main.longest);
 	  
 	  vol++;
 	  
@@ -912,22 +925,22 @@ auto db_open(Parameters const & parameters) -> void
 	    fatal("Illegal alias file (1).");
 	  }
 
-	db_volume_init(db_volume + vol);
-	db_open_xin(symbol_type, basename2.c_str(), db_volume+vol);
+	db_volume_t * const v = db_volume_new(vol);
+	db_open_xin(symbol_type, basename2.c_str(), v);
 	
 	if (ai->memb_bit != 0)
 	{
-	  db_set_masked_info(db_volume + vol, ai.get(), ai->oidlist[i]);
-	  db_open_msk(db_volume + vol);
+	  db_set_masked_info(v, ai.get(), ai->oidlist[i]);
+	  db_open_msk(v);
 	}
 
 
-	db_main.seqcount += db_volume[vol].seqcount;
-	db_main.symcount += db_volume[vol].symcount;
-	db_main.masked_seqcount += db_volume[vol].masked_nseq;
-	db_main.masked_symcount += db_volume[vol].masked_length;
+	db_main.seqcount += v->seqcount;
+	db_main.symcount += v->symcount;
+	db_main.masked_seqcount += v->masked_nseq;
+	db_main.masked_symcount += v->masked_length;
 	
-	db_main.longest = std::max(db_volume[vol].longest, db_main.longest);
+	db_main.longest = std::max(v->longest, db_main.longest);
 	
 	vol++;
       }
@@ -936,23 +949,23 @@ auto db_open(Parameters const & parameters) -> void
   }
   else
   {
-    db_volume_init(db_volume);
-    db_open_xin(symbol_type, basename, db_volume);
+    db_volume_t * const v = db_volume_new(0);
+    db_open_xin(symbol_type, basename, v);
     
 
     vol++;
 
     db_main.memb_bit = 0;
-    db_main.title    = db_volume[0].title;
-    db_main.seqcount = db_volume[0].seqcount;
-    db_main.symcount = db_volume[0].symcount;
-    db_main.longest  = db_volume[0].longest;
+    db_main.title    = volume_at(0).title;
+    db_main.seqcount = volume_at(0).seqcount;
+    db_main.symcount = volume_at(0).symcount;
+    db_main.longest  = volume_at(0).longest;
 
   }
   
   db_main.volumecount = vol;
-  db_main.version  = db_volume[0].version;
-  db_main.time     = db_volume[0].time;
+  db_main.version  = volume_at(0).version;
+  db_main.time     = volume_at(0).time;
   
   if(db_main.memb_bit == 0)
   {
@@ -963,7 +976,7 @@ auto db_open(Parameters const & parameters) -> void
   
   /* prepare nucleotide decompression table */
 
-  for(int b=0; b<256; b++)
+  for(std::size_t b=0; b<decompress_nt.size(); b++)
   {
     unsigned int unpacked = 0;
     for (long i = 0; i < 4; i++)
@@ -1006,7 +1019,7 @@ auto db_close() -> void
 {
   for(long i=0; i<db_main.volumecount;i++)
   {
-    db_volume_close(db_volume + i);
+    db_volume_close(& volume_at(i));
   }
   db_main.path.clear();
   db_main.title.clear();
@@ -1038,12 +1051,12 @@ auto db_getseqcount() -> std::int64_t
 
 auto db_getseqcount_volume(long v) -> long
 {
-  return db_volume[v].seqcount;
+  return volume_at(v).seqcount;
 }
 
 auto db_getseqcount_volume_masked(long v) -> long
 {
-  return db_volume[v].masked_nseq;
+  return volume_at(v).masked_nseq;
 }
 
 auto db_getseqcount_masked() -> std::int64_t
