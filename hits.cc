@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "print_view.h"  // as_c_string, fprint, fprint_integer
+#include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
 #include <algorithm>  // std::min, std::sort
 #include <array>
 #include <cassert>
@@ -973,9 +973,28 @@ auto AlignmentLines::putalignop(char c, long len) -> void
 
 
       fprint(out, "\n");
-      fprintf(out, "Query: %*ld %s %ld\n", hit.poswidth, q1, q_line.data(), q2);
-      fprintf(out, "       %*s %s\n", hit.poswidth, "", a_line.data());
-      fprintf(out, "Sbjct: %*ld %s %ld\n", hit.poswidth, d1, d_line.data(), d2);
+      // positions right-aligned on poswidth columns (was "%*ld")
+      assert(hit.poswidth > 0);
+      auto const width = static_cast<std::size_t>(hit.poswidth);
+      fprint(out, "Query: ");
+      fprint_integer(out, q1, width);
+      fprint(out, ' ');
+      fprint(out, as_c_string(q_line.data()));
+      fprint(out, ' ');
+      fprint_integer(out, q2);
+      fprint(out, '\n');
+      fprint(out, "       ");
+      fprint_spaces(out, width);
+      fprint(out, ' ');
+      fprint(out, as_c_string(a_line.data()));
+      fprint(out, '\n');
+      fprint(out, "Sbjct: ");
+      fprint_integer(out, d1, width);
+      fprint(out, ' ');
+      fprint(out, as_c_string(d_line.data()));
+      fprint(out, ' ');
+      fprint_integer(out, d2);
+      fprint(out, '\n');
 
       line_pos = 0;
     }
