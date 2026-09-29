@@ -27,7 +27,10 @@
 #include <algorithm>  // std::min, std::max
 #include <array>
 #include <cassert>
+#include <cctype>  // std::isspace
+#include <cerrno>  // errno, ERANGE
 #include <cstddef>  // std::size_t
+#include <cstdlib>  // std::strtol
 #include <cstring>  // std::memcpy
 #include <limits>
 
@@ -344,6 +347,22 @@ extern long * const score_matrix_63 = score_matrix_63_storage.data();
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
+// the next score of a matrix line, the cursor moved past it: a number,
+// then white space or the end of the line (KI-43), or fatal
+auto next_score(char * & cursor) -> long
+{
+  errno = 0;
+  char * end = nullptr;
+  long const score = std::strtol(cursor, & end, 10);
+  if ((end == cursor) or (errno == ERANGE) or
+      ((*end != '\0') and (std::isspace(static_cast<unsigned char>(*end)) == 0)))
+  {
+    fatal("Problem parsing score matrix file.");
+  }
+  cursor = end;
+  return score;
+}
+
 auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
 {
   char line[LINE_MAX];
@@ -352,7 +371,6 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
   int a = 0;
   int b = 0;
   int i = 0;
-  int read = 0;
   int symbols = 0;
   long sc = 0; 
   char * map = nullptr;
@@ -419,10 +437,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
-	      {
-		fatal("Problem parsing score matrix file.");
-	      }
+	      sc = next_score(p);
 
 	      b = order[i];
 
@@ -431,7 +446,6 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 		score_matrix_63[(a << 5) + b] = sc;
 	      }
 
-	      p += read;
 	    }
 	  break;
 	}
@@ -448,7 +462,6 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
   int a = 0;
   int b = 0;
   int i = 0;
-  int read = 0;
   int symbols = 0;
   long sc = 0; 
   char * map = nullptr;
@@ -529,10 +542,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	  a = map[static_cast<unsigned char>(c)];
 	  for (i=0; i<symbols; i++)
 	    {
-	      if (sscanf(p, "%ld%n", &sc, &read) != 1)
-	      {
-		fatal("Problem parsing score matrix file.");
-	      }
+	      sc = next_score(p);
 
 	      b = order[i];
 
@@ -541,7 +551,6 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 		score_matrix_63[(a << 5) + b] = sc;
 	      }
 
-	      p += read;
 	    }
 	  break;
 	}

@@ -59,6 +59,11 @@
         * Fix: in the ParAlign XML output (-m 99), a database sequence
           with several deflines showed, for a defline without gi, the gi
           link of the previous defline (KI-42)
+        * Fix: the numbers of database alias files (LENGTH, NSEQ, MAXOID,
+          MEMB_BIT) and the scores of score matrix files are checked: a
+          value that is not a number, is followed by other characters,
+          is out of range (or, in an alias file, negative) is now a fatal
+          error; it was read as 0, truncated or clamped (KI-43)
         * The identifiers and titles of database sequences are no longer
           truncated: titles were cut at 2,048 characters, identifiers
           and the list of identifiers of a sequence at 2,047, and a

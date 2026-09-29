@@ -28,10 +28,11 @@
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isdigit, std::isspace
+#include <cerrno>  // errno, ERANGE
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoll, std::strtoul
-#include <cstring>  // std::memcpy
+#include <cstring>  // std::memcpy, std::strspn
 #include <iterator>  // std::distance, std::next
 #include <memory>  // std::unique_ptr
 #include <string>
@@ -353,6 +354,21 @@ auto getnames(char const * line) -> std::vector<std::string>
 
 namespace {
 
+// the value of a numeric line of an alias file (LENGTH, NSEQ, MAXOID,
+// MEMB_BIT): a non-negative number, then only white space (KI-43)
+auto alias_number(char const * text, char const * key) -> std::int64_t
+{
+  errno = 0;
+  char * end = nullptr;
+  long long const value = std::strtoll(text, & end, 10);
+  if ((end == text) or (errno == ERANGE) or (value < 0) or
+      (end[std::strspn(end, " \t\r\n")] != '\0'))
+  {
+    fatal(std::string("Illegal ") + key + " value in database alias file.");
+  }
+  return value;
+}
+
 auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique_ptr<al_info_t>
 {
   // open an alias file and read contents
@@ -409,19 +425,19 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
     }
     else if (strncmp(line, "LENGTH ", 7) == 0)
     {
-      al_info->length = std::strtoll(line + 7, nullptr, 10);
+      al_info->length = alias_number(line + 7, "LENGTH");
     }
     else if (strncmp(line, "NSEQ ", 5) == 0)
     {
-      al_info->nseq = atol(line+5);
+      al_info->nseq = alias_number(line + 5, "NSEQ");
     }
     else if (strncmp(line, "MAXOID ", 7) == 0)
     {
-      al_info->maxoid = atol(line+7);
+      al_info->maxoid = alias_number(line + 7, "MAXOID");
     }
     else if (strncmp(line, "MEMB_BIT ", 9) == 0)
     {
-      al_info->memb_bit = atol(line+9);
+      al_info->memb_bit = alias_number(line + 9, "MEMB_BIT");
     }
   }
 
