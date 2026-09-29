@@ -328,7 +328,7 @@ auto align(char * a_seq,
 	   long * b_begin,
 	   long * a_end,
 	   long * b_end,
-	   char ** alignment,
+	   std::string & alignment,
 	   long * s) -> void;
 
 auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;

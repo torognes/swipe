@@ -33,10 +33,12 @@
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t, INT64_C
 #include <initializer_list>
+#include <iterator>  // std::next
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
 #include <string>
+#include <utility>  // std::move
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -118,9 +120,9 @@ static_assert(effective_db_length(INT64_C(20000000000), 50000000, 100) == INT64_
 
 struct hits_entry
 {
-  char * alignment;
-  char * dseq;
-  char * header_address;
+  std::string alignment;
+  Buffer<char> dseq;
+  Buffer<char> header_address;
   long seqno;
   long qstrand;
   long qframe;
@@ -266,7 +268,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   for (long j = move; j > 0; j--)
   {
-    hit_entry(place + j) = hit_entry(place + j - 1);
+    hit_entry(place + j) = std::move(hit_entry(place + j - 1));
   }
 
   // fill new entry
@@ -402,10 +404,7 @@ auto hits_init(Parameters const & parameters) -> void
   for(int i=0; i<keephits; i++)
   {
     struct hits_entry * h = &hit_entry(i);
-    h->header_address = nullptr;
     h->header_length = 0;
-    h->dseq = nullptr;
-    h->alignment = nullptr;
   }
 
   std::int64_t seqcount = 0;
@@ -633,23 +632,9 @@ auto hits_empty() -> void
   {
     struct hits_entry * h = &hit_entry(i);
 
-    if (h->header_address != nullptr)
-    {
-      free(h->header_address);
-      h->header_address = nullptr;
-    }
-    
-    if (h->dseq != nullptr)
-    {
-      free(h->dseq);
-      h->dseq = nullptr;
-    }
-
-    if (h->alignment != nullptr)
-    {
-      free(h->alignment);
-      h->alignment = nullptr;
-    }
+    h->header_address = Buffer<char>();
+    h->dseq = Buffer<char>();
+    h->alignment = std::string();
   }
 }
 
@@ -671,8 +656,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 
   db_getheader(t, h->seqno, & address, & length);
   h->header_length = length;
-  h->header_address = static_cast<char*>(xmalloc(static_cast<std::size_t>(length)));
-  memcpy(h->header_address, address, static_cast<std::size_t>(length));
+  h->header_address.assign(address, std::next(address, length));
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
   // KI-37), the sequence itself only for hits with an alignment
@@ -685,8 +669,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 
   if (i < opt_alignments)
   {
-    h->dseq = static_cast<char*>(xmalloc(static_cast<std::size_t>(h->dlen)));
-    memcpy(h->dseq, address, static_cast<std::size_t>(h->dlen));
+    h->dseq.assign(address, std::next(address, h->dlen));
     
     char * qseq = nullptr;
     long qlen = 0;
@@ -717,7 +700,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
     }
 
     align(qseq,
-	  h->dseq,
+	  h->dseq.data(),
 	  qlen,
 	  h->dlen,
 	  score_matrix_63,
@@ -727,7 +710,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 	  & h->align_d_start,
 	  & h->align_q_end,
 	  & h->align_d_end,
-	  & h->alignment,
+	  h->alignment,
 	  & h->score_align);
   }
 }
@@ -769,7 +752,7 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
   struct hits_entry const & entry = hit_entry(i);
   AlignedHit hit;
   hit.symtype = parameters.symtype;
-  hit.alignment = entry.alignment;
+  hit.alignment = entry.alignment.c_str();
   hit.q_align_start = entry.align_q_start;
   hit.d_align_start = entry.align_d_start;
   hit.q_strand = entry.qstrand;
@@ -801,7 +784,7 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
     hit.d_len_nt = entry.dlennt;
   }
 
-  hit.d_seq = entry.dseq;
+  hit.d_seq = entry.dseq.data();
   hit.d_len = entry.dlen;
 
   /* calculate first and last alignment positions for display */
@@ -1534,7 +1517,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     char * link = nullptr;
     char * title = nullptr;
     std::size_t linklen = 0;
-    db_parse_header(t, hit_entry(i).header_address, hit_entry(i).header_length,
+    db_parse_header(t, hit_entry(i).header_address.data(), hit_entry(i).header_length,
 		    1, & deflines, & deflinetable);
     hits_defline_split(deflinetable[0], 
 		       & gi,
@@ -1617,7 +1600,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       char * link = nullptr;
       char * title = nullptr;
       std::size_t linklen = 0;
-      db_parse_header(t, hit_entry(i).header_address, hit_entry(i).header_length,
+      db_parse_header(t, hit_entry(i).header_address.data(), hit_entry(i).header_length,
 		      1, & deflines, & deflinetable);
       fprintf(out, "\t\t\t\t<linkContainer>\n");
       
@@ -1827,7 +1810,7 @@ auto hits_show_xml(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = show_gis;
     layout.escaping = Escaping::xml;
-    db_showheader(t, hit_entry(i).header_address,
+    db_showheader(t, hit_entry(i).header_address.data(),
 		  hit_entry(i).header_length, layout);
     fprintf(out, "</name>\n");
     fprintf(out, "      <len>%ld</len>\n", dlen);
@@ -1850,7 +1833,7 @@ auto hits_show_xml(Parameters const & parameters,
 		  qline, aline, dline);
 
       fprintf(out, "      <alignment>");
-      fprintf(out, "%s", hit_entry(i).alignment);
+      fprintf(out, "%s", hit_entry(i).alignment.c_str());
       fprintf(out, "</alignment>\n");
 
       fprintf(out, "      <qpos>%ld,%ld</qpos>\n", hit.q_first, hit.q_last);
@@ -1896,7 +1879,7 @@ auto hits_show_tsv(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = 1;
     layout.text = DeflineText::identifier;
-    db_showheader(t, hit_entry(i).header_address,
+    db_showheader(t, hit_entry(i).header_address.data(),
 		  hit_entry(i).header_length, layout);
     
     long identities = 0;
@@ -1979,7 +1962,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
-		      hit_entry(i).header_address,
+		      hit_entry(i).header_address.data(),
 		      hit_entry(i).header_length, layout);
 
 	long const score = hit_entry(i).score;
@@ -2034,7 +2017,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.indent = 10;
 	layout.linelen = 79;
 	layout.maxdeflines = LONG_MAX;
-	db_showheader(t, hit_entry(i).header_address,
+	db_showheader(t, hit_entry(i).header_address.data(),
 		      hit_entry(i).header_length, layout);
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
