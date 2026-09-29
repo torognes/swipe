@@ -24,7 +24,8 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::generate, std::min
+#include "fatal_allocator.h"  // Buffer
+#include <algorithm>  // std::copy_n, std::generate, std::min
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
@@ -38,6 +39,7 @@
 #include <mutex>  // std::mutex, std::lock_guard
 #include <string>  // std::string (fatal)
 #include <thread>
+#include <utility>  // std::swap
 #include <vector>
 
 
@@ -91,21 +93,20 @@ struct search_data
   BYTE * hearray;
   BYTE ** qtable[6] {};  // nullptr: tables not allocated yet
 
-  long * scores;
-  long * bestpos;
-  long * bestq;
-  long * start_list;
-  long * in_list;
-  long * out_list;
-  long * tmp_list;
+  Buffer<long> scores;
+  Buffer<long> bestpos;
+  Buffer<long> bestq;
+  Buffer<long> start_list;
+  Buffer<long> in_list;
+  Buffer<long> out_list;
 
   long qlen[6];
 
-  long start_count;
-  long in_count;
-  long out_count;
+  std::size_t start_count;
+  std::size_t in_count;
+  std::size_t out_count;
 
-  long * start_hits;
+  Buffer<long> start_hits;
 
   long seqfirst, seqlast;
 
@@ -229,17 +230,17 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 
   sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  auto const listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
+  auto const listsize = static_cast<std::size_t>(maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
-  sdp->start_list = static_cast<long*>(xmalloc(listsize));
-  sdp->start_hits = static_cast<long*>(xmalloc(listsize));
-  sdp->in_list = static_cast<long*>(xmalloc(listsize));
-  sdp->out_list = static_cast<long*>(xmalloc(listsize));
-  sdp->scores = static_cast<long*>(xmalloc(listsize));
-  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
-  sdp->bestq = static_cast<long*>(xmalloc(listsize));
+  sdp->start_list.resize(listsize);
+  sdp->start_hits.resize(listsize);
+  sdp->in_list.resize(listsize);
+  sdp->out_list.resize(listsize);
+  sdp->scores.resize(listsize);
+  sdp->bestpos.resize(listsize);
+  sdp->bestq.resize(listsize);
 
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -355,14 +356,14 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 		    reinterpret_cast<WORD*>(sdp->dprofile),
 		    reinterpret_cast<WORD*>(sdp->hearray),
 		    sdp->dbta,
-		    sdp->start_count,
-		    sdp->start_list,
-		    sdp->scores,
-		    sdp->bestpos,
-		    sdp->bestq,
+		    static_cast<long>(sdp->start_count),
+		    sdp->start_list.data(),
+		    sdp->scores.data(),
+		    sdp->bestpos.data(),
+		    sdp->bestq.data(),
 		    static_cast<int>(qlen));
 	
-	  for (int i=0; i<sdp->start_count; i++)
+	  for (std::size_t i = 0; i < sdp->start_count; i++)
 	  {
 	    long const pos = sdp->bestpos[i];
 	    long const bestq = sdp->bestq[i];
@@ -399,13 +400,6 @@ auto align_done(struct search_data * sdp) -> void
 
   free(sdp->dprofile);
   free(sdp->hearray);
-  free(sdp->scores);
-  free(sdp->bestpos);
-  free(sdp->bestq);
-  free(sdp->start_list);
-  free(sdp->start_hits);
-  free(sdp->in_list);
-  free(sdp->out_list);
 
   for (auto * db_thread : sdp->dbta)
   {
@@ -1305,18 +1299,18 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 
   sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
 
-  auto listsize = static_cast<std::size_t>(maxchunksize) * sizeof(long);
+  auto listsize = static_cast<std::size_t>(maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
     listsize *= 6;
   }
 
-  sdp->start_list = static_cast<long*>(xmalloc(listsize));
-  sdp->in_list = static_cast<long*>(xmalloc(listsize));
-  sdp->out_list = static_cast<long*>(xmalloc(listsize));
-  sdp->scores = static_cast<long*>(xmalloc(listsize));
-  sdp->bestpos = static_cast<long*>(xmalloc(listsize));
-  sdp->bestq = static_cast<long*>(xmalloc(listsize));
+  sdp->start_list.resize(listsize);
+  sdp->in_list.resize(listsize);
+  sdp->out_list.resize(listsize);
+  sdp->scores.resize(listsize);
+  sdp->bestpos.resize(listsize);
+  sdp->bestq.resize(listsize);
 
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -1393,12 +1387,6 @@ auto search_done(struct search_data * sdp) -> void
 
   free(sdp->dprofile);
   free(sdp->hearray);
-  free(sdp->scores);
-  free(sdp->bestpos);
-  free(sdp->bestq);
-  free(sdp->start_list);
-  free(sdp->in_list);
-  free(sdp->out_list);
   db_thread_destruct(sdp->dbt);
 }
 
@@ -1501,23 +1489,21 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
     for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
     {
       sdp->out_count = sdp->start_count;
-      memcpy(sdp->out_list, sdp->start_list, static_cast<std::size_t>(sdp->start_count) * sizeof(long));
+      std::copy_n(sdp->start_list.begin(), sdp->start_count, sdp->out_list.begin());
       
       BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
       long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
       /* 7-bit search */
 	  
-      sdp->tmp_list = sdp->in_list;
-      sdp->in_list = sdp->out_list;
-      sdp->out_list = sdp->tmp_list;
+      std::swap(sdp->in_list, sdp->out_list);
       sdp->in_count = sdp->out_count;
 	  
       if (sdp->in_count > 0)
       {
 	{
 	  std::lock_guard<std::mutex> const lock(countmutex);
-	  compute7 += sdp->in_count;
+	  compute7 += static_cast<long>(sdp->in_count);
 	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
@@ -1531,9 +1517,9 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			sdp->dprofile,
 			sdp->hearray,
 			sdp->dbt,
-			sdp->in_count,
-			sdp->in_list,
-			sdp->scores,
+			static_cast<long>(sdp->in_count),
+			sdp->in_list.data(),
+			sdp->scores.data(),
 			qlen);
 	}
 	else
@@ -1545,15 +1531,15 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		  sdp->dprofile,
 		  sdp->hearray,
 		  sdp->dbt,
-		  sdp->in_count,
-		  sdp->in_list,
-		  sdp->scores,
+		  static_cast<long>(sdp->in_count),
+		  sdp->in_list.data(),
+		  sdp->scores.data(),
 		  qlen);
 	}
 
 	sdp->out_count = 0;
     
-	for (int i=0; i<sdp->in_count; i++)
+	for (std::size_t i = 0; i < sdp->in_count; i++)
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
@@ -1576,9 +1562,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 
       /* 16-bit search */
 	  
-      sdp->tmp_list = sdp->in_list;
-      sdp->in_list = sdp->out_list;
-      sdp->out_list = sdp->tmp_list;
+      std::swap(sdp->in_list, sdp->out_list);
       sdp->in_count = sdp->out_count;
   
       if (sdp->in_count > 0)
@@ -1593,15 +1577,15 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		 reinterpret_cast<WORD*>(sdp->dprofile),
 		 reinterpret_cast<WORD*>(sdp->hearray),
 		 sdp->dbt,
-		 sdp->in_count,
-		 sdp->in_list,
-		 sdp->scores,
-		 sdp->bestpos,
+		 static_cast<long>(sdp->in_count),
+		 sdp->in_list.data(),
+		 sdp->scores.data(),
+		 sdp->bestpos.data(),
 		 static_cast<int>(qlen));
     
 	sdp->out_count = 0;
     
-	for (int i=0; i<sdp->in_count; i++)
+	for (std::size_t i = 0; i < sdp->in_count; i++)
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
@@ -1623,15 +1607,13 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       
       /* 63-bit search */
 
-      sdp->tmp_list = sdp->in_list;
-      sdp->in_list = sdp->out_list;
-      sdp->out_list = sdp->tmp_list;
+      std::swap(sdp->in_list, sdp->out_list);
       sdp->in_count = sdp->out_count;
   
       if (sdp->in_count > 0)
       {
     
-	for (int i=0; i<sdp->in_count; i++)
+	for (std::size_t i = 0; i < sdp->in_count; i++)
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const seqno = seqnosf >> 3;
