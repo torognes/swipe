@@ -314,45 +314,10 @@ auto hits_gethit(long i, long * seqno, long * score,
   *dframe = h->dframe;
 }
 
-auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void
-{
-  hit_entry(hitno).dseq = static_cast<char*>(xmalloc(static_cast<std::size_t>(seq_len)));
-  memcpy(hit_entry(hitno).dseq, seq, static_cast<std::size_t>(seq_len));
-  hit_entry(hitno).dlen = seq_len;
-}
-
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void
 {
   hit_entry(i).bestq = q_end;
   hit_entry(i).align_hint = d_end;
-}
-
-auto hits_enter_align_coord(long i,
-			    long align_q_start,
-			    long align_q_end,
-			    long align_d_start,
-			    long align_d_end,
-			    long dlennt) -> void
-{
-  hit_entry(i).align_q_start = align_q_start;
-  hit_entry(i).align_q_end = align_q_end;
-  hit_entry(i).align_d_start = align_d_start;
-  hit_entry(i).align_d_end = align_d_end;
-  hit_entry(i).dlennt = dlennt;
-}
-
-auto hits_enter_header(long i, char const * header, long header_len) -> void
-{
-  hit_entry(i).header_address = static_cast<char*>(xmalloc(static_cast<std::size_t>(header_len)));
-  memcpy(hit_entry(i).header_address, header, static_cast<std::size_t>(header_len));
-  hit_entry(i).header_length = header_len;
-}
-
-auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void
-{
-  hit_entry(hitno).alignment = static_cast<char*>(xmalloc(static_cast<std::size_t>(align_len)));
-  memcpy(hit_entry(hitno).alignment, align, static_cast<std::size_t>(align_len));
-  //  hit_entry(hitno).alignment[align_len] = 0;
 }
 
 namespace {

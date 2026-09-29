@@ -448,26 +448,7 @@ auto hits_exit() -> void;
 auto hits_gethit(long i, long * seqno, long * score, 
 		 long * qstrand, long * qframe,
 		 long * dstrand, long * dframe) -> void;
-auto hits_getfull(long i, 
-		  long * seqno, 
-		  long * score,
-		  long * align_q_start,
-		  long * align_q_end,
-		  long * align_d_start,
-		  long * align_d_end,
-		  char ** header, long * header_len,
-		  char ** seq, long * seq_len,
-		  char ** align, long * align_len) -> void;
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
-auto hits_enter_header(long i, char const * header, long header_len) -> void;
-auto hits_enter_seq(long hitno, char const * seq, long seq_len) -> void;
-auto hits_enter_align_coord(long i,
-			    long align_q_start,
-			    long align_q_end,
-			    long align_d_start,
-			    long align_d_end,
-			    long dlennt) -> void;
-auto hits_enter_align_string(long hitno, char const * align, long align_len) -> void;
 
 
 auto stats_getparams_nt(long match_score,
