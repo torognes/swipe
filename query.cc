@@ -24,6 +24,8 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // as_c_string, fprint, fprint_spaces
+#include <algorithm>  // std::min
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdio>  // std::getc, EOF
@@ -590,14 +592,21 @@ auto query_show() -> void
   constexpr std::size_t linewidth = 60;
   for (std::size_t i=0; i<query.description.size(); i+=linewidth)
   {
+    // at most linewidth characters, up to a NUL, left-aligned and
+    // padded to linewidth (was "%-60.60s")
+    View<char> const rest = as_c_string(std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
+    View<char> const text = rest.first(std::min(rest.size(), linewidth));
     if (i == 0)
     {
-      fprintf(out, "Query description: %-60.60s\n", std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
+      fprint(out, "Query description: ");
     }
     else
     {
-      fprintf(out, "                   %-60.60s\n", std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
+      fprint(out, "                   ");
     }
+    fprint(out, text);
+    fprint_spaces(out, linewidth - text.size());
+    fprint(out, '\n');
   }
 
 }
