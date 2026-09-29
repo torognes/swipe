@@ -30,7 +30,6 @@
 #include <cassert>
 #include <cctype>  // std::isspace
 #include <cmath>  // std::isnan
-#include <cinttypes>  // PRId64
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t, INT64_C
 #include <cstdlib>  // std::strtol
@@ -1443,8 +1442,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint(out, "\t\t\t<databaseDate>");
   xml_print(db_gettime());
   fprint(out, "</databaseDate>\n");
-  fprintf(out, "\t\t\t<residueCount>%" PRId64 "</residueCount>\n", db_getsymcount_masked());
-  fprintf(out, "\t\t\t<sequenceCount>%" PRId64 "</sequenceCount>\n", db_getseqcount_masked());
+  fprint(out, "\t\t\t<residueCount>");
+  fprint_integer(out, db_getsymcount_masked());
+  fprint(out, "</residueCount>\n");
+  fprint(out, "\t\t\t<sequenceCount>");
+  fprint_integer(out, db_getseqcount_masked());
+  fprint(out, "</sequenceCount>\n");
   fprint(out, "\t\t\t<longestSequenceLength>");
   fprint_integer(out, db_getlongest());
   fprint(out, "</longestSequenceLength>\n");
@@ -1632,23 +1635,27 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     }
     else if (parameters.symtype == SymbolType::blastx)
     {
-      fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
-	     (hit_entry(i).qstrand != 0) ? '-' : '+', 
-	     hit_entry(i).qframe+1);
+      fprint(out, "\t\t\t\t<shortVersionFrame>");
+      fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
+      fprint_integer(out, hit_entry(i).qframe+1);
+      fprint(out, "</shortVersionFrame>\n");
     }
     else if (parameters.symtype == SymbolType::tblastn)
     {
-      fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld</shortVersionFrame>\n", 
-	     (hit_entry(i).dstrand != 0) ? '-' : '+', 
-	     hit_entry(i).dframe+1);
+      fprint(out, "\t\t\t\t<shortVersionFrame>");
+      fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+      fprint_integer(out, hit_entry(i).dframe+1);
+      fprint(out, "</shortVersionFrame>\n");
     }
     else if (parameters.symtype == SymbolType::tblastx)
     {
-      fprintf(out, "\t\t\t\t<shortVersionFrame>%c%ld/%c%ld</shortVersionFrame>\n", 
-	     (hit_entry(i).qstrand != 0) ? '-' : '+', 
-	     hit_entry(i).qframe+1,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+', 
-	     hit_entry(i).dframe+1);
+      fprint(out, "\t\t\t\t<shortVersionFrame>");
+      fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
+      fprint_integer(out, hit_entry(i).qframe+1);
+      fprint(out, '/');
+      fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+      fprint_integer(out, hit_entry(i).dframe+1);
+      fprint(out, "</shortVersionFrame>\n");
     }
     fprint(out, "\t\t\t\t<shortVersionScore>");
     fprint_integer(out, score);
@@ -1946,7 +1953,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprint(out, "</track>\n");
     fprint(out, "      <query>");
     show_description_xml(query.description.c_str());
-    fprintf(out,"</query>\n");
+    fprint(out, "</query>\n");
     fprint(out, "      <name>");
     HeaderLayout layout;
     layout.show_gis = show_gis;
@@ -2139,21 +2146,24 @@ auto hits_show_plain(Parameters const & parameters,
 	}
 	else if (parameters.symtype == SymbolType::blastx)
 	{
-	  fprintf(out, " %c%ld", (hit_entry(i).qstrand != 0) ? '-' : '+',
-		 hit_entry(i).qframe+1);
+	  fprint(out, ' ');
+	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).qframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastn)
 	{
-	  fprintf(out, " %c%ld", (hit_entry(i).dstrand != 0) ? '-' : '+',
-		 hit_entry(i).dframe+1);
+	  fprint(out, ' ');
+	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).dframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastx)
 	{
-	  fprintf(out, " %c%ld/%c%ld",
-		  (hit_entry(i).qstrand != 0) ? '-' : '+',
-		  hit_entry(i).qframe + 1,
-		  (hit_entry(i).dstrand != 0) ? '-' : '+',
-		  hit_entry(i).dframe + 1);
+	  fprint(out, ' ');
+	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).qframe + 1);
+	  fprint(out, '/');
+	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).dframe + 1);
 	}
 
 	if (stats_available != 0)
@@ -2227,12 +2237,22 @@ auto hits_show_plain(Parameters const & parameters,
 	AlignedHit const hit = aligned_hit(parameters, i);
 	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
 	      
-	fprintf(out, " Identities = %ld/%ld (%ld%%)",
-	       identities, aligned, identities * 100 / aligned);
+	fprint(out, " Identities = ");
+	fprint_integer(out, identities);
+	fprint(out, '/');
+	fprint_integer(out, aligned);
+	fprint(out, " (");
+	fprint_integer(out, identities * 100 / aligned);
+	fprint(out, "%)");
 	if (parameters.symtype > SymbolType::blastn)
 	{
-	  fprintf(out, ", Positives = %ld/%ld (%ld%%)",
-		  positives, aligned, positives * 100 / aligned);
+	  fprint(out, ", Positives = ");
+	  fprint_integer(out, positives);
+	  fprint(out, '/');
+	  fprint_integer(out, aligned);
+	  fprint(out, " (");
+	  fprint_integer(out, positives * 100 / aligned);
+	  fprint(out, "%)");
 	}
 	if (indels != 0)
 	{
@@ -2268,11 +2288,13 @@ auto hits_show_plain(Parameters const & parameters,
 	}
 	else if (parameters.symtype == SymbolType::tblastx)
 	{
-	  fprintf(out, " Frame = %c%ld / %c%ld\n",
-		  (hit_entry(i).qstrand != 0) ? '-' : '+',
-		  hit_entry(i).qframe + 1,
-		  (hit_entry(i).dstrand != 0) ? '-' : '+',
-		  hit_entry(i).dframe + 1);
+	  fprint(out, " Frame = ");
+	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).qframe + 1);
+	  fprint(out, " / ");
+	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit_entry(i).dframe + 1);
+	  fprint(out, '\n');
 	}
 
 	show_align(hit);
@@ -2289,9 +2311,10 @@ auto hits_show_begin(OutputFormat view) -> void
 {
   if (view==OutputFormat::plain)
     {
-      fprintf(out, "%s\n\n%s\n\n", 
-	      swipe_name_and_version, 
-	      "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.");
+      fprint(out, as_c_string(swipe_name_and_version));
+      fprint(out, "\n\n");
+      fprint(out, as_c_string("Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221."));
+      fprint(out, "\n\n");
     }
   else if (view==OutputFormat::xml)
     {
@@ -2305,8 +2328,11 @@ auto hits_show_begin(OutputFormat view) -> void
       char url2[] = "http://www.paralign.org/ParalignXML.xsd";
 
       fprint(out, "<?xml version=\"1.0\"?>\n");
-      fprintf(out, "<ParalignXML xmlns:xsi=\"%s\" xsi:noNamespaceSchemaLocation=\"%s\">\n",
-	      url1, url2);
+      fprint(out, "<ParalignXML xmlns:xsi=\"");
+      fprint(out, as_c_string(url1));
+      fprint(out, "\" xsi:noNamespaceSchemaLocation=\"");
+      fprint(out, as_c_string(url2));
+      fprint(out, "\">\n");
       fprint(out, "\t<programInformation>\n");
       fprint(out, "\t\t<programName>swipe</programName>\n");
       fprint(out, "\t\t<programVersion>");
