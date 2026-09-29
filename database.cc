@@ -74,8 +74,7 @@ struct db_main_s
   long memb_bit;
 
   FILE * taxid_file;
-  unsigned char * taxid_bitmap_address;
-  long taxid_bitmap_size;
+  Buffer<unsigned char> taxid_bitmap;  // one bit per taxid (-x); empty: no filter
 
   long show_taxid;  // -H: taxids and memberships in the deflines
 };
@@ -309,8 +308,7 @@ auto db_init(db_main_t * v) -> void
   v->longest = 0;
   v->symcount = 0;
 
-  v->taxid_bitmap_address = nullptr;
-  v->taxid_bitmap_size = 0;
+  v->taxid_bitmap.clear();
   v->taxid_file = nullptr;
   v->show_taxid = 0;
 }
@@ -741,14 +739,14 @@ auto db_set_masked_info(db_volume_t * v, al_info_t const * ai, std::string const
 auto db_check_taxid(long taxid) -> long
 {
 
-  if (db_main.taxid_bitmap_address != nullptr)
+  if (not db_main.taxid_bitmap.empty())
   {
     long const byteno = taxid / 8;
     long const bitno = taxid & 7;
 
-    if (byteno < db_main.taxid_bitmap_size)
+    if ((byteno >= 0) and (static_cast<std::size_t>(byteno) < db_main.taxid_bitmap.size()))
     {
-      return (db_main.taxid_bitmap_address[byteno] >> bitno) & 1;
+      return (db_main.taxid_bitmap[static_cast<std::size_t>(byteno)] >> bitno) & 1;
     }
     return 0;
   }
@@ -793,17 +791,14 @@ auto db_add_taxid(unsigned long const taxid) -> void
   auto const byteno = static_cast<long>(taxid / 8);
   long const bitno = taxid & 7;
     
-  if (byteno >= db_main.taxid_bitmap_size)
+  auto const index = static_cast<std::size_t>(byteno);
+  if (index >= db_main.taxid_bitmap.size())
   {
-    long const old = db_main.taxid_bitmap_size;
-    db_main.taxid_bitmap_size = byteno+1;
-    db_main.taxid_bitmap_address = static_cast<unsigned char *>(xrealloc(db_main.taxid_bitmap_address, 
-               static_cast<std::size_t>(db_main.taxid_bitmap_size)));
-    memset(db_main.taxid_bitmap_address+old, 0, static_cast<std::size_t>(db_main.taxid_bitmap_size - old));
+    db_main.taxid_bitmap.resize(index + 1, 0);  // new bytes zero-filled
   }
     
-  unsigned char const v = db_main.taxid_bitmap_address[byteno];
-  db_main.taxid_bitmap_address[byteno] = static_cast<unsigned char>(v | (1 << bitno));
+  unsigned char const v = db_main.taxid_bitmap[index];
+  db_main.taxid_bitmap[index] = static_cast<unsigned char>(v | (1 << bitno));
 }
 
 auto db_read_taxid_file(char const * filename) -> void
@@ -814,9 +809,7 @@ auto db_read_taxid_file(char const * filename) -> void
     fatal(std::string("Unable to open taxid file ") + filename + ".");
   }
 
-  db_main.taxid_bitmap_size = 64*1024;
-  db_main.taxid_bitmap_address = static_cast<unsigned char*>(xmalloc(static_cast<std::size_t>(db_main.taxid_bitmap_size)));
-  memset(db_main.taxid_bitmap_address, 0, static_cast<std::size_t>(db_main.taxid_bitmap_size));
+  db_main.taxid_bitmap.assign(64 * 1024, 0);
 
   /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;
@@ -1038,10 +1031,7 @@ auto db_close() -> void
   db_main.path.clear();
   db_main.title.clear();
   db_main.time.clear();
-  if (db_main.taxid_bitmap_address != nullptr)
-  {
-    free(db_main.taxid_bitmap_address);
-  }
+  db_main.taxid_bitmap = Buffer<unsigned char>();
 }
 
 auto db_getsymtype() -> long;
@@ -1521,7 +1511,7 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
     return 0;
   }
   
-  if (db_main.taxid_bitmap_address != nullptr)
+  if (not db_main.taxid_bitmap.empty())
   {
     long const ok = db_check_taxid_seqno(t, seqno);
     return ok;
