@@ -85,6 +85,62 @@ namespace {
 
 db_main_t db_main;
 
+// a read-only memory mapping of (a region of) a file, unmapped by
+// reset() or by the destructor
+class MemoryMap
+{
+public:
+  MemoryMap() = default;
+  MemoryMap(MemoryMap const &) = delete;
+  MemoryMap(MemoryMap &&) = delete;
+  auto operator=(MemoryMap const &) -> MemoryMap & = delete;
+  auto operator=(MemoryMap &&) -> MemoryMap & = delete;
+  ~MemoryMap()
+  {
+    reset();
+  }
+
+  // maps length bytes of the file fd from offset (a multiple of the
+  // page size); false when mmap() fails (the previous map is released)
+  auto map(int const fd, long const offset, long const length) -> bool
+  {
+    reset();
+    void * const address = mmap(nullptr, static_cast<std::size_t>(length),
+                                PROT_READ, MAP_SHARED, fd, offset);
+    if (address == MAP_FAILED)
+    {
+      return false;
+    }
+    address_ = static_cast<char *>(address);
+    length_ = length;
+    return true;
+  }
+
+  auto reset() noexcept -> void
+  {
+    if (address_ != nullptr)
+    {
+      munmap(address_, static_cast<std::size_t>(length_));
+      address_ = nullptr;
+      length_ = 0;
+    }
+  }
+
+  auto data() const noexcept -> char *
+  {
+    return address_;
+  }
+
+  auto size() const noexcept -> long
+  {
+    return length_;
+  }
+
+private:
+  char * address_ = nullptr;
+  long length_ = 0;
+};
+
 }  // anonymous namespace
 
 struct db_volume_s
@@ -118,31 +174,20 @@ struct db_volume_s
   int fd_xhr; // open for normal read
   int fd_msk; // mapped
 
-  long len_xin;
   long len_xsq;
   long len_xhr;
-  long len_msk;
 
-  char * adr_xin; // mapped address of xin file
-  unsigned char * adr_msk;
-
-  char * map_seq_address;
-  long map_seq_length;
-  long map_seq_offset;
-
-  char * map_hdr_address;
-  long map_hdr_length;
-  long map_hdr_offset;
+  MemoryMap xin_map; // mapped address of xin file
+  MemoryMap msk_map;
 
 };
 using db_volume_t = db_volume_s;
 
 struct db_map_s
 {
-  char * map_address; // address in mem of mapped region (multiple of pagesize)
-  db_volume_t * map_volume; // volume mapped
-  long map_offset;    // offset in file of the mapped region
-  long map_length;    // size of memory mapped region
+  MemoryMap region; // address in mem of mapped region (multiple of pagesize)
+  db_volume_t * map_volume = nullptr; // volume mapped
+  long map_offset = 0;    // offset in file of the mapped region
 };
 
 }  // anonymous namespace
@@ -184,21 +229,12 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
 
 auto db_map_create() -> mapp
 {
-  mapp m = static_cast<mapp>(xmalloc(sizeof(struct db_map_s)));
-  m->map_volume = nullptr;
-  m->map_offset = 0;
-  m->map_address = nullptr;
-  m->map_length = 0;
-  return m;
+  return new db_map_s();
 }
 
 auto db_map_destruct(mapp m) -> void
 {
-  if (m->map_address != nullptr)
-  {
-    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
-  }
-  free(m);
+  delete m;
 }
 
 }  // anonymous namespace
@@ -257,21 +293,11 @@ auto db_volume_init(db_volume_t * v) -> void
   v->fd_xhr = 0;
   v->fd_msk = 0;
 
-  v->len_xin = 0;
   v->len_xsq = 0;
   v->len_xhr = 0;
-  v->len_msk = 0;
   
-  v->adr_xin = nullptr;
-  v->adr_msk = nullptr;
-
-  v->map_seq_address = nullptr;
-  v->map_seq_length = 0;
-  v->map_seq_offset = 0;
-
-  v->map_hdr_address = nullptr;
-  v->map_hdr_length = 0;
-  v->map_hdr_offset = 0;
+  v->xin_map.reset();
+  v->msk_map.reset();
 }
 
 auto db_init(db_main_t * v) -> void
@@ -459,10 +485,9 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     fatal(std::string("Unable to open file ") + name_pin + ".");
   }
 
-  volume->len_xin = lseek(volume->fd_xin, 0, SEEK_END);
-  volume->adr_xin = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(volume->len_xin), PROT_READ, MAP_SHARED, volume->fd_xin, 0));
+  long const len_xin = lseek(volume->fd_xin, 0, SEEK_END);
 
-  if (volume->adr_xin == MAP_FAILED)
+  if (not volume->xin_map.map(volume->fd_xin, 0, len_xin))
   {
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
   }
@@ -487,7 +512,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   /* the index file must hold its header and its offset tables, and
      the offsets must stay within the header and sequence files: a
      truncated or corrupted file was read beyond its end (KI-23) */
-  char const * const xin_end = std::next(volume->adr_xin, volume->len_xin);
+  char const * const xin_end = std::next(volume->xin_map.data(), volume->xin_map.size());
   auto const check_xin_room = [&](char const * const position, long const size) -> void
   {
     if ((size < 0) or (std::distance(position, xin_end) < size))
@@ -496,7 +521,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     }
   };
 
-  char const * p = volume->adr_xin;
+  char const * p = volume->xin_map.data();
   check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
@@ -554,7 +579,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   p += 8;
   volume->longest = load_uint32_be(p);
   p += 4;
-  volume->offset_xhr = p - volume->adr_xin;
+  volume->offset_xhr = p - volume->xin_map.data();
   volume->offset_xsq = volume->offset_xhr + (4 * (volume->seqcount + 1));
   volume->offset_amb = volume->offset_xsq + (4 * (volume->seqcount + 1));
 
@@ -563,11 +588,11 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   bool const is_nucleotide = (symbol_type != SymbolType::blastp) and (symbol_type != SymbolType::blastx) and (symbol_type != SymbolType::sound);
   long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
     (4 * (volume->seqcount + 1));
-  check_xin_room(volume->adr_xin, tables_end);
+  check_xin_room(volume->xin_map.data(), tables_end);
 
   auto const offset_at = [volume](long const table, long const seqno) -> long
     {
-      return load_uint32_be(std::next(volume->adr_xin, table + (4 * seqno)));
+      return load_uint32_be(std::next(volume->xin_map.data(), table + (4 * seqno)));
     };
 
   for (long seqno = 0; seqno < volume->seqcount; ++seqno)
@@ -674,10 +699,9 @@ auto db_open_msk(db_volume_t * v) -> void
     fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
   }
 
-  v->len_msk = lseek(v->fd_msk, 0, SEEK_END);
-  v->adr_msk = static_cast<unsigned char *>(mmap(nullptr, static_cast<std::size_t>(v->len_msk), PROT_READ, MAP_SHARED, v->fd_msk, 0));
+  long const len_msk = lseek(v->fd_msk, 0, SEEK_END);
 
-  if (v->adr_msk == MAP_FAILED)
+  if (not v->msk_map.map(v->fd_msk, 0, len_msk))
   {
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
   }
@@ -697,7 +721,7 @@ auto db_check_msk(long seqno) -> long
     {
       long const byteno = s >> 3;
       long const bitno = s & 7;
-      long const byte = *(v->adr_msk + 4 + byteno);
+      long const byte = static_cast<unsigned char>(*std::next(v->msk_map.data(), 4 + byteno));
       member = (byte >> (7-bitno)) & 1;
     }
   }
@@ -974,24 +998,12 @@ auto db_volume_close(db_volume_t * v) -> void
   v->time.clear();
   v->masked_mskfile.clear();
 
-  munmap(v->adr_xin, static_cast<std::size_t>(v->len_xin));
+  v->xin_map.reset();
 
   if (v->fd_msk != 0)
   {
-    munmap(v->adr_msk, static_cast<std::size_t>(v->len_msk));
+    v->msk_map.reset();
     close(v->fd_msk);
-  }
-
-  if (v->map_seq_address != nullptr)
-  {
-    munmap(v->map_seq_address, static_cast<std::size_t>(v->map_seq_length));
-    v->map_seq_address = nullptr;
-  }
-
-  if (v->map_hdr_address != nullptr)
-  {
-    munmap(v->map_hdr_address, static_cast<std::size_t>(v->map_hdr_length));
-    v->map_hdr_address = nullptr;
   }
 
   close(v->fd_xin);
@@ -1091,10 +1103,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   
   mapp m = t->map_seq;
 
-  if (m->map_address != nullptr)
-  {
-    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
-  }
+  m->region.reset();
 
   long s1 = 0;
   long s2 = 0;
@@ -1114,30 +1123,27 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
 
   // find new map area
   
-  long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xsq / 4) + s1)));
-  long const offset2 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xsq / 4) + s2 + 1)));
+  long const offset1 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xsq / 4) + s1)));
+  long const offset2 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xsq / 4) + s2 + 1)));
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
   
   // map it
   
-  char * start = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(length), PROT_READ, MAP_SHARED, 
-			       v1->fd_xsq, offset));
+  bool const mapped = m->region.map(v1->fd_xsq, offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
-  if (start == MAP_FAILED)
+  if (not mapped)
   {
     fatal("Unable to memory map sequence file.");
   }
 
   // update
   
-  m->map_address = start;
   m->map_volume = v1;
   m->map_offset = offset;
-  m->map_length = length;
 }
 
 auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> void
@@ -1146,10 +1152,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   
   mapp m = t->map_hdr;
 
-  if (m->map_address != nullptr)
-  {
-    munmap(m->map_address, static_cast<std::size_t>(m->map_length));
-  }
+  m->region.reset();
 
   long s1 = 0;
   long s2 = 0;
@@ -1169,30 +1172,27 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 
   // find new map area
   
-  long const offset1 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xhr / 4) + s1)));
-  long const offset2 = load_uint32_be(std::next(v1->adr_xin, 4 * ((v1->offset_xhr / 4) + s2 + 1)));
+  long const offset1 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xhr / 4) + s1)));
+  long const offset2 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xhr / 4) + s2 + 1)));
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
   
   // map it
   
-  char * start = static_cast<char *>(mmap(nullptr, static_cast<std::size_t>(length), PROT_READ, MAP_SHARED, 
-			       v1->fd_xhr, offset));
+  bool const mapped = m->region.map(v1->fd_xhr, offset, length);
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
-  if (start == MAP_FAILED)
+  if (not mapped)
   {
     fatal("Unable to memory map sequence file.");
   }
 
   // update
   
-  m->map_address = start;
   m->map_volume = v1;
   m->map_offset = offset;
-  m->map_length = length;
 }
 
 namespace {
@@ -1247,16 +1247,16 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long s = 0;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xsq / 4 + s)));
-  long const offset2 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xsq / 4 + s + 1)));
+  long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s)));
+  long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s + 1)));
   long const length = offset2 - offset1;
-  char * address = t->map_seq->map_address + (offset1 - t->map_seq->map_offset);
+  char * address = std::next(t->map_seq->region.data(), offset1 - t->map_seq->map_offset);
 
   if ((db_main.symtype==SymbolType::blastn)||(db_main.symtype==SymbolType::tblastn)||(db_main.symtype==SymbolType::tblastx))
   {
     /* decompress nucleotide sequence */
 
-    long const offset3 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_amb / 4 + s)));
+    long const offset3 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_amb / 4 + s)));
     long const aoff = offset3 - offset1;
 
     long const amb_bytes = length - aoff;
@@ -1418,10 +1418,10 @@ auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * len
   db_volume_t * v = nullptr;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xhr / 4 + s)));
-  long const offset2 = load_uint32_be(std::next(v->adr_xin, 4 * (v->offset_xhr / 4 + s + 1)));
+  long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s)));
+  long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s + 1)));
   *length = offset2 - offset1;
-  *address = t->map_hdr->map_address + (offset1 - t->map_hdr->map_offset);
+  *address = std::next(t->map_hdr->region.data(), offset1 - t->map_hdr->map_offset);
 }
 
 auto db_parse_header(db_thread_t const * t, char * address, long length, 
