@@ -39,6 +39,18 @@
 #include <vector>
 
 
+// the version number is read from the file VERSION by the Makefile
+#ifndef SWIPE_VERSION
+#ifdef __CPPCHECK__
+// static analysis with cppcheck, run without the Makefile's flags
+#define SWIPE_VERSION "0.0.0"
+#else
+#error "SWIPE_VERSION is not defined: build swipe with make"
+#endif
+#endif
+
+extern char const swipe_name_and_version[] = "SWIPE " SWIPE_VERSION;
+
 /* Other variables */
 
 long queryno;
@@ -770,9 +782,8 @@ auto args_usage(char const * const program_name) -> void
 
 auto args_version() -> void
 {
-  char const title[] = "SWIPE " SWIPE_VERSION;
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s\n\n%s\n", title, ref);
+  fprintf(out, "%s\n\n%s\n", swipe_name_and_version, ref);
 }
 
 auto args_help(char const * const program_name) -> void

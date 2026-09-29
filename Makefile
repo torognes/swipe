@@ -106,7 +106,7 @@ endif
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
 SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
-	-DSWIPE_VERSION='"$(VERSION)"' $(CPPFLAGS) $(CXXFLAGS)
+	$(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe
@@ -170,7 +170,13 @@ DEPFLAGS = -MMD -MP
 DEPFILES = swipe.d $(OBJS:.o=.d)
 -include $(DEPFILES)
 
-DEPS = Makefile VERSION
+DEPS = Makefile
+
+# the version number (file VERSION) is only compiled into swipe.o,
+# which defines swipe_name_and_version for the other files: a new
+# version rebuilds swipe.o only
+swipe.o : VERSION_DEFINE = -DSWIPE_VERSION='"$(VERSION)"'
+swipe.o : VERSION
 
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)

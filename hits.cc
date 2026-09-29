@@ -1909,12 +1909,11 @@ auto hits_show_tsv(Parameters const & parameters,
 		   long showcomments,
 		   struct db_thread_s const * t) -> void
 {
-  char title[] = "SWIPE " SWIPE_VERSION;
   char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   
   if (showcomments != 0)
     {
-      fprintf(out, "# %s - %s\n", title, ref);
+      fprintf(out, "# %s - %s\n", swipe_name_and_version, ref);
       fprintf(out, "# Query: %s\n", query.description);
       fprintf(out, "# Database: %s\n", parameters.databasename);
       if (stats_available != 0)
@@ -2159,7 +2158,7 @@ auto hits_show_begin(OutputFormat view) -> void
   if (view==OutputFormat::plain)
     {
       fprintf(out, "%s\n\n%s\n\n", 
-	      "SWIPE " SWIPE_VERSION, 
+	      swipe_name_and_version, 
 	      "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.");
     }
   else if (view==OutputFormat::xml)
@@ -2178,7 +2177,7 @@ auto hits_show_begin(OutputFormat view) -> void
 	      url1, url2);
       fprintf(out, "\t<programInformation>\n");
       fprintf(out, "\t\t<programName>swipe</programName>\n");
-      fprintf(out, "\t\t<programVersion>SWIPE " SWIPE_VERSION "</programVersion>\n");
+      fprintf(out, "\t\t<programVersion>%s</programVersion>\n", swipe_name_and_version);
       fprintf(out, "\t\t<programDescription>Smith-Waterman database searches with inter-sequence SIMD parallelisation</programDescription>\n");
       fprintf(out, "\t\t<articleReferences>\n");
       fprintf(out, "\t\t\t<reference>T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.</reference>\n");

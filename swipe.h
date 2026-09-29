@@ -59,15 +59,8 @@
 #define LINE_MAX 2048
 #endif
 
-// the version number is read from the file VERSION by the Makefile
-#ifndef SWIPE_VERSION
-#ifdef __CPPCHECK__
-// static analysis with cppcheck, run without the Makefile's flags
-#define SWIPE_VERSION "0.0.0"
-#else
-#error "SWIPE_VERSION is not defined: build swipe with make"
-#endif
-#endif
+// "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
+extern char const swipe_name_and_version[];
 
 // Should be 32bits integer
 using UINT32 = unsigned int;
