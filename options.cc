@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "print_view.h"  // fprint, fprint_integer
+#include "print_view.h"  // as_c_string, fprint, fprint_integer
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
@@ -54,13 +54,13 @@ auto args_show(Parameters const & parameters) -> void
     //			  "tab-separated", "tab-separated with comments" };
     
     fprint(out, "Database file:     ");
-    fprint(out, View<char>{parameters.databasename, std::strlen(parameters.databasename)});
+    fprint(out, as_c_string(parameters.databasename));
     fprint(out, '\n');
     fprint(out, "Database title:    ");
-    fprint(out, View<char>{db_gettitle(), std::strlen(db_gettitle())});
+    fprint(out, as_c_string(db_gettitle()));
     fprint(out, '\n');
     fprint(out, "Database time:     ");
-    fprint(out, View<char>{db_gettime(), std::strlen(db_gettime())});
+    fprint(out, as_c_string(db_gettime()));
     fprint(out, '\n');
     
     if (db_ismasked() != 0)
@@ -94,7 +94,7 @@ auto args_show(Parameters const & parameters) -> void
       }
 
       fprint(out, "Query file name:   ");
-      fprint(out, View<char>{parameters.queryname, std::strlen(parameters.queryname)});
+      fprint(out, as_c_string(parameters.queryname));
       fprint(out, '\n');
 
       long qlen = 0;
@@ -140,7 +140,7 @@ auto args_show(Parameters const & parameters) -> void
       else
       {
 	fprint(out, "Score matrix:      ");
-	fprint(out, View<char>{parameters.matrixname, std::strlen(parameters.matrixname)});
+	fprint(out, as_c_string(parameters.matrixname));
 	fprint(out, '\n');
       }
 
@@ -169,12 +169,12 @@ auto args_show(Parameters const & parameters) -> void
       fprint_integer(out, parameters.threads);
       fprint(out, "\n");
       fprint(out, "Symbol type:       ");
-      fprint(out, View<char>{symtypestring[static_cast<long>(parameters.symtype)], std::strlen(symtypestring[static_cast<long>(parameters.symtype)])});
+      fprint(out, as_c_string(symtypestring[static_cast<long>(parameters.symtype)]));
       fprint(out, '\n');
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
 	fprint(out, "Query genetic code:");
-	fprint(out, View<char>{gencode_names[parameters.query_gencode - 1], std::strlen(gencode_names[parameters.query_gencode - 1])});
+	fprint(out, as_c_string(gencode_names[parameters.query_gencode - 1]));
 	fprint(out, " (");
 	fprint_integer(out, parameters.query_gencode);
 	fprint(out, ")\n");
@@ -182,7 +182,7 @@ auto args_show(Parameters const & parameters) -> void
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
 	fprint(out, "DB genetic code:   ");
-	fprint(out, View<char>{gencode_names[parameters.db_gencode - 1], std::strlen(gencode_names[parameters.db_gencode - 1])});
+	fprint(out, as_c_string(gencode_names[parameters.db_gencode - 1]));
 	fprint(out, " (");
 	fprint_integer(out, parameters.db_gencode);
 	fprint(out, ")\n");
@@ -192,7 +192,7 @@ auto args_show(Parameters const & parameters) -> void
       if (parameters.taxidfilename != nullptr)
       {
 	fprint(out, "Taxid filename:    ");
-	fprint(out, View<char>{parameters.taxidfilename, std::strlen(parameters.taxidfilename)});
+	fprint(out, as_c_string(parameters.taxidfilename));
 	fprint(out, '\n');
       }
       fprint(out, "\n");
@@ -209,7 +209,7 @@ auto args_usage(char const * const program_name) -> void
   /* options used by SWIPE:   chkuxHN  */
 
   fprint(out, "Usage: ");
-  fprint(out, View<char>{program_name, std::strlen(program_name)});
+  fprint(out, as_c_string(program_name));
   fprint(out, " [OPTIONS]\n");
   fprint(out, "  -h, --help                 show help\n");
   fprint(out, "      --version              show version\n");
@@ -245,7 +245,7 @@ auto args_usage(char const * const program_name) -> void
 auto args_version() -> void
 {
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprint(out, View<char>{swipe_name_and_version, std::strlen(swipe_name_and_version)});
+  fprint(out, as_c_string(swipe_name_and_version));
   fprint(out, "\n\n");
   fprint(out, ref);
   fprint(out, '\n');
