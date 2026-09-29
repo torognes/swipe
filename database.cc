@@ -801,7 +801,7 @@ auto db_read_taxid_file(char const * filename) -> void
     fatal(std::string("Unable to open taxid file ") + filename + ".");
   }
 
-  db_main.taxid_bitmap.assign(64 * 1024, 0);
+  db_main.taxid_bitmap.assign(std::size_t{64} * 1024, 0);
 
   /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;

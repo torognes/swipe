@@ -325,7 +325,7 @@ long SCORELIMIT_16;
 
 // the score matrices, 32 x 32 (static storage, 16-byte aligned for the
 // SIMD kernels), and the pointers the other files read them through
-constexpr std::size_t score_matrix_size = 32 * 32;
+constexpr std::size_t score_matrix_size = std::size_t{32} * 32;
 
 namespace {
 
