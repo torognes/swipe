@@ -36,8 +36,8 @@
 
 struct asnparse_info
 {
-  unsigned char * header_p;
-  unsigned char * header_end;
+  unsigned char const * header_p;
+  unsigned char const * header_end;
   
   std::string parsed_string;
   unsigned long parsed_integer;
@@ -895,7 +895,7 @@ auto parser_destruct(apt p) -> void
   delete p;
 }
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
+auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
 {
   p->show_gis = show_gis;
   p->indent = 0;
@@ -906,8 +906,8 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   p->maxdeflines = LONG_MAX;
   p->text = DeflineText::full;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
@@ -918,7 +918,7 @@ auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_
   *deflinesp = deflines;
 }
 
-auto parse_header(apt p, unsigned char * buf, long len, long memb, 
+auto parse_header(apt p, View<char> const header, long memb, 
 		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
 {
   p->escaping = layout.escaping;
@@ -932,8 +932,8 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   p->maxdeflines = layout.maxdeflines;
   p->text = layout.text;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);
@@ -945,15 +945,15 @@ auto parse_header(apt p, unsigned char * buf, long len, long memb,
   return deflines2;
 }
 
-auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+auto parse_getdeflinecount(apt p, View<char> const header,
 			   long memb, long(*f_checktaxid)(long)) -> long
 {
   p->show_gis = 0;
   p->memb = static_cast<unsigned long>(memb);
   p->f_checktaxid = f_checktaxid;
 
-  p->header_p = buf;
-  p->header_end = buf + len;
+  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
   p->parsed_string.clear();
   p->parsed_integer = 0;
   nextch(p);

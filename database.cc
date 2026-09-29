@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include <algorithm>  // std::all_of, std::find, std::max, std::min
 #include <array>
+#include <cassert>
 #include <cctype>  // std::isdigit, std::isspace
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
@@ -1397,7 +1398,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   }
 }
 
-auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * length) -> void
+auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
 {
   long s = 0;
   db_volume_t * v = nullptr;
@@ -1405,23 +1406,24 @@ auto db_getheader(db_thread_t const * t, long seqno, char ** address, long * len
 
   long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s)));
   long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s + 1)));
-  *length = offset2 - offset1;
-  *address = std::next(t->map_hdr.region.data(), offset1 - t->map_hdr.map_offset);
+  assert(offset2 >= offset1);
+  return View<char>{std::next(t->map_hdr.region.data(), offset1 - t->map_hdr.map_offset),
+		    static_cast<std::size_t>(offset2 - offset1)};
 }
 
-auto db_parse_header(db_thread_t const * t, char * address, long length, 
+auto db_parse_header(db_thread_t const * t, View<char> const header,
 		     long show_gis, 
 		     long * deflines, std::vector<std::string> * deflinetable) -> void
 {
-  parse_getdeflines(t->parser, reinterpret_cast<unsigned char*>(address), length,
+  parse_getdeflines(t->parser, header,
 		    db_main.memb_bit, & db_check_taxid, show_gis,
 		    deflines, deflinetable);
 }
 
-auto db_showheader(struct db_thread_s const * t, char * address, long length,
+auto db_showheader(struct db_thread_s const * t, View<char> const header,
 		   HeaderLayout const & layout) -> void
 {
-  parse_header(t->parser, reinterpret_cast<unsigned char*>(address), length,
+  parse_header(t->parser, header,
 	       db_main.memb_bit, db_check_taxid, layout);
 }
 
@@ -1457,10 +1459,7 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 
 auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
 {
-  char * address = nullptr;
-  long length = 0;
-  db_getheader(t, seqno, & address, & length);
-  return parse_getdeflinecount(t->parser, reinterpret_cast<unsigned char*>(address), length, db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(t->parser, db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace
@@ -1493,15 +1492,12 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
   
   db_mapheaders(t, seqno, seqno);
 
-  char * address = nullptr;
-  long length = 0;
-  
-  db_getheader(t, seqno, & address, & length);
+  View<char> const header = db_getheader(t, seqno);
 
   long deflines = 0;
   std::vector<std::string> deflinetable;
 
-  db_parse_header(t, address, length, 1,
+  db_parse_header(t, header, 1,
 		  & deflines, & deflinetable);
   
   if (deflines != 0)

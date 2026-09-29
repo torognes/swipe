@@ -378,12 +378,12 @@ struct HeaderLayout
   Escaping escaping = Escaping::none;
 };
 
-auto parse_header(apt p, unsigned char * buf, long len, long memb, long (*f)(long),
+auto parse_header(apt p, View<char> header, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
-auto parse_getdeflines(apt p, unsigned char* buf, long len, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
+auto parse_getdeflines(apt p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
 
-auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
+auto parse_getdeflinecount(apt p, View<char> header,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
 auto db_open(Parameters const & parameters) -> void;
@@ -408,11 +408,11 @@ auto db_thread_destruct(struct db_thread_s * t) -> void;
 
 auto db_check_taxid(long taxid) -> long;
 
-auto db_parse_header(struct db_thread_s const * t, char * address, long length,
+auto db_parse_header(struct db_thread_s const * t, View<char> header,
 		     long show_gis,
 		     long * deflines, std::vector<std::string> * deflinetable) -> void;
 
-auto db_showheader(struct db_thread_s const * t, char * address, long length,
+auto db_showheader(struct db_thread_s const * t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
@@ -430,8 +430,8 @@ constexpr long untranslated_frame = -1;
 // follows it); ntlenp receives its length in nucleotides
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
 		    long * ntlenp, int c) -> View<char>;
-auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
-		  long * length) -> void;
+// the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
+auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
 
 auto hits_init(Parameters const & parameters) -> void;
 // strands and frames of a hit: query and database sequence
