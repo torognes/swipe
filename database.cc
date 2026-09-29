@@ -374,9 +374,9 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
 {
   // open an alias file and read contents
 
-  std::string const filename = std::string(basename) + (((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound)) ? ".pal" : ".nal");
+  auto const filename = std::string(basename) + (((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound)) ? ".pal" : ".nal");
   
-  FILE * db_file_xal = fopen(filename.c_str(), "r");
+  auto * db_file_xal = fopen(filename.c_str(), "r");
 
   if (db_file_xal == nullptr)
   {
@@ -390,13 +390,13 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
 
   constexpr int line_size = 10000;  // longer lines: read in pieces
   std::array<char, line_size> buffer {{}};
-  char * const line = buffer.data();
+  auto * const line = buffer.data();
   while (fgets(line, line_size, db_file_xal) != nullptr)
   {
     if (strncmp(line, "TITLE ", 6)== 0)
     {
-      char const * const text = std::next(line, 6);
-      char const * const title = std::next(text, static_cast<std::ptrdiff_t>(strspn(text, " \t")));
+      auto const * const text = std::next(line, 6);
+      auto const * const title = std::next(text, static_cast<std::ptrdiff_t>(strspn(text, " \t")));
       al_info->title.assign(title, strcspn(title, "\r\n"));
       title_found = true;
     }
@@ -535,7 +535,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   /* the index file must hold its header and its offset tables, and
      the offsets must stay within the header and sequence files: a
      truncated or corrupted file was read beyond its end (KI-23) */
-  char const * const xin_end = std::next(volume->xin_map.data(), volume->xin_map.size());
+  auto const * const xin_end = std::next(volume->xin_map.data(), volume->xin_map.size());
   auto const check_xin_room = [&](char const * const position, long const size) -> void
   {
     if ((size < 0) or (std::distance(position, xin_end) < size))
@@ -544,7 +544,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     }
   };
 
-  char const * p = volume->xin_map.data();
+  auto const * p = volume->xin_map.data();
   check_xin_room(p, 12);
   volume->version = load_uint32_be(p);
   
@@ -624,8 +624,8 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
     }
-    long const seq_start = offset_at(volume->offset_xsq, seqno);
-    long const seq_end = offset_at(volume->offset_xsq, seqno + 1);
+    auto const seq_start = offset_at(volume->offset_xsq, seqno);
+    auto const seq_end = offset_at(volume->offset_xsq, seqno + 1);
     if (seq_start > seq_end)
     {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
@@ -636,7 +636,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     }
     /* the packed nucleotides use at least one byte, before the
        ambiguity table of the sequence */
-    long const amb_start = offset_at(volume->offset_amb, seqno);
+    auto const amb_start = offset_at(volume->offset_amb, seqno);
     if ((amb_start <= seq_start) or (amb_start > seq_end))
     {
       fatal(std::string("Database index file ") + name_pin + " is truncated or corrupted.");
@@ -681,7 +681,7 @@ auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
   long s = seqno;
   for (long vol = 0; vol < db_main.volumecount; vol++)
   {
-    db_volume_t & v = volume_at(vol);
+    auto & v = volume_at(vol);
     if (s < v.seqcount)
     {
       *vp = & v;
@@ -894,7 +894,7 @@ auto db_open(Parameters const & parameters) -> void
 
     for (std::size_t i = 0; i < ai->dblist.size(); i++)
     {
-      std::string const basename2 = addpath(db_main.path, ai->dblist[i]);
+      auto const basename2 = addpath(db_main.path, ai->dblist[i]);
       
       auto const ai2 = db_read_alias(symbol_type, basename2.c_str());
       if (ai2 != nullptr)
@@ -906,9 +906,9 @@ auto db_open(Parameters const & parameters) -> void
 
 	for (std::size_t j = 0; j < ai2->dblist.size(); j++)
 	{
-	  std::string const basename3 = addpath(db_main.path, ai2->dblist[j]);
+	  auto const basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
-	  db_volume_t * const v = db_volume_new(vol);
+	  auto * const v = db_volume_new(vol);
 	  db_open_xin(symbol_type, basename3.c_str(), v);
 	  
 	  if (ai->memb_bit != 0)
@@ -942,7 +942,7 @@ auto db_open(Parameters const & parameters) -> void
 	    fatal("Illegal alias file (1).");
 	  }
 
-	db_volume_t * const v = db_volume_new(vol);
+	auto * const v = db_volume_new(vol);
 	db_open_xin(symbol_type, basename2.c_str(), v);
 	
 	if (ai->memb_bit != 0)
@@ -966,7 +966,7 @@ auto db_open(Parameters const & parameters) -> void
   }
   else
   {
-    db_volume_t * const v = db_volume_new(0);
+    auto * const v = db_volume_new(0);
     db_open_xin(symbol_type, basename, v);
     
 
@@ -1150,7 +1150,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   
   // map it
   
-  bool const mapped = m->region.map(v1->fd_xsq, offset, length);
+  auto const mapped = m->region.map(v1->fd_xsq, offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1199,7 +1199,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   
   // map it
   
-  bool const mapped = m->region.map(v1->fd_xhr, offset, length);
+  auto const mapped = m->region.map(v1->fd_xhr, offset, length);
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1269,7 +1269,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s)));
   long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s + 1)));
   long const length = offset2 - offset1;
-  char * address = std::next(t->map_seq.region.data(), offset1 - t->map_seq.map_offset);
+  auto * address = std::next(t->map_seq.region.data(), offset1 - t->map_seq.map_offset);
 
   if ((db_main.symtype==SymbolType::blastn)||(db_main.symtype==SymbolType::tblastn)||(db_main.symtype==SymbolType::tblastx))
   {
@@ -1291,7 +1291,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       //      printf("Reallocating large buffer (%ld) for channel %d\n", 
       //	     t->ntbuffersize[c], c);
     }
-    char * const nt = ntbuffer.data();
+    auto * const nt = ntbuffer.data();
 
     for(long j=0; j < nt_length/4; j++)
     {
@@ -1310,7 +1310,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     {
       //    printf("#number of ambiguity fixup bytes: %ld\n", amb_bytes);
     
-      char const * ambp = std::next(address, aoff);
+      auto const * ambp = std::next(address, aoff);
       unsigned long const amb_entries = load_uint32_be(ambp);
       ambp = std::next(ambp, sizeof(UINT32));
       unsigned long const big_table = (amb_entries >> 31);
@@ -1318,7 +1318,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       if (big_table != 0U)
       {
 	auto const entries = static_cast<unsigned long>((amb_bytes - 4) / 8);
-	char const * ambp64 = std::next(address, aoff + 4);
+	auto const * ambp64 = std::next(address, aoff + 4);
 
 	for(unsigned long i=0; i < entries; i++)
 	{
@@ -1364,7 +1364,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	{
 	  xxbuffer.resize(static_cast<std::size_t>(nt_length + 1));
 	}
-	char * const xx = xxbuffer.data();
+	auto * const xx = xxbuffer.data();
 
 	for (long i = 0; i < nt_length; i++)
 	{
@@ -1398,7 +1398,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       {
 	xxbuffer.resize(static_cast<std::size_t>(plen + 1));
       }
-      char * const xx = xxbuffer.data();
+      auto * const xx = xxbuffer.data();
       
       db_translate(nt, nt_length, strand, frame, xx);
 
@@ -1469,7 +1469,7 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
     frame = untranslated_frame;
   }
 
-  View<char> const sequence = db_getsequence(t, seqno, strand, frame, & ntlen, 0);
+  auto const sequence = db_getsequence(t, seqno, strand, frame, & ntlen, 0);
   auto const length = static_cast<long>(sequence.size());
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
@@ -1502,7 +1502,7 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
   
   if (not db_main.taxid_bitmap.empty())
   {
-    long const ok = db_check_taxid_seqno(t, seqno);
+    auto const ok = db_check_taxid_seqno(t, seqno);
     return ok;
   }
   return 1;
@@ -1521,7 +1521,7 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
   
   db_mapheaders(t, seqno, seqno);
 
-  View<char> const header = db_getheader(t, seqno);
+  auto const header = db_getheader(t, seqno);
 
   long deflines = 0;
   std::vector<std::string> deflinetable;

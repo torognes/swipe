@@ -242,8 +242,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
   // penalty of 127 already takes any score down to zero. The 16-bit
   // and 63-bit engines, and the alignments, use the real penalties
   long const max_7 = std::numeric_limits<signed char>::max();
-  BYTE const gapopenextend_7 = static_cast<BYTE>(std::min(parameters.gapopenextend, max_7));
-  BYTE const gapextend_7 = static_cast<BYTE>(std::min(parameters.gapextend, max_7));
+  auto const gapopenextend_7 = static_cast<BYTE>(std::min(parameters.gapopenextend, max_7));
+  auto const gapextend_7 = static_cast<BYTE>(std::min(parameters.gapextend, max_7));
 
   //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
 
@@ -426,8 +426,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long ntlen = 0;
 	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, dstrand,
 						     dframe, & ntlen, 0);
-	  char const * dbegin = sequence.begin();
-	  char const * dend = sequence.end();
+	  auto const * dbegin = sequence.begin();
+	  auto const * dend = sequence.end();
       
 	  char * q = nullptr;
 	  if (parameters.symtype == SymbolType::blastn)

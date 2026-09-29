@@ -751,7 +751,7 @@ search7
   __m128i M;
   __m128i Z;
   __m128i T0;
-  __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
+  auto * const hep = reinterpret_cast<__m128i*>(hearray);
   __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin;
   std::array<BYTE const *, CHANNELS> d_end;
@@ -759,7 +759,7 @@ search7
   // the database residues of the channels, 16-byte aligned for the loads
   alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
   
-  BYTE * dseq = dseqalloc.data();
+  auto * dseq = dseqalloc.data();
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id;

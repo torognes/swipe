@@ -318,7 +318,7 @@ auto query_read() -> int
   {
     header.pop_back();
   }
-  int const len = static_cast<int>(header.size());
+  auto const len = static_cast<int>(header.size());
 
   if (header[0] == '>')
   {
@@ -418,7 +418,7 @@ auto query_read() -> int
 auto revcompl(char const * seq, long len) -> Buffer<char>
 {
   Buffer<char> rc_buffer(static_cast<std::size_t>(len) + 1);
-  char * rc = rc_buffer.data();
+  auto * rc = rc_buffer.data();
   for (long i = 0; i < len; i++)
   {
     rc[i] = ntcompl[static_cast<std::size_t>(seq[len - 1 - i])];
@@ -530,7 +530,7 @@ auto translate(char const * dna, long dlen,
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
   protein.resize(1 + static_cast<std::size_t>(plen));
-  char * prot = protein.data();
+  auto * prot = protein.data();
 
   if (strand == 0)
   {
@@ -571,8 +571,8 @@ auto query_show() -> void
   {
     // at most linewidth characters, up to a NUL, left-aligned and
     // padded to linewidth (was "%-60.60s")
-    View<char> const rest = as_c_string(std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
-    View<char> const text = rest.first(std::min(rest.size(), linewidth));
+    auto const rest = as_c_string(std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
+    auto const text = rest.first(std::min(rest.size(), linewidth));
     if (i == 0)
     {
       fprint(out, "Query description: ");

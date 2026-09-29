@@ -939,7 +939,7 @@ auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_check
   nextch(p);
   nextobj(p);
 
-  long const deflines = parse_blast_def_line_set_new(p, deflinetablep);
+  auto const deflines = parse_blast_def_line_set_new(p, deflinetablep);
 
   *deflinesp = deflines;
 }
@@ -966,8 +966,8 @@ auto parse_header(apt p, View<char> const header, long memb,
   nextobj(p);
 
   std::vector<std::string> deflinetable;
-  long const deflines = parse_blast_def_line_set_new(p, & deflinetable);
-  long const deflines2 = show_deflines(p, deflines, deflinetable);
+  auto const deflines = parse_blast_def_line_set_new(p, & deflinetable);
+  auto const deflines2 = show_deflines(p, deflines, deflinetable);
   return deflines2;
 }
 

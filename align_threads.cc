@@ -290,7 +290,7 @@ auto align_done(struct search_data * sdp) -> void
 
 auto align_threads_init(Parameters const & parameters) -> void
 {
-  long const hits = hits_getcount();
+  auto const hits = hits_getcount();
 
   hits_sorted = hits_sort();
 

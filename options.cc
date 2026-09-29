@@ -729,7 +729,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
      options are checked (KI-8) */
   if (parameters.outfile != nullptr)
   {
-    FILE * f = fopen(parameters.outfile, "w");
+    auto * f = fopen(parameters.outfile, "w");
     if (f == nullptr)
     {
       fatal("Unable to open output file for writing.");

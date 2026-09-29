@@ -121,7 +121,7 @@ auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegister
 
 auto cpu_features() -> void
 {
-  CpuidRegisters const registers = cpuid(1, 0);
+  auto const registers = cpuid(1, 0);
   cpu_feature_sse2  = (registers.edx >> 26) & 1;
   cpu_feature_ssse3 = (registers.ecx >>  9) & 1;
   cpu_feature_sse41 = (registers.ecx >> 19) & 1;
@@ -277,7 +277,7 @@ auto main(int argc, char**argv) -> int
 
   if(parameters.dump != 0)
   {
-    struct db_thread_s * t = db_thread_create();
+    auto * t = db_thread_create();
     long const seqcount = db_getseqcount();
     for (long i = 0; i < seqcount; i++)
     {

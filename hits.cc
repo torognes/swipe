@@ -355,13 +355,13 @@ auto hits_init(Parameters const & parameters) -> void
   long const maxscore = parameters.maxscore;
   double const min_expect = parameters.minexpect;
   double const max_expect = parameters.expect;
-  int const show_nostats = static_cast<int>(parameters.view == OutputFormat::plain);
+  auto const show_nostats = static_cast<int>(parameters.view == OutputFormat::plain);
 
   opt_descriptions = descriptions;
   opt_alignments = max_alignments;
   keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
-  std::int64_t maxhits = db_getseqcount_masked();
+  auto maxhits = db_getseqcount_masked();
   if (parameters.symtype == SymbolType::blastn)
     {
       if (parameters.querystrands == QueryStrands::both)
@@ -582,7 +582,7 @@ auto hits_init(Parameters const & parameters) -> void
   
   if (stats_available != 0)
   {
-    long const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
+    auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
     if (minscore_expect > minscore)
     {
       scorethreshold = minscore_expect;
@@ -590,7 +590,7 @@ auto hits_init(Parameters const & parameters) -> void
 
     if (min_expect > 0.0)
     {
-      long const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
+      auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
       if (maxscore_expect < maxscore)
       {
 	upperscorethreshold = maxscore_expect;
@@ -636,7 +636,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 
   db_mapheaders(t, h->seqno, h->seqno);
 
-  View<char> const header = db_getheader(t, h->seqno);
+  auto const header = db_getheader(t, h->seqno);
   h->header_address.assign(header.begin(), header.end());
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
@@ -730,7 +730,7 @@ struct AlignedHit
 
 auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
 {
-  struct hits_entry const & entry = hit_entry(i);
+  auto const & entry = hit_entry(i);
   AlignedHit hit;
   hit.symtype = parameters.symtype;
   hit.alignment = entry.alignment.c_str();
@@ -1014,11 +1014,11 @@ auto show_align(AlignedHit const & hit) -> void
   AlignmentLines lines(hit);
   
   char const * p = hit.alignment;
-  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
+  auto const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
   
   while(p < e)
   {
-    AlignmentOperation const operation = next_operation(p);
+    auto const operation = next_operation(p);
     lines.putalignop(operation.op, operation.len);
   }
   
@@ -1062,7 +1062,7 @@ auto whole_align(AlignedHit const & hit,
 
   while((*p) != 0)
   {
-    AlignmentOperation const operation = next_operation(p);
+    auto const operation = next_operation(p);
     char const op = operation.op;
     long const len = operation.len;
     
@@ -1141,11 +1141,11 @@ auto count_align(AlignedHit const & hit,
   long d_pos = hit.d_align_start;
   
   char const * p = hit.alignment;
-  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
+  auto const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
 
   while(p < e)
   {
-    AlignmentOperation const operation = next_operation(p);
+    auto const operation = next_operation(p);
     char const op = operation.op;
     long const len = operation.len;
     
@@ -1316,9 +1316,9 @@ auto hits_defline_split(char * defline,
   constexpr std::size_t gi_prefix_length = 3;
   if (std::strncmp(p, "gi|", gi_prefix_length) == 0)
   {
-    char * const number = std::next(p, gi_prefix_length);
+    auto * const number = std::next(p, gi_prefix_length);
     char * end = nullptr;
-    long const value = std::strtol(number, & end, 10);
+    auto const value = std::strtol(number, & end, 10);
     if (end != number)
     {
       *gi = value;
@@ -1331,7 +1331,7 @@ auto hits_defline_split(char * defline,
     p = std::next(p);
   }
 
-  char * r = strchr(p, ' ');
+  auto * r = strchr(p, ' ');
   if (r != nullptr)
   {
     *linklen = static_cast<std::size_t>(r - p);
@@ -1562,8 +1562,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   
   for(long i=0; i<showhits; i++)
   {
-    long const score = hit_entry(i).score;
-    double const e = expect_value_of(score);
+    auto const score = hit_entry(i).score;
+    auto const e = expect_value_of(score);
 
     std::array<char, 200> anchor {{}};
     make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
@@ -1723,8 +1723,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
         
       fprint(out, "\t\t\t\t</linkContainer>\n");
     
-      long const dlen = hit_entry(i).dlen;
-      long const dlennt = hit_entry(i).dlennt;
+      auto const dlen = hit_entry(i).dlen;
+      auto const dlennt = hit_entry(i).dlennt;
 
       if (parameters.symtype == SymbolType::blastn)
       {
@@ -1782,8 +1782,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprint(out, "\t\t\t\t</longVersionFrames>\n");
       }
 
-      long const score = hit_entry(i).score;
-      double const e = expect_value_of(score);
+      auto const score = hit_entry(i).score;
+      auto const e = expect_value_of(score);
 
       long identities = 0;
       long positives = 0;
@@ -1795,7 +1795,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       std::string aline;
       std::string dline;
         
-      AlignedHit const hit = aligned_hit(parameters, i);
+      auto const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  qline, aline, dline);
 
@@ -1923,8 +1923,8 @@ auto hits_show_xml(Parameters const & parameters,
   
   for(long i=0; i<showhits; i++)
   {
-    long const seqno = hit_entry(i).seqno;
-    long const score = hit_entry(i).score;
+    auto const seqno = hit_entry(i).seqno;
+    auto const score = hit_entry(i).score;
     // the database sequence length in nucleotides for tblastn and
     // tblastx, as in the other outputs (KI-36)
     long const dlen = ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx)) ?
@@ -1965,7 +1965,7 @@ auto hits_show_xml(Parameters const & parameters,
       std::string aline;
       std::string dline;
         
-      AlignedHit const hit = aligned_hit(parameters, i);
+      auto const hit = aligned_hit(parameters, i);
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  qline, aline, dline);
 
@@ -2046,10 +2046,10 @@ auto hits_show_tsv(Parameters const & parameters,
     long aligned = 0;
     long indels = 0;
     
-    AlignedHit const hit = aligned_hit(parameters, i);
+    auto const hit = aligned_hit(parameters, i);
     count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
     
-    long const score = hit_entry(i).score;
+    auto const score = hit_entry(i).score;
     
     fprintf(out, "\t%.2f\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld", 
 	    percentage(identities, aligned),
@@ -2063,9 +2063,9 @@ auto hits_show_tsv(Parameters const & parameters,
     
     if (stats_available != 0)
     {
-      double const expect_value = expect_value_of(score);
+      auto const expect_value = expect_value_of(score);
       fprintf(out, "\t%.2g", expect_value);
-      double const bits = bit_score_of(score);
+      auto const bits = bit_score_of(score);
       fprintf(out, "\t%.1f", bits);
     }
     else
@@ -2123,7 +2123,7 @@ auto hits_show_plain(Parameters const & parameters,
 	db_showheader(t, 
 		      make_view(hit_entry(i).header_address), layout);
 
-	long const score = hit_entry(i).score;
+	auto const score = hit_entry(i).score;
 
 	if (parameters.symtype == SymbolType::blastn)
 	{
@@ -2154,8 +2154,8 @@ auto hits_show_plain(Parameters const & parameters,
 
 	if (stats_available != 0)
 	{
-	  long const bits = static_cast<long>(floor(bit_score_of(score) + 0.5));
-	  double const expect_value = expect_value_of(score);
+	  auto const bits = static_cast<long>(floor(bit_score_of(score) + 0.5));
+	  auto const expect_value = expect_value_of(score);
 		
 	  fprint(out, ' ');
 	  fprint_integer(out, bits, 5);
@@ -2196,12 +2196,12 @@ auto hits_show_plain(Parameters const & parameters,
 	}
 	fprint(out, "\n");
 	      
-	long const score = hit_entry(i).score;
+	auto const score = hit_entry(i).score;
 
 	if (stats_available != 0)
 	{
-	  double const bits = bit_score_of(score);
-	  double const expect_value = expect_value_of(score);
+	  auto const bits = bit_score_of(score);
+	  auto const expect_value = expect_value_of(score);
 		
 	  fprintf(out, " Score = %.1lf bits (%ld), Expect = ", bits, score);
 	  hits_show_expect(expect_value);
@@ -2220,7 +2220,7 @@ auto hits_show_plain(Parameters const & parameters,
 	long aligned = 0;
 	long indels = 0;
 
-	AlignedHit const hit = aligned_hit(parameters, i);
+	auto const hit = aligned_hit(parameters, i);
 	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
 	      
 	fprint(out, " Identities = ");
@@ -2373,7 +2373,7 @@ auto hits_show(Parameters const & parameters) -> void
     showalignments = opt_alignments;
   }
 
-  struct db_thread_s * t = db_thread_create();
+  auto * t = db_thread_create();
 
   if(view == OutputFormat::plain)
   {

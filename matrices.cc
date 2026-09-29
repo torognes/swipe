@@ -360,7 +360,7 @@ auto next_score(char * & cursor) -> long
 {
   errno = 0;
   char * end = nullptr;
-  long const score = std::strtol(cursor, & end, 10);
+  auto const score = std::strtol(cursor, & end, 10);
   if ((end == cursor) or (errno == ERANGE) or
       ((*end != '\0') and (std::isspace(static_cast<unsigned char>(*end)) == 0)))
   {
@@ -385,7 +385,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
   char * q = nullptr;
   char c = 0;
 
-  FILE * fp = fopen(matrix, "r");
+  auto * fp = fopen(matrix, "r");
 
   if (fp == nullptr)
   {
@@ -499,7 +499,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
   while((*s) != 0)
     {
-      char const * nextline = strchr(s, '\n');
+      auto const * nextline = strchr(s, '\n');
       std::size_t linelen = 0;
       if (nextline != nullptr)
       {

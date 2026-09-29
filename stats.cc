@@ -37,8 +37,8 @@ auto stats_getparams_nt(long match_score,
 			double * alpha,
 			double * beta) -> long
 {
-  BlastnTables const tables = blastn_tables(match_score, mismatch_score);
-  View<array_of_8> const bv = tables.values;
+  auto const tables = blastn_tables(match_score, mismatch_score);
+  auto const bv = tables.values;
   if (bv.empty())
   {
     return 0;
@@ -76,7 +76,7 @@ auto stats_getparams(char const * matrix,
 		     double * alpha,
 		     double * beta) -> long
 {
-  View<array_of_8> const mat = blast_matrix_values(matrix);
+  auto const mat = blast_matrix_values(matrix);
   if (mat.empty())
   {
     return 0;
@@ -106,8 +106,8 @@ auto stats_getprefs(char const * matrix,
 		    long * gopen,
 		    long * gextend) -> long
 {
-  View<array_of_8> const mat = blast_matrix_values(matrix);
-  View<Int4> const prefs = blast_matrix_prefs(matrix);
+  auto const mat = blast_matrix_values(matrix);
+  auto const prefs = blast_matrix_prefs(matrix);
   if (mat.empty())
   {
     return 0;

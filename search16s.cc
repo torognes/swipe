@@ -337,7 +337,7 @@ auto search16s(WORD * * q_start,
   __m128i M;
   __m128i Z;
   __m128i T0;
-  __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
+  auto * const hep = reinterpret_cast<__m128i*>(hearray);
   __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin;
   std::array<BYTE const *, CHANNELS> d_pos;
@@ -348,7 +348,7 @@ auto search16s(WORD * * q_start,
   // the database residues of the channels, 16-byte aligned for the loads
   alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
 
-  BYTE * dseq = dseqalloc.data();
+  auto * dseq = dseqalloc.data();
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id;
@@ -410,7 +410,7 @@ auto search16s(WORD * * q_start,
       
       /* save column address if new highscore */
 
-      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       if (mask != 0)
       {
 	for (std::size_t c = 0; c < CHANNELS; c++)
@@ -548,7 +548,7 @@ auto search16s(WORD * * q_start,
 
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
-      int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
       if (mask != 0)
       {
 	for (std::size_t c = 0; c < CHANNELS; c++)
