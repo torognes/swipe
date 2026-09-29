@@ -25,7 +25,7 @@
 
 // the data of a search or alignment thread, and the functions shared
 // by the search threads (search_threads.cc) and the alignment threads
-// (swipe.cc)
+// (align_threads.cc)
 
 #ifndef SWIPE_SEARCH_DATA_H
 #define SWIPE_SEARCH_DATA_H
@@ -75,5 +75,8 @@ auto calc_chunks(long volcount,
 // search_threads.cc: the search of a query by parameters.threads threads
 auto prepare_search(long par) -> void;
 auto run_threads(Parameters const & parameters) -> void;
+
+// align_threads.cc: the alignment of the hits of a query
+auto align_threads(Parameters const & parameters) -> void;
 
 #endif  // SWIPE_SEARCH_DATA_H

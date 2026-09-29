@@ -159,7 +159,7 @@ clean :
 distclean : clean
 	rm -f compile_commands.json
 
-OBJS = options.o search_threads.o database.o asnparse.o align.o matrices.o \
+OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o
 
