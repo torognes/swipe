@@ -89,6 +89,10 @@ filtering of low complexity regions (BLAST option "-F") is not implemented.
 Please pre-filter your query. SWIPE does not use the new sequence length
 adjustment statistics (FSC) introduced in BLAST 2.2.26.
 
+The BLAST option "-K" (--subalignments, the number of subalignments) is
+accepted for compatibility, but ignored: SWIPE reports one alignment per
+hit.
+
 The BLOSUM45, BLOSUM50, BLOSUM62, BLOSUM80, BLOSUM90, PAM30, PAM70 and PAM250
 matrices are "built-in". Other matrices may be specified with a file name.
 
