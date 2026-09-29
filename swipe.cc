@@ -43,7 +43,7 @@
 #endif
 #endif
 
-extern char const swipe_name_and_version[] = "SWIPE " SWIPE_VERSION;
+extern char const * const swipe_name_and_version = "SWIPE " SWIPE_VERSION;
 
 /* Other variables */
 
@@ -136,7 +136,7 @@ auto clock_start(struct time_info * tip) -> void
 auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
 {
   struct tm tms;
-  char const timeformat[] = "%a, %e %b %Y %T UTC";
+  constexpr char const * timeformat = "%a, %e %b %Y %T UTC";
 
   tip->clock2 = std::chrono::steady_clock::now();
   static_cast<void>(time(& tip->t2));

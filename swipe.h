@@ -62,7 +62,7 @@
 #endif
 
 // "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
-extern char const swipe_name_and_version[];
+extern char const * const swipe_name_and_version;
 
 // Should be 32bits integer
 using UINT32 = unsigned int;
