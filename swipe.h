@@ -200,15 +200,6 @@ extern char d_translate[];
 
 extern FILE * out;
 
-extern char const mat_blosum45[];
-extern char const mat_blosum50[];
-extern char const mat_blosum62[];
-extern char const mat_blosum80[];
-extern char const mat_blosum90[];
-extern char const mat_pam30[];
-extern char const mat_pam70[];
-extern char const mat_pam250[];
-
 extern long SCORELIMIT_7;
 extern long SCORELIMIT_16;
 
