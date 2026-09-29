@@ -25,7 +25,7 @@
 
 // imported from vsearch (src/utils/print_view.hpp, commit 838e5ca3);
 // swipe change: std::array buffers initialized with {{}} (GCC 4.8/4.9,
-// -Wmissing-field-initializers, PR 36750)
+// -Wmissing-field-initializers, PR 36750); swipe addition: as_c_string()
 
 #ifndef SWIPE_PRINT_VIEW_H
 #define SWIPE_PRINT_VIEW_H
@@ -35,6 +35,8 @@
 #include <cassert>
 #include <cstddef>  // std::size_t
 #include <cstdio>  // std::FILE, std::fputc, std::fwrite
+#include <cstring>  // std::strlen
+#include <string>
 
 
 /* Emit the bytes of a View to a stream.
@@ -215,5 +217,22 @@ auto fprint_integer(std::FILE * output_handle, Integer const value, std::size_t 
    specialization on the tiebreaker, so adding one would silently route every
    literal through strlen instead of its compile-time bound. A run-time
    char const * therefore goes through View. */
+
+
+/* swipe addition: the characters of a C string, or of a std::string up to
+   its first NUL, as a View -- what a "%s" conversion printed. A std::string
+   may hold a NUL (a defline of a corrupt header), and "%s" of its c_str()
+   stopped there; so does this. A different name from fprint(), so that no
+   string literal can reach std::strlen (see the note above). */
+inline auto as_c_string(char const * const text) -> View<char>
+{
+  assert(text != nullptr);
+  return View<char>{text, std::strlen(text)};
+}
+
+inline auto as_c_string(std::string const & text) -> View<char>
+{
+  return as_c_string(text.c_str());
+}
 
 #endif  // SWIPE_PRINT_VIEW_H

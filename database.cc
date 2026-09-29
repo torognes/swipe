@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // as_c_string, fprint
 #include <algorithm>  // std::all_of, std::find, std::max, std::min
 #include <array>
 #include <cassert>
@@ -225,10 +226,10 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
     end = std::min(length, end);
     while(i<end)
     {
-      putc(map[static_cast<int>(address[i])], out);
+      fprint(out, map[static_cast<int>(address[i])]);
       i++;
     }
-    fprintf(out, "\n");
+    fprint(out, '\n');
   }
 }
 
@@ -1536,19 +1537,22 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
     {
       if (split != 0)
       {
-	fprintf(out, ">%s\n", deflinetable[static_cast<std::size_t>(i)].c_str());
+	fprint(out, '>');
+	fprint(out, as_c_string(deflinetable[static_cast<std::size_t>(i)]));
+	fprint(out, '\n');
 	db_print_seq(t, seqno, strand, frame);
       }
       else
       {
 	if (i != 0)
 	{
-	  fprintf(out, " ");
+	  fprint(out, ' ');
 	}
-	fprintf(out, ">%s", deflinetable[static_cast<std::size_t>(i)].c_str());
+	fprint(out, '>');
+	fprint(out, as_c_string(deflinetable[static_cast<std::size_t>(i)]));
 	if (i==deflines-1)
 	{
-	  fprintf(out, "\n");
+	  fprint(out, '\n');
 	  db_print_seq(t, seqno, strand, frame);
 	}
       }
