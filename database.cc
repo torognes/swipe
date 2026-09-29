@@ -781,7 +781,7 @@ auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
-  auto const index = static_cast<std::size_t>(taxid / 8);
+  std::size_t const index = taxid / 8;
   auto const bitno = static_cast<unsigned int>(taxid & 7);
     
   if (index >= db_main.taxid_bitmap.size())
