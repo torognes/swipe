@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // fprint
 #include <algorithm>  // std::min, std::sort
 #include <array>
 #include <cassert>
@@ -613,7 +614,7 @@ auto hits_init(Parameters const & parameters) -> void
   {
     if (show_nostats != 0)
     {
-      fprintf(out, "Statistical parameters are not available for the scoring system specified.\nBit scores and E-values will not be computed.\n\n");
+      fprint(out, "Statistical parameters are not available for the scoring system specified.\nBit scores and E-values will not be computed.\n\n");
     }
   }
 
@@ -971,7 +972,7 @@ auto AlignmentLines::putalignop(char c, long len) -> void
       }
 
 
-      fprintf(out, "\n");
+      fprint(out, "\n");
       fprintf(out, "Query: %*ld %s %ld\n", hit.poswidth, q1, q_line.data(), q2);
       fprintf(out, "       %*s %s\n", hit.poswidth, "", a_line.data());
       fprintf(out, "Sbjct: %*ld %s %ld\n", hit.poswidth, d1, d_line.data(), d2);
@@ -1180,7 +1181,7 @@ auto hits_show_expect(double expect_value) -> void
   char temp[10];
   if (expect_value < 1e-180)
   {
-    fprintf(out, "0.0  ");
+    fprint(out, "0.0  ");
   }
   else if (expect_value < 9.5e-100)
   {
@@ -1216,22 +1217,22 @@ auto xml_putc(char const symbol) noexcept -> void
   switch (symbol)
     {
     case '&':
-      fputs("&amp;", out);
+      fprint(out, "&amp;");
       break;
     case '<':
-      fputs("&lt;", out);
+      fprint(out, "&lt;");
       break;
     case '>':
-      fputs("&gt;", out);
+      fprint(out, "&gt;");
       break;
     case '"':
-      fputs("&quot;", out);
+      fprint(out, "&quot;");
       break;
     case '\'':
-      fputs("&apos;", out);
+      fprint(out, "&apos;");
       break;
     default:
-      putc(symbol, out);
+      fprint(out, symbol);
       break;
     }
 }
@@ -1344,7 +1345,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 {
   /* ParAlign XML */
   
-  fprintf(out, "\t<paralignOutput>\n");
+  fprint(out, "\t<paralignOutput>\n");
   
   char const * qseqtypedescr = nullptr;
   struct sequence q;
@@ -1365,22 +1366,22 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     q = query.nt[0];
   }
   
-  fprintf(out, "\t\t<queryInformation>\n");
-  fprintf(out, "\t\t\t<queryFilename>");
+  fprint(out, "\t\t<queryInformation>\n");
+  fprint(out, "\t\t\t<queryFilename>");
   xml_print(parameters.queryname);
-  fprintf(out, "</queryFilename>\n");
+  fprint(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
-  fprintf(out, "\t\t\t<queryDescription>");
+  fprint(out, "\t\t\t<queryDescription>");
   xml_print(query.description.c_str());
-  fprintf(out, "</queryDescription>\n");
+  fprint(out, "</queryDescription>\n");
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
-  fprintf(out, "\t\t\t<querySequence>");
+  fprint(out, "\t\t\t<querySequence>");
   for (int i = 0; i < q.len; i++)
   {
-    putc(query.sym[static_cast<int>(q.seq[i])], out);
+    fprint(out, query.sym[static_cast<int>(q.seq[i])]);
   }
-  fprintf(out, "</querySequence>\n");
-  fprintf(out, "\t\t</queryInformation>\n");
+  fprint(out, "</querySequence>\n");
+  fprint(out, "\t\t</queryInformation>\n");
   
   char const * dbseqtypedescr = nullptr;
   char const * ncbidb = nullptr;
@@ -1403,22 +1404,22 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   {
     dbseqtypedescr = "Sound";
   }
-  fprintf(out, "\t\t<databaseInformation>\n");
-  fprintf(out, "\t\t\t<databaseFilename>");
+  fprint(out, "\t\t<databaseInformation>\n");
+  fprint(out, "\t\t\t<databaseFilename>");
   xml_print(parameters.databasename);
-  fprintf(out, "</databaseFilename>\n");
+  fprint(out, "</databaseFilename>\n");
   fprintf(out, "\t\t\t<databaseSequencetype>%s</databaseSequencetype>\n", dbseqtypedescr);
-  fprintf(out, "\t\t\t<databaseDescription>");
+  fprint(out, "\t\t\t<databaseDescription>");
   xml_print(db_gettitle());
-  fprintf(out, "</databaseDescription>\n");
+  fprint(out, "</databaseDescription>\n");
   fprintf(out, "\t\t\t<databaseVersion>%ld</databaseVersion>\n", db_getversion());
-  fprintf(out, "\t\t\t<databaseDate>");
+  fprint(out, "\t\t\t<databaseDate>");
   xml_print(db_gettime());
-  fprintf(out, "</databaseDate>\n");
+  fprint(out, "</databaseDate>\n");
   fprintf(out, "\t\t\t<residueCount>%" PRId64 "</residueCount>\n", db_getsymcount_masked());
   fprintf(out, "\t\t\t<sequenceCount>%" PRId64 "</sequenceCount>\n", db_getseqcount_masked());
   fprintf(out, "\t\t\t<longestSequenceLength>%ld</longestSequenceLength>\n", db_getlongest());
-  fprintf(out, "\t\t</databaseInformation>\n");
+  fprint(out, "\t\t</databaseInformation>\n");
   
   char const * strands = "";
   switch(parameters.querystrands)
@@ -1436,8 +1437,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     break;
   }
 
-  fprintf(out, "\t\t<options>\n");
-  fprintf(out, "\t\t\t<algorithm>Smith-Waterman</algorithm>\n");
+  fprint(out, "\t\t<options>\n");
+  fprint(out, "\t\t\t<algorithm>Smith-Waterman</algorithm>\n");
 
   if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
@@ -1446,43 +1447,43 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
   if (parameters.symtype == SymbolType::blastn)
   {
-    fprintf(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
+    fprint(out, "\t\t\t<scoreMatrix>NT</scoreMatrix>\n");
   }
   else
   {
-    fprintf(out, "\t\t\t<scoreMatrix>");
+    fprint(out, "\t\t\t<scoreMatrix>");
     xml_print(parameters.matrixname);
-    fprintf(out, "</scoreMatrix>\n");
+    fprint(out, "</scoreMatrix>\n");
   }
 
-  fprintf(out, "\t\t\t<gapPenalties>\n");
+  fprint(out, "\t\t\t<gapPenalties>\n");
   fprintf(out, "\t\t\t\t<gapPenaltyOpen>%ld</gapPenaltyOpen>\n", parameters.gapopen);
   fprintf(out, "\t\t\t\t<gapPenaltyExtension>%ld</gapPenaltyExtension>\n", parameters.gapextend);
-  fprintf(out, "\t\t\t\t<ungapped>\n");
+  fprint(out, "\t\t\t\t<ungapped>\n");
   fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
   fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
   fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", ungapped_H);
-  fprintf(out, "\t\t\t\t</ungapped>\n");
-  fprintf(out, "\t\t\t\t<gapped>\n");
+  fprint(out, "\t\t\t\t</ungapped>\n");
+  fprint(out, "\t\t\t\t<gapped>\n");
   fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", lambda);
   fprintf(out, "\t\t\t\t\t<gappedKappa>%.4g</gappedKappa>\n", K);
   fprintf(out, "\t\t\t\t\t<gappedEta>%.4g</gappedEta>\n", H);
-  fprintf(out, "\t\t\t\t</gapped>\n");
+  fprint(out, "\t\t\t\t</gapped>\n");
 
-  fprintf(out, "\t\t\t</gapPenalties>\n");
-  fprintf(out, "\t\t\t<expectRange>\n");
+  fprint(out, "\t\t\t</gapPenalties>\n");
+  fprint(out, "\t\t\t<expectRange>\n");
   fprintf(out, "\t\t\t\t<expectRangeFrom>%.2g</expectRangeFrom>\n", parameters.minexpect);
   fprintf(out, "\t\t\t\t<expectRangeTo>%.2g</expectRangeTo>\n", parameters.expect);
-  fprintf(out, "\t\t\t</expectRange>\n");
-  fprintf(out, "\t\t\t<displayLimits>\n");
+  fprint(out, "\t\t\t</expectRange>\n");
+  fprint(out, "\t\t\t<displayLimits>\n");
   fprintf(out, "\t\t\t\t<hitLimit>%ld</hitLimit>\n", parameters.maxmatches);
   fprintf(out, "\t\t\t\t<alignmentLimit>%ld</alignmentLimit>\n", parameters.alignments);
   fprintf(out, "\t\t\t\t<subalignmentLimit>%ld</subalignmentLimit>\n", static_cast<long>(1));
-  fprintf(out, "\t\t\t</displayLimits>\n");
+  fprint(out, "\t\t\t</displayLimits>\n");
   fprintf(out, "\t\t\t<threads>%ld</threads>\n", parameters.threads);
-  fprintf(out, "\t\t</options>\n");
+  fprint(out, "\t\t</options>\n");
 
-  fprintf(out, "\t\t\t<searchInformation>\n");
+  fprint(out, "\t\t\t<searchInformation>\n");
   fprintf(out, "\t\t\t\t<searchStarted>%s</searchStarted>\n", ti.starttime.data());
   fprintf(out, "\t\t\t\t<searchCompleted>%s</searchCompleted>\n", ti.endtime.data());
   fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
@@ -1492,24 +1493,24 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   }
   else
   {
-    fprintf(out, "\t\t\t\t<searchSpeed>n/a</searchSpeed>\n");
+    fprint(out, "\t\t\t\t<searchSpeed>n/a</searchSpeed>\n");
   }
-  fprintf(out, "\t\t\t\t<searchSWAlignments>\n");
+  fprint(out, "\t\t\t\t<searchSWAlignments>\n");
   fprintf(out, "\t\t\t\t\t<SWAbsolute>%ld</SWAbsolute>\n", compute7);
-  fprintf(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
-  fprintf(out, "\t\t\t\t</searchSWAlignments>\n");
-  fprintf(out, "\t\t\t</searchInformation>\n");
+  fprint(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
+  fprint(out, "\t\t\t\t</searchSWAlignments>\n");
+  fprint(out, "\t\t\t</searchInformation>\n");
 
-  fprintf(out, "\t\t<resultInformation>\n");
-  fprintf(out, "\t\t\t<resultHits>\n");
+  fprint(out, "\t\t<resultInformation>\n");
+  fprint(out, "\t\t\t<resultHits>\n");
   fprintf(out, "\t\t\t\t<totalCount>%ld</totalCount>\n", totalhits);
   fprintf(out, "\t\t\t\t<obviousCount>%ld</obviousCount>\n", obvious);
   fprintf(out, "\t\t\t\t<shownCount>%ld</shownCount>\n", showhits);
-  fprintf(out, "\t\t\t</resultHits>\n");
+  fprint(out, "\t\t\t</resultHits>\n");
   fprintf(out, "\t\t\t<alignmentCount>%ld</alignmentCount>\n", showalignments);
-  fprintf(out, "\t\t</resultInformation>\n");
+  fprint(out, "\t\t</resultInformation>\n");
   
-  fprintf(out, "\t\t<shortVersionHits>\n");
+  fprint(out, "\t\t<shortVersionHits>\n");
   
   for(long i=0; i<showhits; i++)
   {
@@ -1532,26 +1533,26 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 		       & link, & linklen,
 		       & title);
 
-    fprintf(out, "\t\t\t<shortVersionHit>\n");
+    fprint(out, "\t\t\t<shortVersionHit>\n");
     fprintf(out, "\t\t\t\t<shortVersionAnchor>%s</shortVersionAnchor>\n", anchor);
     if (gi != 0)
       {
-    fprintf(out, "\t\t\t\t<shortVersionLink>\n");
+    fprint(out, "\t\t\t\t<shortVersionLink>\n");
     fprintf(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=%s&amp;list_uids=%ld&amp;dopt=%s</shortVersionLinkDestination>\n", ncbidb, gi, ncbiopt);
     fprintf(out, "\t\t\t\t\t<shortVersionLinkText>gi|%ld</shortVersionLinkText>\n", gi);
-    fprintf(out, "\t\t\t\t</shortVersionLink>\n");
+    fprint(out, "\t\t\t\t</shortVersionLink>\n");
       }
-    fprintf(out, "\t\t\t\t<shortVersionLink>\n");
+    fprint(out, "\t\t\t\t<shortVersionLink>\n");
     fprintf(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=", ncbidb);
     xml_print(link, linklen);
     fprintf(out, "&amp;doptcmdl=%s</shortVersionLinkDestination>\n", ncbiopt);
-    fprintf(out, "\t\t\t\t\t<shortVersionLinkText>");
+    fprint(out, "\t\t\t\t\t<shortVersionLinkText>");
     xml_print(link, linklen);
-    fprintf(out, "</shortVersionLinkText>\n");
-    fprintf(out, "\t\t\t\t</shortVersionLink>\n");
-    fprintf(out, "\t\t\t\t<shortVersionName>");
+    fprint(out, "</shortVersionLinkText>\n");
+    fprint(out, "\t\t\t\t</shortVersionLink>\n");
+    fprint(out, "\t\t\t\t<shortVersionName>");
     xml_print(title, 35);
-    fprintf(out, "</shortVersionName>\n");
+    fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
       fprintf(out, "\t\t\t\t<shortVersionStrand>%c</shortVersionStrand>\n", (hit_entry(i).dstrand != 0) ? '-' : '+');
@@ -1578,15 +1579,15 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     }
     fprintf(out, "\t\t\t\t<shortVersionScore>%ld</shortVersionScore>\n", score);
     fprintf(out, "\t\t\t\t<shortVersionEValue>%.2g</shortVersionEValue>\n", e);
-    fprintf(out, "\t\t\t</shortVersionHit>\n");
+    fprint(out, "\t\t\t</shortVersionHit>\n");
 
   }
 
-  fprintf(out, "\t\t</shortVersionHits>\n");
+  fprint(out, "\t\t</shortVersionHits>\n");
 
   if (showalignments != 0)
   {
-    fprintf(out, "\t\t<longVersionHits>\n");
+    fprint(out, "\t\t<longVersionHits>\n");
     
     for(long i=0; i<showalignments; i++)
     {
@@ -1594,7 +1595,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       char anchor[200];
       make_anchor(anchor, 200, query.symtype, queryno, i);
       
-      fprintf(out, "\t\t\t<longVersionHit>\n");
+      fprint(out, "\t\t\t<longVersionHit>\n");
       fprintf(out, "\t\t\t\t<longVersionAnchor>%s</longVersionAnchor>\n", anchor);
       
       long deflines = 0;
@@ -1605,7 +1606,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       std::size_t linklen = 0;
       db_parse_header(t, make_view(hit_entry(i).header_address),
 		      1, & deflines, & deflinetable);
-      fprintf(out, "\t\t\t\t<linkContainer>\n");
+      fprint(out, "\t\t\t\t<linkContainer>\n");
       
       for (int d=0; d < deflines; d++)
       {
@@ -1616,27 +1617,27 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   
         if (gi != 0)
 	{
-          fprintf(out, "\t\t\t\t\t<longVersionLink>\n");
+          fprint(out, "\t\t\t\t\t<longVersionLink>\n");
 	  fprintf(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=%s&amp;list_uids=%ld&amp;dopt=%s</longVersionLinkDestination>\n", ncbidb, gi, ncbiopt);
 	  fprintf(out, "\t\t\t\t\t\t<longVersionLinkText>gi|%ld</longVersionLinkText>\n", gi);
-	  fprintf(out, "\t\t\t\t\t</longVersionLink>\n");
+	  fprint(out, "\t\t\t\t\t</longVersionLink>\n");
 	}
       
-	fprintf(out, "\t\t\t\t\t<longVersionLink>\n");
+	fprint(out, "\t\t\t\t\t<longVersionLink>\n");
 	fprintf(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=%s&amp;term=", ncbidb);
 	xml_print(link, linklen);
 	fprintf(out, "&amp;doptcmdl=%s</longVersionLinkDestination>\n", ncbiopt);
-	fprintf(out, "\t\t\t\t\t\t<longVersionLinkText>");
+	fprint(out, "\t\t\t\t\t\t<longVersionLinkText>");
 	xml_print(link, linklen);
-	fprintf(out, "</longVersionLinkText>\n");
-	fprintf(out, "\t\t\t\t\t</longVersionLink>\n");
+	fprint(out, "</longVersionLinkText>\n");
+	fprint(out, "\t\t\t\t\t</longVersionLink>\n");
       
-	fprintf(out, "\t\t\t\t\t<longVersionName>");
+	fprint(out, "\t\t\t\t\t<longVersionName>");
 	xml_print(title);
-	fprintf(out, "</longVersionName>\n");
+	fprint(out, "</longVersionName>\n");
       }
         
-      fprintf(out, "\t\t\t\t</linkContainer>\n");
+      fprint(out, "\t\t\t\t</linkContainer>\n");
     
       long const dlen = hit_entry(i).dlen;
       long const dlennt = hit_entry(i).dlennt;
@@ -1660,25 +1661,25 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       }
       else if ((parameters.symtype>=SymbolType::blastx) && (parameters.symtype<=SymbolType::tblastx))
       {
-	fprintf(out, "\t\t\t\t<longVersionFrames>\n");
+	fprint(out, "\t\t\t\t<longVersionFrames>\n");
 
 	if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
 	{
-	  fprintf(out, "\t\t\t\t\t<longVersionQueryFrame>\n");
+	  fprint(out, "\t\t\t\t\t<longVersionQueryFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<queryStrand>%c</queryStrand>\n", (hit_entry(i).qstrand != 0) ? '-' : '+');
 	  fprintf(out, "\t\t\t\t\t\t<queryFrame>%ld</queryFrame>\n", hit_entry(i).qframe+1);
-	  fprintf(out, "\t\t\t\t\t</longVersionQueryFrame>\n");
+	  fprint(out, "\t\t\t\t\t</longVersionQueryFrame>\n");
 	}
 	
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
-	  fprintf(out, "\t\t\t\t\t<longVersionDatabaseFrame>\n");
+	  fprint(out, "\t\t\t\t\t<longVersionDatabaseFrame>\n");
 	  fprintf(out, "\t\t\t\t\t\t<databaseStrand>%c</databaseStrand>\n", (hit_entry(i).dstrand != 0) ? '-' : '+');
 	  fprintf(out, "\t\t\t\t\t\t<databaseFrame>%ld</databaseFrame>\n", hit_entry(i).dframe+1);
-	  fprintf(out, "\t\t\t\t\t</longVersionDatabaseFrame>\n");
+	  fprint(out, "\t\t\t\t\t</longVersionDatabaseFrame>\n");
 	}
 
-	fprintf(out, "\t\t\t\t</longVersionFrames>\n");
+	fprint(out, "\t\t\t\t</longVersionFrames>\n");
       }
 
       long const score = hit_entry(i).score;
@@ -1698,53 +1699,53 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  qline, aline, dline);
 
-      fprintf(out, "\t\t\t\t<alignment>\n");
-      fprintf(out, "\t\t\t\t\t<subalignment>\n");
+      fprint(out, "\t\t\t\t<alignment>\n");
+      fprint(out, "\t\t\t\t\t<subalignment>\n");
       fprintf(out, "\t\t\t\t\t\t<longVersionScore>%ld</longVersionScore>\n", score);
       fprintf(out, "\t\t\t\t\t\t<longVersionEValue>%.2g</longVersionEValue>\n", e);
-      fprintf(out, "\t\t\t\t\t\t<identical>\n");
+      fprint(out, "\t\t\t\t\t\t<identical>\n");
       fprintf(out, "\t\t\t\t\t\t\t<identicalNominator>%ld</identicalNominator>\n", identities);
       fprintf(out, "\t\t\t\t\t\t\t<identicalDenominator>%ld</identicalDenominator>\n", aligned);
       fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(identities, aligned));
-      fprintf(out, "\t\t\t\t\t\t</identical>\n");
+      fprint(out, "\t\t\t\t\t\t</identical>\n");
 
       if (parameters.symtype != SymbolType::blastn)
       {
-	fprintf(out, "\t\t\t\t\t\t<positive>\n");
+	fprint(out, "\t\t\t\t\t\t<positive>\n");
 	fprintf(out, "\t\t\t\t\t\t\t<positiveNominator>%ld</positiveNominator>\n", positives);
 	fprintf(out, "\t\t\t\t\t\t\t<positiveDenominator>%ld</positiveDenominator>\n", aligned);
 	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(positives, aligned));
-	fprintf(out, "\t\t\t\t\t\t</positive>\n");
+	fprint(out, "\t\t\t\t\t\t</positive>\n");
       }
 
-      fprintf(out, "\t\t\t\t\t\t<indels>\n");
+      fprint(out, "\t\t\t\t\t\t<indels>\n");
       fprintf(out, "\t\t\t\t\t\t\t<indelsNominator>%ld</indelsNominator>\n", indels);
       fprintf(out, "\t\t\t\t\t\t\t<indelsDenominator>%ld</indelsDenominator>\n", aligned);
       fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(indels, aligned));
-      fprintf(out, "\t\t\t\t\t\t</indels>\n");
+      fprint(out, "\t\t\t\t\t\t</indels>\n");
       fprintf(out, "\t\t\t\t\t\t<gaps>%ld</gaps>\n", gaps);
-      fprintf(out, "\t\t\t\t\t\t<alignmentQuery>\n");
+      fprint(out, "\t\t\t\t\t\t<alignmentQuery>\n");
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryStart>%ld</alignmentQueryStart>\n", hit.q_first);
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryLine>%s</alignmentQueryLine>\n", qline.c_str());
       fprintf(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>%ld</alignmentQueryEnd>\n", hit.q_last);
-      fprintf(out, "\t\t\t\t\t\t</alignmentQuery>\n");
+      fprint(out, "\t\t\t\t\t\t</alignmentQuery>\n");
       fprintf(out, "\t\t\t\t\t\t<alignmentLine>%s</alignmentLine>\n", aline.c_str());
-      fprintf(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
+      fprint(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>%ld</alignmentDatabaseStart>\n", hit.d_first);
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>%s</alignmentDatabaseLine>\n", dline.c_str());
       fprintf(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>%ld</alignmentDatabaseEnd>\n", hit.d_last);
-      fprintf(out, "\t\t\t\t\t\t</alignmentDatabase>\n");
-      fprintf(out, "\t\t\t\t\t</subalignment>\n");
-      fprintf(out, "\t\t\t\t</alignment>\n");
-      fprintf(out, "\t\t\t</longVersionHit>\n");
+      fprint(out, "\t\t\t\t\t\t</alignmentDatabase>\n");
+      fprint(out, "\t\t\t\t\t</subalignment>\n");
+      fprint(out, "\t\t\t\t</alignment>\n");
+      fprint(out, "\t\t\t</longVersionHit>\n");
 
 
     }
 
-    fprintf(out, "\t\t</longVersionHits>\n");
+    fprint(out, "\t\t</longVersionHits>\n");
   }
 
-  fprintf(out, "\t</paralignOutput>\n");
+  fprint(out, "\t</paralignOutput>\n");
 }
 
 // the query id ends at the first whitespace character (space, tab,
@@ -1761,7 +1762,7 @@ auto show_description(char const *desc) -> void
 
   for (dptr = desc; not ends_query_id(*dptr); dptr++)
   {
-    putc(*dptr, out);
+    fprint(out, *dptr);
   }
 }
 
@@ -1784,11 +1785,11 @@ auto hits_show_xml(Parameters const & parameters,
 {
   /* Simple XML */
   
-  fprintf(out, "<result>\n");
-  fprintf(out, "  <general>\n");
+  fprint(out, "<result>\n");
+  fprint(out, "  <general>\n");
   fprintf(out, "    <hitcount>%d</hitcount>\n", hits_count);
-  fprintf(out, "  </general>\n");
-  fprintf(out, "  <hits>\n");
+  fprint(out, "  </general>\n");
+  fprint(out, "  <hits>\n");
   
   for(long i=0; i<showhits; i++)
   {
@@ -1799,18 +1800,18 @@ auto hits_show_xml(Parameters const & parameters,
     long const dlen = ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx)) ?
       hit_entry(i).dlennt : hit_entry(i).dlen;
     
-    fprintf(out, "    <hit>\n");
+    fprint(out, "    <hit>\n");
     fprintf(out, "      <hitno>%ld</hitno>\n", i+1);
     fprintf(out, "      <track>%ld</track>\n", seqno);
-    fprintf(out, "      <query>");
+    fprint(out, "      <query>");
     show_description_xml(query.description.c_str());
     fprintf(out,"</query>\n");
-    fprintf(out, "      <name>");
+    fprint(out, "      <name>");
     HeaderLayout layout;
     layout.show_gis = show_gis;
     layout.escaping = Escaping::xml;
     db_showheader(t, make_view(hit_entry(i).header_address), layout);
-    fprintf(out, "</name>\n");
+    fprint(out, "</name>\n");
     fprintf(out, "      <len>%ld</len>\n", dlen);
     fprintf(out, "      <score>%ld</score>\n", score);
     
@@ -1830,9 +1831,9 @@ auto hits_show_xml(Parameters const & parameters,
       whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
 		  qline, aline, dline);
 
-      fprintf(out, "      <alignment>");
+      fprint(out, "      <alignment>");
       fprintf(out, "%s", hit_entry(i).alignment.c_str());
-      fprintf(out, "</alignment>\n");
+      fprint(out, "</alignment>\n");
 
       fprintf(out, "      <qpos>%ld,%ld</qpos>\n", hit.q_first, hit.q_last);
       fprintf(out, "      <dpos>%ld,%ld</dpos>\n", hit.d_first, hit.d_last);
@@ -1842,10 +1843,10 @@ auto hits_show_xml(Parameters const & parameters,
       fprintf(out, "      <dseq>%s</dseq>\n", dline.c_str());
 
     }
-    fprintf(out, "    </hit>\n");
+    fprint(out, "    </hit>\n");
   }
-  fprintf(out, "  </hits>\n");
-  fprintf(out, "</result>\n");
+  fprint(out, "  </hits>\n");
+  fprint(out, "</result>\n");
 }
 
 auto hits_show_tsv(Parameters const & parameters,
@@ -1873,7 +1874,7 @@ auto hits_show_tsv(Parameters const & parameters,
   for(long i=0; i<showalignments; i++)
   {
     show_description(query.description.c_str());
-    putc('\t', out);
+    fprint(out, '\t');
     HeaderLayout layout;
     layout.show_gis = 1;
     layout.text = DeflineText::identifier;
@@ -1912,7 +1913,7 @@ auto hits_show_tsv(Parameters const & parameters,
       fprintf(out, "\t%ld", score);
     }
 
-    fprintf(out, "\n");
+    fprint(out, "\n");
   }
 }
 
@@ -1924,18 +1925,18 @@ auto hits_show_plain(Parameters const & parameters,
 {
     if (hits_count == 0)
     {
-      fprintf(out, "\nNo hits.\n");
+      fprint(out, "\nNo hits.\n");
     }
     else
     {
       if (stats_available != 0)
       {
-	fprintf(out, "                                                                 Score    E\n");
-	fprintf(out, "Sequences producing significant alignments:                      (bits) Value\n\n");
+	fprint(out, "                                                                 Score    E\n");
+	fprint(out, "Sequences producing significant alignments:                      (bits) Value\n\n");
       }
       else
       {
-	fprintf(out, "Sequences producing significant alignments:                         Score\n\n");
+	fprint(out, "Sequences producing significant alignments:                         Score\n\n");
       }
 	  
       for(long i=0; i<showhits; i++)
@@ -1993,7 +1994,7 @@ auto hits_show_plain(Parameters const & parameters,
 		
 	  fprintf(out, " %5ld", bits);
 		
-	  fprintf(out, "   ");
+	  fprint(out, "   ");
 		
 	  hits_show_expect(expect_value);
 	}
@@ -2002,12 +2003,12 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprintf(out, " %5ld", score);
 	}
 
-	putc('\n', out);
+	fprint(out, '\n');
       }
 
       for(long i=0; i<showalignments; i++)
       {
-	fprintf(out, "\n");
+	fprint(out, "\n");
 	HeaderLayout layout;
 	layout.show_gis = show_gis;
 	layout.indent = 10;
@@ -2022,7 +2023,7 @@ auto hits_show_plain(Parameters const & parameters,
 	{
 	  fprintf(out, "          Length = %ld\n", hit_entry(i).dlen);
 	}
-	fprintf(out, "\n");
+	fprint(out, "\n");
 	      
 	long const score = hit_entry(i).score;
 
@@ -2039,7 +2040,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprintf(out, " Score = %ld", score);
 	}
 
-	putc('\n', out);
+	fprint(out, '\n');
 
 	long identities = 0;
 	long positives = 0;
@@ -2061,7 +2062,7 @@ auto hits_show_plain(Parameters const & parameters,
 	{
 	  fprintf(out, ", Gaps = %ld/%ld (%ld%%)", indels, aligned, indels * 100 / aligned);
 	}
-	fprintf(out, "\n");
+	fprint(out, "\n");
 
 	if (parameters.symtype == SymbolType::blastn)
 	{
@@ -2085,7 +2086,7 @@ auto hits_show_plain(Parameters const & parameters,
 	}
 
 	show_align(hit);
-	fprintf(out, "\n");
+	fprint(out, "\n");
       }
 	  
     }
@@ -2105,26 +2106,26 @@ auto hits_show_begin(OutputFormat view) -> void
   else if (view==OutputFormat::xml)
     {
       // one root element around the results of all queries (KI-26)
-      fprintf(out, "<?xml version=\"1.0\"?>\n");
-      fprintf(out, "<results>\n");
+      fprint(out, "<?xml version=\"1.0\"?>\n");
+      fprint(out, "<results>\n");
     }
   else if (view==OutputFormat::paralign_xml)
     {
       char url1[] = "http://www.w3.org/2001/XMLSchema-instance";
       char url2[] = "http://www.paralign.org/ParalignXML.xsd";
 
-      fprintf(out, "<?xml version=\"1.0\"?>\n");
+      fprint(out, "<?xml version=\"1.0\"?>\n");
       fprintf(out, "<ParalignXML xmlns:xsi=\"%s\" xsi:noNamespaceSchemaLocation=\"%s\">\n",
 	      url1, url2);
-      fprintf(out, "\t<programInformation>\n");
-      fprintf(out, "\t\t<programName>swipe</programName>\n");
+      fprint(out, "\t<programInformation>\n");
+      fprint(out, "\t\t<programName>swipe</programName>\n");
       fprintf(out, "\t\t<programVersion>%s</programVersion>\n", swipe_name_and_version);
-      fprintf(out, "\t\t<programDescription>Smith-Waterman database searches with inter-sequence SIMD parallelisation</programDescription>\n");
-      fprintf(out, "\t\t<articleReferences>\n");
-      fprintf(out, "\t\t\t<reference>T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.</reference>\n");
-      fprintf(out, "\t\t</articleReferences>\n");
-      fprintf(out, "\t\t<license>SWIPE is available under the GNU Affero General Public License, version 3</license>\n");
-      fprintf(out, "\t</programInformation>\n");
+      fprint(out, "\t\t<programDescription>Smith-Waterman database searches with inter-sequence SIMD parallelisation</programDescription>\n");
+      fprint(out, "\t\t<articleReferences>\n");
+      fprint(out, "\t\t\t<reference>T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.</reference>\n");
+      fprint(out, "\t\t</articleReferences>\n");
+      fprint(out, "\t\t<license>SWIPE is available under the GNU Affero General Public License, version 3</license>\n");
+      fprint(out, "\t</programInformation>\n");
     }
 }
 
@@ -2132,11 +2133,11 @@ auto hits_show_end(OutputFormat view) -> void
 {
   if (view==OutputFormat::xml)
   {
-    fprintf(out, "</results>\n");
+    fprint(out, "</results>\n");
   }
   else if (view==OutputFormat::paralign_xml)
   {
-    fprintf(out, "</ParalignXML>\n");
+    fprint(out, "</ParalignXML>\n");
   }
 }
 
