@@ -29,10 +29,13 @@
 #ifndef SWIPE_FATAL_ALLOCATOR_H
 #define SWIPE_FATAL_ALLOCATOR_H
 
-#include "swipe.h"  // xmalloc
 #include <cstddef>  // std::size_t
 #include <cstdlib>  // std::free
 #include <vector>
+
+
+// a 16-byte aligned block, or fatal() when out of memory (swipe.cc)
+auto xmalloc(std::size_t size) -> void *;
 
 
 /* A minimal standard-library allocator that obtains memory through xmalloc and

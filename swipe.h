@@ -44,6 +44,7 @@
 #include <chrono>
 #include <ctime>
 #include <string>
+#include "fatal_allocator.h"  // Buffer, xmalloc
 
 
 #ifdef __APPLE__
@@ -166,7 +167,6 @@ struct Parameters
   std::int64_t effdbsize = default_effdbsize;
 };
 
-auto xmalloc(size_t size) -> void *;
 auto xrealloc(void *ptr, size_t size) -> void *;
 
 
@@ -437,7 +437,7 @@ struct HitStrands
 };
 
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
-auto hits_sort() -> long *;
+auto hits_sort() -> Buffer<long>;
 auto hits_getcount() -> long;
 auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;

@@ -160,7 +160,7 @@ auto xrealloc(void *ptr, size_t size) -> void *
 namespace {
 
 long alignedhits;
-long * hits_sorted;
+Buffer<long> hits_sorted;
 
 long align_volnext;
 
@@ -317,7 +317,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
-	  long const hs = hits_sorted[hitno];
+	  long const hs = hits_sorted[static_cast<std::size_t>(hitno)];
 	  long seqno = 0;
 	  long score = 0;
 	  long hqstrand = 0;
@@ -384,7 +384,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(parameters, sdp->dbt, hits_sorted[hitno]);
+    hits_align(parameters, sdp->dbt, hits_sorted[static_cast<std::size_t>(hitno)]);
   }
 }
 
@@ -527,7 +527,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
 auto align_threads_done() -> void
 {
-  free(hits_sorted);
+  hits_sorted = Buffer<long>();
   free(align_volchunks);
   free(align_volseqs);
 }

@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::min
+#include <algorithm>  // std::min, std::sort
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -34,6 +34,7 @@
 #include <cstdint>  // std::int64_t, INT64_C
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
+#include <numeric>  // std::iota
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -200,17 +201,14 @@ auto hits_compare(void const * a, void const * b) -> int
 
 }  // anonymous namespace
 
-auto hits_sort() -> long *
+auto hits_sort() -> Buffer<long>
 {
-  long * hits_sorted = static_cast<long *>(xmalloc(static_cast<std::size_t>(hits_count) * sizeof(long)));
-
-  for (long i = 0; i < hits_count; i++)
-  {
-    hits_sorted[i] = i;
-  }
-
-  qsort(hits_sorted, static_cast<std::size_t>(hits_count), sizeof(long), hits_compare);
-
+  Buffer<long> hits_sorted(static_cast<std::size_t>(hits_count));
+  std::iota(hits_sorted.begin(), hits_sorted.end(), 0L);
+  std::sort(hits_sorted.begin(), hits_sorted.end(),
+            [](long const lhs, long const rhs) -> bool {
+              return hits_compare(&lhs, &rhs) < 0;
+            });
   return hits_sorted;
 }
 
