@@ -1409,7 +1409,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprintf(out, "</queryFilename>\n");
   fprintf(out, "\t\t\t<querySequencetype>%s</querySequencetype>\n", qseqtypedescr);
   fprintf(out, "\t\t\t<queryDescription>");
-  xml_print(query.description);
+  xml_print(query.description.c_str());
   fprintf(out, "</queryDescription>\n");
   fprintf(out, "\t\t\t<queryLength>%ld</queryLength>\n", q.len);
   fprintf(out, "\t\t\t<querySequence>");
@@ -1853,7 +1853,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprintf(out, "      <hitno>%ld</hitno>\n", i+1);
     fprintf(out, "      <track>%ld</track>\n", seqno);
     fprintf(out, "      <query>");
-    show_description_xml(query.description);
+    show_description_xml(query.description.c_str());
     fprintf(out,"</query>\n");
     fprintf(out, "      <name>");
     HeaderLayout layout;
@@ -1912,7 +1912,7 @@ auto hits_show_tsv(Parameters const & parameters,
   if (showcomments != 0)
     {
       fprintf(out, "# %s - %s\n", swipe_name_and_version, ref);
-      fprintf(out, "# Query: %s\n", query.description);
+      fprintf(out, "# Query: %s\n", query.description.c_str());
       fprintf(out, "# Database: %s\n", parameters.databasename);
       if (stats_available != 0)
       {
@@ -1926,7 +1926,7 @@ auto hits_show_tsv(Parameters const & parameters,
 
   for(long i=0; i<showalignments; i++)
   {
-    show_description(query.description);
+    show_description(query.description.c_str());
     putc('\t', out);
     HeaderLayout layout;
     layout.show_gis = 1;

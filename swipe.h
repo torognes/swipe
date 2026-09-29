@@ -213,15 +213,16 @@ extern short * score_matrix_16;
 
 struct sequence
 {
-  char * seq;
+  char * seq;  // storage.data(), or nullptr
   long len;
+  Buffer<char> storage;  // owns seq
 };
 
 struct query_s
 {
   struct sequence nt[2]; /* 2 strands */
   struct sequence aa[6]; /* 6 frames */
-  char * description;
+  std::string description;
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
@@ -339,10 +340,10 @@ auto score_matrix_init(Parameters const & parameters) -> void;
 auto score_matrix_free() -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(char const * seq, long len) -> char *;
+auto revcompl(char const * seq, long len) -> Buffer<char>;
 auto translate(char const * dna, long dlen,
                long strand, long frame, long table,
-               char ** protp, long * plenp) -> void;
+               Buffer<char> & protein, long * plenp) -> void;
 
 struct asnparse_info;
 using apt = asnparse_info *;

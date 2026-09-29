@@ -25,10 +25,12 @@
 
 #include "swipe.h"
 #include <cassert>
-#include <cstddef>  // std::size_t
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdio>  // std::getc, EOF
-#include <cstring>  // std::strcpy
+#include <cstring>  // std::strcmp
+#include <iterator>  // std::next
 #include <string>
+#include <utility>  // std::move
 
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
@@ -238,7 +240,7 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
     fatal("Cannot open query file.");
   }
 
-  query.description = nullptr;
+  query.description.clear();
   query.dlen = 0;
   query.symtype = symbol_type;
   query.strands = strands;
@@ -286,28 +288,18 @@ namespace {
 
 auto query_free() -> void
 {
-  if (query.description != nullptr)
-  {
-    free(query.description);
-  }
-  query.description = nullptr;
+  query.description.clear();
   query.dlen = 0;
 
   for(long s=0; s<2; s++)
   {
-    if (query.nt[s].seq != nullptr)
-    {
-      free(query.nt[s].seq);
-    }
+    query.nt[s].storage = Buffer<char>();
     query.nt[s].seq = nullptr;
     query.nt[s].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      if (query.aa[(3 * s) + f].seq != nullptr)
-      {
-	free(query.aa[(3 * s) + f].seq);
-      }
+      query.aa[(3*s)+f].storage = Buffer<char>();
       query.aa[(3*s)+f].seq = nullptr;
       query.aa[(3*s)+f].len = 0;
     }
@@ -352,20 +344,18 @@ auto query_read() -> int
 
   if (header[0] == '>')
   {
-    query.description = static_cast<char*>(xmalloc(header.size()));
-    std::strcpy(query.description, header.c_str() + 1);
+    query.description.assign(header, 1, std::string::npos);
     query.dlen = len-1;
     read_line(query_fp, query_line);
   }
   else
   {
-    query.description = static_cast<char*>(xmalloc(1));
-    query.description[0] = 0;
+    query.description.clear();
     query.dlen = 0;
   }
 
   int size = LINE_MAX;
-  char * query_sequence = static_cast<char *>(xmalloc(static_cast<std::size_t>(size)));
+  Buffer<char> query_sequence(static_cast<std::size_t>(size));
   query_sequence[0] = 0;
   long query_length = 0;
  
@@ -396,24 +386,26 @@ auto query_read() -> int
 	if (query_length + 1 >= size)
 	{
 	  size += LINE_MAX;
-	  query_sequence = static_cast<char*>(xrealloc(query_sequence, static_cast<std::size_t>(size)));
+	  query_sequence.resize(static_cast<std::size_t>(size));
 	}
-	query_sequence[query_length++] = symbol;
+	query_sequence[static_cast<std::size_t>(query_length++)] = symbol;
       }
     }
     read_line(query_fp, query_line);
   }
-  query_sequence[query_length] = 0;
+  query_sequence[static_cast<std::size_t>(query_length)] = 0;
     
   if ((query.symtype == SymbolType::blastn) || (query.symtype == SymbolType::blastx) || (query.symtype == SymbolType::tblastx))
   {
-    query.nt[0].seq = query_sequence;
+    query.nt[0].storage = std::move(query_sequence);
+    query.nt[0].seq = query.nt[0].storage.data();
     query.nt[0].len = query_length;
 
     if (searches_strand(query.strands, 1))
     {
       //      printf("Reverse complement.\n");
-      query.nt[1].seq = revcompl(query.nt[0].seq, query.nt[0].len);
+      query.nt[1].storage = revcompl(query.nt[0].seq, query.nt[0].len);
+      query.nt[1].seq = query.nt[1].storage.data();
       query.nt[1].len = query.nt[0].len;
     }
     
@@ -425,8 +417,10 @@ auto query_read() -> int
 	{
 	  for(long f=0; f<3; f++)
 	  {
+	    struct sequence & frame_sequence = query.aa[(3*s)+f];
 	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
-		      & query.aa[(3*s)+f].seq, & query.aa[(3*s)+f].len);
+		      frame_sequence.storage, & frame_sequence.len);
+	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
 	}
       }
@@ -434,22 +428,24 @@ auto query_read() -> int
   }
   else
   {
-    query.aa[0].seq = query_sequence;
+    query.aa[0].storage = std::move(query_sequence);
+    query.aa[0].seq = query.aa[0].storage.data();
     query.aa[0].len = query_length;
   }
 
   return 1;
 }
 
-auto revcompl(char const * seq, long len) -> char *
+auto revcompl(char const * seq, long len) -> Buffer<char>
 {
-  char * rc = static_cast<char *>(xmalloc(static_cast<std::size_t>(len) + 1));
+  Buffer<char> rc_buffer(static_cast<std::size_t>(len) + 1);
+  char * rc = rc_buffer.data();
   for (long i = 0; i < len; i++)
   {
     rc[i] = ntcompl[static_cast<int>(seq[len - 1 - i])];
   }
   rc[len] = 0;
-  return rc;
+  return rc_buffer;
 }
 
 namespace {
@@ -535,7 +531,7 @@ auto translate_init(long qtableno, long dtableno) -> void
 
 auto translate(char const * dna, long dlen, 
 	       long strand, long frame, long table,
-	       char ** protp, long * plenp) -> void
+	       Buffer<char> & protein, long * plenp) -> void
 {
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
@@ -554,7 +550,8 @@ auto translate(char const * dna, long dlen,
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
-  char * prot = static_cast<char*>(xmalloc(1 + static_cast<std::size_t>(plen)));
+  protein.resize(1 + static_cast<std::size_t>(plen));
+  char * prot = protein.data();
 
   if (strand == 0)
   {
@@ -584,7 +581,6 @@ auto translate(char const * dna, long dlen,
   }
 
   prot[ppos] = 0;
-  *protp = prot;
   *plenp = plen;
 }
 
@@ -592,15 +588,15 @@ auto translate(char const * dna, long dlen,
 auto query_show() -> void
 {
   constexpr std::size_t linewidth = 60;
-  for (std::size_t i=0; i<strlen(query.description); i+=linewidth)
+  for (std::size_t i=0; i<query.description.size(); i+=linewidth)
   {
     if (i == 0)
     {
-      fprintf(out, "Query description: %-60.60s\n", query.description+i);
+      fprintf(out, "Query description: %-60.60s\n", std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
     }
     else
     {
-      fprintf(out, "                   %-60.60s\n", query.description + i);
+      fprintf(out, "                   %-60.60s\n", std::next(query.description.c_str(), static_cast<std::ptrdiff_t>(i)));
     }
   }
 
