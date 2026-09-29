@@ -41,6 +41,7 @@
 #include <cmath>
 #include <x86intrin.h>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <ctime>
 #include <string>
@@ -62,7 +63,7 @@
 #endif
 
 // "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
-extern char const swipe_name_and_version[];
+extern char const * const swipe_name_and_version;
 
 // Should be 32bits integer
 using UINT32 = unsigned int;
@@ -180,14 +181,13 @@ extern long cpu_feature_sse41;
 
 extern long * const score_matrix_63;
 extern long totalhits;
-extern char const * gencode_names[];
+extern std::array<char const *, 23> const gencode_names;
 extern long queryno;
 extern long compute7;
 
-extern char map_ncbi_nt4[];
-extern char map_ncbi_nt16[];
-extern char map_ncbi_aa[];
-extern char map_sound[];
+extern std::array<char, 256> const map_ncbi_nt16;
+extern std::array<char, 256> const map_ncbi_aa;
+extern std::array<char, 256> const map_sound;
 
 extern char const * sym_ncbi_nt4;
 extern char const * sym_ncbi_nt16;
@@ -195,19 +195,13 @@ extern char const * sym_ncbi_nt16u;
 extern char const * sym_ncbi_aa;
 extern char const * sym_sound;
 
-extern char ntcompl[];
-extern char d_translate[];
+extern std::array<char, 16> const ntcompl;
+// the codon translation table of the database (16 x 16 x 16 codes of
+// nucleotides), filled by translate_init()
+constexpr std::size_t translation_table_size = std::size_t{16} * 16 * 16;
+extern std::array<char, translation_table_size> d_translate;
 
 extern FILE * out;
-
-extern char const mat_blosum45[];
-extern char const mat_blosum50[];
-extern char const mat_blosum62[];
-extern char const mat_blosum80[];
-extern char const mat_blosum90[];
-extern char const mat_pam30[];
-extern char const mat_pam70[];
-extern char const mat_pam250[];
 
 extern long SCORELIMIT_7;
 extern long SCORELIMIT_16;
@@ -223,15 +217,29 @@ struct sequence
   Buffer<char> storage;  // owns seq
 };
 
+// the index of a query strand (0: plus, 1: minus), and of a frame of a
+// translated query or of its search tables: (3 x strand) + frame
+inline auto strand_index(long const strand) -> std::size_t
+{
+  assert((strand >= 0) and (strand < 2));
+  return static_cast<std::size_t>(strand);
+}
+
+inline auto frame_index(long const strand, long const frame) -> std::size_t
+{
+  assert((frame >= 0) and (frame < 3));
+  return (3 * strand_index(strand)) + static_cast<std::size_t>(frame);
+}
+
 struct query_s
 {
-  struct sequence nt[2]; /* 2 strands */
-  struct sequence aa[6]; /* 6 frames */
+  std::array<struct sequence, 2> nt; /* 2 strands */
+  std::array<struct sequence, 6> aa; /* 6 frames */
   std::string description;
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
-  char * map;
+  char const * map;
   char const * sym;
 };
 
@@ -429,7 +437,7 @@ constexpr long untranslated_frame = -1;
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
-		    long * ntlenp, int c) -> View<char>;
+		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
 auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
 

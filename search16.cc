@@ -25,8 +25,8 @@
 
 #include "swipe.h"
 
-constexpr long CHANNELS = 8;
-constexpr long CDEPTH = 4;
+constexpr std::size_t CHANNELS = 8;
+constexpr std::size_t CDEPTH = 4;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
@@ -273,16 +273,16 @@ inline auto dprofile_fill16(WORD * dprofile_word,
   __m128i xmm30;
   __m128i xmm31;
   
-  for (long j=0; j<CDEPTH; j++)
+  for (std::size_t j = 0; j < CDEPTH; j++)
   {
-    int d[CHANNELS];
-    for (int z = 0; z < CHANNELS; z++)
+    std::array<int, CHANNELS> d;
+    for (std::size_t z = 0; z < CHANNELS; z++)
     {
       d[z] = dseq[(j * CHANNELS) + z] << 5;
     }
 
     //      for(int i=0; i<24; i += 8)
-    for(long i=0; i<32; i += 8)
+    for(std::size_t i=0; i<32; i += 8)
     {
       xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
       xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
@@ -358,17 +358,18 @@ auto search16(WORD * * q_start,
   __m128i T0;
   __m128i * const hep = reinterpret_cast<__m128i*>(hearray);
   __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
-  BYTE const * d_begin[CHANNELS];
-  BYTE const * d_pos[CHANNELS];
-  BYTE const * d_best[CHANNELS];
-  BYTE const * d_end[CHANNELS];
+  std::array<BYTE const *, CHANNELS> d_begin;
+  std::array<BYTE const *, CHANNELS> d_pos;
+  std::array<BYTE const *, CHANNELS> d_best;
+  std::array<BYTE const *, CHANNELS> d_end;
 
-  __m128i dseqalloc[CDEPTH];
+  // the database residues of the channels, 16-byte aligned for the loads
+  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
 
-  BYTE * dseq = reinterpret_cast<BYTE *>(& dseqalloc);
+  BYTE * dseq = dseqalloc.data();
   BYTE const zero = 0;
 
-  long seq_id[CHANNELS];
+  std::array<long, CHANNELS> seq_id;
   long next_id = 0;
   unsigned done = 0;
   
@@ -386,7 +387,7 @@ auto search16(WORD * * q_start,
     hep[(2*a)+1] = Z;
   }
 
-  for (int c=0; c<CHANNELS; c++)
+  for (std::size_t c = 0; c < CHANNELS; c++)
   {
     d_begin[c] = &zero;
     d_pos[c] = d_begin[c];
@@ -401,9 +402,9 @@ auto search16(WORD * * q_start,
   {
     if (easy != 0)
     {
-      for(int c=0; c<CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
-	for(int j=0; j<CDEPTH; j++)
+	for (std::size_t j = 0; j < CDEPTH; j++)
 	{
 	  if (d_pos[c] < d_end[c])
 	  {
@@ -427,7 +428,7 @@ auto search16(WORD * * q_start,
       /* save column address if new highscore */
       
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
-      for (int c = 0; c < CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if ((mask & (3 << 2 * c)) != 0)
 	{
@@ -445,11 +446,11 @@ auto search16(WORD * * q_start,
       M = _mm_setzero_si128();
       T = T0;
 
-      for (int c=0; c<CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if (d_pos[c] < d_end[c])
 	{
-	  for(int j=0; j<CDEPTH; j++)
+	  for (std::size_t j = 0; j < CDEPTH; j++)
 	  {
 	    if (d_pos[c] < d_end[c])
 	    {
@@ -499,7 +500,7 @@ auto search16(WORD * * q_start,
 	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
 	    next_id++;
 		      
-	    for(int j=0; j<CDEPTH; j++)
+	    for (std::size_t j = 0; j < CDEPTH; j++)
 	    {
 	      if (d_pos[c] < d_end[c])
 	      {
@@ -522,7 +523,7 @@ auto search16(WORD * * q_start,
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
 	    d_end[c] = d_begin[c];
-	    for (int j = 0; j < CDEPTH; j++)
+	    for (std::size_t j = 0; j < CDEPTH; j++)
 	    {
 	      dseq[(CHANNELS * j) + c] = 0;
 	    }
@@ -545,7 +546,7 @@ auto search16(WORD * * q_start,
       SL = _mm_adds_epi16(SL, M);
       SL = _mm_adds_epi16(SL, M);
       int const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
-      for (int c = 0; c < CHANNELS; c++)
+      for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if ((mask & (3 << 2 * c)) != 0)
 	{

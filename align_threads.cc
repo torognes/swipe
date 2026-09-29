@@ -70,12 +70,12 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	qlen = query.nt[s].len;
-	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s].resize(static_cast<std::size_t>(qlen));
-	for (std::size_t i = 0; i < sdp->qtable[3*s].size(); i++)
+	qlen = query.nt[strand_index(s)].len;
+	sdp->qlen[frame_index(s, 0)] = qlen;
+	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
+	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
 	{
-	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[s].seq[i]);
+	  sdp->qtable[frame_index(s, 0)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[strand_index(s)].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -100,12 +100,12 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
       {
 	for(long f=0; f<3; f++)
 	{
-	  qlen = query.aa[(3*s)+f].len;
-	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f].resize(static_cast<std::size_t>(qlen));
-	  for (std::size_t i = 0; i < sdp->qtable[(3*s)+f].size(); i++)
+	  qlen = query.aa[frame_index(s, f)].len;
+	  sdp->qlen[frame_index(s, f)] = qlen;
+	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
+	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
 	  {
-	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[(3*s)+f].seq[i]);
+	    sdp->qtable[frame_index(s, f)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[frame_index(s, f)].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -229,8 +229,8 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
 
 
-	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe].data();
-	  long const qlen = sdp->qlen[(3*qstrand)+qframe];
+	  BYTE ** qtable = sdp->qtable[frame_index(qstrand, qframe)].data();
+	  long const qlen = sdp->qlen[frame_index(qstrand, qframe)];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
@@ -242,7 +242,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 		    reinterpret_cast<WORD*>(score_matrix_16),
 		    reinterpret_cast<WORD*>(sdp->dprofile.data()),
 		    reinterpret_cast<WORD*>(sdp->hearray.data()),
-		    sdp->dbta,
+		    sdp->dbta.data(),
 		    static_cast<long>(sdp->start_count),
 		    sdp->start_list.data(),
 		    sdp->scores.data(),

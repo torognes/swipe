@@ -32,9 +32,14 @@
 #include <cstddef>  // std::size_t
 #include <cstdlib>  // std::strtol
 #include <cstring>  // std::memcpy
+#include <iterator>  // std::next
 #include <limits>
 
-char const mat_blosum45[] = 
+// the built-in score matrices, in the NCBI format read by
+// score_matrix_read_string()
+namespace {
+
+constexpr char const * mat_blosum45 =
 "# Entries for the BLOSUM45 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -2 -2  0 -1 -1 -1 -1 -5\n\
@@ -63,7 +68,7 @@ Z -1  1  0  1 -3  4  5 -2  0 -3 -2  1 -1 -3 -1  0 -1 -2 -2 -3  1 -2  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-char const mat_blosum50[] =
+constexpr char const * mat_blosum50 =
 "# Entries for the BLOSUM50 matrix at a scale of ln(2)/3.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -1 -2 -1 -1 -1  0 -2 -1 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -5\n\
@@ -92,7 +97,7 @@ Z -1  0  0  1 -3  4  5 -2  0 -3 -3  1 -1 -4 -1  0 -1 -2 -2 -3  1 -3  5 -1 -5\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -5\n\
 * -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5 -5  1\n";
 
-char const mat_blosum62[] =
+constexpr char const * mat_blosum62 =
 "# Entries for the BLOSUM62 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  4 -1 -2 -2  0 -1 -1  0 -2 -1 -1 -1 -1 -2 -1  1  0 -3 -2  0 -2 -1 -1 -1 -4\n\
@@ -121,7 +126,7 @@ Z -1  0  0  1 -3  4  4 -2  0 -3 -3  1 -1 -3 -1  0 -1 -2 -2 -2  0 -3  4 -1 -4\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -4\n\
 * -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1\n";
 
-char const mat_blosum80[] =
+constexpr char const * mat_blosum80 =
 "# Entries for the BLOSUM80 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -2 -1 -1 -1  0 -2 -2 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -2 -1 -1 -6\n\
@@ -150,7 +155,7 @@ Z -1  0  0  1 -4  4  5 -3  0 -4 -3  1 -1 -4 -2  0 -1 -3 -3 -3  0 -3  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-char const mat_blosum90[] =
+constexpr char const * mat_blosum90 =
 "# Entries for the BLOSUM90 matrix at a scale of ln(2)/2.0.\n\
    A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  J  Z  X  *\n\
 A  5 -2 -2 -3 -1 -1 -1  0 -2 -2 -2 -1 -2 -3 -1  1  0 -4 -3 -1 -2 -2 -1 -1 -6\n\
@@ -179,7 +184,7 @@ Z -1  0 -1  1 -5  5  5 -3  0 -4 -4  1 -2 -4 -2 -1 -1 -4 -3 -3  0 -4  5 -1 -6\n\
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -6\n\
 * -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6 -6  1\n";
 
-char const mat_pam30[] =
+constexpr char const * mat_pam30 =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -216,7 +221,7 @@ X  -3  -6  -3  -5  -9  -5  -5  -5  -5  -5  -6  -5  -5  -8  -5  -3  -4 -11  -7  -
 * -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17 -17   1\n";
 
 
-char const mat_pam70[] =
+constexpr char const * mat_pam70 =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -253,7 +258,7 @@ X  -2  -3  -2  -3  -6  -2  -3  -3  -3  -3  -4  -3  -3  -5  -3  -1  -2  -7  -5  -
 * -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11 -11   1\n";
 
 
-char const mat_pam250[] =
+constexpr char const * mat_pam250 =
 "#\n\
 # This matrix was produced by \"pam\" Version 1.0.6 [28-Jul-93]\n\
 #\n\
@@ -288,7 +293,7 @@ B  0 -1  2  3 -4  1  3  0  1 -2 -3  1 -2 -4 -1  0  0 -5 -3 -2  3  2 -1\n\
 Z  0  0  1  3 -5  3  3  0  2 -2 -3  0 -2 -5  0  0 -1 -6 -4 -2  2  3 -1\n\
 X  0 -1  0 -1 -3 -1 -1 -1 -1 -1 -1 -1 -1 -2 -1  0  0 -4 -2 -1 -1 -1 -1\n";
 
-char const mat_identity_5_1[] =
+constexpr char const * mat_identity_5_1 =
 "#  Identity matrix with 31 symbols for sounds\n\
     A  B  C  D  E  F  G  H  I  J  K  L  M  N  O  P  Q  R  S  T  U  V  W  X  Y  Z  a  b  c  d  e\n\
 A   5 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1\n\
@@ -322,6 +327,8 @@ b  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 c  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  5 -1 -1\n\
 d  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  5 -1\n\
 e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  5\n";
+
+}  // anonymous namespace
 
 long SCORELIMIT_7;
 long SCORELIMIT_16;
@@ -365,15 +372,15 @@ auto next_score(char * & cursor) -> long
 
 auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
 {
-  char line[LINE_MAX];
-  char order[LINE_MAX];
+  std::array<char, LINE_MAX> line {{}};
+  std::array<char, LINE_MAX> order {{}};
 
   int a = 0;
   int b = 0;
   int i = 0;
   int symbols = 0;
   long sc = 0; 
-  char * map = nullptr;
+  char const * map = nullptr;
   char * p = nullptr;
   char * q = nullptr;
   char c = 0;
@@ -387,19 +394,20 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound;
+    map = map_sound.data();
   }
   else
   {
-    map = map_ncbi_aa;
+    map = map_ncbi_aa.data();
   }
 
   symbols = 0;
 
-  while(fgets(line, LINE_MAX, fp) != nullptr)
+  while(fgets(line.data(), LINE_MAX, fp) != nullptr)
     {
-      p = line;
-      c = *p++;
+      p = line.data();
+      c = *p;
+      p = std::next(p);
       
       switch(c)
 	{
@@ -417,13 +425,15 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	  
 	  /* read order of symbols, copy non-whitespace chars */
 	  
-	  q = order;
+	  q = order.data();
 
-	  while ((c = *p++) != 0)
+	  while ((c = *p) != 0)
 	  {
+	    p = std::next(p);
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
-		*q++ = map[static_cast<unsigned char>(c)];
+		*q = map[static_cast<unsigned char>(c)];
+		q = std::next(q);
 		symbols++;
 	      }
 	  }
@@ -439,7 +449,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	    {
 	      sc = next_score(p);
 
-	      b = order[i];
+	      b = order[static_cast<std::size_t>(i)];
 
 	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
 	      {
@@ -456,15 +466,15 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
 auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
-  char line[LINE_MAX];
-  char order[LINE_MAX];
+  std::array<char, LINE_MAX> line {{}};
+  std::array<char, LINE_MAX> order {{}};
 
   int a = 0;
   int b = 0;
   int i = 0;
   int symbols = 0;
   long sc = 0; 
-  char * map = nullptr;
+  char const * map = nullptr;
   char * p = nullptr;
   char * q = nullptr;
   char c = 0;
@@ -478,11 +488,11 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound;
+    map = map_sound.data();
   }
   else
   {
-    map = map_ncbi_aa;
+    map = map_ncbi_aa.data();
   }
 
   symbols = 0;
@@ -501,11 +511,12 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
       }
 
       assert(linelen < LINE_MAX);
-      std::memcpy(line, s, linelen);
+      std::memcpy(line.data(), s, linelen);
       line[linelen] = 0;
 
-      p = line;
-      c = *p++;
+      p = line.data();
+      c = *p;
+      p = std::next(p);
       
       switch(c)
 	{
@@ -522,13 +533,15 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	  
 	  /* read order of symbols, copy non-whitespace chars */
 	  
-	  q = order;
+	  q = order.data();
 
-	  while ((c = *p++) != 0)
+	  while ((c = *p) != 0)
 	  {
+	    p = std::next(p);
 	    if (strchr(" \t\n", c) == nullptr)
 	      {
-		*q++ = map[static_cast<unsigned char>(c)];
+		*q = map[static_cast<unsigned char>(c)];
+		q = std::next(q);
 		symbols++;
 	      }
 	  }
@@ -544,7 +557,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	    {
 	      sc = next_score(p);
 
-	      b = order[i];
+	      b = order[static_cast<std::size_t>(i)];
 
 	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
 	      {
@@ -557,11 +570,11 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
 	if (nextline != nullptr)
 	{
-	  s = nextline + 1;
+	  s = std::next(nextline);
 	}
 	else
 	{
-	  s = s + strlen(s);
+	  s = std::next(s, static_cast<std::ptrdiff_t>(strlen(s)));
 	}
     }
 }

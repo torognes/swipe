@@ -32,6 +32,7 @@
 
 #include "swipe.h"
 #include "fatal_allocator.h"  // Buffer
+#include <array>
 #include <cstddef>  // std::size_t
 
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
@@ -41,11 +42,11 @@ constexpr std::size_t profile_bytes = std::size_t{32} * 64;
 struct search_data
 {
   struct db_thread_s * dbt;
-  struct db_thread_s * dbta[8];
+  std::array<struct db_thread_s *, 8> dbta;
 
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;
-  Buffer<BYTE *> qtable[6];  // empty: tables not allocated
+  std::array<Buffer<BYTE *>, 6> qtable;  // empty: tables not allocated
 
   Buffer<long> scores;
   Buffer<long> bestpos;
@@ -54,7 +55,7 @@ struct search_data
   Buffer<long> in_list;
   Buffer<long> out_list;
 
-  long qlen[6];
+  std::array<long, 6> qlen;
 
   std::size_t start_count;
   std::size_t in_count;

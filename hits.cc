@@ -673,8 +673,8 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
     }
     else
     {
-      qseq = query.aa[(3*h->qstrand) + h->qframe].seq;
-      qlen = query.aa[(3*h->qstrand) + h->qframe].len;
+      qseq = query.aa[frame_index(h->qstrand, h->qframe)].seq;
+      qlen = query.aa[frame_index(h->qstrand, h->qframe)].len;
     }
 
     // give hint of alignment end
@@ -759,8 +759,8 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
     // reverse strand of the database sequence (reported_strands())
     assert(hit.q_strand == 0);
     hit.sym = sym_ncbi_nt16;
-    hit.q_seq = query.nt[hit.q_strand].seq;
-    hit.q_len = query.nt[hit.q_strand].len;
+    hit.q_seq = query.nt[strand_index(hit.q_strand)].seq;
+    hit.q_len = query.nt[strand_index(hit.q_strand)].len;
   }
   else if (parameters.symtype == SymbolType::sound)
   {
@@ -771,8 +771,8 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
   else
   {
     hit.sym = sym_ncbi_aa;
-    hit.q_seq = query.aa[(3*hit.q_strand)+hit.q_frame].seq;
-    hit.q_len = query.aa[(3*hit.q_strand)+hit.q_frame].len;
+    hit.q_seq = query.aa[frame_index(hit.q_strand, hit.q_frame)].seq;
+    hit.q_len = query.aa[frame_index(hit.q_strand, hit.q_frame)].len;
     hit.q_len_nt = query.nt[0].len;
     hit.d_len_nt = entry.dlennt;
   }
@@ -1026,7 +1026,7 @@ auto show_align(AlignedHit const & hit) -> void
   AlignmentLines lines(hit);
   
   char const * p = hit.alignment;
-  char const * e = hit.alignment + strlen(hit.alignment);
+  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
   
   while(p < e)
   {
@@ -1153,7 +1153,7 @@ auto count_align(AlignedHit const & hit,
   long d_pos = hit.d_align_start;
   
   char const * p = hit.alignment;
-  char const * e = hit.alignment + strlen(hit.alignment);
+  char const * e = std::next(hit.alignment, static_cast<std::ptrdiff_t>(strlen(hit.alignment)));
 
   while(p < e)
   {
@@ -1196,15 +1196,15 @@ auto count_align(AlignedHit const & hit,
 
 auto hits_show_expect(double expect_value) -> void
 {
-  char temp[10];
+  std::array<char, 10> temp {{}};
   if (expect_value < 1e-180)
   {
     fprint(out, "0.0  ");
   }
   else if (expect_value < 9.5e-100)
   {
-    snprintf(temp, sizeof(temp), "%-6.0e", expect_value);
-    fputs(temp+1, out);
+    snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
+    fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
   else if (expect_value < 0.00095)
   {
@@ -1340,7 +1340,7 @@ auto hits_defline_split(char * defline,
 
   if (*p == '|')
   {
-    p++;
+    p = std::next(p);
   }
 
   char * r = strchr(p, ' ');
@@ -1348,7 +1348,7 @@ auto hits_defline_split(char * defline,
   {
     *linklen = static_cast<std::size_t>(r - p);
     *link = p;
-    *rest = r+1;
+    *rest = std::next(r);
   }
   else
   {
@@ -1577,8 +1577,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     long const score = hit_entry(i).score;
     double const e = expect_value_of(score);
 
-    char anchor[200];
-    make_anchor(anchor, 200, query.symtype, queryno, i);
+    std::array<char, 200> anchor {{}};
+    make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
 
     long deflines = 0;
     std::vector<std::string> deflinetable;
@@ -1595,7 +1595,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
     fprint(out, "\t\t\t\t<shortVersionAnchor>");
-    fprint(out, as_c_string(anchor));
+    fprint(out, as_c_string(anchor.data()));
     fprint(out, "</shortVersionAnchor>\n");
     if (gi != 0)
       {
@@ -1674,12 +1674,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     for(long i=0; i<showalignments; i++)
     {
       
-      char anchor[200];
-      make_anchor(anchor, 200, query.symtype, queryno, i);
+      std::array<char, 200> anchor {{}};
+      make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");
-      fprint(out, as_c_string(anchor));
+      fprint(out, as_c_string(anchor.data()));
       fprint(out, "</longVersionAnchor>\n");
       
       long deflines = 0;
@@ -1900,9 +1900,7 @@ auto ends_query_id(char const symbol) -> bool
 
 auto show_description(char const *desc) -> void
 {
-  char const *dptr = nullptr;
-
-  for (dptr = desc; not ends_query_id(*dptr); dptr++)
+  for (char const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
   {
     fprint(out, *dptr);
   }
@@ -1913,7 +1911,7 @@ auto show_description(char const *desc) -> void
 // (KI-27)
 auto show_description_xml(char const * const desc) -> void
 {
-  for (auto const * dptr = desc; not ends_query_id(*dptr); ++dptr)
+  for (auto const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
   {
     xml_putc(*dptr);
   }
@@ -2020,7 +2018,7 @@ auto hits_show_tsv(Parameters const & parameters,
 		   long showcomments,
 		   struct db_thread_s const * t) -> void
 {
-  char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
+  constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   
   if (showcomments != 0)
     {
@@ -2324,8 +2322,8 @@ auto hits_show_begin(OutputFormat view) -> void
     }
   else if (view==OutputFormat::paralign_xml)
     {
-      char url1[] = "http://www.w3.org/2001/XMLSchema-instance";
-      char url2[] = "http://www.paralign.org/ParalignXML.xsd";
+      constexpr char const * url1 = "http://www.w3.org/2001/XMLSchema-instance";
+      constexpr char const * url2 = "http://www.paralign.org/ParalignXML.xsd";
 
       fprint(out, "<?xml version=\"1.0\"?>\n");
       fprint(out, "<ParalignXML xmlns:xsi=\"");
