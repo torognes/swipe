@@ -23,20 +23,18 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
-using Boolean = int;
-using array_of_8 = double[8];
-#define FALSE 0
-#define TRUE 1
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
-#define BLAST_MATRIX_NOMINAL 0
-#define BLAST_MATRIX_BEST 1
-#define INT2_MAX 32767
-
 #include "swipe.h"
+#include <algorithm>  // std::max
 #include <cmath>
 #include <cstddef>  // std::size_t
 #include <cstring>
 #include <cstdio>
+
+// the NCBI names used by blastkar_partial.c
+using array_of_8 = double[8];
+constexpr Int4 BLAST_MATRIX_NOMINAL = 0;
+constexpr Int4 BLAST_MATRIX_BEST = 1;
+constexpr Int4 INT2_MAX = 32767;
 
 #include "blastkar_partial.c"
 

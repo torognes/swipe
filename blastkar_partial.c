@@ -536,7 +536,7 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     Nlm_FloatHi ss = 0;         /* effective size of the search space */
     Nlm_FloatHi ell_min = 0, ell_max = 0;   /* At each iteration i,
                                          * ell_min <= ell <= ell_max. */
-    Boolean converged    = FALSE;       /* True if the iteration converged */
+    bool converged       = false;       /* True if the iteration converged */
     Nlm_FloatHi ell_next = 0;   /* Value the variable ell takes at iteration
                                  * i + 1 */
     /* Choose ell_max to be the largest nonnegative value that satisfies
@@ -548,7 +548,7 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
        * (the variable mb is -b) */
         Nlm_FloatHi a  = N;
         Nlm_FloatHi mb = m * N + n;
-        Nlm_FloatHi c  = n * m - MAX(m, n) / K;
+        Nlm_FloatHi c  = n * m - std::max(m, n) / K;
 
         if(c < 0) {
             *length_adjustment = 0;
@@ -566,7 +566,7 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
         if(ell_bar >= ell) { /* ell is no bigger than the true fixed point */
             ell_min = ell;
             if(ell_bar - ell_min <= 1.0) {
-                converged = TRUE;
+                converged = true;
                 break;
             }
 #ifdef ORIGINAL_NCBI_CODE
