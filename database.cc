@@ -58,7 +58,7 @@ struct db_main_s
 {
   long volumecount;
 
-  char * path;
+  std::string path;  // directory of the database, with its final /
 
   char * basename;
   SymbolType symtype;
@@ -109,7 +109,7 @@ struct db_volume_s
   long masked_nseq;
   long masked_maxoid;
   long masked_memb_bit;
-  char * masked_mskfile;
+  std::string masked_mskfile;
 
   //
 
@@ -273,7 +273,7 @@ auto db_volume_init(db_volume_t * v) -> void
   v->masked_nseq = 0;
   v->masked_maxoid = 0;
   v->masked_memb_bit = 0;
-  v->masked_mskfile = nullptr;
+  v->masked_mskfile.clear();
 
   v->offset_xhr = 0;
   v->offset_xsq = 0;
@@ -374,13 +374,9 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
 {
   // open an alias file and read contents
 
-  char * filename = static_cast<char*>(xmalloc(strlen(basename)+5));
-  strcpy(filename, basename);
-  strcat(filename, ((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound)) ? ".pal" : ".nal");
+  std::string const filename = std::string(basename) + (((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound)) ? ".pal" : ".nal");
   
-  FILE * db_file_xal = fopen(filename, "r");
-
-  free(filename);
+  FILE * db_file_xal = fopen(filename.c_str(), "r");
 
   if (db_file_xal == nullptr)
   {
@@ -525,29 +521,24 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
 
   volume->basename = strdup(basename);
 
-  char * name_pin = static_cast<char*>(xmalloc(strlen(basename)+5));
-  strcpy(name_pin, basename);
-
-  char * name_phr = static_cast<char*>(xmalloc(strlen(basename)+5));
-  strcpy(name_phr, basename);
-
-  char * name_psq = static_cast<char*>(xmalloc(strlen(basename)+5));
-  strcpy(name_psq, basename);
+  std::string name_pin(basename);
+  std::string name_phr(basename);
+  std::string name_psq(basename);
 
   if ((symbol_type==SymbolType::blastp)||(symbol_type==SymbolType::blastx)||(symbol_type==SymbolType::sound))
     {
-      strcat(name_pin, ".pin");
-      strcat(name_phr, ".phr");
-      strcat(name_psq, ".psq");
+      name_pin += ".pin";
+      name_phr += ".phr";
+      name_psq += ".psq";
     }
   else
     {
-      strcat(name_pin, ".nin");
-      strcat(name_phr, ".nhr");
-      strcat(name_psq, ".nsq");
+      name_pin += ".nin";
+      name_phr += ".nhr";
+      name_psq += ".nsq";
     }
 
-  volume->fd_xin = open(name_pin, O_RDONLY);
+  volume->fd_xin = open(name_pin.c_str(), O_RDONLY);
   if (volume->fd_xin < 0)
   {
     fatal(std::string("Unable to open file ") + name_pin + ".");
@@ -561,7 +552,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
   }
 
-  volume->fd_xhr = open(name_phr, O_RDONLY);
+  volume->fd_xhr = open(name_phr.c_str(), O_RDONLY);
   if (volume->fd_xhr < 0)
   {
     fatal(std::string("Unable to open file ") + name_phr + ".");
@@ -570,7 +561,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   volume->len_xhr = lseek(volume->fd_xhr, 0, SEEK_END);
 
 
-  volume->fd_xsq = open(name_psq, O_RDONLY, 0);
+  volume->fd_xsq = open(name_psq.c_str(), O_RDONLY, 0);
   if (volume->fd_xsq < 0)
   {
     fatal(std::string("Unable to open file ") + name_psq + ".");
@@ -701,42 +692,25 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
     fatal(std::string("Database sequence file ") + name_psq + " is truncated or corrupted.");
   }
 
-  free(name_pin);
-  free(name_phr);
-  free(name_psq);
-
   return 1;
 }
 
-auto get_path(char const * basename) -> char *
+// the directory part of basename, up to and including its last '/'
+// (empty without a '/')
+auto get_path(char const * basename) -> std::string
 {
-  char const * p = basename;
-  char * path = nullptr;
-  long pathlen = 0;
-
-  while (char const c = *p++)
+  std::string const name(basename);
+  auto const last_slash = name.rfind('/');
+  if (last_slash == std::string::npos)
   {
-    if (c == '/')
-    {
-      pathlen = p - basename;
-    }
+    return std::string();
   }
-
-  path = static_cast<char*>(xmalloc(static_cast<std::size_t>(pathlen) + 1));
-  strncpy(path, basename, static_cast<std::size_t>(pathlen));
-  path[pathlen] = 0;
-  return path;
+  return name.substr(0, last_slash + 1);
 }
 
-auto addpath(char const * path, char const * base) -> char *
+auto addpath(std::string const & path, char const * base) -> std::string
 {
-  auto const pathlen = strlen(path);
-  auto const baselen = strlen(base);
-
-  char * both = static_cast<char*>(xmalloc(pathlen + baselen + 1));
-  strcpy(both, path);
-  strcat(both, base);
-  return both;
+  return path + base;
 }
 
 auto seqno_volume(long seqno, long * sp, db_volume_t * * vp) -> void
@@ -781,7 +755,7 @@ auto db_open_msk(db_volume_t * v) -> void
   //  fprintf(stderr, "Opening msk file: %s\n", v->masked_mskfile);
   //  fprintf(stderr, "Maxoid: %ld\n", v->masked_maxoid);
 
-  v->fd_msk = open(v->masked_mskfile, O_RDONLY);
+  v->fd_msk = open(v->masked_mskfile.c_str(), O_RDONLY);
 
   if (v->fd_msk < 0)
   {
@@ -973,9 +947,9 @@ auto db_open(Parameters const & parameters) -> void
 
     for(long i=0; i<ai->dblist_len; i++)
     {
-      char * basename2 = addpath(db_main.path, ai->dblist[i]);
+      std::string const basename2 = addpath(db_main.path, ai->dblist[i]);
       
-      al_info_t * ai2 = db_read_alias(symbol_type, basename2);
+      al_info_t * ai2 = db_read_alias(symbol_type, basename2.c_str());
       if (ai2 != nullptr)
       {
 	if ((ai->memb_bit != 0) && ((ai2->oidlist_len != 1) || (ai2->dblist_len != 1)))
@@ -985,10 +959,10 @@ auto db_open(Parameters const & parameters) -> void
 
 	for(long j=0; j < ai2->dblist_len; j++)
 	{
-	  char * basename3 = addpath(db_main.path, ai2->dblist[j]);
+	  std::string const basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
 	  db_volume_init(db_volume + vol);
-	  db_open_xin(symbol_type, basename3, db_volume + vol);
+	  db_open_xin(symbol_type, basename3.c_str(), db_volume + vol);
 	  
 	  if (ai->memb_bit != 0)
 	  {
@@ -1006,8 +980,6 @@ auto db_open(Parameters const & parameters) -> void
 	  
 	  vol++;
 	  
-	  free(basename3);
-	  basename3 = nullptr;
 	}
 	
 	db_close_al(ai2);
@@ -1028,7 +1000,7 @@ auto db_open(Parameters const & parameters) -> void
 	  }
 
 	db_volume_init(db_volume + vol);
-	db_open_xin(symbol_type, basename2, db_volume+vol);
+	db_open_xin(symbol_type, basename2.c_str(), db_volume+vol);
 	
 	if (ai->memb_bit != 0)
 	{
@@ -1047,8 +1019,6 @@ auto db_open(Parameters const & parameters) -> void
 	vol++;
       }
       
-      free(basename2);
-      basename2 = nullptr;
     }
     
     db_close_al(ai);
@@ -1124,11 +1094,7 @@ auto db_volume_close(db_volume_t * v) -> void
     free(v->masked_title);
     v->masked_title = nullptr;
   }
-  if(v->masked_mskfile != nullptr)
-  {
-    free(v->masked_mskfile);
-    v->masked_mskfile = nullptr;
-  }
+  v->masked_mskfile.clear();
 
   munmap(v->adr_xin, static_cast<std::size_t>(v->len_xin));
 
@@ -1163,11 +1129,7 @@ auto db_close() -> void
   {
     db_volume_close(db_volume + i);
   }
-  if (db_main.path != nullptr)
-  {
-    free(db_main.path);
-    db_main.path = nullptr;
-  }
+  db_main.path.clear();
   if (db_main.basename != nullptr)
   {
     free(db_main.basename);
