@@ -28,6 +28,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cstdint>  // std::int32_t, std::int64_t
 #include <cstdlib>
 #include <climits>
 #include <cctype>
@@ -501,8 +502,9 @@ auto stats_getprefs(char const * matrix,
 		    long * gextend) -> long;
 
 
-using Int4 = int;
-using Int8 = long;
+// the NCBI integer types of blastkar_partial.c: 4 and 8 bytes
+using Int4 = std::int32_t;
+using Int8 = std::int64_t;
 using Nlm_FloatHi = double;
 
 #include "blastkar_partial.h"
