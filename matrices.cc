@@ -379,7 +379,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
   int i = 0;
   int symbols = 0;
   long sc = 0; 
-  char * map = nullptr;
+  char const * map = nullptr;
   char * p = nullptr;
   char * q = nullptr;
   char c = 0;
@@ -393,11 +393,11 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound;
+    map = map_sound.data();
   }
   else
   {
-    map = map_ncbi_aa;
+    map = map_ncbi_aa.data();
   }
 
   symbols = 0;
@@ -470,7 +470,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
   int i = 0;
   int symbols = 0;
   long sc = 0; 
-  char * map = nullptr;
+  char const * map = nullptr;
   char * p = nullptr;
   char * q = nullptr;
   char c = 0;
@@ -484,11 +484,11 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound;
+    map = map_sound.data();
   }
   else
   {
-    map = map_ncbi_aa;
+    map = map_ncbi_aa.data();
   }
 
   symbols = 0;

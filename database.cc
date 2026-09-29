@@ -1235,7 +1235,7 @@ auto db_translate(char const * dna, long dlen,
       c |= dna[pos++];
       c <<= 4;
       c |= dna[pos++];
-      prot[ppos++] = d_translate[c];
+      prot[ppos++] = d_translate[static_cast<std::size_t>(c)];
     }
   }
   else
@@ -1243,12 +1243,12 @@ auto db_translate(char const * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[static_cast<int>(dna[pos--])];
+      c = ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[static_cast<int>(dna[pos--])];
+      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[static_cast<int>(dna[pos--])];
-      prot[ppos++] = d_translate[c];
+      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
+      prot[ppos++] = d_translate[static_cast<std::size_t>(c)];
     }
   }
 
@@ -1368,7 +1368,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
 	for (long i = 0; i < nt_length; i++)
 	{
-	  xx[i] = ntcompl[static_cast<int>(nt[nt_length - 1 - i])];
+	  xx[i] = ntcompl[static_cast<std::size_t>(nt[nt_length - 1 - i])];
 	}
 	xx[nt_length] = 0;
 

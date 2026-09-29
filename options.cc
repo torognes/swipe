@@ -176,7 +176,7 @@ auto args_show(Parameters const & parameters) -> void
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
 	fprint(out, "Query genetic code:");
-	fprint(out, as_c_string(gencode_names[parameters.query_gencode - 1]));
+	fprint(out, as_c_string(gencode_names[static_cast<std::size_t>(parameters.query_gencode - 1)]));
 	fprint(out, " (");
 	fprint_integer(out, parameters.query_gencode);
 	fprint(out, ")\n");
@@ -184,7 +184,7 @@ auto args_show(Parameters const & parameters) -> void
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
 	fprint(out, "DB genetic code:   ");
-	fprint(out, as_c_string(gencode_names[parameters.db_gencode - 1]));
+	fprint(out, as_c_string(gencode_names[static_cast<std::size_t>(parameters.db_gencode - 1)]));
 	fprint(out, " (");
 	fprint_integer(out, parameters.db_gencode);
 	fprint(out, ")\n");
@@ -677,12 +677,12 @@ auto args_init(int argc, char * const * argv) -> Parameters
     fatal("Illegal strand specified for protein query.");
   }
 
-  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[parameters.query_gencode - 1] == nullptr))
+  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.query_gencode - 1)] == nullptr))
   {
     fatal("Illegal query genetic code specified.");
   }
 
-  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[parameters.db_gencode - 1] == nullptr))
+  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.db_gencode - 1)] == nullptr))
   {
     fatal("Illegal database genetic code specified.");
   }

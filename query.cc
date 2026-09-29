@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint, fprint_spaces
 #include <algorithm>  // std::min
+#include <array>
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdio>  // std::getc, EOF
@@ -37,8 +38,7 @@
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
 
-char map_sound[256] = 
-  {
+std::array<char, 256> const map_sound {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -55,10 +55,9 @@ char map_sound[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  };
+  }};
 
-char map_ncbi_aa[256] = 
-  {
+std::array<char, 256> const map_ncbi_aa {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 25, -1, -1,  0, -1, -1,
@@ -75,30 +74,9 @@ char map_ncbi_aa[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  };
+  }};
 
-char map_ncbi_nt4[256] = 
-  {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1,  0, -1,  1, -1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1,  3,  3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1,  0, -1,  1, -1, -1, -1,  2, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1,  3,  3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  };
-
-char map_ncbi_nt16[256] = 
-  {
+std::array<char, 256> const map_ncbi_nt16 {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -115,22 +93,21 @@ char map_ncbi_nt16[256] =
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  };
+  }};
 
 
-char ntcompl[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
+std::array<char, 16> const ntcompl {{ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 }};
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-char q_translate[16*16*16];
+std::array<char, translation_table_size> q_translate {{}};
 
 }  // anonymous namespace
 
-char d_translate[16*16*16];
+std::array<char, translation_table_size> d_translate {{}};
 
-char const * gencode_names[23] = 
-  {
+std::array<char const *, 23> const gencode_names {{
     "Standard Code",
     "Vertebrate Mitochondrial Code",
     "Yeast Mitochondrial Code",
@@ -154,12 +131,11 @@ char const * gencode_names[23] =
     "Trematode Mitochondrial Code",
     "Scenedesmus obliquus Mitochondrial Code",
     "Thraustochytrium Mitochondrial Code",
-  };
+  }};
 
 namespace {
 
-char const * code[23] =
-  { 
+std::array<char const *, 23> const code {{
     "FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNKKSS**VVVVAAAADDEEGGGG",
     "FFLLSSSSYY**CCWWTTTTPPPPHHQQRRRRIIMMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
@@ -183,9 +159,9 @@ char const * code[23] =
     "FFLLSSSSYY**CCWWLLLLPPPPHHQQRRRRIIMMTTTTNNNKSSSSVVVVAAAADDEEGGGG",
     "FFLLSS*SYY*LCC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
     "FF*LSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG",
-  };
+  }};
   
-char remap[] = { 2, 1, 3, 0 };
+std::array<char, 4> const remap {{ 2, 1, 3, 0 }};
 
 }  // anonymous namespace
   
@@ -249,17 +225,17 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
 
   if (query.symtype == SymbolType::sound)
   {
-    query.map = map_sound;
+    query.map = map_sound.data();
     query.sym = sym_sound;
   }
   else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
-    query.map = map_ncbi_aa;
+    query.map = map_ncbi_aa.data();
     query.sym = sym_ncbi_aa;
   }
   else
   {
-    query.map = map_ncbi_nt16;
+    query.map = map_ncbi_nt16.data();
     query.sym = sym_ncbi_nt16;
   }
 
@@ -361,19 +337,19 @@ auto query_read() -> int
   query_sequence[0] = 0;
   long query_length = 0;
  
-  char * map = nullptr;
+  char const * map = nullptr;
 
   if (query.symtype == SymbolType::sound)
   {
-    map = map_sound;
+    map = map_sound.data();
   }
   else if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
-    map = map_ncbi_aa;
+    map = map_ncbi_aa.data();
   }
   else
   {
-    map = map_ncbi_nt16;
+    map = map_ncbi_nt16.data();
   }
 
   while((not query_line.empty()) and (query_line[0] != '>'))
@@ -444,7 +420,7 @@ auto revcompl(char const * seq, long len) -> Buffer<char>
   char * rc = rc_buffer.data();
   for (long i = 0; i < len; i++)
   {
-    rc[i] = ntcompl[static_cast<int>(seq[len - 1 - i])];
+    rc[i] = ntcompl[static_cast<std::size_t>(seq[len - 1 - i])];
   }
   rc[len] = 0;
   return rc_buffer;
@@ -471,8 +447,8 @@ auto translate_createtable(long tableno, char * table) -> void
 	    {
 	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
 	      {
-		long const codon = (remap[i]*16) + (remap[j]*4) + remap[k];
-		char const x = code[tableno-1][codon];
+		long const codon = (remap[static_cast<std::size_t>(i)]*16) + (remap[static_cast<std::size_t>(j)]*4) + remap[static_cast<std::size_t>(k)];
+		char const x = code[static_cast<std::size_t>(tableno-1)][codon];
 		if (aa == '-')
 		{
 		  aa = x;
@@ -516,7 +492,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	  aa = 'X';
 	}
 
-	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<int>(aa)];
+	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
       }
     }
   }
@@ -527,8 +503,8 @@ auto translate_createtable(long tableno, char * table) -> void
 
 auto translate_init(long qtableno, long dtableno) -> void
 {
-  translate_createtable(qtableno, q_translate);
-  translate_createtable(dtableno, d_translate);
+  translate_createtable(qtableno, q_translate.data());
+  translate_createtable(dtableno, d_translate.data());
 }
 
 auto translate(char const * dna, long dlen, 
@@ -537,14 +513,14 @@ auto translate(char const * dna, long dlen,
 {
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
-  char * ttable = nullptr;
+  char const * ttable = nullptr;
   if (table == 0)
   {
-    ttable = q_translate;
+    ttable = q_translate.data();
   }
   else
   {
-    ttable = d_translate;
+    ttable = d_translate.data();
   }
 
   long pos = 0;
@@ -573,11 +549,11 @@ auto translate(char const * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[static_cast<int>(dna[pos--])];
+      c = ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[static_cast<int>(dna[pos--])];
+      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
-      c |= ntcompl[static_cast<int>(dna[pos--])];
+      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       prot[ppos++] = ttable[c];
     }
   }

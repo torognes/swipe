@@ -180,14 +180,13 @@ extern long cpu_feature_sse41;
 
 extern long * const score_matrix_63;
 extern long totalhits;
-extern char const * gencode_names[];
+extern std::array<char const *, 23> const gencode_names;
 extern long queryno;
 extern long compute7;
 
-extern char map_ncbi_nt4[];
-extern char map_ncbi_nt16[];
-extern char map_ncbi_aa[];
-extern char map_sound[];
+extern std::array<char, 256> const map_ncbi_nt16;
+extern std::array<char, 256> const map_ncbi_aa;
+extern std::array<char, 256> const map_sound;
 
 extern char const * sym_ncbi_nt4;
 extern char const * sym_ncbi_nt16;
@@ -195,8 +194,11 @@ extern char const * sym_ncbi_nt16u;
 extern char const * sym_ncbi_aa;
 extern char const * sym_sound;
 
-extern char ntcompl[];
-extern char d_translate[];
+extern std::array<char, 16> const ntcompl;
+// the codon translation table of the database (16 x 16 x 16 codes of
+// nucleotides), filled by translate_init()
+constexpr std::size_t translation_table_size = std::size_t{16} * 16 * 16;
+extern std::array<char, translation_table_size> d_translate;
 
 extern FILE * out;
 
@@ -222,7 +224,7 @@ struct query_s
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
-  char * map;
+  char const * map;
   char const * sym;
 };
 
