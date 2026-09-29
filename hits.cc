@@ -1196,15 +1196,15 @@ auto count_align(AlignedHit const & hit,
 
 auto hits_show_expect(double expect_value) -> void
 {
-  char temp[10];
+  std::array<char, 10> temp {{}};
   if (expect_value < 1e-180)
   {
     fprint(out, "0.0  ");
   }
   else if (expect_value < 9.5e-100)
   {
-    snprintf(temp, sizeof(temp), "%-6.0e", expect_value);
-    fputs(temp+1, out);
+    snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
+    fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
   else if (expect_value < 0.00095)
   {
@@ -1577,8 +1577,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     long const score = hit_entry(i).score;
     double const e = expect_value_of(score);
 
-    char anchor[200];
-    make_anchor(anchor, 200, query.symtype, queryno, i);
+    std::array<char, 200> anchor {{}};
+    make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
 
     long deflines = 0;
     std::vector<std::string> deflinetable;
@@ -1595,7 +1595,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
     fprint(out, "\t\t\t\t<shortVersionAnchor>");
-    fprint(out, as_c_string(anchor));
+    fprint(out, as_c_string(anchor.data()));
     fprint(out, "</shortVersionAnchor>\n");
     if (gi != 0)
       {
@@ -1674,12 +1674,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     for(long i=0; i<showalignments; i++)
     {
       
-      char anchor[200];
-      make_anchor(anchor, 200, query.symtype, queryno, i);
+      std::array<char, 200> anchor {{}};
+      make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");
-      fprint(out, as_c_string(anchor));
+      fprint(out, as_c_string(anchor.data()));
       fprint(out, "</longVersionAnchor>\n");
       
       long deflines = 0;
@@ -2020,7 +2020,7 @@ auto hits_show_tsv(Parameters const & parameters,
 		   long showcomments,
 		   struct db_thread_s const * t) -> void
 {
-  char ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
+  constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   
   if (showcomments != 0)
     {
@@ -2324,8 +2324,8 @@ auto hits_show_begin(OutputFormat view) -> void
     }
   else if (view==OutputFormat::paralign_xml)
     {
-      char url1[] = "http://www.w3.org/2001/XMLSchema-instance";
-      char url2[] = "http://www.paralign.org/ParalignXML.xsd";
+      constexpr char const * url1 = "http://www.w3.org/2001/XMLSchema-instance";
+      constexpr char const * url2 = "http://www.paralign.org/ParalignXML.xsd";
 
       fprint(out, "<?xml version=\"1.0\"?>\n");
       fprint(out, "<ParalignXML xmlns:xsi=\"");
