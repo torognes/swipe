@@ -60,11 +60,10 @@ struct db_main_s
 
   std::string path;  // directory of the database, with its final /
 
-  char * basename;
   SymbolType symtype;
   long version;
-  char * title;
-  char * time;
+  std::string title;
+  std::string time;
 
   std::int64_t seqcount;
   long longest;
@@ -74,7 +73,6 @@ struct db_main_s
   std::int64_t masked_symcount;
   long memb_bit;
 
-  char * taxid_filename;
   FILE * taxid_file;
   unsigned char * taxid_bitmap_address;
   long taxid_bitmap_size;
@@ -93,18 +91,16 @@ struct db_volume_s
 {
   // the underlying unmasked volume
 
-  char * basename;
   long symtype;
   long version;
-  char * title;
-  char * time;
+  std::string title;
+  std::string time;
 
   long seqcount;
   long longest;
   std::int64_t symcount;
 
   // the masked volume - for masked files (swissprot, pdbaa, pdbnt)
-  char * masked_title;
   std::int64_t masked_length;
   long masked_nseq;
   long masked_maxoid;
@@ -261,14 +257,13 @@ auto db_volume_init(db_volume_t * v) -> void
 
   v->symtype = -1;
   v->version = 0;
-  v->title = nullptr;
-  v->time = nullptr;
+  v->title.clear();
+  v->time.clear();
 
   v->seqcount = 0;
   v->longest = 0;
   v->symcount = 0;
   
-  v->masked_title = nullptr;
   v->masked_length = 0;
   v->masked_nseq = 0;
   v->masked_maxoid = 0;
@@ -305,11 +300,10 @@ auto db_init(db_main_t * v) -> void
 {
   v->volumecount = 0;
 
-  v->basename = nullptr;
   v->symtype = static_cast<SymbolType>(-1);  // not set yet: db_open() sets it
   v->version = 0;
-  v->title = nullptr;
-  v->time = nullptr;
+  v->title.clear();
+  v->time.clear();
 
   v->seqcount = 0;
   v->longest = 0;
@@ -317,7 +311,6 @@ auto db_init(db_main_t * v) -> void
 
   v->taxid_bitmap_address = nullptr;
   v->taxid_bitmap_size = 0;
-  v->taxid_filename = nullptr;
   v->taxid_file = nullptr;
   v->show_taxid = 0;
 }
@@ -465,7 +458,6 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
 {
   db_volume_init(volume);
 
-  volume->basename = strdup(basename);
 
   std::string name_pin(basename);
   std::string name_phr(basename);
@@ -551,9 +543,8 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   long const titlelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, titlelen + 4);
-  volume->title = static_cast<char*>(xmalloc(static_cast<std::size_t>(titlelen) + 1));
-  strncpy(volume->title, p, static_cast<std::size_t>(titlelen));
-  volume->title[titlelen] = 0;
+  // up to the first NUL, as strncpy() did
+  volume->title.assign(p, std::find(p, std::next(p, titlelen), '\0'));
   p += titlelen;
   if (volume->version == 5)
   {
@@ -565,9 +556,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   unsigned const datelen = load_uint32_be(p);
   p += 4;
   check_xin_room(p, datelen);
-  volume->time = static_cast<char*>(xmalloc(datelen+1));
-  strncpy(volume->time, p, datelen);
-  volume->time[datelen] = 0;
+  volume->time.assign(p, std::find(p, std::next(p, datelen), '\0'));
   p += datelen;
   if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
   {
@@ -741,7 +730,6 @@ auto db_check_msk(long seqno) -> long
 auto db_set_masked_info(db_volume_t * v, al_info_t const * ai, std::string const & mskfile) -> void
 {
   v->masked_mskfile  = addpath(db_main.path, mskfile);
-  v->masked_title    = strdup(ai->title.c_str());
   v->masked_length   = ai->length;
   v->masked_nseq     = ai->nseq;
   v->masked_maxoid   = ai->maxoid;
@@ -820,7 +808,6 @@ auto db_add_taxid(unsigned long const taxid) -> void
 
 auto db_read_taxid_file(char const * filename) -> void
 {
-  db_main.taxid_filename = strdup(filename);
   db_main.taxid_file = fopen(filename, "r");
   if (db_main.taxid_file == nullptr)
   {
@@ -878,7 +865,6 @@ auto db_open(Parameters const & parameters) -> void
   db_init(& db_main);
   db_main.show_taxid = parameters.show_taxid;
 
-  db_main.basename = strdup(basename);
   db_main.symtype  = symbol_type;
   
   db_main.path = get_path(basename);
@@ -888,7 +874,7 @@ auto db_open(Parameters const & parameters) -> void
   ai = db_read_alias(symbol_type, basename);
   if (ai != nullptr)
   {
-    db_main.title = strdup(ai->title.c_str());
+    db_main.title = ai->title;
     db_main.memb_bit = ai->memb_bit;
 
     for (std::size_t i = 0; i < ai->dblist.size(); i++)
@@ -972,7 +958,7 @@ auto db_open(Parameters const & parameters) -> void
     vol++;
 
     db_main.memb_bit = 0;
-    db_main.title    = strdup(db_volume[0].title);
+    db_main.title    = db_volume[0].title;
     db_main.seqcount = db_volume[0].seqcount;
     db_main.symcount = db_volume[0].symcount;
     db_main.longest  = db_volume[0].longest;
@@ -981,7 +967,7 @@ auto db_open(Parameters const & parameters) -> void
   
   db_main.volumecount = vol;
   db_main.version  = db_volume[0].version;
-  db_main.time     = strdup(db_volume[0].time);
+  db_main.time     = db_volume[0].time;
   
   if(db_main.memb_bit == 0)
   {
@@ -1012,26 +998,8 @@ namespace {
 
 auto db_volume_close(db_volume_t * v) -> void
 {
-  if(v->basename != nullptr)
-  {
-    free(v->basename);
-    v->basename = nullptr;
-  }
-  if(v->title != nullptr)
-  {
-    free(v->title);
-    v->title = nullptr;
-  }
-  if(v->time != nullptr)
-  {
-    free(v->time);
-    v->time = nullptr;
-  }
-  if(v->masked_title != nullptr)
-  {
-    free(v->masked_title);
-    v->masked_title = nullptr;
-  }
+  v->title.clear();
+  v->time.clear();
   v->masked_mskfile.clear();
 
   munmap(v->adr_xin, static_cast<std::size_t>(v->len_xin));
@@ -1068,28 +1036,11 @@ auto db_close() -> void
     db_volume_close(db_volume + i);
   }
   db_main.path.clear();
-  if (db_main.basename != nullptr)
-  {
-    free(db_main.basename);
-    db_main.basename = nullptr;
-  }
-  if (db_main.title != nullptr)
-  {
-    free(db_main.title);
-    db_main.title = nullptr;
-  }
-  if (db_main.time != nullptr)
-  {
-    free(db_main.time);
-    db_main.time = nullptr;
-  }
+  db_main.title.clear();
+  db_main.time.clear();
   if (db_main.taxid_bitmap_address != nullptr)
   {
     free(db_main.taxid_bitmap_address);
-  }
-  if (db_main.taxid_filename != nullptr)
-  {
-    free(db_main.taxid_filename);
   }
 }
 
@@ -1099,8 +1050,6 @@ auto db_getversion() -> long
 {
   return db_main.version;
 }
-
-auto db_getbasename() -> char *;
 
 auto db_ismasked() -> long
 {
@@ -1155,14 +1104,14 @@ auto db_getlongest() -> long
   return db_main.longest;
 }
 
-auto db_gettitle() -> char*
+auto db_gettitle() -> char const *
 {
-  return db_main.title;
+  return db_main.title.c_str();
 }
 
-auto db_gettime() -> char*
+auto db_gettime() -> char const *
 {
-  return db_main.time;
+  return db_main.time.c_str();
 }
 
 auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> void
