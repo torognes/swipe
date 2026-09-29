@@ -59,6 +59,45 @@ jobs:
         bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
 
 
+  docs-and-install:
+    # the manual page renders without warning, the completions parse,
+    # and "make install" puts the four files where they belong
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: manual page, completions, install
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: Manual page
+      timeout-minutes: 5
+      run: |
+        groff -man -tbl -ww -z man/swipe.1 2> lint.txt || true
+        cat lint.txt
+        test ! -s lint.txt || { echo "::error::groff warnings in man/swipe.1" >&2 ; exit 1 ; }
+
+    - name: Completions
+      timeout-minutes: 5
+      run: |
+        bash -n completion/swipe.bash
+        sudo apt-get install -y zsh > /dev/null
+        zsh -n completion/_swipe
+
+    - name: Staged install and uninstall
+      timeout-minutes: 10
+      run: |
+        make -j "$(nproc)"
+        make install DESTDIR="${PWD}/stage" PREFIX=/usr
+        for f in bin/swipe share/man/man1/swipe.1 \
+                 share/bash-completion/completions/swipe \
+                 share/zsh/site-functions/_swipe ; do
+          test -f "stage/usr/${f}" || { echo "::error::missing ${f}" >&2 ; exit 1 ; }
+        done
+        make uninstall DESTDIR="${PWD}/stage" PREFIX=/usr
+        test -z "$(find stage -type f)" || { echo "::error::uninstall left files" >&2 ; exit 1 ; }
+
   linux-gcc-legacy:
     # Guard the oldest supported compilers (GCC 4.8.5 and 4.9). Their
     # images (Debian jessie) are too old for the JavaScript actions and
