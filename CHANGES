@@ -52,6 +52,10 @@
         * Fix: the simple XML output (-m 7) had one root element per query
           (<result>): with several queries, it was not well-formed XML
           (KI-26). All results are now inside one <results> element
+        * Fix: a PDB identifier with a release date that gives an hour
+          was rejected ("Error parsing binary ASN.1 in database sequence
+          definition."): the hour was read with the tag of the minute
+          (KI-41). Such dates are not written by makeblastdb
         * The identifiers and titles of database sequences are no longer
           truncated: titles were cut at 2,048 characters, identifiers
           and the list of identifiers of a sequence at 2,047, and a

@@ -412,7 +412,8 @@ auto parse_date_std(apt p) -> void
 
   if (p->obj == 0xA4)
   {
-    match_obj(p,0xA5);
+    // the hour [4] (KI-41: it was matched with the tag of the minute)
+    match_obj(p,0xA4);
     parse_integer(p);
     match_obj(p,0);
   }
