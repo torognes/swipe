@@ -79,7 +79,7 @@ double ungapped_H = 0;
 }  // anonymous namespace
 
 /* gap penalties of the ungapped rows of the NCBI score matrix tables
-   (INT2_MAX, see blastkar_partial.c) */
+   (INT2_MAX, see blastkar_partial.cc) */
 constexpr long ungapped_penalty = 32767;
 
 namespace {
@@ -461,14 +461,8 @@ auto hits_init(Parameters const & parameters) -> void
 	dlen = symcount;
       }
 
-      BlastComputeLengthAdjustment(K,
-				   logK,
-				   alpha / lambda,
-				   beta,
-				   static_cast<Int4>(qlen),
-				   dlen,
-				   static_cast<Int4>(seqcount),
-				   & lenadj);
+      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+				 qlen, dlen, seqcount);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
 
@@ -544,14 +538,8 @@ auto hits_init(Parameters const & parameters) -> void
 	}
       }
 
-      BlastComputeLengthAdjustment(K,
-				   logK,
-				   alpha / lambda,
-				   beta,
-				   static_cast<Int4>(qlen),
-				   dlen,
-				   static_cast<Int4>(seqcount),
-				   & lenadj);
+      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+				 qlen, dlen, seqcount);
 
       m = qlen - lenadj;
 

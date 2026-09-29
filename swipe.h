@@ -79,7 +79,7 @@ enum struct SymbolType : long
   blastx = 2,   // translated nucleotide query, amino acid database
   tblastn = 3,  // amino acid query, translated nucleotide database
   tblastx = 4,  // translated query, translated database
-  sound = 5     // sound codes
+  sound = 5,     // sound codes
 };
 
 // output format of the results (option -m, --outfmt)
@@ -89,7 +89,7 @@ enum struct OutputFormat : long
   xml = 7,                    // simple XML
   tabular = 8,                // tabular (BLAST -m 8)
   tabular_with_comments = 9,  // tabular with comment lines (BLAST -m 9)
-  paralign_xml = 99           // ParAlign XML
+  paralign_xml = 99,           // ParAlign XML
 };
 
 // query strands to search (option -S, --strand): a bit mask of the
@@ -98,7 +98,7 @@ enum struct QueryStrands : long
 {
   plus = 1,
   minus = 2,
-  both = 3
+  both = 3,
 };
 
 // true when the query strand of index strand (0: plus, 1: minus) is
@@ -490,7 +490,7 @@ auto stats_getprefs(char const * matrix,
 		    long * gextend) -> long;
 
 
-// the NCBI integer types of blastkar_partial.c: 4 and 8 bytes
+// the NCBI integer types of blastkar_partial.ccc: 4 and 8 bytes
 using Int4 = std::int32_t;
 using Int8 = std::int64_t;
 using Nlm_FloatHi = double;
