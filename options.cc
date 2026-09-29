@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // fprint
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cinttypes>  // PRId64
@@ -44,7 +45,7 @@ auto args_show(Parameters const & parameters) -> void
     
     if (cpu_feature_ssse3 == 0)
     {
-      fprintf(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
+      fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
     
     char const * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
@@ -92,22 +93,22 @@ auto args_show(Parameters const & parameters) -> void
 
       if (parameters.symtype == SymbolType::blastn)
       {
-	fprintf(out, "Query strands:     ");
+	fprint(out, "Query strands:     ");
 	switch (parameters.querystrands)
 	{
 	case QueryStrands::plus:
-	  fprintf(out, "Plus");
+	  fprint(out, "Plus");
 	  break;
 	case QueryStrands::minus:
-	  fprintf(out, "Minus");
+	  fprint(out, "Minus");
 	  break;
 	case QueryStrands::both:
-	  fprintf(out, "Plus and minus");
+	  fprint(out, "Plus and minus");
 	  break;
 	default:
 	  break;
 	}
-	fprintf(out, "\n");
+	fprint(out, "\n");
 	fprintf(out, "Score matrix:      %ld/%ld\n", parameters.matchscore, parameters.mismatchscore);
       }
       else
@@ -138,7 +139,7 @@ auto args_show(Parameters const & parameters) -> void
       {
 	fprintf(out, "Taxid filename:    %s\n", parameters.taxidfilename);
       }
-      fprintf(out, "\n");
+      fprint(out, "\n");
     }
 }
   
@@ -152,33 +153,33 @@ auto args_usage(char const * const program_name) -> void
   /* options used by SWIPE:   chkuxHN  */
 
   fprintf(out, "Usage: %s [OPTIONS]\n", program_name);
-  fprintf(out, "  -h, --help                 show help\n");
-  fprintf(out, "      --version              show version\n");
-  fprintf(out, "  -d, --db=FILE              sequence database base name (required)\n");
-  fprintf(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
-  fprintf(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
-  fprintf(out, "  -q, --penalty=NUM          penalty for nucleotide mismatch (-3)\n");
-  fprintf(out, "  -r, --reward=NUM           reward for nucleotide match (1)\n");
-  fprintf(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
-  fprintf(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
-  fprintf(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
-  fprintf(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
-  fprintf(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
-  fprintf(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
-  fprintf(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
-  fprintf(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
+  fprint(out, "  -h, --help                 show help\n");
+  fprint(out, "      --version              show version\n");
+  fprint(out, "  -d, --db=FILE              sequence database base name (required)\n");
+  fprint(out, "  -i, --query=FILE           query sequence filename (stdin)\n");
+  fprint(out, "  -M, --matrix=NAME/FILE     score matrix name or filename (BLOSUM62)\n");
+  fprint(out, "  -q, --penalty=NUM          penalty for nucleotide mismatch (-3)\n");
+  fprint(out, "  -r, --reward=NUM           reward for nucleotide match (1)\n");
+  fprint(out, "  -G, --gapopen=NUM          gap open penalty (11)\n");
+  fprint(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
+  fprint(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
+  fprint(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
+  fprint(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
+  fprint(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
+  fprint(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
+  fprint(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
   fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", max_threads);
-  fprintf(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
-  fprintf(out, "  -I, --show_gis             show gi numbers in results (no)\n");
-  fprintf(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
-  fprintf(out, "  -S, --strand=NAME/NUM      query strands to search [1-3] (3)\n");
-  fprintf(out, "  -Q, --query_gencode=NUM    query genetic code [1-23] (1)\n");
-  fprintf(out, "  -D, --db_gencode=NUM       database genetic code [1-23] (1)\n");
-  fprintf(out, "  -x, --taxidlist=FILE       taxid list filename (none)\n");
-  fprintf(out, "  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)\n");
-  fprintf(out, "  -H, --show_taxid           show taxid etc in results (no)\n");
-  fprintf(out, "  -o, --out=FILE             output file (stdout)\n");
-  fprintf(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
+  fprint(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
+  fprint(out, "  -I, --show_gis             show gi numbers in results (no)\n");
+  fprint(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
+  fprint(out, "  -S, --strand=NAME/NUM      query strands to search [1-3] (3)\n");
+  fprint(out, "  -Q, --query_gencode=NUM    query genetic code [1-23] (1)\n");
+  fprint(out, "  -D, --db_gencode=NUM       database genetic code [1-23] (1)\n");
+  fprint(out, "  -x, --taxidlist=FILE       taxid list filename (none)\n");
+  fprint(out, "  -N, --dump=NUM             dump database [0-2=no,yes,split headers] (0)\n");
+  fprint(out, "  -H, --show_taxid           show taxid etc in results (no)\n");
+  fprint(out, "  -o, --out=FILE             output file (stdout)\n");
+  fprint(out, "  -z, --dbsize=NUM           set effective database size (0)\n");
 }
 
 auto args_version() -> void
@@ -190,7 +191,7 @@ auto args_version() -> void
 auto args_help(char const * const program_name) -> void
 {
   args_version();
-  fprintf(out, "\n");
+  fprint(out, "\n");
   
   args_usage(program_name);
 }
