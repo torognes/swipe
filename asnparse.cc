@@ -482,7 +482,7 @@ auto parse_date(apt p) -> void
 auto parse_pdb_seq_id(apt p) -> void
 {
   p->pdb_molid.clear();
-  p->pdb_chain = 32;
+  p->pdb_chain = ' ';  // the default chain of a PDB-seq-id (32)
   p->pdb_chain_id.clear();
 
   match_obj(p, ber::sequence);
@@ -656,8 +656,8 @@ auto parse_seq_id(apt p) -> void
     {
       // a lowercase chain letter is shown as two uppercase letters
       // (e.g. chain 'a' -> "AA")
-      auto const chain = (p->pdb_chain > 95) ?
-        std::string(2, static_cast<char>(p->pdb_chain - 32)) :
+      auto const chain = (p->pdb_chain > '_') ?
+        std::string(2, static_cast<char>(p->pdb_chain - ('a' - 'A'))) :
         std::string(1, static_cast<char>(p->pdb_chain));
       set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
     }
