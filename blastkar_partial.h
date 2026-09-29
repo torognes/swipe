@@ -42,14 +42,25 @@ auto blast_matrix_values(char const * matrix) -> View<array_of_8>;
 auto blast_matrix_prefs(char const * matrix) -> View<Int4>;
 auto blastn_tables(long match_score, long mismatch_score) -> BlastnTables;
 
-Int4
-BlastComputeLengthAdjustment(Nlm_FloatHi K,
-                             Nlm_FloatHi logK,
-                             Nlm_FloatHi alpha_d_lambda,
-                             Nlm_FloatHi beta,
-                             Int4 query_length,
-                             Int8 db_length,
-                             Int4 db_num_seqs,
-                             Int4 * length_adjustment);
+// NCBI's length adjustment (the NCBI types are std::int32_t, std::int64_t
+// and double, see swipe.h); documented in blastkar_partial.cc
+auto BlastComputeLengthAdjustment(double K,
+                                  double logK,
+                                  double alpha_d_lambda,
+                                  double beta,
+                                  std::int32_t query_length,
+                                  std::int64_t db_length,
+                                  std::int32_t db_num_seqs,
+                                  std::int32_t * length_adjustment) -> std::int32_t;
+
+// swipe addition: the length adjustment itself (the NCBI function's
+// status, 1 when the iteration did not converge, is not used)
+auto length_adjustment(double K,
+                       double logK,
+                       double alpha_d_lambda,
+                       double beta,
+                       long query_length,
+                       std::int64_t db_length,
+                       std::int64_t db_sequences) -> std::int32_t;
 
 #endif  // SWIPE_BLASTKAR_PARTIAL_H

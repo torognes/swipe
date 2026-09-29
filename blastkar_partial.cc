@@ -527,7 +527,7 @@ static std::array<array_of_8, 2> const blastn_values_5_4 {{
  * @return   0 if length_adjustment is known to be the largest integer less
  *           than the fixed point of f(ell); 1 otherwise.
  */
-Int4
+auto
 BlastComputeLengthAdjustment(Nlm_FloatHi K,
                              Nlm_FloatHi logK,
                              Nlm_FloatHi alpha_d_lambda,
@@ -535,7 +535,7 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
                              Int4 query_length,
                              Int8 db_length,
                              Int4 db_num_seqs,
-                             Int4 * length_adjustment)
+                             Int4 * length_adjustment) -> Int4
 {
     Int4 i = 0;                 /* iteration index */
     const Int4 maxits = 20;     /* maximum allowed iterations */
@@ -619,6 +619,25 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     }
 
     return converged ? 0 : 1;
+}
+
+
+// swipe addition (see blastkar_partial.h)
+auto length_adjustment(double const K,
+                       double const logK,
+                       double const alpha_d_lambda,
+                       double const beta,
+                       long const query_length,
+                       std::int64_t const db_length,
+                       std::int64_t const db_sequences) -> std::int32_t
+{
+  Int4 adjustment = 0;
+  static_cast<void>(BlastComputeLengthAdjustment(K, logK, alpha_d_lambda, beta,
+                                                 static_cast<Int4>(query_length),
+                                                 db_length,
+                                                 static_cast<Int4>(db_sequences),
+                                                 & adjustment));
+  return adjustment;
 }
 
 

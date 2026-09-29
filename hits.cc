@@ -461,14 +461,8 @@ auto hits_init(Parameters const & parameters) -> void
 	dlen = symcount;
       }
 
-      BlastComputeLengthAdjustment(K,
-				   logK,
-				   alpha / lambda,
-				   beta,
-				   static_cast<Int4>(qlen),
-				   dlen,
-				   static_cast<Int4>(seqcount),
-				   & lenadj);
+      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+				 qlen, dlen, seqcount);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
 
@@ -544,14 +538,8 @@ auto hits_init(Parameters const & parameters) -> void
 	}
       }
 
-      BlastComputeLengthAdjustment(K,
-				   logK,
-				   alpha / lambda,
-				   beta,
-				   static_cast<Int4>(qlen),
-				   dlen,
-				   static_cast<Int4>(seqcount),
-				   & lenadj);
+      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+				 qlen, dlen, seqcount);
 
       m = qlen - lenadj;
 
