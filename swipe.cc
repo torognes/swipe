@@ -89,9 +89,9 @@ struct search_data
   struct db_thread_s * dbt;
   struct db_thread_s * dbta[8];
 
-  BYTE * dprofile;
-  BYTE * hearray;
-  BYTE ** qtable[6] {};  // nullptr: tables not allocated yet
+  Buffer<BYTE> dprofile;
+  Buffer<BYTE> hearray;
+  Buffer<BYTE *> qtable[6];  // empty: tables not allocated
 
   Buffer<long> scores;
   Buffer<long> bestpos;
@@ -173,7 +173,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 
   std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
 
-  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
+  sdp->dprofile.resize(4 * 16 * 32);
   long qlen = 0;
   long hearraylen = 0;
 
@@ -185,10 +185,10 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-	for(int i=0; i<qlen; i++)
+	sdp->qtable[3*s].resize(static_cast<std::size_t>(qlen));
+	for (std::size_t i = 0; i < sdp->qtable[3*s].size(); i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + (16*query.nt[s].seq[i]);
+	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), 16 * query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -198,10 +198,10 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-    for(int i=0; i<qlen; i++)
+    sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
+    for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + (16*query.aa[0].seq[i]);
+      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), 16 * query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
@@ -215,10 +215,10 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 	{
 	  qlen = query.aa[(3*s)+f].len;
 	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-	  for(int i=0; i<qlen; i++)
+	  sdp->qtable[(3*s)+f].resize(static_cast<std::size_t>(qlen));
+	  for (std::size_t i = 0; i < sdp->qtable[(3*s)+f].size(); i++)
 	  {
-	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (16*query.aa[(3*s)+f].seq[i]);
+	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), 16 * query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -228,7 +228,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
+  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * 32);
 
   auto const listsize = static_cast<std::size_t>(maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
@@ -342,7 +342,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
 
 
-	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+	  BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe].data();
 	  long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
@@ -353,8 +353,8 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 		    static_cast<WORD>(parameters.gapopenextend),
 		    static_cast<WORD>(parameters.gapextend),
 		    reinterpret_cast<WORD*>(score_matrix_16),
-		    reinterpret_cast<WORD*>(sdp->dprofile),
-		    reinterpret_cast<WORD*>(sdp->hearray),
+		    reinterpret_cast<WORD*>(sdp->dprofile.data()),
+		    reinterpret_cast<WORD*>(sdp->hearray.data()),
 		    sdp->dbta,
 		    static_cast<long>(sdp->start_count),
 		    sdp->start_list.data(),
@@ -390,16 +390,6 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
 auto align_done(struct search_data * sdp) -> void
 {
-  for(auto * query_table : sdp->qtable)
-  {
-    if (query_table != nullptr)
-    {
-      free(query_table);
-    }
-  }
-
-  free(sdp->dprofile);
-  free(sdp->hearray);
 
   for (auto * db_thread : sdp->dbta)
   {
@@ -1242,7 +1232,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
 auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
 {
   sdp->dbt = db_thread_create();
-  sdp->dprofile = static_cast<BYTE*>(xmalloc(4*16*32));
+  sdp->dprofile.resize(4 * 16 * 32);
   long qlen = 0;
   long hearraylen = 0;
 
@@ -1254,10 +1244,10 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
       {
 	qlen = query.nt[s].len;
 	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-	for(int i=0; i<qlen; i++)
+	sdp->qtable[3*s].resize(static_cast<std::size_t>(qlen));
+	for (std::size_t i = 0; i < sdp->qtable[3*s].size(); i++)
 	{
-	  sdp->qtable[3*s][i] = sdp->dprofile + (64*query.nt[s].seq[i]);
+	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), 64 * query.nt[s].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -1267,10 +1257,10 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   {
     qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
-    sdp->qtable[0] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-    for(int i=0; i<qlen; i++)
+    sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
+    for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
     {
-      sdp->qtable[0][i] = sdp->dprofile + (64*query.aa[0].seq[i]);
+      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), 64 * query.aa[0].seq[i]);
     }
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
@@ -1284,10 +1274,10 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 	{
 	  qlen = query.aa[(3*s)+f].len;
 	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f] = static_cast<BYTE**>(xmalloc(static_cast<std::size_t>(qlen) * sizeof(BYTE*)));
-	  for(int i=0; i<qlen; i++)
+	  sdp->qtable[(3*s)+f].resize(static_cast<std::size_t>(qlen));
+	  for (std::size_t i = 0; i < sdp->qtable[(3*s)+f].size(); i++)
 	  {
-	    sdp->qtable[(3*s)+f][i] = sdp->dprofile + (64*query.aa[(3*s)+f].seq[i]);
+	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), 64 * query.aa[(3*s)+f].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -1297,7 +1287,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray = static_cast<BYTE*>(xmalloc(static_cast<std::size_t>(hearraylen) * 32));
+  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * 32);
 
   auto listsize = static_cast<std::size_t>(maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
@@ -1377,16 +1367,6 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 
 auto search_done(struct search_data * sdp) -> void
 {
-  for(auto * query_table : sdp->qtable)
-  {
-    if (query_table != nullptr)
-    {
-      free(query_table);
-    }
-  }
-
-  free(sdp->dprofile);
-  free(sdp->hearray);
   db_thread_destruct(sdp->dbt);
 }
 
@@ -1491,7 +1471,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       sdp->out_count = sdp->start_count;
       std::copy_n(sdp->start_list.begin(), sdp->start_count, sdp->out_list.begin());
       
-      BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe];
+      BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe].data();
       long const qlen = sdp->qlen[(3*qstrand)+qframe];
       
       /* 7-bit search */
@@ -1514,8 +1494,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			gapopenextend_7,
 			gapextend_7,
 			reinterpret_cast<BYTE*>(score_matrix_7t),
-			sdp->dprofile,
-			sdp->hearray,
+			sdp->dprofile.data(),
+			sdp->hearray.data(),
 			sdp->dbt,
 			static_cast<long>(sdp->in_count),
 			sdp->in_list.data(),
@@ -1528,8 +1508,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		  gapopenextend_7,
 		  gapextend_7,
 		  reinterpret_cast<BYTE *>(score_matrix_7),
-		  sdp->dprofile,
-		  sdp->hearray,
+		  sdp->dprofile.data(),
+		  sdp->hearray.data(),
 		  sdp->dbt,
 		  static_cast<long>(sdp->in_count),
 		  sdp->in_list.data(),
@@ -1574,8 +1554,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		 static_cast<WORD>(parameters.gapopenextend),
 		 static_cast<WORD>(parameters.gapextend),
 		 reinterpret_cast<WORD*>(score_matrix_16),
-		 reinterpret_cast<WORD*>(sdp->dprofile),
-		 reinterpret_cast<WORD*>(sdp->hearray),
+		 reinterpret_cast<WORD*>(sdp->dprofile.data()),
+		 reinterpret_cast<WORD*>(sdp->hearray.data()),
 		 sdp->dbt,
 		 static_cast<long>(sdp->in_count),
 		 sdp->in_list.data(),
@@ -1642,7 +1622,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			      dend,
 			      q, 
 			      q + qlen,
-			      reinterpret_cast<long*>(sdp->hearray),
+			      reinterpret_cast<long*>(sdp->hearray.data()),
 			      score_matrix_63,
 			      parameters.gapopenextend,
 			      parameters.gapextend);
