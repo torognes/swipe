@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include "search_data.h"  // prepare_search, run_threads, align_threads
+#include "print_view.h"  // as_c_string, fprint
 #include <cstddef>  // size_t
 #include <cstdio>  // std::fclose, std::ferror, std::fflush
 #include <cstdlib>  // exit, posix_memalign
@@ -189,8 +190,12 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
   
   if (parameters.view == OutputFormat::plain)
   {
-    fprintf(out, "Search started:    %s\n", tip->starttime.data());
-    fprintf(out, "Search completed:  %s\n", tip->endtime.data());
+    fprint(out, "Search started:    ");
+    fprint(out, as_c_string(tip->starttime.data()));
+    fprint(out, '\n');
+    fprint(out, "Search completed:  ");
+    fprint(out, as_c_string(tip->endtime.data()));
+    fprint(out, '\n');
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
     {
@@ -198,9 +203,9 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
     }
     else
     {
-      fprintf(out, "Speed:             n/a\n");
+      fprint(out, "Speed:             n/a\n");
     }
-    fprintf(out, "\n");
+    fprint(out, '\n');
   }
 }
 
@@ -219,7 +224,7 @@ auto work(Parameters const & parameters) -> void
 
   if (parameters.view==OutputFormat::plain)
   {
-    fprintf(out, "Searching...");
+    fprint(out, "Searching...");
     fflush(out);
   }
 
@@ -229,7 +234,7 @@ auto work(Parameters const & parameters) -> void
  
   if (parameters.view == OutputFormat::plain)
   {
-    fprintf(out, "...............................................done\n\n");
+    fprint(out, "...............................................done\n\n");
   }
  
   clock_stop(parameters, &ti);
