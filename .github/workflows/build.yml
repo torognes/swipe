@@ -41,7 +41,7 @@ jobs:
         ${{ matrix.build.cxx }} --version
         make clean
         make -j "$(nproc)" CXX=${{ matrix.build.cxx }} ${{ matrix.build.recipe }}
-        # swipe -h exits with status 1 (KI-2)
+        # swipe -h exits with status 0 since 2.2.0 (KI-2)
         ./swipe -h 2>&1 | head -n 1
 
     - name: Install NCBI BLAST+ (makeblastdb)
