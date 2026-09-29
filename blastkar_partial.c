@@ -98,7 +98,7 @@ add two lines before the return at the end of the function:
 	
 
 constexpr Int4 BLOSUM45_VALUES_MAX = 14;
-static Nlm_FloatHi  blosum45_values[BLOSUM45_VALUES_MAX][8] = {
+static std::array<array_of_8, BLOSUM45_VALUES_MAX> const blosum45_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2291, 0.0924, 0.2514, 0.9113, -5.7},
     {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.207, 0.049, 0.14, 1.5, -22},
     {12, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.199, 0.039, 0.11, 1.8, -34},
@@ -113,9 +113,9 @@ static Nlm_FloatHi  blosum45_values[BLOSUM45_VALUES_MAX][8] = {
     {18, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.198, 0.032, 0.10, 2.0, -43},
     {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.189, 0.024, 0.079, 2.4, -57},
     {16, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.176, 0.016, 0.063, 2.8, -67},
-};
+}};
 
-static Int4 blosum45_prefs[BLOSUM45_VALUES_MAX] = {
+static std::array<Int4, BLOSUM45_VALUES_MAX> const blosum45_prefs {{
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
@@ -130,11 +130,11 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
-};
+}};
 
 
 constexpr Int4 BLOSUM50_VALUES_MAX = 16;
-static Nlm_FloatHi  blosum50_values[BLOSUM50_VALUES_MAX][8] = {
+static std::array<array_of_8, BLOSUM50_VALUES_MAX> const blosum50_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2318, 0.112, 0.3362, 0.6895, -4.0},
     {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.212, 0.063, 0.19, 1.1, -16},
     {12, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.206, 0.055, 0.17, 1.2, -18},
@@ -151,9 +151,9 @@ static Nlm_FloatHi  blosum50_values[BLOSUM50_VALUES_MAX][8] = {
     {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.198, 0.037, 0.12, 1.6, -33},
     {16, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.186, 0.025, 0.10, 1.9, -42},
     {15, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.015, 0.063, 2.7, -76},
-};
+}};
 
-static Int4 blosum50_prefs[BLOSUM50_VALUES_MAX] = {
+static std::array<Int4, BLOSUM50_VALUES_MAX> const blosum50_prefs {{
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
@@ -170,10 +170,10 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
-};
+}};
 
 constexpr Int4 BLOSUM62_VALUES_MAX = 12;
-static Nlm_FloatHi  blosum62_values[BLOSUM62_VALUES_MAX][8] = {
+static std::array<array_of_8, BLOSUM62_VALUES_MAX> const blosum62_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3176, 0.134, 0.4012, 0.7916, -3.2},
     {11, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.297, 0.082, 0.27, 1.1, -10},
     {10, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.291, 0.075, 0.23, 1.3, -15},
@@ -186,9 +186,9 @@ static Nlm_FloatHi  blosum62_values[BLOSUM62_VALUES_MAX][8] = {
     {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.267, 0.041, 0.14, 1.9, -30},
     {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.243, 0.024, 0.10, 2.5, -44},
     {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.206, 0.010, 0.052, 4.0, -87},
-};
+}};
 
-static Int4 blosum62_prefs[BLOSUM62_VALUES_MAX] = {
+static std::array<Int4, BLOSUM62_VALUES_MAX> const blosum62_prefs {{
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
@@ -201,11 +201,11 @@ static Int4 blosum62_prefs[BLOSUM62_VALUES_MAX] = {
     BLAST_MATRIX_BEST,
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
-};
+}};
 
 
 constexpr Int4 BLOSUM80_VALUES_MAX = 10;
-static Nlm_FloatHi  blosum80_values[BLOSUM80_VALUES_MAX][8] = {
+static std::array<array_of_8, BLOSUM80_VALUES_MAX> const blosum80_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3430, 0.177, 0.6568, 0.5222, -1.6},
     {25, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.342, 0.17, 0.66, 0.52, -1.6},
     {13, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.336, 0.15, 0.57, 0.59, -3},
@@ -216,9 +216,9 @@ static Nlm_FloatHi  blosum80_values[BLOSUM80_VALUES_MAX][8] = {
     {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.314, 0.095, 0.35, 0.90, -9},
     {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.299, 0.071, 0.27, 1.1, -14},
     {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.279, 0.048, 0.20, 1.4, -19},
-};
+}};
 
-static Int4 blosum80_prefs[BLOSUM80_VALUES_MAX] = {
+static std::array<Int4, BLOSUM80_VALUES_MAX> const blosum80_prefs {{
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_NOMINAL,
@@ -228,10 +228,10 @@ static Int4 blosum80_prefs[BLOSUM80_VALUES_MAX] = {
     BLAST_MATRIX_NOMINAL,
     BLAST_MATRIX_BEST,
     BLAST_MATRIX_NOMINAL
-};
+}};
 
 constexpr Int4 BLOSUM90_VALUES_MAX = 8;
-static Nlm_FloatHi  blosum90_values[BLOSUM90_VALUES_MAX][8] = {
+static std::array<array_of_8, BLOSUM90_VALUES_MAX> const blosum90_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3346, 0.190, 0.7547, 0.4434, -1.4},
     {9, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.310, 0.12, 0.46, 0.67, -6},
     {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.300, 0.099, 0.39, 0.76, -7},
@@ -240,9 +240,9 @@ static Nlm_FloatHi  blosum90_values[BLOSUM90_VALUES_MAX][8] = {
     {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.302, 0.093, 0.39, 0.78, -8},
     {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.290, 0.075, 0.28, 1.04, -15},
     {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.265, 0.044, 0.20, 1.3, -19},
-};
+}};
 
-static Int4 blosum90_prefs[BLOSUM90_VALUES_MAX] = {
+static std::array<Int4, BLOSUM90_VALUES_MAX> const blosum90_prefs {{
 	BLAST_MATRIX_NOMINAL,
 	BLAST_MATRIX_NOMINAL,
 	BLAST_MATRIX_NOMINAL,
@@ -251,10 +251,10 @@ static Int4 blosum90_prefs[BLOSUM90_VALUES_MAX] = {
 	BLAST_MATRIX_NOMINAL,
 	BLAST_MATRIX_BEST,
 	BLAST_MATRIX_NOMINAL
-};
+}};
 
 constexpr Int4 PAM250_VALUES_MAX = 16;
-static Nlm_FloatHi  pam250_values[PAM250_VALUES_MAX][8] = {
+static std::array<array_of_8, PAM250_VALUES_MAX> const pam250_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2252, 0.0868, 0.2223, 0.98, -5.0},
     {15, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.205, 0.049, 0.13, 1.6, -23},
     {14, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.200, 0.043, 0.12, 1.7, -26},
@@ -271,9 +271,9 @@ static Nlm_FloatHi  pam250_values[PAM250_VALUES_MAX][8] = {
     {19, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.192, 0.029, 0.083, 2.3, -52},
     {18, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.183, 0.021, 0.070, 2.6, -60},
     {17, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.171, 0.014, 0.052, 3.3, -86},
-};
+}};
 
-static Int4 pam250_prefs[PAM250_VALUES_MAX] = {
+static std::array<Int4, PAM250_VALUES_MAX> const pam250_prefs {{
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
@@ -290,10 +290,10 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
-};
+}};
 
 constexpr Int4 PAM30_VALUES_MAX = 7;
-static Nlm_FloatHi  pam30_values[PAM30_VALUES_MAX][8] = {
+static std::array<array_of_8, PAM30_VALUES_MAX> const pam30_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3400, 0.283, 1.754, 0.1938, -0.3},
     {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.305, 0.15, 0.87, 0.35, -3},
     {6, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.287, 0.11, 0.68, 0.42, -4},
@@ -301,9 +301,9 @@ static Nlm_FloatHi  pam30_values[PAM30_VALUES_MAX][8] = {
     {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.309, 0.15, 0.88, 0.35, -3},
     {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.294, 0.11, 0.61, 0.48, -6},
     {8, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.270, 0.072, 0.40, 0.68, -10},
-};
+}};
 
-static Int4 pam30_prefs[PAM30_VALUES_MAX] = {
+static std::array<Int4, PAM30_VALUES_MAX> const pam30_prefs {{
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
@@ -311,11 +311,11 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_BEST,
 BLAST_MATRIX_NOMINAL,
-};
+}};
 
 
 constexpr Int4 PAM70_VALUES_MAX = 7;
-static Nlm_FloatHi  pam70_values[PAM70_VALUES_MAX][8] = {
+static std::array<array_of_8, PAM70_VALUES_MAX> const pam70_values {{
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3345, 0.229, 1.029, 0.3250,   -0.7},
     {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.301, 0.12, 0.54, 0.56, -5},
     {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.286, 0.093, 0.43, 0.67, -7},
@@ -323,9 +323,9 @@ static Nlm_FloatHi  pam70_values[PAM70_VALUES_MAX][8] = {
     {11, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.305, 0.12, 0.52, 0.59, -6},
     {10, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.291, 0.091, 0.41, 0.71, -9},
     {9, 1, static_cast<Nlm_FloatHi>(INT2_MAX), 0.270, 0.060, 0.28, 0.97, -14},
-};
+}};
 
-static Int4 pam70_prefs[PAM70_VALUES_MAX] = {
+static std::array<Int4, PAM70_VALUES_MAX> const pam70_prefs {{
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
@@ -333,7 +333,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_BEST,
 BLAST_MATRIX_NOMINAL
-};
+}};
 
 
 /** Supported substitution and gap costs with corresponding quality values
@@ -356,56 +356,56 @@ BLAST_MATRIX_NOMINAL
  */
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -5. */
-static const array_of_8 blastn_values_1_5[] = {
+static std::array<array_of_8, 2> const blastn_values_1_5 {{
   { 0, 0, 1.39, 0.747, 1.38, 1.00,  0, 100 },
   { 3, 3, 1.39, 0.747, 1.38, 1.00,  0, 100 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -4. */
-static const array_of_8 blastn_values_1_4[] = {
+static std::array<array_of_8, 5> const blastn_values_1_4 {{
   { 0, 0, 1.383, 0.738, 1.36, 1.02,  0, 100 },
   { 1, 2,  1.36,  0.67,  1.2,  1.1,  0,  98 },
   { 0, 2,  1.26,  0.43, 0.90,  1.4, -1,  91 },
   { 2, 1,  1.35,  0.61,  1.1,  1.2, -1,  98 },
   { 1, 1,  1.22,  0.35, 0.72,  1.7, -3,  88 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -7.
  * These parameters can only be applied to even scores. Any odd score must be
  * rounded down to the nearest even number before calculating the e-value.
  */
-static const array_of_8 blastn_values_2_7[] = {
+static std::array<array_of_8, 5> const blastn_values_2_7 {{
   { 0, 0,  0.69, 0.73, 1.34, 0.515,  0, 100 },
   { 2, 4,  0.68, 0.67,  1.2,  0.55,  0,  99 },
   { 0, 4,  0.63, 0.43, 0.90,   0.7, -1,  91 },
   { 4, 2, 0.675, 0.62,  1.1,   0.6, -1,  98 },
   { 2, 2,  0.61, 0.35, 0.72,   1.7, -3,  88 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -3. */
-static const array_of_8 blastn_values_1_3[] = {
+static std::array<array_of_8, 6> const blastn_values_1_3 {{
   { 0, 0, 1.374, 0.711, 1.31, 1.05,  0, 100 },
   { 2, 2,  1.37,  0.70,  1.2,  1.1,  0,  99 },
   { 1, 2,  1.35,  0.64,  1.1,  1.2, -1,  98 },
   { 0, 2,  1.25,  0.42, 0.83,  1.5, -2,  91 },
   { 2, 1,  1.34,  0.60,  1.1,  1.2, -1,  97 },
   { 1, 1,  1.21,  0.34, 0.71,  1.7, -2,  88 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -5.
  * These parameters can only be applied to even scores. Any odd score must be
  * rounded down to the nearest even number before calculating the e-value.
  */
-static const array_of_8 blastn_values_2_5[] = {
+static std::array<array_of_8, 5> const blastn_values_2_5 {{
   { 0, 0, 0.675, 0.65,  1.1,  0.6, -1, 99 },
   { 2, 4,  0.67, 0.59,  1.1,  0.6, -1, 98 },
   { 0, 4,  0.62, 0.39, 0.78,  0.8, -2, 91 },
   { 4, 2,  0.67, 0.61,  1.0, 0.65, -2, 98 },
   { 2, 2,  0.56, 0.32, 0.59, 0.95, -4, 82 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -2. */
-static const array_of_8 blastn_values_1_2[] = {
+static std::array<array_of_8, 7> const blastn_values_1_2 {{
   { 0, 0, 1.28, 0.46, 0.85, 1.5, -2, 96 },
   { 2, 2, 1.33, 0.62,  1.1, 1.2,  0, 99 },
   { 1, 2, 1.30, 0.52, 0.93, 1.4, -2, 97 },
@@ -413,13 +413,13 @@ static const array_of_8 blastn_values_1_2[] = {
   { 3, 1, 1.32, 0.57,  1.0, 1.3, -1, 99 },
   { 2, 1, 1.29, 0.49, 0.92, 1.4, -1, 96 },
   { 1, 1, 1.14, 0.26, 0.52, 2.2, -5, 85 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 2 and -3.
  * These parameters can only be applied to even scores. Any odd score must be
  * rounded down to the nearest even number before calculating the e-value.
  */
-static const array_of_8 blastn_values_2_3[] = {
+static std::array<array_of_8, 9> const blastn_values_2_3 {{
   { 0, 0,  0.55, 0.21, 0.46,  1.2, -5, 87 },
   { 4, 4,  0.63, 0.42, 0.84, 0.75, -2, 99 },
   { 2, 4, 0.615, 0.37, 0.72, 0.85, -3, 97 },
@@ -429,29 +429,29 @@ static const array_of_8 blastn_values_2_3[] = {
   { 5, 2, 0.625, 0.41, 0.78,  0.8, -2, 99 },
   { 4, 2,  0.61, 0.35, 0.68,  0.9, -3, 96 },
   { 2, 2, 0.515, 0.14, 0.33, 1.55, -9, 81 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 3 and -4. */
-static const array_of_8 blastn_values_3_4[] = {
+static std::array<array_of_8, 6> const blastn_values_3_4 {{
   { 6, 3, 0.389, 0.25, 0.56, 0.7, -5, 95},
   { 5, 3, 0.375, 0.21, 0.47, 0.8, -6, 92},
   { 4, 3, 0.351, 0.14, 0.35, 1.0, -9, 86},
   { 6, 2, 0.362, 0.16, 0.45, 0.8, -4, 88},
   { 5, 2, 0.330, 0.092, 0.28, 1.2, -13, 81},
   { 4, 2, 0.281, 0.046, 0.16, 1.8, -23, 69}
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 4 and -5. */
-static const array_of_8 blastn_values_4_5[] = {
+static std::array<array_of_8, 5> const blastn_values_4_5 {{
   { 0, 0, 0.22, 0.061, 0.22, 1.0, -15, 74 },
   { 6, 5, 0.28,  0.21, 0.47, 0.6 , -7, 93 },
   { 5, 5, 0.27,  0.17, 0.39, 0.7,  -9, 90 },
   { 4, 5, 0.25,  0.10, 0.31, 0.8, -10, 83 },
   { 3, 5, 0.23, 0.065, 0.25, 0.9, -11, 76 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 1 and -1. */
-static const array_of_8 blastn_values_1_1[] = {
+static std::array<array_of_8, 7> const blastn_values_1_1 {{
   { 3,  2, 1.09,  0.31, 0.55, 2.0,  -2, 99 },
   { 2,  2, 1.07,  0.27, 0.49, 2.2,  -3, 97 },
   { 1,  2, 1.02,  0.21, 0.36, 2.8,  -6, 92 },
@@ -459,18 +459,18 @@ static const array_of_8 blastn_values_1_1[] = {
   { 4,  1, 1.08,  0.28, 0.54, 2.0,  -2, 98 },
   { 3,  1, 1.06,  0.25, 0.46, 2.3,  -4, 96 },
   { 2,  1, 0.99,  0.17, 0.30, 3.3, -10, 90 }
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 3 and -2. */
-static const array_of_8 blastn_values_3_2[] = {
+static std::array<array_of_8, 1> const blastn_values_3_2 {{
   {  5,  5, 0.208, 0.030, 0.072, 2.9, -47, 77}
-};
+}};
 
 /** Karlin-Altschul parameter values for substitution scores 5 and -4. */
-static const array_of_8 blastn_values_5_4[] = {
+static std::array<array_of_8, 2> const blastn_values_5_4 {{
   { 10, 6, 0.163, 0.068, 0.16, 1.0, -19, 85 },
   {  8, 6, 0.146, 0.039, 0.11, 1.3, -29, 76 }
-};
+}};
 
 
 
