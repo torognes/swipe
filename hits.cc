@@ -1299,12 +1299,13 @@ auto hits_defline_split(char * defline,
 {
   char * p = defline;
 
+  *gi = 0;  // no gi (KI-42: it kept the gi of the previous defline)
   *link = nullptr;
   *linklen = 0;
   *rest = nullptr;
   
   // "gi|" and a number, as the header parser writes them (set_id(),
-  // asnparse.cc); *gi is left unchanged otherwise
+  // asnparse.cc)
   constexpr std::size_t gi_prefix_length = 3;
   if (std::strncmp(p, "gi|", gi_prefix_length) == 0)
   {
