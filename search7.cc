@@ -24,10 +24,10 @@
 */
 
 #include "swipe.h"
-#include <cstddef>  // std::size_t
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 
-constexpr int CHANNELS = 16;
-constexpr int CDEPTH = 4;
+constexpr long CHANNELS = 16;
+constexpr long CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
 // fit in a signed char, -128 has the same bits)
@@ -121,8 +121,8 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m7 = _mm_or_si128(d, u5);
 
 #define profline(j)					\
-  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*(j));   \
-  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*(j)+1); \
+  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j)));   \
+  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j))+1); \
   t8  = _mm_shuffle_epi8(t6, m0);			\
   t9  = _mm_shuffle_epi8(t7, m1);			\
   t10 = _mm_shuffle_epi8(t6, m2);			\
@@ -135,10 +135,10 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   t13 = _mm_or_si128(t10, t11);				\
   u12 = _mm_or_si128(u8,  u9);				\
   u13 = _mm_or_si128(u10, u11);				\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j),   t12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+1, t13);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+2, u12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*(j)+3, u13)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j)),   t12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t13);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, u12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, u13)
 
 #else
 
@@ -148,15 +148,15 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m3 = _mm_load_si128(dseq+3);
 
 #define profline(j)					\
-  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+2*j);	\
+  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j));	\
   t1 = _mm_shuffle_epi8(t0, m0);			\
   t2 = _mm_shuffle_epi8(t0, m1);			\
   t3 = _mm_shuffle_epi8(t0, m2);			\
   t4 = _mm_shuffle_epi8(t0, m3);			\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+0, t1);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+1, t2);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+2, t3);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+4*j+3, t4)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+0, t1);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t2);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, t3);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, t4)
 
 #endif
 
@@ -228,7 +228,7 @@ inline auto dprofile_fill7(BYTE * dprofile,
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions
 
-  for(int j=0; j<CDEPTH; j++)
+  for(long j=0; j<CDEPTH; j++)
   {
     unsigned d[CHANNELS];
     for (int i = 0; i < CHANNELS; i++)

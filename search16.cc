@@ -25,8 +25,8 @@
 
 #include "swipe.h"
 
-constexpr int CHANNELS = 8;
-constexpr int CDEPTH = 4;
+constexpr long CHANNELS = 8;
+constexpr long CDEPTH = 4;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
@@ -273,7 +273,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
   __m128i xmm30;
   __m128i xmm31;
   
-  for (int j=0; j<CDEPTH; j++)
+  for (long j=0; j<CDEPTH; j++)
   {
     int d[CHANNELS];
     for (int z = 0; z < CHANNELS; z++)
@@ -282,7 +282,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     }
 
     //      for(int i=0; i<24; i += 8)
-    for(int i=0; i<32; i += 8)
+    for(long i=0; i<32; i += 8)
     {
       xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
       xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
@@ -380,7 +380,7 @@ auto search16(WORD * * q_start,
   S = Z;
   SL = Z;
       
-  for(int a=0; a < qlen; a++)
+  for(long a=0; a < qlen; a++)
   {
     hep[2*a] = Z;
     hep[(2*a)+1] = Z;
