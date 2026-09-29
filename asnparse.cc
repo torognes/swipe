@@ -53,8 +53,6 @@ struct asnparse_info
   unsigned char obj;
   unsigned char len;
   
-  unsigned long gi;
-  char database[MAXSTRING];
   char name[MAXSTRING + 1];
   char accession[MAXSTRING + 1];
   char release[MAXSTRING + 1];
@@ -63,7 +61,6 @@ struct asnparse_info
   unsigned long memberships;
   unsigned long links;
   
-  char date[MAXSTRING];
   char pdb_molid[MAXSTRING + 1];
   long pdb_chain;
   char pdb_chain_id[MAXSTRING + 1];
@@ -76,7 +73,6 @@ struct asnparse_info
   char pat_country[MAXSTRING + 1];
   unsigned long pat_granted;
   char pat_id[MAXSTRING + 1];
-  char pat_doctype[MAXSTRING + 1];
 
   char id[MAXSTRING];
   char title[MAXDEFLINESTRING];
@@ -284,7 +280,6 @@ auto parse_id_pat(apt p) -> void
 {
   p->pat_country[0] = 0;
   p->pat_id[0] = 0;
-  p->pat_doctype[0] = 0;
 
   match_obj(p,0x30);
 
@@ -324,7 +319,6 @@ auto parse_id_pat(apt p) -> void
     /* doc type */
     match_obj(p,0xA2);
     parse_visiblestring(p);
-    strcpy(p->pat_doctype, p->parsed_string);
     match_obj(p,0);
   }
 
@@ -415,29 +409,16 @@ auto parse_gi_import_id(apt p) -> void
 
 auto parse_date_std(apt p) -> void
 {
-  char temp[MAXSTRING];
-  long year = 0;
-  long month = 0;
-  long day = 0;
-  long hour = -1;
-  long min = -1;
-  long sec = -1;
-  char season[MAXSTRING + 1] = "";
-  p->date[0] = 0;
-  temp[0] = 0;
-
   match_obj(p,0x30);
 
   match_obj(p,0xA0);
   parse_integer(p); // year
-  year = static_cast<long>(p->parsed_integer);
   match_obj(p,0);
 
   if (p->obj == 0xA1)
   {
     match_obj(p,0xA1);
     parse_integer(p);
-    month = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -445,7 +426,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA2);
     parse_integer(p);
-    day = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -453,7 +433,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA3);
     parse_visiblestring(p);
-    strcpy(season, p->parsed_string);
     match_obj(p,0);
   }
 
@@ -461,7 +440,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    hour = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -469,7 +447,6 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA5);
     parse_integer(p);
-    min = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
@@ -477,48 +454,10 @@ auto parse_date_std(apt p) -> void
   {
     match_obj(p,0xA6);
     parse_integer(p);
-    sec = static_cast<long>(p->parsed_integer);
     match_obj(p,0);
   }
 
   match_obj(p,0);
-
-  snprintf(p->date, sizeof(p->date), "%04ld", year);
-  if (month > 0)
-  {
-    snprintf(temp, sizeof(temp), "-%02ld", month);
-    append_bounded(p->date, sizeof(p->date), temp);
-
-    if (day > 0)
-    {
-      snprintf(temp, sizeof(temp), "-%02ld", day);
-      append_bounded(p->date, sizeof(p->date), temp);
-    }
-  }
-  if (strlen(season) != 0U)
-  {
-    append_bounded(p->date, sizeof(p->date), " ");
-    append_bounded(p->date, sizeof(p->date), season);
-  }
-  if (hour >= 0)
-  {
-    snprintf(temp, sizeof(temp), " %02ld", hour);
-    append_bounded(p->date, sizeof(p->date), temp);
-
-    if (min >= 0)
-    {
-      snprintf(temp, sizeof(temp), ":%02ld", min);
-      append_bounded(p->date, sizeof(p->date), temp);
-
-      if (sec >= 0)
-      {
-	snprintf(temp, sizeof(temp), ":%02ld", sec);
-	append_bounded(p->date, sizeof(p->date), temp);
-      }
-    }
-  }
-
-  //  fprintf(stderr, "Date: %s\n", p->date);
 }
 
 auto parse_date(apt p) -> void
@@ -544,7 +483,6 @@ auto parse_pdb_seq_id(apt p) -> void
   p->pdb_molid[0]=0;
   p->pdb_chain = 32;
   p->pdb_chain_id[0] = 0;
-  p->date[0] = 0;
 
   match_obj(p,0x30);
 
