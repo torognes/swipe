@@ -28,6 +28,7 @@
 #include <algorithm>  // std::min
 #include <array>
 #include <cassert>
+#include <climits>  // CHAR_BIT
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstring>  // std::memcpy, std::strlen
 #include <iterator>  // std::next
@@ -89,6 +90,49 @@ struct asnparse_info
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
+// The headers are NCBI's Blast-def-line-set, encoded with the Basic
+// Encoding Rules of ASN.1 (ITU-T X.690) as makeblastdb writes them:
+// constructed types with an indefinite length, closed by an
+// end-of-contents, and context tags [n] for the n-th field of a
+// SEQUENCE or the n-th alternative of a CHOICE.
+namespace ber {
+
+constexpr unsigned char end_of_contents = 0x00;
+constexpr unsigned char sequence = 0x30;  // SEQUENCE, SEQUENCE OF
+// a length above long_form is followed by (length - long_form) bytes
+// of length (big-endian), at most max_length_bytes here
+constexpr unsigned char long_form = 0x80;
+constexpr unsigned char max_length_bytes = 4;
+// the INTEGER values of the headers fit in 4 bytes (big-endian)
+constexpr unsigned long max_integer_bytes = 4;
+constexpr unsigned char context_tag_0 = 0xA0;  // [0], constructed
+
+}  // namespace ber
+
+// the fields of the NCBI types read here (blastdb.asn, seqloc.asn,
+// general.asn, biblio.asn), in the order of their context tags
+enum struct BlastDefLine : unsigned char { title, seqid, taxid, memberships, links, other_info };
+enum struct SeqId : unsigned char { local, gibbsq, gibbmt, giim, genbank, embl, pir, swissprot,
+                                    patent, other, general, gi, ddbj, prf, pdb, tpg, tpe, tpd,
+                                    gpipe, named_annot_track };
+enum struct TextseqId : unsigned char { name, accession, release, version };
+enum struct ObjectId : unsigned char { id, str };
+enum struct Dbtag : unsigned char { db, tag };
+enum struct IdPat : unsigned char { country, id, doc_type };
+enum struct IdPatId : unsigned char { number, app_number };
+enum struct PatentSeqId : unsigned char { seqid, cit };
+enum struct GiimportId : unsigned char { id, db, release };
+enum struct Date : unsigned char { str, std };
+enum struct DateStd : unsigned char { year, month, day, season, hour, minute, second };
+enum struct PdbSeqId : unsigned char { mol, chain, rel, chain_id };
+
+// the context tag [n] of a field
+template <typename Field>
+constexpr auto tag(Field const field) -> unsigned char
+{
+  return static_cast<unsigned char>(ber::context_tag_0 + static_cast<unsigned char>(field));
+}
+
 auto nextch(apt p) -> void
 {
   if (p->header_p < p->header_end)
@@ -130,12 +174,12 @@ auto parse_integer(apt p) -> void
 
   //  match_obj(0x02);
 
-  if ((length > 0) && (length <= 4))
+  if ((length > 0) && (length <= ber::max_integer_bytes))
     {
       for(unsigned long i = 0; i < length; i++)
       {
 	//	printf("%02x ", ch);
-	p->parsed_integer = (p->parsed_integer << 8) | p->ch;
+	p->parsed_integer = (p->parsed_integer << CHAR_BIT) | p->ch;
 	nextch(p);
       }
     }
@@ -152,44 +196,23 @@ auto parse_visiblestring(apt p) -> void
 
   unsigned long length = p->len;
 
-  if (length == 0x81)
+  // the long form: the length is in the next 1 to 4 bytes (a length
+  // byte of exactly long_form, the indefinite form, is not decoded:
+  // strings are always written with a definite length)
+  if (p->len > ber::long_form)
     {
-      length = p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x82)
-    {
-
-      length = p->ch;
-      nextch(p);
-
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x83)
-    {
-      length = p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len == 0x84)
-    {
-      length = p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-      length = (length << 8) | p->ch;
-      nextch(p);
-    }
-  else if (p->len > 0x84)
-    {
-      fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
-      fatal("Error parsing binary ASN.1 in database sequence definition.");
+      auto const length_bytes = static_cast<unsigned char>(p->len - ber::long_form);
+      if (length_bytes > ber::max_length_bytes)
+	{
+	  fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
+	  fatal("Error parsing binary ASN.1 in database sequence definition.");
+	}
+      length = 0;
+      for (unsigned char i = 0; i < length_bytes; i++)
+	{
+	  length = (length << CHAR_BIT) | p->ch;
+	  nextch(p);
+	}
     }
   
   //  printf("length=%lu ", length);
@@ -218,17 +241,17 @@ auto parse_object_id(apt p) -> void
 
   switch(p->obj)
   {
-  case 0xA0:
-    match_obj(p, 0xA0);
+  case tag(ObjectId::id):
+    match_obj(p, tag(ObjectId::id));
     parse_integer(p);
     p->gnl_id_integer = p->parsed_integer;
-    match_obj(p, 0);
+    match_obj(p, ber::end_of_contents);
     break;
-  case 0xA1:
-    match_obj(p, 0xA1);
+  case tag(ObjectId::str):
+    match_obj(p, tag(ObjectId::str));
     parse_visiblestring(p);
     p->gnl_id_string = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p, 0);
+    match_obj(p, ber::end_of_contents);
     break;
   default:
     break;
@@ -239,18 +262,18 @@ auto parse_dbtag(apt p) -> void
 {
   p->gnl_db.clear();
 
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
-  match_obj(p,0xA0);
+  match_obj(p, tag(Dbtag::db));
   parse_visiblestring(p);
   p->gnl_db = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  match_obj(p,0xA1);
+  match_obj(p, tag(Dbtag::tag));
   parse_object_id(p);
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_id_pat(apt p) -> void
@@ -258,66 +281,66 @@ auto parse_id_pat(apt p) -> void
   p->pat_country.clear();
   p->pat_id.clear();
 
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
   /* Country */
-  match_obj(p,0xA0);
+  match_obj(p, tag(IdPat::country));
   parse_visiblestring(p);
   p->pat_country = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
   /* id */
-  match_obj(p,0xA1);
+  match_obj(p, tag(IdPat::id));
   switch(p->obj)
   {
-  case 0xA0:
-    match_obj(p,0xA0);
+  case tag(IdPatId::number):
+    match_obj(p, tag(IdPatId::number));
     /* granted patent number */
     p->pat_granted = 1;
     parse_visiblestring(p);
     p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
     break;
-  case 0xA1:
-    match_obj(p,0xA1);
+  case tag(IdPatId::app_number):
+    match_obj(p, tag(IdPatId::app_number));
     /* patent application number */
     p->pat_granted = 0;
     parse_visiblestring(p);
     p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
     break;
   default:
     break;
   }
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  if(p->obj == 0xA2)
+  if(p->obj == tag(IdPat::doc_type))
   {
     /* doc type */
-    match_obj(p,0xA2);
+    match_obj(p, tag(IdPat::doc_type));
     parse_visiblestring(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_patent_seq_id(apt p) -> void
 {
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
   /* sequence number in patent */
-  match_obj(p,0xA0);
+  match_obj(p, tag(PatentSeqId::seqid));
   parse_integer(p);
   p->pat_sequence = p->parsed_integer;
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
   /* citation */
-  match_obj(p,0xA1);
+  match_obj(p, tag(PatentSeqId::cit));
   parse_id_pat(p);
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_textseq_id(apt p) -> void
@@ -327,174 +350,174 @@ auto parse_textseq_id(apt p) -> void
   p->release.clear();
   p->version = 0;
 
-  match_obj(p,p->obj);
-  if (p->obj == 0xA0)
+  match_obj(p, p->obj);
+  if (p->obj == tag(TextseqId::name))
   {
-    match_obj(p,0xA0);
+    match_obj(p, tag(TextseqId::name));
     parse_visiblestring(p);
     p->name = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == 0xA1)
+  if (p->obj == tag(TextseqId::accession))
   {
-    match_obj(p,0xA1);
+    match_obj(p, tag(TextseqId::accession));
     parse_visiblestring(p);
     p->accession = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == 0xA2)
+  if (p->obj == tag(TextseqId::release))
   {
-    match_obj(p,0xA2);
+    match_obj(p, tag(TextseqId::release));
     parse_visiblestring(p);
     p->release = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == 0xA3)
+  if (p->obj == tag(TextseqId::version))
   {
-    match_obj(p,0xA3);
+    match_obj(p, tag(TextseqId::version));
     parse_integer(p);
     p->version = p->parsed_integer;
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_gi_import_id(apt p) -> void
 {
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
-  match_obj(p,0xA0);
+  match_obj(p, tag(GiimportId::id));
   parse_integer(p);
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  if (p->obj == 0xA1)
+  if (p->obj == tag(GiimportId::db))
   {
-    match_obj(p,0xA1);
+    match_obj(p, tag(GiimportId::db));
     parse_visiblestring(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA2)
+  if (p->obj == tag(GiimportId::release))
   {
-    match_obj(p,0xA2);
+    match_obj(p, tag(GiimportId::release));
     parse_visiblestring(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_date_std(apt p) -> void
 {
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
-  match_obj(p,0xA0);
+  match_obj(p, tag(DateStd::year));
   parse_integer(p); // year
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  if (p->obj == 0xA1)
+  if (p->obj == tag(DateStd::month))
   {
-    match_obj(p,0xA1);
+    match_obj(p, tag(DateStd::month));
     parse_integer(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA2)
+  if (p->obj == tag(DateStd::day))
   {
-    match_obj(p,0xA2);
+    match_obj(p, tag(DateStd::day));
     parse_integer(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA3)
+  if (p->obj == tag(DateStd::season))
   {
-    match_obj(p,0xA3);
+    match_obj(p, tag(DateStd::season));
     parse_visiblestring(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA4)
+  if (p->obj == tag(DateStd::hour))
   {
     // the hour [4] (KI-41: it was matched with the tag of the minute)
-    match_obj(p,0xA4);
+    match_obj(p, tag(DateStd::hour));
     parse_integer(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA5)
+  if (p->obj == tag(DateStd::minute))
   {
-    match_obj(p,0xA5);
+    match_obj(p, tag(DateStd::minute));
     parse_integer(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA6)
+  if (p->obj == tag(DateStd::second))
   {
-    match_obj(p,0xA6);
+    match_obj(p, tag(DateStd::second));
     parse_integer(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_date(apt p) -> void
 {
   unsigned char const object = p->obj;
-  match_obj(p,object);
+  match_obj(p, object);
   switch(object)
   {
-  case 0xA0:
+  case tag(Date::str):
     parse_visiblestring(p);
     break;
-  case 0xA1:
+  case tag(Date::std):
     parse_date_std(p);
     break;
   default:
     break;
   }
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_pdb_seq_id(apt p) -> void
 {
   p->pdb_molid.clear();
-  p->pdb_chain = 32;
+  p->pdb_chain = ' ';  // the default chain of a PDB-seq-id (32)
   p->pdb_chain_id.clear();
 
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
-  match_obj(p,0xA0);
+  match_obj(p, tag(PdbSeqId::mol));
   parse_visiblestring(p);
   p->pdb_molid = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 
-  if (p->obj == 0xA1)
+  if (p->obj == tag(PdbSeqId::chain))
   {
-    match_obj(p,0xA1);
+    match_obj(p, tag(PdbSeqId::chain));
     parse_integer(p); // default = 32 = @
     p->pdb_chain = static_cast<long>(p->parsed_integer);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == 0xA2)
+  if (p->obj == tag(PdbSeqId::rel))
   {
-    match_obj(p,0xA2);
+    match_obj(p, tag(PdbSeqId::rel));
     parse_date(p);
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
   // chain-id [3] (VisibleString, optional): chain names of any length
   // and case, written by current versions of makeblastdb (KI-22)
-  if (p->obj == 0xA3)
+  if (p->obj == tag(PdbSeqId::chain_id))
   {
-    match_obj(p,0xA3);
+    match_obj(p, tag(PdbSeqId::chain_id));
     parse_visiblestring(p);
     p->pdb_chain_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-    match_obj(p,0);
+    match_obj(p, ber::end_of_contents);
   }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 // p->id = id
@@ -547,39 +570,39 @@ auto parse_seq_id(apt p) -> void
   p->version = 0;
 
   unsigned char const object = p->obj;
-  match_obj(p,object);
+  match_obj(p, object);
   
   char const * db = "";
-  if ((object >= 0xA0) && (object <= 0xB3))
+  if ((object >= tag(SeqId::local)) && (object <= tag(SeqId::named_annot_track)))
   {
-    db = dbstr[static_cast<std::size_t>(object - 0xA0)];
+    db = dbstr[static_cast<std::size_t>(object - tag(SeqId::local))];
   }
   
   switch(object)
   {
-  case 0xA4:
-  case 0xA5:
-  case 0xA6:
-  case 0xA7:
-  case 0xA9:
-  case 0xAC:
-  case 0xAD:
-  case 0xAF:
-  case 0xB0:
-  case 0xB1:
-  case 0xB2:
-  case 0xB3:
+  case tag(SeqId::genbank):
+  case tag(SeqId::embl):
+  case tag(SeqId::pir):
+  case tag(SeqId::swissprot):
+  case tag(SeqId::other):
+  case tag(SeqId::ddbj):
+  case tag(SeqId::prf):
+  case tag(SeqId::tpg):
+  case tag(SeqId::tpe):
+  case tag(SeqId::tpd):
+  case tag(SeqId::gpipe):
+  case tag(SeqId::named_annot_track):
     parse_textseq_id(p);
     show_seq_id(p, db);
     break;
 
-  case 0xA1:
-  case 0xA2:
+  case tag(SeqId::gibbsq):
+  case tag(SeqId::gibbmt):
     parse_integer(p);
     show_id_int(p, db);
     break;
 
-  case 0xA0:
+  case tag(SeqId::local):
     parse_object_id(p);
     if (not p->gnl_id_string.empty())
     {
@@ -591,17 +614,17 @@ auto parse_seq_id(apt p) -> void
     }
     break;
 
-  case 0xA3:
+  case tag(SeqId::giim):
     parse_gi_import_id(p);
     show_id_int(p, db);
     break;
 
-  case 0xA8:
+  case tag(SeqId::patent):
     parse_patent_seq_id(p);
     show_pat(p);
     break;
 
-  case 0xAA:
+  case tag(SeqId::general):
     parse_dbtag(p);
     if (not p->gnl_id_string.empty())
     {
@@ -614,7 +637,7 @@ auto parse_seq_id(apt p) -> void
     }
     break;
 
-  case 0xAB:
+  case tag(SeqId::gi):
     parse_integer(p);
     if (p->show_gis != 0)
     {
@@ -622,7 +645,7 @@ auto parse_seq_id(apt p) -> void
     }
     break;
 
-  case 0xAE:
+  case tag(SeqId::pdb):
     parse_pdb_seq_id(p);
     if (not p->pdb_chain_id.empty())
     {
@@ -633,8 +656,8 @@ auto parse_seq_id(apt p) -> void
     {
       // a lowercase chain letter is shown as two uppercase letters
       // (e.g. chain 'a' -> "AA")
-      auto const chain = (p->pdb_chain > 95) ?
-        std::string(2, static_cast<char>(p->pdb_chain - 32)) :
+      auto const chain = (p->pdb_chain > '_') ?
+        std::string(2, static_cast<char>(p->pdb_chain - ('a' - 'A'))) :
         std::string(1, static_cast<char>(p->pdb_chain));
       set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
     }
@@ -644,14 +667,14 @@ auto parse_seq_id(apt p) -> void
     break;
   }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
 }
 
 auto parse_blast_def_line(apt p) -> void
 {
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
 
-  if (p->obj == 0x00)
+  if (p->obj == ber::end_of_contents)
   {
     fatal("Missing defline.");
   }
@@ -664,19 +687,19 @@ auto parse_blast_def_line(apt p) -> void
   p->memberships = 0;
   p->links = 0;
 
-  if (p->obj == 0xA0)
+  if (p->obj == tag(BlastDefLine::title))
     {
-      match_obj(p,0xA0);
+      match_obj(p, tag(BlastDefLine::title));
       parse_visiblestring(p);
       p->title = p->parsed_string.c_str();  // up to a NUL, as strcpy()
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
     }
 
-  if (p->obj == 0xA1)
+  if (p->obj == tag(BlastDefLine::seqid))
     {
-      match_obj(p,0xA1);
-      match_obj(p,0x30);
-      while(p->obj != 0U)
+      match_obj(p, tag(BlastDefLine::seqid));
+      match_obj(p, ber::sequence);
+      while(p->obj != ber::end_of_contents)
       {
 	parse_seq_id(p);
 	if (not seqids.empty())
@@ -685,54 +708,54 @@ auto parse_blast_def_line(apt p) -> void
 	}
 	seqids += p->id;
       }
-      match_obj(p,0x00);
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
+      match_obj(p, ber::end_of_contents);
     }
 
-  if (p->obj == 0xA2)
+  if (p->obj == tag(BlastDefLine::taxid))
     {
-      match_obj(p,0xA2);
+      match_obj(p, tag(BlastDefLine::taxid));
       parse_integer(p);
       p->taxid = p->parsed_integer;
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == 0xA3)
+  if (p->obj == tag(BlastDefLine::memberships))
     {
-      match_obj(p,0xA3);
-      match_obj(p,0x30);
-      while(p->obj != 0U)
+      match_obj(p, tag(BlastDefLine::memberships));
+      match_obj(p, ber::sequence);
+      while(p->obj != ber::end_of_contents)
       {
 	parse_integer(p);
 	p->memberships = p->parsed_integer;
       }
-      match_obj(p,0x00);
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
+      match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == 0xA4)
+  if (p->obj == tag(BlastDefLine::links))
     {
-      match_obj(p,0xA4);
-      match_obj(p,0x30);
-      while(p->obj != 0U)
+      match_obj(p, tag(BlastDefLine::links));
+      match_obj(p, ber::sequence);
+      while(p->obj != ber::end_of_contents)
       {
 	parse_integer(p);
 	p->links = p->parsed_integer;
       }
-      match_obj(p,0x00);
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
+      match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == 0xA5)
+  if (p->obj == tag(BlastDefLine::other_info))
     {
-      match_obj(p,0xA5);
-      match_obj(p,0x30);
-      while (p->obj != 0U)
+      match_obj(p, tag(BlastDefLine::other_info));
+      match_obj(p, ber::sequence);
+      while (p->obj != ber::end_of_contents)
       {
 	parse_integer(p);
       }
-      match_obj(p,0x00);
-      match_obj(p,0x00);
+      match_obj(p, ber::end_of_contents);
+      match_obj(p, ber::end_of_contents);
     }
 
-  match_obj(p,0);
+  match_obj(p, ber::end_of_contents);
   
   p->defline += seqids;
   
@@ -856,7 +879,7 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 
 auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable) -> long
 {
-  match_obj(p,0x30);
+  match_obj(p, ber::sequence);
   long deflines = 0;
 
   if (deflinetable != nullptr)
@@ -864,7 +887,7 @@ auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable
     deflinetable->clear();
   }
     
-  while (p->obj != 0U)
+  while (p->obj != ber::end_of_contents)
     {
       p->defline.clear();
       parse_blast_def_line(p);
@@ -878,7 +901,7 @@ auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable
       }
     }
   
-  match_obj(p,0x00);
+  match_obj(p, ber::end_of_contents);
 
   return deflines;
 }
