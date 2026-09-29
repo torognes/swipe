@@ -41,6 +41,7 @@
 #include <cmath>
 #include <x86intrin.h>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <ctime>
 #include <string>
@@ -216,10 +217,24 @@ struct sequence
   Buffer<char> storage;  // owns seq
 };
 
+// the index of a query strand (0: plus, 1: minus), and of a frame of a
+// translated query or of its search tables: (3 x strand) + frame
+inline auto strand_index(long const strand) -> std::size_t
+{
+  assert((strand >= 0) and (strand < 2));
+  return static_cast<std::size_t>(strand);
+}
+
+inline auto frame_index(long const strand, long const frame) -> std::size_t
+{
+  assert((frame >= 0) and (frame < 3));
+  return (3 * strand_index(strand)) + static_cast<std::size_t>(frame);
+}
+
 struct query_s
 {
-  struct sequence nt[2]; /* 2 strands */
-  struct sequence aa[6]; /* 6 frames */
+  std::array<struct sequence, 2> nt; /* 2 strands */
+  std::array<struct sequence, 6> aa; /* 6 frames */
   std::string description;
   long dlen;
   SymbolType symtype;

@@ -673,8 +673,8 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
     }
     else
     {
-      qseq = query.aa[(3*h->qstrand) + h->qframe].seq;
-      qlen = query.aa[(3*h->qstrand) + h->qframe].len;
+      qseq = query.aa[frame_index(h->qstrand, h->qframe)].seq;
+      qlen = query.aa[frame_index(h->qstrand, h->qframe)].len;
     }
 
     // give hint of alignment end
@@ -759,8 +759,8 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
     // reverse strand of the database sequence (reported_strands())
     assert(hit.q_strand == 0);
     hit.sym = sym_ncbi_nt16;
-    hit.q_seq = query.nt[hit.q_strand].seq;
-    hit.q_len = query.nt[hit.q_strand].len;
+    hit.q_seq = query.nt[strand_index(hit.q_strand)].seq;
+    hit.q_len = query.nt[strand_index(hit.q_strand)].len;
   }
   else if (parameters.symtype == SymbolType::sound)
   {
@@ -771,8 +771,8 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
   else
   {
     hit.sym = sym_ncbi_aa;
-    hit.q_seq = query.aa[(3*hit.q_strand)+hit.q_frame].seq;
-    hit.q_len = query.aa[(3*hit.q_strand)+hit.q_frame].len;
+    hit.q_seq = query.aa[frame_index(hit.q_strand, hit.q_frame)].seq;
+    hit.q_len = query.aa[frame_index(hit.q_strand, hit.q_frame)].len;
     hit.q_len_nt = query.nt[0].len;
     hit.d_len_nt = entry.dlennt;
   }

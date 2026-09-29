@@ -241,13 +241,13 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
 
   for(long s=0; s<2; s++)
   {
-    query.nt[s].seq = nullptr;
-    query.nt[s].len = 0;
+    query.nt[strand_index(s)].seq = nullptr;
+    query.nt[strand_index(s)].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      query.aa[(3*s)+f].seq = nullptr;
-      query.aa[(3*s)+f].len = 0;
+      query.aa[frame_index(s, f)].seq = nullptr;
+      query.aa[frame_index(s, f)].len = 0;
     }
   }
 
@@ -271,15 +271,15 @@ auto query_free() -> void
 
   for(long s=0; s<2; s++)
   {
-    query.nt[s].storage = Buffer<char>();
-    query.nt[s].seq = nullptr;
-    query.nt[s].len = 0;
+    query.nt[strand_index(s)].storage = Buffer<char>();
+    query.nt[strand_index(s)].seq = nullptr;
+    query.nt[strand_index(s)].len = 0;
     
     for(long f=0; f<3; f++)
     {
-      query.aa[(3*s)+f].storage = Buffer<char>();
-      query.aa[(3*s)+f].seq = nullptr;
-      query.aa[(3*s)+f].len = 0;
+      query.aa[frame_index(s, f)].storage = Buffer<char>();
+      query.aa[frame_index(s, f)].seq = nullptr;
+      query.aa[frame_index(s, f)].len = 0;
     }
   }
 }
@@ -395,7 +395,7 @@ auto query_read() -> int
 	{
 	  for(long f=0; f<3; f++)
 	  {
-	    struct sequence & frame_sequence = query.aa[(3*s)+f];
+	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
 	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
 		      frame_sequence.storage, & frame_sequence.len);
 	    frame_sequence.seq = frame_sequence.storage.data();

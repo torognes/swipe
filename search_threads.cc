@@ -63,12 +63,12 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	qlen = query.nt[s].len;
-	sdp->qlen[3*s] = qlen;
-	sdp->qtable[3*s].resize(static_cast<std::size_t>(qlen));
-	for (std::size_t i = 0; i < sdp->qtable[3*s].size(); i++)
+	qlen = query.nt[strand_index(s)].len;
+	sdp->qlen[frame_index(s, 0)] = qlen;
+	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
+	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
 	{
-	  sdp->qtable[3*s][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[s].seq[i]);
+	  sdp->qtable[frame_index(s, 0)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[strand_index(s)].seq[i]);
 	}
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
@@ -93,12 +93,12 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
       {
 	for(long f=0; f<3; f++)
 	{
-	  qlen = query.aa[(3*s)+f].len;
-	  sdp->qlen[(3*s)+f] = qlen;
-	  sdp->qtable[(3*s)+f].resize(static_cast<std::size_t>(qlen));
-	  for (std::size_t i = 0; i < sdp->qtable[(3*s)+f].size(); i++)
+	  qlen = query.aa[frame_index(s, f)].len;
+	  sdp->qlen[frame_index(s, f)] = qlen;
+	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
+	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
 	  {
-	    sdp->qtable[(3*s)+f][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[(3*s)+f].seq[i]);
+	    sdp->qtable[frame_index(s, f)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[frame_index(s, f)].seq[i]);
 	  }
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
@@ -294,8 +294,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       sdp->out_count = sdp->start_count;
       std::copy_n(sdp->start_list.begin(), sdp->start_count, sdp->out_list.begin());
       
-      BYTE ** qtable = sdp->qtable[(3*qstrand)+qframe].data();
-      long const qlen = sdp->qlen[(3*qstrand)+qframe];
+      BYTE ** qtable = sdp->qtable[frame_index(qstrand, qframe)].data();
+      long const qlen = sdp->qlen[frame_index(qstrand, qframe)];
       
       /* 7-bit search */
 	  
@@ -432,11 +432,11 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  char * q = nullptr;
 	  if (parameters.symtype == SymbolType::blastn)
 	  {
-	    q = query.nt[qstrand].seq;
+	    q = query.nt[strand_index(qstrand)].seq;
 	  }
 	  else
 	  {
-	    q = query.aa[(3 * qstrand) + qframe].seq;
+	    q = query.aa[frame_index(qstrand, qframe)].seq;
 	  }
 
 	  long const score = fullsw(dbegin,
