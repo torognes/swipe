@@ -752,8 +752,8 @@ search7
   __m128i T0;
   __m128i *hep;
   __m128i **qp;
-  BYTE * d_begin[CHANNELS];
-  BYTE * d_end[CHANNELS];
+  BYTE const * d_begin[CHANNELS];
+  BYTE const * d_end[CHANNELS];
   
   __m128i dseqalloc[CDEPTH];
   
@@ -875,19 +875,17 @@ search7
 	    seq_id[c] = next_id;
 	    long const seqnosf = seqnos[next_id];
 
-	    char* address;
-	    long length;
 	    long ntlen;
 	    long const strand = (seqnosf >> 2) & 1;
 	    long const frame = seqnosf & 3;
 	    long const seqno = seqnosf >> 3;
 
-	    db_getsequence(dbt, seqno, strand, frame, 
-			   & address, & length, &ntlen, c);
+	    View<char> const sequence =
+	      db_getsequence(dbt, seqno, strand, frame, &ntlen, c);
 		      
 	    // printf("Seqno: %ld Address: %p\n", seqno, address);
-	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
-	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
+	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
+	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
 	    next_id++;
 		      
 	    // fill channel

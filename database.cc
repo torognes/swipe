@@ -1227,8 +1227,8 @@ auto db_translate(char const * dna, long dlen,
 
 }  // anonymous namespace
 
-auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void
+auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
+		    long * ntlenp, int c) -> View<char>
 {
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 
@@ -1350,13 +1350,11 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  ntbuffer = Buffer<char>();
 	}
 
-	*addressp = xx;
-	*lengthp = nt_length + 1;
+	return View<char>{xx, static_cast<std::size_t>(nt_length)};
       }
       else
       {
-	*addressp = nt;
-	*lengthp = nt_length + 1;
+	return View<char>{nt, static_cast<std::size_t>(nt_length)};
       }
     }
     else if (((db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx)) and
@@ -1383,21 +1381,19 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	ntbuffer = Buffer<char>();
       }
       
-      *addressp = xx;
-      *lengthp = plen + 1;
       *ntlenp = nt_length;
+      return View<char>{xx, static_cast<std::size_t>(plen)};
     }
     else
     {
-      *addressp = nt;
-      *lengthp = nt_length + 1;
+      return View<char>{nt, static_cast<std::size_t>(nt_length)};
     }
 
   }
   else
   {
-    *addressp = address;
-    *lengthp = length;
+    // the length counts the separator (a NUL) that follows the sequence
+    return View<char>{address, static_cast<std::size_t>(length - 1)};
   }
 }
 
@@ -1433,8 +1429,6 @@ namespace {
 
 auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
 {
-  char * address = nullptr;
-  long length = 0;
   long ntlen = 0;
 
   // databases of translated searches are dumped as nucleotides,
@@ -1444,19 +1438,20 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
     frame = untranslated_frame;
   }
 
-  db_getsequence(t, seqno, strand, frame, & address, & length, & ntlen, 0);
+  View<char> const sequence = db_getsequence(t, seqno, strand, frame, & ntlen, 0);
+  auto const length = static_cast<long>(sequence.size());
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
-    db_print_seq_map(address, length-1, sym_ncbi_aa);
+    db_print_seq_map(sequence.data(), length, sym_ncbi_aa);
   }
   else if ((db_main.symtype == SymbolType::blastn) || (db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx))
   {
-    db_print_seq_map(address, length-1, sym_ncbi_nt16u);
+    db_print_seq_map(sequence.data(), length, sym_ncbi_nt16u);
   }
   else
   {
-    db_print_seq_map(address, length - 1, sym_sound);
+    db_print_seq_map(sequence.data(), length, sym_sound);
   }
 }
 

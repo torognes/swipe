@@ -663,14 +663,14 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   // KI-37), the sequence itself only for hits with an alignment
   db_mapsequences(t, h->seqno, h->seqno);
 
-  db_getsequence(t, h->seqno, h->dstrand, h->dframe,
-		 & address, & length, & ntlen, 0);
-  h->dlen = length - 1;
+  View<char> const sequence = db_getsequence(t, h->seqno, h->dstrand,
+					     h->dframe, & ntlen, 0);
+  h->dlen = static_cast<long>(sequence.size());
   h->dlennt = ntlen;
 
   if (i < opt_alignments)
   {
-    h->dseq.assign(address, std::next(address, h->dlen));
+    h->dseq.assign(sequence.begin(), sequence.end());
     
     char * qseq = nullptr;
     long qlen = 0;

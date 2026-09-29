@@ -339,10 +339,10 @@ auto search16s(WORD * * q_start,
   __m128i T0;
   __m128i *hep;
   __m128i **qp;
-  BYTE * d_begin[CHANNELS];
-  BYTE * d_pos[CHANNELS];
-  BYTE * d_end[CHANNELS];
-  BYTE * d_best[CHANNELS];
+  BYTE const * d_begin[CHANNELS];
+  BYTE const * d_pos[CHANNELS];
+  BYTE const * d_end[CHANNELS];
+  BYTE const * d_best[CHANNELS];
   long q_best[CHANNELS];
 
   __m128i dseqalloc[CDEPTH];
@@ -492,8 +492,6 @@ auto search16s(WORD * * q_start,
 	  {
 	    seq_id[c] = next_id;
 	    long const seqnosf = seqnos[next_id];
-	    char* address;
-	    long length;
 	    long ntlen;
 
 	    long const strand = (seqnosf >> 2) & 1;
@@ -502,13 +500,13 @@ auto search16s(WORD * * q_start,
 
 	    db_mapsequences(dbta[c], seqno, seqno);
 
-	    db_getsequence(dbta[c], seqno, strand, frame, 
-			   & address, & length, & ntlen, c);
+	    View<char> const sequence =
+	      db_getsequence(dbta[c], seqno, strand, frame, & ntlen, c);
 		      
-	    d_begin[c] = reinterpret_cast<unsigned char*>(address);
+	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
 	    d_pos[c] = d_begin[c];
 	    d_best[c] = d_begin[c];
-	    d_end[c] = reinterpret_cast<unsigned char*>(address) + length - 1;
+	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
 	    q_best[c] = -1;
 	    next_id++;
 		      

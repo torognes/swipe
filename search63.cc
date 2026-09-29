@@ -28,7 +28,7 @@
 #include <cassert>
 #include <cstddef>  // std::size_t
 
-auto fullsw(char * dseq,
+auto fullsw(char const * dseq,
 	    char const * dend,
 	    char * qseq,
 	    char const * qend,
@@ -44,7 +44,7 @@ auto fullsw(char * dseq,
   long s = 0;
   long *hep = nullptr;
   char *qp = nullptr;
-  char *dp = nullptr;
+  char const *dp = nullptr;
   long * sp = nullptr;
 
   s = 0;

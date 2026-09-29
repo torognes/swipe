@@ -417,13 +417,11 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const dstrand = (seqnosf >> 2) & 1;
 	  long const dframe = seqnosf & 3;
       
-	  char * address = nullptr;
-	  long length = 0;
 	  long ntlen = 0;
-	  db_getsequence(sdp->dbt, seqno, dstrand, dframe, 
-			 & address, & length, & ntlen, 0);
-	  char * dbegin = address;
-	  char const * dend = address + length - 1;
+	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, dstrand,
+						     dframe, & ntlen, 0);
+	  char const * dbegin = sequence.begin();
+	  char const * dend = sequence.end();
       
 	  char * q = nullptr;
 	  if (parameters.symtype == SymbolType::blastn)

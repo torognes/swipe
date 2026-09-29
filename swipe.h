@@ -46,6 +46,7 @@
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
+#include "view.h"  // View
 
 
 #ifdef __APPLE__
@@ -312,7 +313,7 @@ auto search16s(WORD * * q_start,
 	       long * bestq,
 	       int qlen) -> void;
 
-auto fullsw(char * dseq,
+auto fullsw(char const * dseq,
 	    char const * dend,
 	    char * qseq,
 	    char const * qend,
@@ -425,8 +426,10 @@ auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
-auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame, 
-		    char ** addressp, long * lengthp, long * ntlenp, int c) -> void;
+// the residues of a sequence (GitHub #27: without the separator that
+// follows it); ntlenp receives its length in nucleotides
+auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
+		    long * ntlenp, int c) -> View<char>;
 auto db_getheader(struct db_thread_s const * t, long seqno, char ** address, 
 		  long * length) -> void;
 
