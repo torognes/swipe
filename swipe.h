@@ -137,7 +137,7 @@ constexpr long default_query_gencode = 1;
 constexpr long default_db_gencode = 1;
 constexpr long default_subalignments = 1;
 constexpr long default_dump = 0;
-constexpr long default_effdbsize = 0;
+constexpr std::int64_t default_effdbsize = 0;
 
 // the command-line options, final once args_init() has parsed and
 // checked them (including the gap penalties that default to those of
@@ -171,7 +171,7 @@ struct Parameters
   long db_gencode = default_db_gencode;
   long subalignments = default_subalignments;
   long dump = default_dump;
-  long effdbsize = default_effdbsize;
+  std::int64_t effdbsize = default_effdbsize;
 };
 
 auto xmalloc(size_t size) -> void *;
@@ -391,10 +391,10 @@ auto parse_getdeflinecount(apt p, unsigned char * buf, long len,
 
 auto db_open(Parameters const & parameters) -> void;
 auto db_close() -> void;
-auto db_getseqcount() -> long;
-auto db_getseqcount_masked() -> long;
-auto db_getsymcount() -> long;
-auto db_getsymcount_masked() -> long;
+auto db_getseqcount() -> std::int64_t;
+auto db_getseqcount_masked() -> std::int64_t;
+auto db_getsymcount() -> std::int64_t;
+auto db_getsymcount_masked() -> std::int64_t;
 auto db_getlongest() -> long;
 auto db_gettitle() -> char*;
 auto db_gettime() -> char*;

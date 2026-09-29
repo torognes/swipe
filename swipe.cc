@@ -28,7 +28,9 @@
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
+#include <cinttypes>  // PRId64
 #include <cstddef>  // std::size_t
+#include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
 #include <iterator>  // std::begin, std::end
 #include <limits>
@@ -647,20 +649,20 @@ auto args_show(Parameters const & parameters) -> void
     
     if (db_ismasked() != 0)
       {
-	fprintf(out, "Database size:     %ld residues", db_getsymcount_masked());
-	fprintf(out, " in %ld sequences\n", db_getseqcount_masked());
+	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount_masked());
+	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount_masked());
       }
       else
       {
-	fprintf(out, "Database size:     %ld residues", db_getsymcount());
-	fprintf(out, " in %ld sequences\n", db_getseqcount());
+	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount());
+	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount());
       }
 
       fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
 
       if (parameters.effdbsize > 0)
       {
-	fprintf(out, "Effective db size: %ld\n", parameters.effdbsize);
+	fprintf(out, "Effective db size: %" PRId64 "\n", parameters.effdbsize);
       }
 
       fprintf(out, "Query file name:   %s\n", parameters.queryname);
@@ -813,16 +815,16 @@ auto parse_double(char const * const text, char const * const message) -> double
 
 // the effective database size accepts the real notation of blastall's
 // -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
-auto parse_dbsize(char const * const text) -> long
+auto parse_dbsize(char const * const text) -> std::int64_t
 {
   static char const message[] = "Illegal effective db size specified";
-  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<long>::max());
+  constexpr auto upper_limit = static_cast<double>(std::numeric_limits<std::int64_t>::max());
   auto const value = parse_double(text, message);
   if ((value < 0.0) or (std::floor(value) < value) or (value >= upper_limit))
   {
     fatal(message);
   }
-  return static_cast<long>(value);
+  return static_cast<std::int64_t>(value);
 }
 
 auto args_init(int argc, char * const * argv) -> Parameters

@@ -27,8 +27,8 @@
 #include <algorithm>  // std::all_of, std::max, std::min
 #include <cctype>  // std::isdigit, std::isspace
 #include <cstddef>  // std::size_t
-#include <cstdint>  // std::uint64_t, std::uintptr_t
-#include <cstdlib>  // std::strtoul
+#include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
+#include <cstdlib>  // std::strtoll, std::strtoul
 #include <cstring>  // std::memcpy
 #include <iterator>  // std::next
 #include <string>
@@ -48,7 +48,7 @@ struct al_info
   long oidlist_len;
   char * * oidlist;
   long memb_bit;
-  long length;
+  std::int64_t length;  // residues (LENGTH)
   long maxoid;
   long nseq;
 };
@@ -66,12 +66,12 @@ struct db_main_s
   char * title;
   char * time;
 
-  long seqcount;
+  std::int64_t seqcount;
   long longest;
-  long symcount;
+  std::int64_t symcount;
 
-  long masked_seqcount;
-  long masked_symcount;
+  std::int64_t masked_seqcount;
+  std::int64_t masked_symcount;
   long memb_bit;
 
   char * taxid_filename;
@@ -101,11 +101,11 @@ struct db_volume_s
 
   long seqcount;
   long longest;
-  long symcount;
+  std::int64_t symcount;
 
   // the masked volume - for masked files (swissprot, pdbaa, pdbnt)
   char * masked_title;
-  long masked_length;
+  std::int64_t masked_length;
   long masked_nseq;
   long masked_maxoid;
   long masked_memb_bit;
@@ -438,7 +438,7 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> al_info_t *
     }
     else if (strncmp(line, "LENGTH ", 7) == 0)
     {
-      al_info->length = atol(line+7);
+      al_info->length = std::strtoll(line + 7, nullptr, 10);
     }
     else if (strncmp(line, "NSEQ ", 5) == 0)
     {
@@ -647,7 +647,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   check_xin_room(p, 16);
   volume->seqcount = load_uint32_be(p);
   p += 4;
-  volume->symcount = static_cast<long>(load_uint64_host(p));
+  volume->symcount = static_cast<std::int64_t>(load_uint64_host(p));
   p += 8;
   volume->longest = load_uint32_be(p);
   p += 4;
@@ -1212,7 +1212,7 @@ auto db_getvolumecount() -> long
   return db_main.volumecount;
 }
 
-auto db_getseqcount() -> long
+auto db_getseqcount() -> std::int64_t
 {
   return db_main.seqcount;
 }
@@ -1227,7 +1227,7 @@ auto db_getseqcount_volume_masked(long v) -> long
   return db_volume[v].masked_nseq;
 }
 
-auto db_getseqcount_masked() -> long
+auto db_getseqcount_masked() -> std::int64_t
 {
   if (db_main.memb_bit != 0)
   {
@@ -1236,12 +1236,12 @@ auto db_getseqcount_masked() -> long
   return db_main.seqcount;
 }
 
-auto db_getsymcount() -> long
+auto db_getsymcount() -> std::int64_t
 {
   return db_main.symcount;
 }
 
-auto db_getsymcount_masked() -> long
+auto db_getsymcount_masked() -> std::int64_t
 {
   if (db_main.memb_bit != 0)
   {

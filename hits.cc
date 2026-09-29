@@ -29,7 +29,9 @@
 #include <cassert>
 #include <cctype>  // std::isspace
 #include <cmath>  // std::isnan
+#include <cinttypes>  // PRId64
 #include <cstddef>  // std::size_t
+#include <cstdint>  // std::int64_t, INT64_C
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 
@@ -97,10 +99,10 @@ auto percentage(long const part, long const whole) -> double
 
 // effective length of the database in the search space: its length
 // minus the length adjustment of each of its sequences, computed in
-// long (KI-40: an int product overflowed for large databases)
-constexpr auto effective_db_length(long const db_length,
-                                   long const sequence_count,
-                                   long const length_adjustment) -> long
+// 64 bits (KI-40: an int product overflowed for large databases)
+constexpr auto effective_db_length(std::int64_t const db_length,
+                                   std::int64_t const sequence_count,
+                                   std::int64_t const length_adjustment) -> std::int64_t
 {
   return db_length - (sequence_count * length_adjustment);
 }
@@ -108,7 +110,7 @@ constexpr auto effective_db_length(long const db_length,
 static_assert(effective_db_length(1000, 10, 3) == 970, "search space");
 // 50 million sequences, adjustment of 100: the product (5e9) does not
 // fit in an int (KI-40)
-static_assert(effective_db_length(20000000000L, 50000000L, 100L) == 15000000000L,
+static_assert(effective_db_length(INT64_C(20000000000), 50000000, 100) == INT64_C(15000000000),
               "search space of a large database (KI-40)");
 
 struct hits_entry
@@ -381,7 +383,7 @@ auto hits_init(Parameters const & parameters) -> void
   opt_alignments = max_alignments;
   keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
-  long maxhits = db_getseqcount_masked();
+  std::int64_t maxhits = db_getseqcount_masked();
   if (parameters.symtype == SymbolType::blastn)
     {
       if (parameters.querystrands == QueryStrands::both)
@@ -416,7 +418,7 @@ auto hits_init(Parameters const & parameters) -> void
       }
     }
 
-  keephits = std::min(keephits, maxhits);
+  keephits = static_cast<long>(std::min<std::int64_t>(keephits, maxhits));
 
   obvious = 0;
   hits_count = 0;
@@ -431,8 +433,8 @@ auto hits_init(Parameters const & parameters) -> void
     h->alignment = nullptr;
   }
 
-  long seqcount = 0;
-  long symcount = 0;
+  std::int64_t seqcount = 0;
+  std::int64_t symcount = 0;
 
   if (db_ismasked() != 0)
   {
@@ -449,8 +451,8 @@ auto hits_init(Parameters const & parameters) -> void
 
   stats_available = 0;
 
-  long m = 0;
-  long n = 0;
+  std::int64_t m = 0;
+  std::int64_t n = 0;
   int lenadj = 0;
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -479,7 +481,7 @@ auto hits_init(Parameters const & parameters) -> void
       
       long const qlen = query.nt[0].len;
 
-      long dlen = 0;
+      std::int64_t dlen = 0;
       if (parameters.effdbsize > 0)
       {
 	dlen = parameters.effdbsize;
@@ -555,7 +557,7 @@ auto hits_init(Parameters const & parameters) -> void
 	qlen = query.nt[0].len / 3;
       }
 
-      long dlen = 0;
+      std::int64_t dlen = 0;
       if (parameters.effdbsize > 0)
       {
 	dlen = parameters.effdbsize;
@@ -1453,8 +1455,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprintf(out, "\t\t\t<databaseDate>");
   xml_print(db_gettime());
   fprintf(out, "</databaseDate>\n");
-  fprintf(out, "\t\t\t<residueCount>%ld</residueCount>\n", db_getsymcount_masked());
-  fprintf(out, "\t\t\t<sequenceCount>%ld</sequenceCount>\n", db_getseqcount_masked());
+  fprintf(out, "\t\t\t<residueCount>%" PRId64 "</residueCount>\n", db_getsymcount_masked());
+  fprintf(out, "\t\t\t<sequenceCount>%" PRId64 "</sequenceCount>\n", db_getseqcount_masked());
   fprintf(out, "\t\t\t<longestSequenceLength>%ld</longestSequenceLength>\n", db_getlongest());
   fprintf(out, "\t\t</databaseInformation>\n");
   
