@@ -1313,7 +1313,6 @@ auto hits_defline_split(char * defline,
     long const value = std::strtol(number, & end, 10);
     if (end != number)
     {
-      //  if (len > 0)
       *gi = value;
       p = end;
     }
