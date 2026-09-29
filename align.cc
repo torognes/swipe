@@ -52,8 +52,10 @@ auto region(char const * a_seq,
 	    long * s) -> void
 {
   
-  long * HH = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
-  long * EE = static_cast<long *>(xmalloc(static_cast<std::size_t>(N) * sizeof(long)));
+  Buffer<long> hh_buffer(static_cast<std::size_t>(N));
+  Buffer<long> ee_buffer(static_cast<std::size_t>(N));
+  long * HH = hh_buffer.data();
+  long * EE = ee_buffer.data();
 
   long i = 0;
   long j = 0;
@@ -159,9 +161,6 @@ auto region(char const * a_seq,
   fatal("Internal error in align function.");
 
  Found:
-
-  free(EE);
-  free(HH);
 
   *s = score;
 }
@@ -351,8 +350,10 @@ auto diff(struct aligner_info * aip,
 
       // Compute HH & EE in forward phase with tb
 
-      long * HH = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
-      long * EE = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      Buffer<long> hh_buffer(static_cast<std::size_t>(N) + 1);
+      Buffer<long> ee_buffer(static_cast<std::size_t>(N) + 1);
+      long * HH = hh_buffer.data();
+      long * EE = ee_buffer.data();
 
       HH[0] = 0;
       t = -q;
@@ -389,8 +390,10 @@ auto diff(struct aligner_info * aip,
 
       // Compute XX & YY in reverse phase with te
 
-      long * XX = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
-      long * YY = static_cast<long *>(xmalloc((static_cast<std::size_t>(N) + 1) * sizeof(long)));
+      Buffer<long> xx_buffer(static_cast<std::size_t>(N) + 1);
+      Buffer<long> yy_buffer(static_cast<std::size_t>(N) + 1);
+      long * XX = xx_buffer.data();
+      long * YY = yy_buffer.data();
 
       XX[0] = 0;
       t = -q;
@@ -443,8 +446,9 @@ auto diff(struct aligner_info * aip,
 	    }
 	}
 
-      free(HH);
-      free(XX);
+      // released before the recursive calls (peak memory: one level)
+      hh_buffer = Buffer<long>();
+      xx_buffer = Buffer<long>();
 
       for (j=0; j <= N; j++)
 	{
@@ -457,8 +461,8 @@ auto diff(struct aligner_info * aip,
 	    }
 	}
 
-      free(EE);
-      free(YY);
+      ee_buffer = Buffer<long>();
+      yy_buffer = Buffer<long>();
 
       if (P == 0)
 	{
