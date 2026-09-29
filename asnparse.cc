@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "print_view.h"  // fprint
 #include <algorithm>  // std::min
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -790,13 +791,13 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	  {
 	    while(col < 1 + p->indent)
 	    {
-	      putc(' ', out);
+	      fprint(out, ' ');
 	      col++;
 	    }
 	  }
 	  else
 	  {
-	    putc((x != 0) ? ' ' : '>', out);
+	    fprint(out, (x != 0) ? ' ' : '>');
 	    col++;
 	  }
 	}
@@ -818,7 +819,7 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	    }
 	    else
 	    {
-	      putc(defline[pos], out);
+	      fprint(out, defline[pos]);
 	    }
 	    pos++;
 	    col++;
@@ -831,14 +832,14 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	{
 	  while(col < p->linelen)
 	  {
-	    putc(' ', out);
+	    fprint(out, ' ');
 	    col++;
 	  }
 	}
 
 	if (p->maxdeflines > 1)
 	{
-	  putc('\n', out);
+	  fprint(out, '\n');
 	}
 
 	line++;
