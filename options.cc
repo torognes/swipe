@@ -24,13 +24,13 @@
 */
 
 #include "swipe.h"
-#include "print_view.h"  // fprint
+#include "print_view.h"  // fprint, fprint_integer
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
-#include <cinttypes>  // PRId64
 #include <cmath>  // std::floor, std::isfinite
 #include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
+#include <cstring>  // std::strlen
 #include <limits>
 #include <string>
 
@@ -53,29 +53,49 @@ auto args_show(Parameters const & parameters) -> void
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
     
-    fprintf(out, "Database file:     %s\n", parameters.databasename);
-    fprintf(out, "Database title:    %s\n", db_gettitle());
-    fprintf(out, "Database time:     %s\n", db_gettime());
+    fprint(out, "Database file:     ");
+    fprint(out, View<char>{parameters.databasename, std::strlen(parameters.databasename)});
+    fprint(out, '\n');
+    fprint(out, "Database title:    ");
+    fprint(out, View<char>{db_gettitle(), std::strlen(db_gettitle())});
+    fprint(out, '\n');
+    fprint(out, "Database time:     ");
+    fprint(out, View<char>{db_gettime(), std::strlen(db_gettime())});
+    fprint(out, '\n');
     
     if (db_ismasked() != 0)
       {
-	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount_masked());
-	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount_masked());
+	fprint(out, "Database size:     ");
+	fprint_integer(out, db_getsymcount_masked());
+	fprint(out, " residues");
+	fprint(out, " in ");
+	fprint_integer(out, db_getseqcount_masked());
+	fprint(out, " sequences\n");
       }
       else
       {
-	fprintf(out, "Database size:     %" PRId64 " residues", db_getsymcount());
-	fprintf(out, " in %" PRId64 " sequences\n", db_getseqcount());
+	fprint(out, "Database size:     ");
+	fprint_integer(out, db_getsymcount());
+	fprint(out, " residues");
+	fprint(out, " in ");
+	fprint_integer(out, db_getseqcount());
+	fprint(out, " sequences\n");
       }
 
-      fprintf(out, "Longest db seq:    %ld residues\n", db_getlongest());
+      fprint(out, "Longest db seq:    ");
+      fprint_integer(out, db_getlongest());
+      fprint(out, " residues\n");
 
       if (parameters.effdbsize > 0)
       {
-	fprintf(out, "Effective db size: %" PRId64 "\n", parameters.effdbsize);
+	fprint(out, "Effective db size: ");
+	fprint_integer(out, parameters.effdbsize);
+	fprint(out, "\n");
       }
 
-      fprintf(out, "Query file name:   %s\n", parameters.queryname);
+      fprint(out, "Query file name:   ");
+      fprint(out, View<char>{parameters.queryname, std::strlen(parameters.queryname)});
+      fprint(out, '\n');
 
       long qlen = 0;
       if ((parameters.symtype == SymbolType::blastn) || (parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -87,7 +107,9 @@ auto args_show(Parameters const & parameters) -> void
 	qlen = query.aa[0].len;
       }
 
-      fprintf(out, "Query length:      %ld residues\n", qlen);
+      fprint(out, "Query length:      ");
+      fprint_integer(out, qlen);
+      fprint(out, " residues\n");
 
       query_show();
 
@@ -109,35 +131,69 @@ auto args_show(Parameters const & parameters) -> void
 	  break;
 	}
 	fprint(out, "\n");
-	fprintf(out, "Score matrix:      %ld/%ld\n", parameters.matchscore, parameters.mismatchscore);
+	fprint(out, "Score matrix:      ");
+	fprint_integer(out, parameters.matchscore);
+	fprint(out, '/');
+	fprint_integer(out, parameters.mismatchscore);
+	fprint(out, '\n');
       }
       else
       {
-	fprintf(out, "Score matrix:      %s\n", parameters.matrixname);
+	fprint(out, "Score matrix:      ");
+	fprint(out, View<char>{parameters.matrixname, std::strlen(parameters.matrixname)});
+	fprint(out, '\n');
       }
 
-      fprintf(out, "Gap penalty:       %ld+%ldk\n", parameters.gapopen, parameters.gapextend);
+      fprint(out, "Gap penalty:       ");
+      fprint_integer(out, parameters.gapopen);
+      fprint(out, '+');
+      fprint_integer(out, parameters.gapextend);
+      fprint(out, "k\n");
       fprintf(out, "Max expect shown:  %-g\n", parameters.expect);
-      fprintf(out, "Min score shown:   %ld\n", parameters.minscore);
-      fprintf(out, "Max matches shown: %ld\n", parameters.maxmatches);
-      fprintf(out, "Alignments shown:  %ld\n", parameters.alignments);
-      fprintf(out, "Show gi's:         %ld\n", parameters.show_gis);
-      fprintf(out, "Show taxid's:      %ld\n", parameters.show_taxid);
-      fprintf(out, "Threads:           %ld\n", parameters.threads);
-      fprintf(out, "Symbol type:       %s\n", symtypestring[static_cast<long>(parameters.symtype)]);
+      fprint(out, "Min score shown:   ");
+      fprint_integer(out, parameters.minscore);
+      fprint(out, "\n");
+      fprint(out, "Max matches shown: ");
+      fprint_integer(out, parameters.maxmatches);
+      fprint(out, "\n");
+      fprint(out, "Alignments shown:  ");
+      fprint_integer(out, parameters.alignments);
+      fprint(out, "\n");
+      fprint(out, "Show gi's:         ");
+      fprint_integer(out, parameters.show_gis);
+      fprint(out, "\n");
+      fprint(out, "Show taxid's:      ");
+      fprint_integer(out, parameters.show_taxid);
+      fprint(out, "\n");
+      fprint(out, "Threads:           ");
+      fprint_integer(out, parameters.threads);
+      fprint(out, "\n");
+      fprint(out, "Symbol type:       ");
+      fprint(out, View<char>{symtypestring[static_cast<long>(parameters.symtype)], std::strlen(symtypestring[static_cast<long>(parameters.symtype)])});
+      fprint(out, '\n');
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "Query genetic code:%s (%ld)\n", gencode_names[parameters.query_gencode - 1], parameters.query_gencode);
+	fprint(out, "Query genetic code:");
+	fprint(out, View<char>{gencode_names[parameters.query_gencode - 1], std::strlen(gencode_names[parameters.query_gencode - 1])});
+	fprint(out, " (");
+	fprint_integer(out, parameters.query_gencode);
+	fprint(out, ")\n");
       }
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
-	fprintf(out, "DB genetic code:   %s (%ld)\n", gencode_names[parameters.db_gencode - 1], parameters.db_gencode);
+	fprint(out, "DB genetic code:   ");
+	fprint(out, View<char>{gencode_names[parameters.db_gencode - 1], std::strlen(gencode_names[parameters.db_gencode - 1])});
+	fprint(out, " (");
+	fprint_integer(out, parameters.db_gencode);
+	fprint(out, ")\n");
       }
 
       // fprintf(out, "View:              %s\n", viewtypestring[view]);
       if (parameters.taxidfilename != nullptr)
       {
-	fprintf(out, "Taxid filename:    %s\n", parameters.taxidfilename);
+	fprint(out, "Taxid filename:    ");
+	fprint(out, View<char>{parameters.taxidfilename, std::strlen(parameters.taxidfilename)});
+	fprint(out, '\n');
       }
       fprint(out, "\n");
     }
@@ -152,7 +208,9 @@ auto args_usage(char const * const program_name) -> void
   /* options unused by BLAST: chkuxHN */
   /* options used by SWIPE:   chkuxHN  */
 
-  fprintf(out, "Usage: %s [OPTIONS]\n", program_name);
+  fprint(out, "Usage: ");
+  fprint(out, View<char>{program_name, std::strlen(program_name)});
+  fprint(out, " [OPTIONS]\n");
   fprint(out, "  -h, --help                 show help\n");
   fprint(out, "      --version              show version\n");
   fprint(out, "  -d, --db=FILE              sequence database base name (required)\n");
@@ -168,7 +226,9 @@ auto args_usage(char const * const program_name) -> void
   fprint(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
   fprint(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
   fprint(out, "  -u, --max_score=NUM        maximum score of sequences to show (inf.)\n");
-  fprintf(out, "  -a, --num_threads=NUM      number of threads to use [1-%d] (1)\n", max_threads);
+  fprint(out, "  -a, --num_threads=NUM      number of threads to use [1-");
+  fprint_integer(out, max_threads);
+  fprint(out, "] (1)\n");
   fprint(out, "  -m, --outfmt=NUM           output format [0,7-9=plain,xml,tsv,tsv+] (0)\n");
   fprint(out, "  -I, --show_gis             show gi numbers in results (no)\n");
   fprint(out, "  -p, --symtype=NAME/NUM     symbol type/translation [0-4] (1)\n");
@@ -185,7 +245,10 @@ auto args_usage(char const * const program_name) -> void
 auto args_version() -> void
 {
   char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  fprintf(out, "%s\n\n%s\n", swipe_name_and_version, ref);
+  fprint(out, View<char>{swipe_name_and_version, std::strlen(swipe_name_and_version)});
+  fprint(out, "\n\n");
+  fprint(out, ref);
+  fprint(out, '\n');
 }
 
 auto args_help(char const * const program_name) -> void
