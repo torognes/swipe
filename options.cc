@@ -25,9 +25,11 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint, fprint_integer
+#include <array>
 #include <cassert>
 #include <cerrno>  // errno, ERANGE
 #include <cmath>  // std::floor, std::isfinite
+#include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t
 #include <cstdlib>  // std::strtol, std::strtod
 #include <cstring>  // std::strlen
@@ -48,7 +50,7 @@ auto args_show(Parameters const & parameters) -> void
       fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
     
-    char const * symtypestring[] = { "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" };
+    static constexpr std::array<char const *, 6> symtypestring {{ "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" }};
     
     //      char * viewtypestring[] = { "plain", 0, 0, 0, 0, 0, 0, "xml",
     //			  "tab-separated", "tab-separated with comments" };
@@ -169,7 +171,7 @@ auto args_show(Parameters const & parameters) -> void
       fprint_integer(out, parameters.threads);
       fprint(out, "\n");
       fprint(out, "Symbol type:       ");
-      fprint(out, as_c_string(symtypestring[static_cast<long>(parameters.symtype)]));
+      fprint(out, as_c_string(symtypestring[static_cast<std::size_t>(parameters.symtype)]));
       fprint(out, '\n');
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
@@ -244,10 +246,10 @@ auto args_usage(char const * const program_name) -> void
 
 auto args_version() -> void
 {
-  char const ref[] = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
+  constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches\nwith inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
   fprint(out, as_c_string(swipe_name_and_version));
   fprint(out, "\n\n");
-  fprint(out, ref);
+  fprint(out, as_c_string(ref));
   fprint(out, '\n');
 }
 
@@ -293,7 +295,7 @@ auto parse_double(char const * const text, char const * const message) -> double
 // -z (e.g. 7.06e+06, GitHub #9), but must be a non-negative integer
 auto parse_dbsize(char const * const text) -> std::int64_t
 {
-  static char const message[] = "Illegal effective db size specified";
+  constexpr char const * message = "Illegal effective db size specified";
   constexpr auto upper_limit = static_cast<double>(std::numeric_limits<std::int64_t>::max());
   auto const value = parse_double(text, message);
   if ((value < 0.0) or (std::floor(value) < value) or (value >= upper_limit))
@@ -312,10 +314,9 @@ auto args_init(int argc, char * const * argv) -> Parameters
   parameters.progname = argv[0];
 
   opterr = 1;
-  char short_options[] = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
+  constexpr char const * short_options = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
-  static struct option long_options[] =
-  {
+  static std::array<struct option, 32> const long_options {{
     {"db",               required_argument, nullptr, 'd' },
     {"query",            required_argument, nullptr, 'i' },
     {"matrix",           required_argument, nullptr, 'M' },
@@ -348,7 +349,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
     {"help",             no_argument,       nullptr, 'h' },
     {"version",          no_argument,       nullptr, 'V' },
     { nullptr, 0, nullptr, 0 },
-  };
+  }};
   
   int option_index = 0;
   int c = 0;
@@ -361,7 +362,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
   
   while (true)
     {
-      c = getopt_long(argc, argv, short_options, long_options, &option_index);
+      c = getopt_long(argc, argv, short_options, long_options.data(), &option_index);
       if (c == -1)
       {
 	break;
