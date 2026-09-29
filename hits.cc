@@ -32,6 +32,7 @@
 #include <cinttypes>  // PRId64
 #include <cstddef>  // std::size_t
 #include <cstdint>  // std::int64_t, INT64_C
+#include <cstdlib>  // std::strtol
 #include <initializer_list>
 #include <iterator>  // std::next
 #include <limits>
@@ -981,6 +982,25 @@ auto AlignmentLines::putalignop(char c, long len) -> void
   }
 }
 
+// one operation of an alignment string ("M12D3...", align.cc): its
+// letter and its count; the cursor moves past the count's digits
+struct AlignmentOperation
+{
+  char op = 0;
+  long len = 0;
+};
+
+auto next_operation(char const * & cursor) -> AlignmentOperation
+{
+  AlignmentOperation operation;
+  operation.op = *cursor;
+  cursor = std::next(cursor);
+  char * end = nullptr;
+  operation.len = std::strtol(cursor, & end, 10);
+  cursor = end;
+  return operation;
+}
+
 auto show_align(AlignedHit const & hit) -> void
 {
   AlignmentLines lines(hit);
@@ -990,12 +1010,8 @@ auto show_align(AlignedHit const & hit) -> void
   
   while(p < e)
   {
-    char const op = *p++;
-    long len = 0;
-    int n = 0;
-    sscanf(p, "%ld%n", & len, & n);
-    p += n;
-    lines.putalignop(op, len);
+    AlignmentOperation const operation = next_operation(p);
+    lines.putalignop(operation.op, operation.len);
   }
   
   lines.putalignop(0, 1);
@@ -1016,11 +1032,7 @@ auto whole_align(AlignedHit const & hit,
   char const * p = hit.alignment;
   while((*p) != 0)
   {
-    long len = 0;
-    int n = 0;
-    sscanf(p, "%*c%ld%n", & len, & n);
-    p += n;
-    al += len;
+    al += next_operation(p).len;
   }
 
   for (auto * line : {&qline, &aline, &dline})
@@ -1042,11 +1054,9 @@ auto whole_align(AlignedHit const & hit,
 
   while((*p) != 0)
   {
-    char const op = *p++;
-    long len = 0;
-    int n = 0;
-    sscanf(p, "%ld%n", & len, & n);
-    p += n;
+    AlignmentOperation const operation = next_operation(p);
+    char const op = operation.op;
+    long const len = operation.len;
     
     *aligned += len;
     if (op == 'D')
@@ -1127,11 +1137,9 @@ auto count_align(AlignedHit const & hit,
 
   while(p < e)
   {
-    char const op = *p++;
-    long len = 0;
-    int n = 0;
-    sscanf(p, "%ld%n", & len, & n);
-    p += n;
+    AlignmentOperation const operation = next_operation(p);
+    char const op = operation.op;
+    long const len = operation.len;
     
     *aligned += len;
     if (op == 'D')
