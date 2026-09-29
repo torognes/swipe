@@ -97,7 +97,7 @@ add two lines before the return at the end of the function:
 	
 	
 
-#define BLOSUM45_VALUES_MAX 14
+constexpr Int4 BLOSUM45_VALUES_MAX = 14;
 static Nlm_FloatHi  blosum45_values[BLOSUM45_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2291, 0.0924, 0.2514, 0.9113, -5.7},
     {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.207, 0.049, 0.14, 1.5, -22},
@@ -133,7 +133,7 @@ BLAST_MATRIX_NOMINAL
 };
 
 
-#define BLOSUM50_VALUES_MAX 16
+constexpr Int4 BLOSUM50_VALUES_MAX = 16;
 static Nlm_FloatHi  blosum50_values[BLOSUM50_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2318, 0.112, 0.3362, 0.6895, -4.0},
     {13, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.212, 0.063, 0.19, 1.1, -16},
@@ -172,7 +172,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
 };
 
-#define BLOSUM62_VALUES_MAX 12
+constexpr Int4 BLOSUM62_VALUES_MAX = 12;
 static Nlm_FloatHi  blosum62_values[BLOSUM62_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3176, 0.134, 0.4012, 0.7916, -3.2},
     {11, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.297, 0.082, 0.27, 1.1, -10},
@@ -204,7 +204,7 @@ static Int4 blosum62_prefs[BLOSUM62_VALUES_MAX] = {
 };
 
 
-#define BLOSUM80_VALUES_MAX 10
+constexpr Int4 BLOSUM80_VALUES_MAX = 10;
 static Nlm_FloatHi  blosum80_values[BLOSUM80_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3430, 0.177, 0.6568, 0.5222, -1.6},
     {25, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.342, 0.17, 0.66, 0.52, -1.6},
@@ -230,7 +230,7 @@ static Int4 blosum80_prefs[BLOSUM80_VALUES_MAX] = {
     BLAST_MATRIX_NOMINAL
 };
 
-#define BLOSUM90_VALUES_MAX 8
+constexpr Int4 BLOSUM90_VALUES_MAX = 8;
 static Nlm_FloatHi  blosum90_values[BLOSUM90_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3346, 0.190, 0.7547, 0.4434, -1.4},
     {9, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.310, 0.12, 0.46, 0.67, -6},
@@ -253,7 +253,7 @@ static Int4 blosum90_prefs[BLOSUM90_VALUES_MAX] = {
 	BLAST_MATRIX_NOMINAL
 };
 
-#define PAM250_VALUES_MAX 16
+constexpr Int4 PAM250_VALUES_MAX = 16;
 static Nlm_FloatHi  pam250_values[PAM250_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.2252, 0.0868, 0.2223, 0.98, -5.0},
     {15, 3, static_cast<Nlm_FloatHi>(INT2_MAX), 0.205, 0.049, 0.13, 1.6, -23},
@@ -292,7 +292,7 @@ BLAST_MATRIX_NOMINAL,
 BLAST_MATRIX_NOMINAL
 };
 
-#define PAM30_VALUES_MAX 7
+constexpr Int4 PAM30_VALUES_MAX = 7;
 static Nlm_FloatHi  pam30_values[PAM30_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3400, 0.283, 1.754, 0.1938, -0.3},
     {7, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.305, 0.15, 0.87, 0.35, -3},
@@ -314,7 +314,7 @@ BLAST_MATRIX_NOMINAL,
 };
 
 
-#define PAM70_VALUES_MAX 7
+constexpr Int4 PAM70_VALUES_MAX = 7;
 static Nlm_FloatHi  pam70_values[PAM70_VALUES_MAX][8] = {
     {static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), static_cast<Nlm_FloatHi>(INT2_MAX), 0.3345, 0.229, 1.029, 0.3250,   -0.7},
     {8, 2, static_cast<Nlm_FloatHi>(INT2_MAX), 0.301, 0.12, 0.54, 0.56, -5},
