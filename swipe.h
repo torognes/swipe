@@ -168,6 +168,10 @@ struct Parameters
   std::int64_t effdbsize = default_effdbsize;
 };
 
+// options.cc
+auto args_init(int argc, char * const * argv) -> Parameters;
+auto args_show(Parameters const & parameters) -> void;
+
 
 
 extern long cpu_feature_ssse3;
