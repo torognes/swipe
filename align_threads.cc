@@ -47,8 +47,8 @@ std::size_t align_volnext;
 // the alignment work is distributed in 7 bins: one per query strand
 // and frame (3 x 2), and one for the hits that are not aligned
 constexpr std::size_t align_bins = 7;
-std::array<long, align_bins> align_volseqs {};
-std::array<long, align_bins> align_volchunks {};
+std::array<long, align_bins> align_volseqs {{}};
+std::array<long, align_bins> align_volchunks {{}};
 
 auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 {

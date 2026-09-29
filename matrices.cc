@@ -329,10 +329,10 @@ constexpr std::size_t score_matrix_size = 32 * 32;
 
 namespace {
 
-alignas(16) std::array<char, score_matrix_size> score_matrix_7_storage {};
-alignas(16) std::array<char, score_matrix_size> score_matrix_7t_storage {};
-alignas(16) std::array<short, score_matrix_size> score_matrix_16_storage {};
-alignas(16) std::array<long, score_matrix_size> score_matrix_63_storage {};
+alignas(16) std::array<char, score_matrix_size> score_matrix_7_storage {{}};
+alignas(16) std::array<char, score_matrix_size> score_matrix_7t_storage {{}};
+alignas(16) std::array<short, score_matrix_size> score_matrix_16_storage {{}};
+alignas(16) std::array<long, score_matrix_size> score_matrix_63_storage {{}};
 
 }  // anonymous namespace
 
