@@ -24,7 +24,7 @@
 */
 
 #include "search_data.h"
-#include <algorithm>  // std::copy_n, std::max, std::min
+#include <algorithm>  // std::copy_n, std::max, std::min, std::transform
 #include <cmath>  // std::floor, std::sqrt
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
@@ -61,57 +61,8 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 {
   sdp->dbt = db_thread_create();
   sdp->dprofile.resize(profile_bytes);
-  long hearraylen = 0;
+  long const hearraylen = query_tables_init(parameters, sdp, profile_row_bytes);
 
-  if (parameters.symtype == SymbolType::blastn)
-  {
-    for (long s = 0; s < 2; s++)
-    {
-      if (searches_strand(parameters.querystrands, s))
-      {
-	long const qlen = query.nt[strand_index(s)].len;
-	sdp->qlen[frame_index(s, 0)] = qlen;
-	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
-	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
-	{
-	  sdp->qtable[frame_index(s, 0)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[strand_index(s)].seq[i]);
-	}
-	hearraylen = qlen > hearraylen ? qlen : hearraylen;
-      }
-    }
-  }
-  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
-  {
-    long const qlen = query.aa[0].len;
-    sdp->qlen[0] = qlen;
-    sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
-    for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
-    {
-      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[0].seq[i]);
-    }
-    hearraylen = qlen > hearraylen ? qlen : hearraylen;
-  }
-  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
-  {
-    for (long s = 0; s < 2; s++)
-    {
-      if (searches_strand(parameters.querystrands, s))
-      {
-	for(long f=0; f<3; f++)
-	{
-	  long const qlen = query.aa[frame_index(s, f)].len;
-	  sdp->qlen[frame_index(s, f)] = qlen;
-	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
-	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
-	  {
-	    sdp->qtable[frame_index(s, f)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[frame_index(s, f)].seq[i]);
-	  }
-	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
-	}
-      }
-    }
-  }
-  
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
   // at least one row: the kernels memset() the array, and an empty
@@ -541,6 +492,70 @@ auto calc_chunks(View<long> const volume_sequences,
   }
   
   return biggest_chunk_size;
+}
+
+// the query tables of the strands or frames searched: for each query
+// residue, the row of the score profile (profile_row_bytes apart) that
+// the kernels read; also the query lengths (sdp->qlen). Returns the
+// longest query length. Shared by search_init() and align_init(),
+// whose profiles have rows of 64 and 16 bytes.
+auto query_tables_init(Parameters const & parameters,
+		       struct search_data * sdp,
+		       std::ptrdiff_t const profile_row_bytes) -> long
+{
+  auto * const dprofile = sdp->dprofile.data();
+  auto const fill_table = [dprofile, profile_row_bytes](Buffer<BYTE *> & qtable,
+							 View<char> const residues) -> void
+  {
+    qtable.resize(residues.size());
+    std::transform(residues.begin(), residues.end(), qtable.begin(),
+		   [dprofile, profile_row_bytes](char const residue) -> BYTE *
+		   {
+		     return std::next(dprofile, profile_row_bytes * residue);
+		   });
+  };
+
+  long hearraylen = 0;
+
+  if (parameters.symtype == SymbolType::blastn)
+  {
+    for (long s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
+	long const qlen = query.nt[strand_index(s)].len;
+	sdp->qlen[frame_index(s, 0)] = qlen;
+	fill_table(sdp->qtable[frame_index(s, 0)], query.nt[strand_index(s)].view());
+	hearraylen = qlen > hearraylen ? qlen : hearraylen;
+      }
+    }
+  }
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
+  {
+    long const qlen = query.aa[0].len;
+    sdp->qlen[0] = qlen;
+    fill_table(sdp->qtable[0], query.aa[0].view());
+    hearraylen = qlen > hearraylen ? qlen : hearraylen;
+  }
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
+  {
+    for (long s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
+	for(long f=0; f<3; f++)
+	{
+	  long const qlen = query.aa[frame_index(s, f)].len;
+	  sdp->qlen[frame_index(s, f)] = qlen;
+	  fill_table(sdp->qtable[frame_index(s, f)], query.aa[frame_index(s, f)].view());
+	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
+	}
+      }
+    }
+  }
+  
+
+  return hearraylen;
 }
 
 auto prepare_search(long par) -> void

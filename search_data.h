@@ -33,7 +33,7 @@
 #include "swipe.h"
 #include "fatal_allocator.h"  // Buffer
 #include <array>
-#include <cstddef>  // std::size_t
+#include <cstddef>  // std::ptrdiff_t, std::size_t
 
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
 // database residues x 16 bytes of lanes)
@@ -81,6 +81,13 @@ struct Chunking
 auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
 		 Chunking chunking) -> long;
+
+// the query tables (sdp->qtable) and lengths (sdp->qlen) of the strands
+// or frames searched, for a profile with rows of profile_row_bytes;
+// returns the longest query length
+auto query_tables_init(Parameters const & parameters,
+		       struct search_data * sdp,
+		       std::ptrdiff_t profile_row_bytes) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads
 auto prepare_search(long par) -> void;
