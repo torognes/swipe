@@ -24,7 +24,8 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::max
+#include <algorithm>  // std::fill_n, std::max
+#include <cassert>
 #include <cstddef>  // std::size_t
 #include <string>  // std::string, std::to_string
 #include <utility>  // std::move
@@ -61,11 +62,9 @@ auto region_begin(char const * a_seq,
 		  long * HH,
 		  long * EE) -> Cell
 {
-  for (long j = end.b; j >= 0; j--)
-    {
-      HH[j] = -1;
-      EE[j] = -1;
-    }
+  assert(end.b >= 0);
+  std::fill_n(HH, end.b + 1, -1L);
+  std::fill_n(EE, end.b + 1, -1L);
 
   long Cost = 0;
 
@@ -141,11 +140,8 @@ auto region(char const * a_seq,
   else
   {
 
-    for (long j = 0; j < N; j++)
-    {
-      HH[j] = 0;
-      EE[j] = - q;
-    }
+    std::fill_n(HH, N, 0L);
+    std::fill_n(EE, N, - q);
     
     for (long i = 0; i < M; i++)
     {
