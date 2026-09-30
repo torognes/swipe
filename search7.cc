@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_load_64, v_merge_*
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_shuffle_8, ...
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -88,54 +88,53 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   /* Note: pshufb only on modern Intel cpus (SSSE3), not AMD */
   /* SSSE3: Supplemental SSE3 */
 
-  x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-                   0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
+  x = v_dup_i8(0x10);
 
-  y = _mm_set1_epi8(byte_0x80);
+  y = v_dup_i8(byte_0x80);
 
   a  = v_load(dseq);
-  t0 = _mm_and_si128(a, x);
-  t1 = _mm_slli_epi16(t0, 3);
-  t2 = _mm_xor_si128(t1, y);
-  m0 = _mm_or_si128(a, t1);
-  m1 = _mm_or_si128(a, t2);
+  t0 = v_and(a, x);
+  t1 = v_shift_left_i16<3>(t0);
+  t2 = v_xor(t1, y);
+  m0 = v_or(a, t1);
+  m1 = v_or(a, t2);
 
   b  = v_load(dseq+1);
-  t3 = _mm_and_si128(b, x);
-  t4 = _mm_slli_epi16(t3, 3);
-  t5 = _mm_xor_si128(t4, y);
-  m2 = _mm_or_si128(b, t4);
-  m3 = _mm_or_si128(b, t5);
+  t3 = v_and(b, x);
+  t4 = v_shift_left_i16<3>(t3);
+  t5 = v_xor(t4, y);
+  m2 = v_or(b, t4);
+  m3 = v_or(b, t5);
 
   c  = v_load(dseq+2);
-  u0 = _mm_and_si128(c, x);
-  u1 = _mm_slli_epi16(u0, 3);
-  u2 = _mm_xor_si128(u1, y);
-  m4 = _mm_or_si128(c, u1);
-  m5 = _mm_or_si128(c, u2);
+  u0 = v_and(c, x);
+  u1 = v_shift_left_i16<3>(u0);
+  u2 = v_xor(u1, y);
+  m4 = v_or(c, u1);
+  m5 = v_or(c, u2);
 
   d  = v_load(dseq+3);
-  u3 = _mm_and_si128(d, x);
-  u4 = _mm_slli_epi16(u3, 3);
-  u5 = _mm_xor_si128(u4, y);
-  m6 = _mm_or_si128(d, u4);
-  m7 = _mm_or_si128(d, u5);
+  u3 = v_and(d, x);
+  u4 = v_shift_left_i16<3>(u3);
+  u5 = v_xor(u4, y);
+  m6 = v_or(d, u4);
+  m7 = v_or(d, u5);
 
 #define profline(j)					\
   t6  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j)));   \
   t7  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j))+1); \
-  t8  = _mm_shuffle_epi8(t6, m0);			\
-  t9  = _mm_shuffle_epi8(t7, m1);			\
-  t10 = _mm_shuffle_epi8(t6, m2);			\
-  t11 = _mm_shuffle_epi8(t7, m3);			\
-  u8  = _mm_shuffle_epi8(t6, m4);			\
-  u9  = _mm_shuffle_epi8(t7, m5);			\
-  u10 = _mm_shuffle_epi8(t6, m6);			\
-  u11 = _mm_shuffle_epi8(t7, m7);			\
-  t12 = _mm_or_si128(t8,  t9);				\
-  t13 = _mm_or_si128(t10, t11);				\
-  u12 = _mm_or_si128(u8,  u9);				\
-  u13 = _mm_or_si128(u10, u11);				\
+  t8  = v_shuffle_8(t6, m0);			\
+  t9  = v_shuffle_8(t7, m1);			\
+  t10 = v_shuffle_8(t6, m2);			\
+  t11 = v_shuffle_8(t7, m3);			\
+  u8  = v_shuffle_8(t6, m4);			\
+  u9  = v_shuffle_8(t7, m5);			\
+  u10 = v_shuffle_8(t6, m6);			\
+  u11 = v_shuffle_8(t7, m7);			\
+  t12 = v_or(t8,  t9);				\
+  t13 = v_or(t10, t11);				\
+  u12 = v_or(u8,  u9);				\
+  u13 = v_or(u10, u11);				\
   v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j)),   t12);	\
   v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t13);	\
   v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\

@@ -35,6 +35,9 @@
 #define SWIPE_INTRINSICS_TO_FUNCTIONS_H
 
 #include <emmintrin.h>  // SSE2
+#ifdef __SSSE3__
+#include <tmmintrin.h>  // SSSE3
+#endif
 
 
 // 16 lanes of 8 bits
@@ -138,5 +141,50 @@ inline auto v_merge_hi_64(__m128i const lhs, __m128i const rhs) -> __m128i
 {
   return _mm_unpackhi_epi64(lhs, rhs);
 }
+
+
+// bitwise operations (whole vectors)
+
+inline auto v_and(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_and_si128(lhs, rhs);
+}
+
+inline auto v_or(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_or_si128(lhs, rhs);
+}
+
+inline auto v_xor(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_xor_si128(lhs, rhs);
+}
+
+
+// all 16 lanes of 8 bits set to value
+inline auto v_dup_i8(char const value) -> __m128i
+{
+  return _mm_set1_epi8(value);
+}
+
+// each lane of 16 bits shifted left by 'count' bits (psllw); the count
+// is a template parameter, as the instruction takes an immediate
+template <int count>
+inline auto v_shift_left_i16(__m128i const vector) -> __m128i
+{
+  return _mm_slli_epi16(vector, count);
+}
+
+#ifdef __SSSE3__
+// table lookup (pshufb): lane i of the result is the lane
+// (indices[i] & 0x0f) of table, or zero when bit 7 of indices[i] is
+// set. Porting note: NEON's vqtbl1q_u8 returns zero for every index
+// from 16, and dprofile_shuffle7() uses indices 16 to 31 (bit 7 clear)
+// to read the low 4 bits
+inline auto v_shuffle_8(__m128i const table, __m128i const indices) -> __m128i
+{
+  return _mm_shuffle_epi8(table, indices);
+}
+#endif
 
 #endif  // SWIPE_INTRINSICS_TO_FUNCTIONS_H
