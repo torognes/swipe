@@ -244,7 +244,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  search16s(reinterpret_cast<WORD**>(qtable),
 		    static_cast<WORD>(parameters.gapopenextend),
 		    static_cast<WORD>(parameters.gapextend),
-		    reinterpret_cast<WORD*>(score_matrix_16),
+		    reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		    reinterpret_cast<WORD*>(sdp->dprofile.data()),
 		    reinterpret_cast<WORD*>(sdp->hearray.data()),
 		    sdp->dbta.data(),
@@ -264,7 +264,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  
 	    long const hitno = sdp->start_hits[i];
 
-	    if (sdp->scores[i] < SCORELIMIT_16)
+	    if (sdp->scores[i] < score_matrices.limit_16)
 	    {
 	      hits_enter_align_hint(hitno, bestq, pos);
 	    }

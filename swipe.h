@@ -190,8 +190,6 @@ struct CpuFeatures
 };
 extern CpuFeatures const cpu_features;
 
-extern long * const score_matrix_63;
-
 // the score matrices are 32 x 32, row-major (symbol codes 0 to 31)
 constexpr std::size_t score_matrix_width = 32;
 
@@ -235,12 +233,6 @@ extern std::array<char, translation_table_size> d_translate;
 
 extern FILE * out;
 
-extern long SCORELIMIT_7;
-extern long SCORELIMIT_16;
-
-extern char * const score_matrix_7;
-extern char * const score_matrix_7t;
-extern short * const score_matrix_16;
 
 struct sequence
 {
@@ -498,6 +490,23 @@ constexpr std::size_t vector_bytes = 16;
 // the H/E array of the kernels: per query position, H and E, one
 // vector each
 constexpr std::size_t hearray_row_bytes = 2 * vector_bytes;
+
+// the score matrices of the search (matrices.cc): 32 x 32, aligned for
+// the SIMD kernels, in the four score widths of the search stages, and
+// the limits below which a 7-bit or 16-bit score is accepted
+constexpr std::size_t score_matrix_size = score_matrix_width * score_matrix_width;
+
+struct ScoreMatrices
+{
+  alignas(vector_bytes) std::array<char, score_matrix_size> score_7 {{}};
+  alignas(vector_bytes) std::array<char, score_matrix_size> score_7t {{}};  // transposed
+  alignas(vector_bytes) std::array<short, score_matrix_size> score_16 {{}};
+  alignas(vector_bytes) std::array<long, score_matrix_size> score_63 {{}};
+  long limit_7 = 0;  // SCORELIMIT_7
+  long limit_16 = 0;  // SCORELIMIT_16
+};
+
+extern ScoreMatrices score_matrices;
 
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides

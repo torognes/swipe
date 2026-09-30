@@ -331,26 +331,7 @@ e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 
 }  // anonymous namespace
 
-long SCORELIMIT_7;
-long SCORELIMIT_16;
-
-// the score matrices, 32 x 32 (static storage, 16-byte aligned for the
-// SIMD kernels), and the pointers the other files read them through
-constexpr std::size_t score_matrix_size = score_matrix_width * score_matrix_width;
-
-namespace {
-
-alignas(vector_bytes) std::array<char, score_matrix_size> score_matrix_7_storage {{}};
-alignas(vector_bytes) std::array<char, score_matrix_size> score_matrix_7t_storage {{}};
-alignas(vector_bytes) std::array<short, score_matrix_size> score_matrix_16_storage {{}};
-alignas(vector_bytes) std::array<long, score_matrix_size> score_matrix_63_storage {{}};
-
-}  // anonymous namespace
-
-extern char * const score_matrix_7 = score_matrix_7_storage.data();
-extern char * const score_matrix_7t = score_matrix_7t_storage.data();
-extern short * const score_matrix_16 = score_matrix_16_storage.data();
-extern long * const score_matrix_63 = score_matrix_63_storage.data();
+ScoreMatrices score_matrices;
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -455,7 +436,7 @@ auto parse_matrix_line(char const * line, char const * map,
 	      auto const width = static_cast<int>(score_matrix_width);
 	      if ((a >= 0) && (b >= 0) && (a < width) && (b < width))
 	      {
-		score_matrix_63[score_matrix_cell(static_cast<std::size_t>(a), static_cast<std::size_t>(b))] = sc;
+		score_matrices.score_63[score_matrix_cell(static_cast<std::size_t>(a), static_cast<std::size_t>(b))] = sc;
 	      }
 
 	    }
@@ -543,7 +524,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
 auto score_matrix_read(Parameters const & parameters) -> void
 {
-  score_matrix_63_storage.fill(-1);
+  score_matrices.score_63.fill(-1);
   
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -552,7 +533,7 @@ auto score_matrix_read(Parameters const & parameters) -> void
     {
       for (std::size_t b = 1; b < nucleotide_codes; b++)
       {
-	score_matrix_63[score_matrix_cell(a, b)] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
+	score_matrices.score_63[score_matrix_cell(a, b)] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
       }
     }
   }
@@ -607,7 +588,7 @@ auto score_matrix_read(Parameters const & parameters) -> void
   {
     for (std::size_t b = 0; b < score_matrix_width; b++)
       {
-	long const sc = score_matrix_63[score_matrix_cell(a, b)];
+	long const sc = score_matrices.score_63[score_matrix_cell(a, b)];
 	lo = std::min(sc, lo);
 	hi = std::max(sc, hi);
       }
@@ -619,8 +600,8 @@ auto score_matrix_read(Parameters const & parameters) -> void
   // stage
   constexpr long score_range_7 = 128;
   constexpr long score_range_16 = 65536;
-  SCORELIMIT_7  = score_range_7 - hi;
-  SCORELIMIT_16 = score_range_16 - hi;
+  score_matrices.limit_7  = score_range_7 - hi;
+  score_matrices.limit_16 = score_range_16 - hi;
 
   // the 16-bit engine uses signed 16-bit scores and gap penalties:
   // when a score or a gap penalty does not fit (KI-13), it is not used
@@ -630,14 +611,14 @@ auto score_matrix_read(Parameters const & parameters) -> void
   long const min_16 = std::numeric_limits<short>::min();
   if ((hi > max_16) or (lo < min_16) or (parameters.gapopenextend > max_16))
   {
-    SCORELIMIT_16 = 0;
+    score_matrices.limit_16 = 0;
   }
 
   for (std::size_t a = 0; a < score_matrix_width; a++)
   {
     for (std::size_t b = 0; b < score_matrix_width; b++)
     {
-      long const sc = score_matrix_63[score_matrix_cell(a, b)];
+      long const sc = score_matrices.score_63[score_matrix_cell(a, b)];
       
       // the 7-bit engine uses signed bytes: scores are clamped to
       // [-128, 127] (KI-12). This is exact: 7-bit scores are in [0,
@@ -646,9 +627,9 @@ auto score_matrix_read(Parameters const & parameters) -> void
       // (SCORELIMIT_7 <= 0)
       long const sc_7 = std::max<long>(std::numeric_limits<signed char>::min(),
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
-      score_matrix_7 [score_matrix_cell(a, b)] = static_cast<char>(sc_7);
-      score_matrix_7t[score_matrix_cell(b, a)] = static_cast<char>(sc_7);
-      score_matrix_16[score_matrix_cell(a, b)] = static_cast<short>(sc);
+      score_matrices.score_7.data() [score_matrix_cell(a, b)] = static_cast<char>(sc_7);
+      score_matrices.score_7t[score_matrix_cell(b, a)] = static_cast<char>(sc_7);
+      score_matrices.score_16[score_matrix_cell(a, b)] = static_cast<short>(sc);
     }
   }
 }

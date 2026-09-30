@@ -128,7 +128,7 @@ auto hits_per_sequence(Parameters const & parameters) -> std::int64_t
 // the score of an aligned pair of residues (symbol codes)
 auto pair_score(char const query_symbol, char const db_symbol) -> long
 {
-  return score_matrix_63[score_matrix_cell(static_cast<unsigned char>(query_symbol),
+  return score_matrices.score_63[score_matrix_cell(static_cast<unsigned char>(query_symbol),
                                            static_cast<unsigned char>(db_symbol))];
 }
 
@@ -717,7 +717,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 	  h->dseq.data(),
 	  qlen,
 	  h->dlen,
-	  score_matrix_63,
+	  score_matrices.score_63.data(),
 	  parameters.gapopen,
 	  parameters.gapextend,
 	  & h->align_q_start,

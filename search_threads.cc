@@ -322,7 +322,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
-			reinterpret_cast<BYTE*>(score_matrix_7t),
+			reinterpret_cast<BYTE*>(score_matrices.score_7t.data()),
 			sdp->dprofile.data(),
 			sdp->hearray.data(),
 			sdp->dbt,
@@ -336,7 +336,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  search7(qtable,
 		  gapopenextend_7,
 		  gapextend_7,
-		  reinterpret_cast<BYTE *>(score_matrix_7),
+		  reinterpret_cast<BYTE *>(score_matrices.score_7.data()),
 		  sdp->dprofile.data(),
 		  sdp->hearray.data(),
 		  sdp->dbt,
@@ -353,7 +353,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
       
-	  if (score < SCORELIMIT_7)
+	  if (score < score_matrices.limit_7)
 	  {
 	    long const seqno = seqnosf >> 3;
 	    long const dstrand = (seqnosf >> 2) & 1;
@@ -382,7 +382,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	search16(reinterpret_cast<WORD**>(qtable),
 		 static_cast<WORD>(parameters.gapopenextend),
 		 static_cast<WORD>(parameters.gapextend),
-		 reinterpret_cast<WORD*>(score_matrix_16),
+		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		 reinterpret_cast<WORD*>(sdp->dprofile.data()),
 		 reinterpret_cast<WORD*>(sdp->hearray.data()),
 		 sdp->dbt,
@@ -398,7 +398,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
-	  if (score < SCORELIMIT_16)
+	  if (score < score_matrices.limit_16)
 	  {
 	    long const seqno = seqnosf >> 3;
 	    long const dstrand = (seqnosf >> 2) & 1;
@@ -450,7 +450,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			      q, 
 			      std::next(q, qlen),
 			      reinterpret_cast<long*>(sdp->hearray.data()),
-			      score_matrix_63,
+			      score_matrices.score_63.data(),
 			      parameters.gapopenextend,
 			      parameters.gapextend);
 
