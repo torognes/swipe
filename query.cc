@@ -415,9 +415,11 @@ auto revcompl(View<char> const sequence) -> Buffer<char>
 
 namespace {
 
-auto translate_createtable(long tableno, char * table) -> void
+auto translate_createtable(long const tableno) -> std::array<char, translation_table_size>
 {
   /* initialize translation table */
+
+  std::array<char, translation_table_size> table {{}};
 
   constexpr long bases = 4;  // the codons are numbered in base 4
   for (std::size_t a = 0; a < nucleotide_codes; a++)
@@ -485,14 +487,15 @@ auto translate_createtable(long tableno, char * table) -> void
     }
   }
 
+  return table;
 }
 
 }  // anonymous namespace
 
 auto translate_init(long qtableno, long dtableno) -> void
 {
-  translate_createtable(qtableno, translation_tables.query.data());
-  translate_createtable(dtableno, translation_tables.database.data());
+  translation_tables.query = translate_createtable(qtableno);
+  translation_tables.database = translate_createtable(dtableno);
 }
 
 auto translate(char const * dna, long dlen, 
