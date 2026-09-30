@@ -568,28 +568,47 @@ auto hits_gethit(long i) -> Hit;
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
 
 
-auto stats_getparams_nt(long match_score,
-			long mismatch_score, 
-			long gopen,
-			long gextend,
-			double * lambda,
-			double * K,
-			double * H,
-			double * alpha,
-			double * beta) -> long;
+// the gap penalties of a scoring system: opening and extension
+struct GapPenalties
+{
+  long open;
+  long extend;
+};
 
-auto stats_getparams(char const * matrix,
-		     long gopen,
-		     long gextend,
-		     double * lambda,
-		     double * K,
-		     double * H,
-		     double * alpha,
-		     double * beta) -> long;
+// the scores of a nucleotide match and mismatch (blastn)
+struct BlastnScores
+{
+  long match;
+  long mismatch;
+};
 
-auto stats_getprefs(char const * matrix,
-		    long * gopen,
-		    long * gextend) -> long;
+// the Karlin-Altschul parameters of a scoring system (NCBI tables)
+struct KarlinAltschul
+{
+  double lambda;
+  double K;
+  double H;
+  double alpha;
+  double beta;
+};
+
+// the parameters of a scoring system, if the NCBI tables have them
+struct StatisticsLookup
+{
+  bool found;
+  KarlinAltschul values;
+};
+
+// the default gap penalties of a score matrix, if it has some
+struct DefaultGaps
+{
+  bool found;
+  GapPenalties penalties;
+};
+
+auto stats_getparams_nt(BlastnScores scores, GapPenalties gaps) -> StatisticsLookup;
+auto stats_getparams(char const * matrix, GapPenalties gaps) -> StatisticsLookup;
+auto stats_getprefs(char const * matrix) -> DefaultGaps;
 
 
 // the NCBI integer types of blastkar_partial.ccc: 4 and 8 bytes

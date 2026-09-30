@@ -74,6 +74,21 @@ struct Statistics
 
 Statistics statistics;
 
+// the parameters of a lookup, if found: 1 (statistics available), or 0
+auto take_statistics(StatisticsLookup const & lookup) -> long
+{
+  if (not lookup.found)
+  {
+    return 0;
+  }
+  statistics.lambda = lookup.values.lambda;
+  statistics.K = lookup.values.K;
+  statistics.H = lookup.values.H;
+  statistics.alpha = lookup.values.alpha;
+  statistics.beta = lookup.values.beta;
+  return 1;
+}
+
 }  // anonymous namespace
 
 /* gap penalties of the ungapped rows of the NCBI score matrix tables
@@ -418,17 +433,10 @@ auto hits_init(Parameters const & parameters) -> void
 
   if (parameters.symtype == SymbolType::blastn)
   {
-    if (stats_getparams_nt(parameters.matchscore,
-			   parameters.mismatchscore,
-			   parameters.gapopen,
-			   parameters.gapextend,
-			   & statistics.lambda,
-			   & statistics.K,
-			   & statistics.H,
-			   & statistics.alpha,
-			   & statistics.beta) != 0)
+    statistics.available = take_statistics(stats_getparams_nt({parameters.matchscore, parameters.mismatchscore},
+                                                              {parameters.gapopen, parameters.gapextend}));
+    if (statistics.available != 0)
     {
-      statistics.available = 1;
 
       /*
       fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
@@ -469,25 +477,13 @@ auto hits_init(Parameters const & parameters) -> void
   {
     if (parameters.symtype == SymbolType::tblastx)
     {
-      statistics.available = stats_getparams(parameters.matrixname,
-					ungapped_penalty,
-					ungapped_penalty,
-					& statistics.lambda,
-					& statistics.K,
-					& statistics.H,
-					& statistics.alpha,
-					& statistics.beta);
+      statistics.available = take_statistics(stats_getparams(parameters.matrixname,
+                                                             {ungapped_penalty, ungapped_penalty}));
     }
     else
     {
-      statistics.available = stats_getparams(parameters.matrixname,
-					parameters.gapopen,
-					parameters.gapextend,
-					& statistics.lambda,
-					& statistics.K,
-					& statistics.H,
-					& statistics.alpha,
-					& statistics.beta);
+      statistics.available = take_statistics(stats_getparams(parameters.matrixname,
+                                                             {parameters.gapopen, parameters.gapextend}));
     }
 
 
@@ -540,19 +536,20 @@ auto hits_init(Parameters const & parameters) -> void
   statistics.ungapped_lambda = statistics.lambda;
   statistics.ungapped_K = statistics.K;
   statistics.ungapped_H = statistics.H;
-  double ungapped_alpha = 0;
-  double ungapped_beta = 0;
+  StatisticsLookup ungapped {false, {0, 0, 0, 0, 0}};
   if (parameters.symtype == SymbolType::blastn)
   {
-    stats_getparams_nt(parameters.matchscore, parameters.mismatchscore, 0, 0,
-                       & statistics.ungapped_lambda, & statistics.ungapped_K, & statistics.ungapped_H,
-                       & ungapped_alpha, & ungapped_beta);
+    ungapped = stats_getparams_nt({parameters.matchscore, parameters.mismatchscore}, {0, 0});
   }
   else if (parameters.symtype < SymbolType::sound)
   {
-    stats_getparams(parameters.matrixname, ungapped_penalty, ungapped_penalty,
-		    &statistics.ungapped_lambda, &statistics.ungapped_K, &statistics.ungapped_H,
-		    &ungapped_alpha, &ungapped_beta);
+    ungapped = stats_getparams(parameters.matrixname, {ungapped_penalty, ungapped_penalty});
+  }
+  if (ungapped.found)
+  {
+    statistics.ungapped_lambda = ungapped.values.lambda;
+    statistics.ungapped_K = ungapped.values.K;
+    statistics.ungapped_H = ungapped.values.H;
   }
 
   hit_list.score_threshold = minscore;

@@ -42,21 +42,16 @@ auto has_penalties(array_of_8 const & row, long const gopen, long const gextend)
 
 }  // anonymous namespace
 
-auto stats_getparams_nt(long match_score,
-			long mismatch_score, 
-			long gopen,
-			long gextend,
-			double * lambda,
-			double * K,
-			double * H,
-			double * alpha,
-			double * beta) -> long
+auto stats_getparams_nt(BlastnScores const scores, GapPenalties const gaps) -> StatisticsLookup
 {
-  auto const tables = blastn_tables(match_score, mismatch_score);
+  StatisticsLookup const not_found {false, {0, 0, 0, 0, 0}};
+  long gopen = gaps.open;
+  long gextend = gaps.extend;
+  auto const tables = blastn_tables(scores.match, scores.mismatch);
   auto const bv = tables.values;
   if (bv.empty())
   {
-    return 0;
+    return not_found;
   }
 
   if ((gopen >= tables.gap_open_max) && (gextend >= tables.gap_extend_max))
@@ -69,72 +64,63 @@ auto stats_getparams_nt(long match_score,
   {
     if (has_penalties(bv[i], gopen, gextend))
     {
-      * lambda = value_of(bv[i], BlastnColumn::lambda);
-      * K = value_of(bv[i], BlastnColumn::K);
-      * H = value_of(bv[i], BlastnColumn::H);
-      * alpha = value_of(bv[i], BlastnColumn::alpha);
-      * beta = value_of(bv[i], BlastnColumn::beta);
-      return 1;
+      return {true, {value_of(bv[i], BlastnColumn::lambda),
+                     value_of(bv[i], BlastnColumn::K),
+                     value_of(bv[i], BlastnColumn::H),
+                     value_of(bv[i], BlastnColumn::alpha),
+                     value_of(bv[i], BlastnColumn::beta)}};
     }
   }
 
-  return 0;
+  return not_found;
 }
 
-auto stats_getparams(char const * matrix,
-		     long gopen,
-		     long gextend,
-		     double * lambda,
-		     double * K,
-		     double * H,
-		     double * alpha,
-		     double * beta) -> long
+auto stats_getparams(char const * matrix, GapPenalties const gaps) -> StatisticsLookup
 {
+  StatisticsLookup const not_found {false, {0, 0, 0, 0, 0}};
+  long const gopen = gaps.open;
+  long const gextend = gaps.extend;
   auto const mat = blast_matrix_values(matrix);
   if (mat.empty())
   {
-    return 0;
+    return not_found;
   }
 
   for (std::size_t i = 0; i < mat.size(); i++)
   {
     if (has_penalties(mat[i], gopen, gextend))
     {
-      * lambda = value_of(mat[i], MatrixColumn::lambda);
-      * K = value_of(mat[i], MatrixColumn::K);
-      * H = value_of(mat[i], MatrixColumn::H);
-      * alpha = value_of(mat[i], MatrixColumn::alpha);
-      * beta = value_of(mat[i], MatrixColumn::beta);
-
       //      printf("m=%s go=%ld ge=%ld: Chose index %ld: %-g %-g\n", matrix, gopen, gextend, i, mat[i][0], mat[i][1]);
             
-      return 1;
+      return {true, {value_of(mat[i], MatrixColumn::lambda),
+                     value_of(mat[i], MatrixColumn::K),
+                     value_of(mat[i], MatrixColumn::H),
+                     value_of(mat[i], MatrixColumn::alpha),
+                     value_of(mat[i], MatrixColumn::beta)}};
     }
   }
 
-  return 0;
+  return not_found;
 }
 
-auto stats_getprefs(char const * matrix,
-		    long * gopen,
-		    long * gextend) -> long
+auto stats_getprefs(char const * matrix) -> DefaultGaps
 {
+  DefaultGaps const not_found {false, {0, 0}};
   auto const mat = blast_matrix_values(matrix);
   auto const prefs = blast_matrix_prefs(matrix);
   if (mat.empty())
   {
-    return 0;
+    return not_found;
   }
 
   for (std::size_t i = 0; i < mat.size(); i++)
   {
     if (prefs[i] != 0)
     {
-      * gopen = static_cast<long>(value_of(mat[i], MatrixColumn::gap_open));
-      * gextend = static_cast<long>(value_of(mat[i], MatrixColumn::gap_extend));
-      return 1;
+      return {true, {static_cast<long>(value_of(mat[i], MatrixColumn::gap_open)),
+                     static_cast<long>(value_of(mat[i], MatrixColumn::gap_extend))}};
     }
   }
 
-  return 0;
+  return not_found;
 }

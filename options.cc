@@ -585,9 +585,6 @@ auto args_init(int argc, char * const * argv) -> Parameters
 	}
     }
   
-  long gopen_default = 0;
-  long gextend_default = 0;
-
   if (parameters.symtype == SymbolType::blastn)
   {
     if (not gapopen_given)
@@ -606,15 +603,16 @@ auto args_init(int argc, char * const * argv) -> Parameters
       parameters.matrixname = default_matrixname;
     }
 
-    if (stats_getprefs(parameters.matrixname, & gopen_default, & gextend_default) != 0)
+    auto const defaults = stats_getprefs(parameters.matrixname);
+    if (defaults.found)
     {
       if (not gapopen_given)
       {
-	parameters.gapopen = gopen_default;
+	parameters.gapopen = defaults.penalties.open;
       }
       if (not gapextend_given)
       {
-	parameters.gapextend = gextend_default;
+	parameters.gapextend = defaults.penalties.extend;
       }
     }
     else
