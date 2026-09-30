@@ -195,9 +195,12 @@ extern std::array<char const *, 23> const gencode_names;
 extern long queryno;
 extern long compute7;
 
-extern std::array<char, 256> const map_ncbi_nt16;
-extern std::array<char, 256> const map_ncbi_aa;
-extern std::array<char, 256> const map_sound;
+// the tables indexed by a byte (an unsigned char)
+constexpr std::size_t byte_values = 256;
+
+extern std::array<char, byte_values> const map_ncbi_nt16;
+extern std::array<char, byte_values> const map_ncbi_aa;
+extern std::array<char, byte_values> const map_sound;
 
 extern char const * sym_ncbi_nt4;
 extern char const * sym_ncbi_nt16;

@@ -30,6 +30,7 @@
 #include <cassert>
 #include <cctype>  // std::isdigit, std::isspace
 #include <cerrno>  // errno, ERANGE
+#include <climits>  // CHAR_BIT
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
 #include <cstdlib>  // std::strtoll, std::strtoul
@@ -44,7 +45,7 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::array<unsigned int, 256> decompress_nt {{}};
+std::array<unsigned int, byte_values> decompress_nt {{}};
 
 struct al_info
 {
@@ -770,9 +771,11 @@ auto db_check_msk(long seqno) -> long
     if (s <= v->masked_maxoid)
     {
       long const byteno = s >> 3;
-      long const bitno = s & 7;
-      long const byte = static_cast<unsigned char>(*std::next(v->msk_map.data(), 4 + byteno));
-      member = (byte >> (7-bitno)) & 1;
+      long const bitno = s & (CHAR_BIT - 1);
+      // the membership bits follow a 32-bit field, most significant
+      // bit first
+      long const byte = static_cast<unsigned char>(*std::next(v->msk_map.data(), uint32_bytes + byteno));
+      member = (byte >> (CHAR_BIT - 1 - bitno)) & 1;
     }
   }
   return member;
@@ -794,8 +797,8 @@ auto db_check_taxid(long taxid) -> long
 
   if (not db_main.taxid_bitmap.empty())
   {
-    long const byteno = taxid / 8;
-    long const bitno = taxid & 7;
+    long const byteno = taxid / CHAR_BIT;
+    long const bitno = taxid & (CHAR_BIT - 1);
 
     if ((byteno >= 0) and (static_cast<std::size_t>(byteno) < db_main.taxid_bitmap.size()))
     {
@@ -841,8 +844,8 @@ auto db_add_taxid(unsigned long const taxid) -> void
 {
   //    fprintf(stderr, "read taxid: %lu\n", taxid);
 
-  std::size_t const index = taxid / 8;
-  auto const bitno = static_cast<unsigned int>(taxid & 7);
+  std::size_t const index = taxid / CHAR_BIT;
+  auto const bitno = static_cast<unsigned int>(taxid & (CHAR_BIT - 1));
     
   if (index >= db_main.taxid_bitmap.size())
   {
@@ -861,7 +864,9 @@ auto db_read_taxid_file(char const * filename) -> void
     fatal(std::string("Unable to open taxid file ") + filename + ".");
   }
 
-  db_main.taxid_bitmap.assign(std::size_t{64} * 1024, 0);
+  // room for the taxids below 524,288 (grown for larger ones)
+  constexpr std::size_t initial_bitmap_bytes = std::size_t{64} * 1024;
+  db_main.taxid_bitmap.assign(initial_bitmap_bytes, 0);
 
   /* taxids are separated by whitespace (usually one per line) */
   long lines = 0;
