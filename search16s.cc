@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "align_cells.h"  // Ops_16, onestep()
 #include "intrinsics_to_functions.h"  // v_adds_i16, v_subs_i16, v_max_i16
 
 constexpr std::size_t CHANNELS = channels_16;
@@ -35,33 +36,6 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
-
-// C++26 refactoring: std::simd, with std::add_sat and std::sub_sat
-
-// One cell of a block (the ONESTEP macro of the former inline
-// assembly): H is the score of the diagonal cell, N receives the score
-// of this cell (the diagonal of the next column), F and E are the
-// vertical and horizontal gap scores, S is the running maximum
-inline auto onestep16s(__m128i const H,
-                       __m128i & N,
-                       __m128i & F,
-                       __m128i const V,
-                       __m128i & E,
-                       __m128i & S,
-                       __m128i const Q,
-                       __m128i const R) -> void
-{
-  auto cell = v_adds_i16(H, V);
-  cell = v_max_i16(cell, F);
-  cell = v_max_i16(cell, E);
-  S = v_max_i16(cell, S);
-  F = v_subs_i16(F, R);
-  E = v_subs_i16(E, R);
-  N = cell;
-  cell = v_subs_i16(cell, Q);
-  E = v_max_i16(cell, E);
-  F = v_max_i16(cell, F);
-}
 
 inline auto donormal16s(__m128i * Sm,
                         __m128i * hep,
@@ -83,7 +57,7 @@ inline auto donormal16s(__m128i * Sm,
     auto const N0 = hep[2 * qi];  // load N0
     auto E = hep[(2 * qi) + 1];  // load E
 
-    onestep16s(H0, hep[2 * qi], F0, x[0], E, S, Q, R);
+    onestep<Ops_16>(H0, hep[2 * qi], F0, x[0], E, S, Q, R);
 
     hep[(2 * qi) + 1] = E;  // save E
     H0 = N0;
@@ -114,7 +88,7 @@ inline auto domasked16s(__m128i * Sm,
     auto const N0 = v_adds_i16(v_adds_i16(hep[2 * qi], M), M);  // load N0, add M
     auto E = v_adds_i16(v_adds_i16(hep[(2 * qi) + 1], M), M);  // load E, add M
 
-    onestep16s(H0, hep[2 * qi], F0, x[0], E, S, Q, R);
+    onestep<Ops_16>(H0, hep[2 * qi], F0, x[0], E, S, Q, R);
 
     hep[(2 * qi) + 1] = E;  // save E
     H0 = N0;

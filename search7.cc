@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "align_cells.h"  // Ops_7, onestep()
 #include "intrinsics_to_functions.h"  // v_adds_i8, v_subs_i8, v_max_u8
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -500,33 +501,6 @@ inline auto dprofile_fill7(BYTE * dprofile,
 
 #endif
 
-// C++26 refactoring: std::simd, with std::add_sat and std::sub_sat
-
-// One cell of a block (the ONESTEP macro of the former inline
-// assembly): H is the score of the diagonal cell, N receives the score
-// of this cell (the diagonal of the next column), F and E are the
-// vertical and horizontal gap scores, S is the running maximum
-inline auto onestep7(__m128i const H,
-		     __m128i & N,
-		     __m128i & F,
-		     __m128i const V,
-		     __m128i & E,
-		     __m128i & S,
-		     __m128i const Q,
-		     __m128i const R) -> void
-{
-  auto cell = v_adds_i8(H, V);
-  cell = v_max_u8(cell, F);
-  cell = v_max_u8(cell, E);
-  S = v_max_u8(cell, S);
-  F = v_subs_i8(F, R);
-  E = v_subs_i8(E, R);
-  N = cell;
-  cell = v_subs_i8(cell, Q);
-  E = v_max_u8(cell, E);
-  F = v_max_u8(cell, F);
-}
-
 inline auto donormal7(__m128i * Sm,
 		      __m128i * hep,
 		      __m128i * const * qp,
@@ -556,10 +530,10 @@ inline auto donormal7(__m128i * Sm,
     auto const N0 = hep[2 * qi];  // load N0
     auto E = hep[(2 * qi) + 1];  // load E
 
-    onestep7(H0, N1, F0, x[0], E, S, Q, R);
-    onestep7(H1, N2, F1, x[1], E, S, Q, R);
-    onestep7(H2, N3, F2, x[2], E, S, Q, R);
-    onestep7(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
+    onestep<Ops_7>(H0, N1, F0, x[0], E, S, Q, R);
+    onestep<Ops_7>(H1, N2, F1, x[1], E, S, Q, R);
+    onestep<Ops_7>(H2, N3, F2, x[2], E, S, Q, R);
+    onestep<Ops_7>(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
 
     hep[(2 * qi) + 1] = E;  // save E
     H0 = N0;
@@ -602,10 +576,10 @@ inline auto domasked7(__m128i * Sm,
     auto const N0 = v_adds_i8(hep[2 * qi], M);  // load N0, mask
     auto E = v_adds_i8(hep[(2 * qi) + 1], M);  // load E, mask
 
-    onestep7(H0, N1, F0, x[0], E, S, Q, R);
-    onestep7(H1, N2, F1, x[1], E, S, Q, R);
-    onestep7(H2, N3, F2, x[2], E, S, Q, R);
-    onestep7(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
+    onestep<Ops_7>(H0, N1, F0, x[0], E, S, Q, R);
+    onestep<Ops_7>(H1, N2, F1, x[1], E, S, Q, R);
+    onestep<Ops_7>(H2, N3, F2, x[2], E, S, Q, R);
+    onestep<Ops_7>(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
 
     hep[(2 * qi) + 1] = E;  // save E
     H0 = N0;
