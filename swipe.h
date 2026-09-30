@@ -271,6 +271,17 @@ extern struct query_s query;
 
 struct db_thread_s;
 
+// a date of the outputs ("%a, %e %b %Y %T UTC"): at most 29 characters,
+// "Wed, 30 Sep 2026 07:10:01 UTC", and the terminating NUL
+constexpr std::size_t date_string_size = 30;
+
+// a speed in GCUPS: billions of cell updates per second
+inline auto gcups(double const cell_updates_per_second) -> double
+{
+  constexpr double billion = 1e9;
+  return cell_updates_per_second / billion;
+}
+
 struct time_info
 {
   time_t t1, t2;
@@ -279,8 +290,8 @@ struct time_info
   std::chrono::steady_clock::time_point clock2;
 
   // kept until the results are shown (-m 99, KI-28)
-  std::array<char, 30> starttime;
-  std::array<char, 30> endtime;
+  std::array<char, date_string_size> starttime;
+  std::array<char, date_string_size> endtime;
   double elapsed;
   double speed;
 };

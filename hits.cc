@@ -140,6 +140,13 @@ auto pair_score(char const query_symbol, char const db_symbol) -> long
                                            static_cast<unsigned char>(db_symbol))];
 }
 
+// a whole percentage, rounded down, as in "Identities = 9/12 (75%)"
+auto whole_percentage(long const part, long const whole) -> long
+{
+  constexpr long hundred = 100;
+  return part * hundred / whole;
+}
+
 auto percentage(long const part, long const whole) -> double
 {
   return 100.0 * static_cast<double>(part) / static_cast<double>(whole);
@@ -1513,7 +1520,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
   if (ti.elapsed > 0.0)
   {
-    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", gcups(ti.speed));
   }
   else
   {
@@ -2213,7 +2220,7 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, '/');
 	fprint_integer(out, aligned);
 	fprint(out, " (");
-	fprint_integer(out, identities * 100 / aligned);
+	fprint_integer(out, whole_percentage(identities, aligned));
 	fprint(out, "%)");
 	if (parameters.symtype > SymbolType::blastn)
 	{
@@ -2222,7 +2229,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprint(out, '/');
 	  fprint_integer(out, aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, positives * 100 / aligned);
+	  fprint_integer(out, whole_percentage(positives, aligned));
 	  fprint(out, "%)");
 	}
 	if (indels != 0)
@@ -2232,7 +2239,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprint(out, '/');
 	  fprint_integer(out, aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, indels * 100 / aligned);
+	  fprint_integer(out, whole_percentage(indels, aligned));
 	  fprint(out, "%)");
 	}
 	fprint(out, "\n");

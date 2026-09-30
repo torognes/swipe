@@ -206,7 +206,7 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
     {
-      fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+      fprintf(out, "Speed:             %.3f GCUPS\n", gcups(tip->speed));
     }
     else
     {
