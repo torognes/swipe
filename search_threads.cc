@@ -479,17 +479,15 @@ auto worker(Parameters const & parameters) -> void
 
 }  // anonymous namespace
 
-auto calc_chunks(long volcount, 
-		 long par,
-		 long channels,
-		 long const * volume_sequences,
+auto calc_chunks(View<long> const volume_sequences,
 		 long * volume_chunks,
-		 long * totalchunks,
-		 long * biggestchunk) -> void
+		 Chunking const chunking) -> long
 {
+  long const par = chunking.threads;
+  long const channels = chunking.channels;
 
   long volsused = 0;
-  auto const volumes = static_cast<std::size_t>(volcount);
+  auto const volumes = volume_sequences.size();
   std::vector<long> chunksizes(volumes);
   long totalseqs = 0;
   long biggest_chunk_size = 0;
@@ -542,8 +540,7 @@ auto calc_chunks(long volcount,
     }
   }
   
-  *biggestchunk = biggest_chunk_size;
-  *totalchunks = chunks;
+  return biggest_chunk_size;
 }
 
 auto prepare_search(long par) -> void
@@ -559,15 +556,9 @@ auto prepare_search(long par) -> void
     search_work.volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
   }
 
-  long totalchunks = 0;
-
-  calc_chunks(static_cast<long>(volcount),
-	      par,
-	      static_cast<long>(channels_7),
-	      search_work.volseqs.data(),
-	      search_work.volchunks.data(),
-	      & totalchunks,
-	      & search_work.maxchunksize);
+  search_work.maxchunksize = calc_chunks(make_view(search_work.volseqs),
+                                         search_work.volchunks.data(),
+                                         {par, static_cast<long>(channels_7)});
 
   while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
   {

@@ -306,15 +306,9 @@ auto align_threads_init(Parameters const & parameters) -> void
     }
   }
 
-  long totalchunks = 0;
-
-  calc_chunks(static_cast<long>(align_bins),
-	      parameters.threads,
-	      static_cast<long>(channels_16),
-	      align_work.volseqs.data(),
-	      align_work.volchunks.data(),
-	      & totalchunks,
-	      & align_work.maxchunksize);
+  align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
+                                        align_work.volchunks.data(),
+                                        {parameters.threads, static_cast<long>(channels_16)});
 
   align_work.alignedhits = 0;
   align_work.volnext = 0;

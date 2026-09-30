@@ -69,13 +69,18 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-auto calc_chunks(long volcount,
-		 long par,
-		 long channels,
-		 long const * volume_sequences,
+// the threads that share the work, and the channels of their kernel
+struct Chunking
+{
+  long threads;
+  long channels;
+};
+
+// the chunks of each volume (or bin) of volume_sequences, written to
+// volume_chunks (as many entries); returns the size of the largest one
+auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
-		 long * totalchunks,
-		 long * biggestchunk) -> void;
+		 Chunking chunking) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads
 auto prepare_search(long par) -> void;
