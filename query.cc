@@ -98,14 +98,7 @@ std::array<char, byte_values> const map_ncbi_nt16 {{
 
 std::array<char, nucleotide_codes> const ntcompl {{ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 }};
 
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-std::array<char, translation_table_size> q_translate {{}};
-
-}  // anonymous namespace
-
-std::array<char, translation_table_size> d_translate {{}};
+TranslationTables translation_tables;
 
 std::array<char const *, gencode_count> const gencode_names {{
     "Standard Code",
@@ -176,11 +169,6 @@ struct query_s query;
 
 namespace {
 
-FILE * query_fp;
-
-// next line of the query file, with its end-of-line character (an
-// empty string means the end of the file)
-std::string query_line;
 
 // read the next line of fp into line, whatever its length (KI-16,
 // KI-17), including its end-of-line character; line is empty at the
@@ -205,14 +193,14 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
 {
   if (strcmp(query_filename, "-") == 0)
   {
-    query_fp = stdin;
+    query.input = stdin;
   }
   else
   {
-    query_fp = fopen(query_filename, "r");
+    query.input = fopen(query_filename, "r");
   }
 
-  if (query_fp == nullptr)
+  if (query.input == nullptr)
   {
     fatal("Cannot open query file.");
   }
@@ -250,14 +238,14 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
     }
   }
 
-  read_line(query_fp, query_line);
+  read_line(query.input, query.line);
 
   // skip empty lines at the beginning of the file (KI-18): an empty
   // first line was read as an empty query, and the rest of the file
   // was ignored
-  while ((query_line == "\n") or (query_line == "\r\n"))
+  while ((query.line == "\n") or (query.line == "\r\n"))
   {
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
 }
 
@@ -287,9 +275,9 @@ auto query_free() -> void
 
 auto query_exit() -> void
 {
-  if (query_fp != stdin)
+  if (query.input != stdin)
   {
-    static_cast<void>(fclose(query_fp));  // an input file
+    static_cast<void>(fclose(query.input));  // an input file
   }
 
   query_free();
@@ -297,7 +285,7 @@ auto query_exit() -> void
 
 auto query_read() -> int
 {
-  if (query_line.empty())
+  if (query.line.empty())
   {
     return 0;
   }
@@ -308,7 +296,7 @@ auto query_read() -> int
 
   // the line up to its first null byte, without its line ending
   // (\n, or \r\n: KI-21)
-  std::string header(query_line, 0, query_line.find('\0'));
+  std::string header(query.line, 0, query.line.find('\0'));
   if ((not header.empty()) and (header.back() == '\n'))
   {
     header.pop_back();
@@ -323,7 +311,7 @@ auto query_read() -> int
   {
     query.description.assign(header, 1, std::string::npos);
     query.dlen = len-1;
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
   else
   {
@@ -351,10 +339,10 @@ auto query_read() -> int
     map = map_ncbi_nt16.data();
   }
 
-  while((not query_line.empty()) and (query_line[0] != '>'))
+  while((not query.line.empty()) and (query.line[0] != '>'))
   {
     // up to a NUL, as the loop over c_str() it replaces
-    for (char const character : as_c_string(query_line))
+    for (char const character : as_c_string(query.line))
     {
       // bytes above 0x7f must not be negative indexes (KI-19)
       int const c = static_cast<unsigned char>(character);
@@ -369,7 +357,7 @@ auto query_read() -> int
 	query_sequence[static_cast<std::size_t>(query_length++)] = symbol;
       }
     }
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
   query_sequence[static_cast<std::size_t>(query_length)] = 0;
     
@@ -504,8 +492,8 @@ auto translate_createtable(long tableno, char * table) -> void
 
 auto translate_init(long qtableno, long dtableno) -> void
 {
-  translate_createtable(qtableno, q_translate.data());
-  translate_createtable(dtableno, d_translate.data());
+  translate_createtable(qtableno, translation_tables.query.data());
+  translate_createtable(dtableno, translation_tables.database.data());
 }
 
 auto translate(char const * dna, long dlen, 
@@ -517,11 +505,11 @@ auto translate(char const * dna, long dlen,
   char const * ttable = nullptr;
   if (table == 0)
   {
-    ttable = q_translate.data();
+    ttable = translation_tables.query.data();
   }
   else
   {
-    ttable = d_translate.data();
+    ttable = translation_tables.database.data();
   }
 
   long pos = 0;

@@ -226,10 +226,19 @@ extern char const * const sym_sound;
 constexpr std::size_t nucleotide_codes = 16;
 
 extern std::array<char, nucleotide_codes> const ntcompl;
-// the codon translation table of the database (16 x 16 x 16 codes of
-// nucleotides), filled by translate_init()
 constexpr std::size_t translation_table_size = nucleotide_codes * nucleotide_codes * nucleotide_codes;
-extern std::array<char, translation_table_size> d_translate;
+
+// the codon translation tables of the genetic codes of the query (-Q)
+// and of the database (-D), in query.cc
+struct TranslationTables
+{
+  std::array<char, translation_table_size> query {{}};
+  // the codon translation table of the database (16 x 16 x 16 codes of
+  // nucleotides), filled by translate_init()
+  std::array<char, translation_table_size> database {{}};
+};
+
+extern TranslationTables translation_tables;
 
 extern FILE * out;
 
@@ -271,6 +280,11 @@ struct query_s
   QueryStrands strands;
   char const * map;
   char const * sym;
+
+  FILE * input;  // the query file (stdin with "-")
+  // next line of the query file, with its end-of-line character (an
+  // empty string means the end of the file)
+  std::string line;
 };
 
 extern struct query_s query;

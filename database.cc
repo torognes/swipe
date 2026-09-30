@@ -1344,7 +1344,7 @@ auto db_translate(char const * dna, long dlen,
       c |= dna[pos++];
       c <<= 4;
       c |= dna[pos++];
-      prot[ppos++] = d_translate[static_cast<std::size_t>(c)];
+      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
     }
   }
   else
@@ -1357,7 +1357,7 @@ auto db_translate(char const * dna, long dlen,
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = d_translate[static_cast<std::size_t>(c)];
+      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
     }
   }
 
