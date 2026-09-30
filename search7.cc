@@ -595,8 +595,8 @@ inline auto dprofile_fill7(BYTE * dprofile,
   "        pmaxub  " H ", %%xmm12     \n"               \
   "        pmaxub  " H ", " F "       \n"
 
-inline auto donormal7(__m128i const * Sm,
-		      __m128i const * hep,
+inline auto donormal7(__m128i * Sm,
+		      __m128i * hep,
 		      __m128i * const * qp,
 		      __m128i const * Qm,
 		      __m128i const * Rm,
@@ -659,8 +659,8 @@ inline auto donormal7(__m128i const * Sm,
      );
 }
 
-inline auto domasked7(__m128i const * Sm,
-		      __m128i const * hep,
+inline auto domasked7(__m128i * Sm,
+		      __m128i * hep,
 		      __m128i * const * qp,
 		      __m128i const * Qm, 
 		      __m128i const * Rm, 

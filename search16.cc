@@ -94,8 +94,8 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-inline auto donormal16(volatile __m128i const * Sm,  /* r9  */
-		       __m128i const * hep, /* rdi */
+inline auto donormal16(volatile __m128i * Sm,  /* r9  */
+		       __m128i * hep, /* rdi */
 		       __m128i * const * qp, /* rsi */
 		       __m128i const * Qm,  /* rdx */
 		       __m128i const * Rm,  /* rcx */
@@ -158,8 +158,8 @@ inline auto donormal16(volatile __m128i const * Sm,  /* r9  */
       );
 }
 
-inline auto domasked16(volatile __m128i const * Sm,
-		       __m128i const * hep,
+inline auto domasked16(volatile __m128i * Sm,
+		       __m128i * hep,
 		       __m128i * const * qp,
 		       __m128i const * Qm, 
 		       __m128i const * Rm, 
