@@ -544,8 +544,6 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     Nlm_FloatHi const n = static_cast<double>(db_length);
     Nlm_FloatHi const N = db_num_seqs;
 
-    Nlm_FloatHi ell = 0;        /* A float value of the length adjustment */
-    Nlm_FloatHi ss = 0;         /* effective size of the search space */
     Nlm_FloatHi ell_min = 0;   /* At each iteration i,
                                          * ell_min <= ell <= ell_max. */
     Nlm_FloatHi ell_max = 0;
@@ -571,10 +569,9 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
     } /* end scope of a, mb and c */
 
     for(i = 1; i <= maxits; i++) {      /* for all iteration indices */
-        Nlm_FloatHi ell_bar = 0;    /* proposed next value of ell */
-        ell      = ell_next;
-        ss       = (m - ell) * (n - (N * ell));
-        ell_bar  = (alpha_d_lambda * (logK + log(ss))) + beta;
+        Nlm_FloatHi const ell = ell_next;        /* A float value of the length adjustment */
+        Nlm_FloatHi const ss = (m - ell) * (n - (N * ell));         /* effective size of the search space */
+        Nlm_FloatHi const ell_bar = (alpha_d_lambda * (logK + log(ss))) + beta;    /* proposed next value of ell */
         if(ell_bar >= ell) { /* ell is no bigger than the true fixed point */
             ell_min = ell;
             if(ell_bar - ell_min <= 1.0) {
@@ -603,9 +600,9 @@ BlastComputeLengthAdjustment(Nlm_FloatHi K,
          * assume that floor(ell_min) = floor(ell_fixed) */
         *length_adjustment = static_cast<Int4>(ell_min);
         /* But verify that ceil(ell_min) != floor(ell_fixed) */
-        ell = ceil(ell_min);
+        Nlm_FloatHi const ell = ceil(ell_min);
         if( ell <= ell_max ) {
-          ss = (m - ell) * (n - (N * ell));
+          Nlm_FloatHi const ss = (m - ell) * (n - (N * ell));
           if((alpha_d_lambda * (logK + log(ss))) + beta >= ell) {
             /* ceil(ell_min) == floor(ell_fixed) */
             *length_adjustment = static_cast<Int4>(ell);
