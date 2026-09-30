@@ -46,7 +46,8 @@ std::size_t align_volnext;
 
 // the alignment work is distributed in 7 bins: one per query strand
 // and frame (3 x 2), and one for the hits that are not aligned
-constexpr std::size_t align_bins = 7;
+constexpr std::size_t unaligned_bin = frame_count;
+constexpr std::size_t align_bins = frame_count + 1;
 std::array<long, align_bins> align_volseqs {{}};
 std::array<long, align_bins> align_volchunks {{}};
 
@@ -114,7 +115,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * 32);
+  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
 
   auto const listsize = static_cast<std::size_t>(maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
@@ -306,7 +307,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
     if (i >= parameters.alignments)
     {
-      align_volseqs[6]++;
+      align_volseqs[unaligned_bin]++;
     }
     else
     {
@@ -314,7 +315,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 		  & qstrand, & qframe,
 		  & dstrand, & dframe);
       
-      align_volseqs[static_cast<std::size_t>((3*qstrand)+qframe)]++;
+      align_volseqs[frame_index(qstrand, qframe)]++;
     }
   }
 
@@ -322,7 +323,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   calc_chunks(static_cast<long>(align_bins),
 	      parameters.threads,
-	      8,
+	      static_cast<long>(channels_16),
 	      align_volseqs.data(),
 	      align_volchunks.data(),
 	      & totalchunks,

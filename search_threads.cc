@@ -109,12 +109,12 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 
   // at least one row: the kernels memset() the array, and an empty
   // Buffer has no storage (a null data(), for an empty query)
-  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * 32);
+  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * hearray_row_bytes);
 
   auto listsize = static_cast<std::size_t>(maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
-    listsize *= 6;
+    listsize *= frame_count;  // the database frames
   }
 
   sdp->start_list.resize(listsize);
@@ -556,7 +556,7 @@ auto prepare_search(long par) -> void
 
   calc_chunks(static_cast<long>(volcount),
 	      par,
-	      16,
+	      static_cast<long>(channels_7),
 	      volseqs.data(),
 	      volchunks.data(),
 	      & totalchunks,

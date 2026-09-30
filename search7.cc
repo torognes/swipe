@@ -27,8 +27,7 @@
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
-constexpr std::size_t CHANNELS = 16;
-static_assert(CHANNELS <= max_channels, "the database threads have a buffer per channel");
+constexpr std::size_t CHANNELS = channels_7;
 constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
@@ -772,7 +771,7 @@ search7
   long next_id = 0;
   unsigned done = 0;
   
-  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * 32);
+  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
 
   Z  = _mm_set1_epi8(byte_0x80);
   T0 = _mm_set_epi8(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
