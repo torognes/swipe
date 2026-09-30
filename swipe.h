@@ -199,12 +199,9 @@ inline auto score_matrix_cell(std::size_t const row, std::size_t const column) -
   return (row * score_matrix_width) + column;
 }
 
-extern long totalhits;
 // the genetic codes 1 to 23 (nullptr: no code of that number)
 constexpr std::size_t gencode_count = 23;
 extern std::array<char const *, gencode_count> const gencode_names;
-extern long queryno;
-extern long compute7;
 
 // the tables indexed by a byte (an unsigned char)
 constexpr std::size_t byte_values = 256;
@@ -318,7 +315,17 @@ struct time_info
   double speed;
 };
 
-extern struct time_info ti;
+// the state of the run (swipe.cc): the query being searched, the
+// counts of the -m 99 output, and the timing of the search
+struct SearchRun
+{
+  long queryno = 0;  // the number of the query, from 0
+  long compute7 = 0;  // sequences searched by the 7-bit stage
+  long totalhits = 0;  // hits at or above the initial score threshold
+  struct time_info ti;
+};
+
+extern SearchRun run;
 
 // print the message to stderr and exit with status 1; [[noreturn]]
 // belongs on the declarations: callers know that fatal() never returns

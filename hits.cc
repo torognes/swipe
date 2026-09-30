@@ -328,7 +328,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   if (score >= hit_list.init_threshold)
   {
-    totalhits++;
+    run.totalhits++;
   }
 
   if ((score < hit_list.score_threshold) || (score > hit_list.upper_score_threshold))
@@ -1565,15 +1565,15 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
   fprint(out, "\t\t\t<searchInformation>\n");
   fprint(out, "\t\t\t\t<searchStarted>");
-  fprint(out, as_c_string(ti.starttime.data()));
+  fprint(out, as_c_string(run.ti.starttime.data()));
   fprint(out, "</searchStarted>\n");
   fprint(out, "\t\t\t\t<searchCompleted>");
-  fprint(out, as_c_string(ti.endtime.data()));
+  fprint(out, as_c_string(run.ti.endtime.data()));
   fprint(out, "</searchCompleted>\n");
-  fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
-  if (ti.elapsed > 0.0)
+  fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", run.ti.elapsed);
+  if (run.ti.elapsed > 0.0)
   {
-    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", gcups(ti.speed));
+    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", gcups(run.ti.speed));
   }
   else
   {
@@ -1581,7 +1581,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   }
   fprint(out, "\t\t\t\t<searchSWAlignments>\n");
   fprint(out, "\t\t\t\t\t<SWAbsolute>");
-  fprint_integer(out, compute7);
+  fprint_integer(out, run.compute7);
   fprint(out, "</SWAbsolute>\n");
   fprint(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
   fprint(out, "\t\t\t\t</searchSWAlignments>\n");
@@ -1590,7 +1590,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint(out, "\t\t<resultInformation>\n");
   fprint(out, "\t\t\t<resultHits>\n");
   fprint(out, "\t\t\t\t<totalCount>");
-  fprint_integer(out, totalhits);
+  fprint_integer(out, run.totalhits);
   fprint(out, "</totalCount>\n");
   fprint(out, "\t\t\t\t<obviousCount>");
   fprint_integer(out, hit_list.obvious);
@@ -1612,7 +1612,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     auto const e = expect_value_of(score);
 
     std::array<char, anchor_size> anchor {{}};
-    make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
+    make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
 
     long deflines = 0;
     std::vector<std::string> deflinetable;
@@ -1709,7 +1709,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     {
       
       std::array<char, anchor_size> anchor {{}};
-      make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
+      make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");

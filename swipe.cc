@@ -47,15 +47,9 @@ extern char const * const swipe_name_and_version = "SWIPE " SWIPE_VERSION;
 
 /* Other variables */
 
-long queryno;
-
-long compute7;
-
-long totalhits;
+SearchRun run;
 
 FILE * out = stdout;  // default output: stdout (--out FILE)
-
-struct time_info ti;
 
 [[noreturn]] auto fatal(char const * message) noexcept -> void
 {
@@ -216,7 +210,7 @@ auto work(Parameters const & parameters) -> void
   args_show(parameters);
   hits_init(parameters);
 
-  compute7 = 0;
+  run.compute7 = 0;
 
   //  totalhits = 0;
 
@@ -228,7 +222,7 @@ auto work(Parameters const & parameters) -> void
     static_cast<void>(fflush(out));  // a write error is reported at the end (main())
   }
 
-  clock_start(&ti);
+  clock_start(&run.ti);
   
   run_threads(parameters);
  
@@ -237,7 +231,7 @@ auto work(Parameters const & parameters) -> void
     fprint(out, "...............................................done\n\n");
   }
  
-  clock_stop(parameters, &ti);
+  clock_stop(parameters, &run.ti);
 
   //  if (view == 0)
   //    clock_start(&ti);
@@ -283,7 +277,7 @@ auto main(int argc, char**argv) -> int
   {
     score_matrix_init(parameters);
 
-    queryno = 0;
+    run.queryno = 0;
     
     query_init(parameters.queryname, parameters.symtype, parameters.querystrands);
     
@@ -296,7 +290,7 @@ auto main(int argc, char**argv) -> int
       
       work(parameters);
       
-      queryno++;
+      run.queryno++;
     }
     
     {

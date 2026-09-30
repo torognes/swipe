@@ -169,7 +169,6 @@ struct query_s query;
 
 namespace {
 
-
 // read the next line of fp into line, whatever its length (KI-16,
 // KI-17), including its end-of-line character; line is empty at the
 // end of the file (or after a read error)

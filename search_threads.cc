@@ -43,7 +43,7 @@ namespace {
 struct SearchWork
 {
   std::mutex mutex;
-  std::mutex count_mutex;  // for compute7 (swipe.cc)
+  std::mutex count_mutex;  // for run.compute7 (swipe.cc)
   long maxchunksize = 0;  // the largest chunk: the size of the lists
   std::size_t volnext = 0;  // the next volume with chunks left
   long seqnext = 0;  // the first sequence of the next chunk
@@ -312,7 +312,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       {
 	{
 	  std::lock_guard<std::mutex> const lock(search_work.count_mutex);
-	  compute7 += static_cast<long>(sdp->in_count);
+	  run.compute7 += static_cast<long>(sdp->in_count);
 	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
