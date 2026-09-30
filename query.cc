@@ -225,17 +225,9 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
     query.sym = sym_ncbi_nt16;
   }
 
-  for(long s=0; s<2; s++)
-  {
-    query.nt[strand_index(s)].seq = nullptr;
-    query.nt[strand_index(s)].len = 0;
-    
-    for(long f=0; f<3; f++)
-    {
-      query.aa[frame_index(s, f)].seq = nullptr;
-      query.aa[frame_index(s, f)].len = 0;
-    }
-  }
+  // no sequence: no storage, null pointers, zero lengths
+  query.nt.fill(sequence {});
+  query.aa.fill(sequence {});
 
   read_line(query.input, query.line);
 
@@ -255,19 +247,9 @@ auto query_free() -> void
   query.description.clear();
   query.dlen = 0;
 
-  for(long s=0; s<2; s++)
-  {
-    query.nt[strand_index(s)].storage = Buffer<char>();
-    query.nt[strand_index(s)].seq = nullptr;
-    query.nt[strand_index(s)].len = 0;
-    
-    for(long f=0; f<3; f++)
-    {
-      query.aa[frame_index(s, f)].storage = Buffer<char>();
-      query.aa[frame_index(s, f)].seq = nullptr;
-      query.aa[frame_index(s, f)].len = 0;
-    }
-  }
+  // no sequence: no storage, null pointers, zero lengths
+  query.nt.fill(sequence {});
+  query.aa.fill(sequence {});
 }
 
 }  // anonymous namespace
