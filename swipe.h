@@ -222,7 +222,10 @@ extern char const * sym_sound;
 extern std::array<char, 16> const ntcompl;
 // the codon translation table of the database (16 x 16 x 16 codes of
 // nucleotides), filled by translate_init()
-constexpr std::size_t translation_table_size = std::size_t{16} * 16 * 16;
+// the 4-bit nucleotide codes: a bit per base (A, C, G, T), 16 values
+// (0: none, 15: any base)
+constexpr std::size_t nucleotide_codes = 16;
+constexpr std::size_t translation_table_size = nucleotide_codes * nucleotide_codes * nucleotide_codes;
 extern std::array<char, translation_table_size> d_translate;
 
 extern FILE * out;
@@ -486,6 +489,7 @@ static_assert(channels_16 <= max_channels, "a buffer per channel");
 // the H/E array of the kernels: per query position, H and E, one
 // 16-byte vector each
 constexpr std::size_t hearray_row_bytes = 32;
+
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,

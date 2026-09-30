@@ -548,7 +548,6 @@ auto score_matrix_read(Parameters const & parameters) -> void
   if (parameters.symtype == SymbolType::blastn)
   {
     // the 4-bit nucleotide codes 1 to 15 (A, C, G, T and the ambiguity codes)
-    constexpr std::size_t nucleotide_codes = 16;
     for (std::size_t a = 1; a < nucleotide_codes; a++)
     {
       for (std::size_t b = 1; b < nucleotide_codes; b++)

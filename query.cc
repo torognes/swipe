@@ -433,22 +433,23 @@ auto translate_createtable(long tableno, char * table) -> void
 {
   /* initialize translation table */
 
-  for (long a = 0; a < 16; a++)
+  constexpr long bases = 4;  // the codons are numbered in base 4
+  for (std::size_t a = 0; a < nucleotide_codes; a++)
   {
-    for (long b = 0; b < 16; b++)
+    for (std::size_t b = 0; b < nucleotide_codes; b++)
     {
-      for(long c=0; c<16; c++)
+      for (std::size_t c = 0; c < nucleotide_codes; c++)
       {
 	char aa = '-';
-	for (long i = 0; i < 4; i++)
+	for (long i = 0; i < bases; i++)
 	{
-	  for (long j = 0; j < 4; j++)
+	  for (long j = 0; j < bases; j++)
 	  {
-	    for(long k=0; k<4; k++)
+	    for (long k = 0; k < bases; k++)
 	    {
-	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
+	      if (((a & (1U << i)) != 0) && ((b & (1U << j)) != 0) && ((c & (1U << k)) != 0))
 	      {
-		long const codon = (remap[static_cast<std::size_t>(i)]*16) + (remap[static_cast<std::size_t>(j)]*4) + remap[static_cast<std::size_t>(k)];
+		long const codon = (remap[static_cast<std::size_t>(i)] * bases * bases) + (remap[static_cast<std::size_t>(j)] * bases) + remap[static_cast<std::size_t>(k)];
 		char const x = code[static_cast<std::size_t>(tableno-1)][codon];
 		if (aa == '-')
 		{
@@ -493,7 +494,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	  aa = 'X';
 	}
 
-	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
+	table[(((a * nucleotide_codes) + b) * nucleotide_codes) + c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
       }
     }
   }
