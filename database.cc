@@ -355,6 +355,21 @@ auto getnames(char const * line) -> std::vector<std::string>
 
 namespace {
 
+// true when the alias file line starts with the keyword (a string
+// literal, its length known at compile time); rest is then the text
+// after it
+template <std::size_t Size>
+auto keyword(char const * line, char const (&word)[Size], char const * & rest) -> bool
+{
+  constexpr std::size_t length = Size - 1;  // without the terminating NUL
+  if (std::strncmp(line, word, length) != 0)
+  {
+    return false;
+  }
+  rest = std::next(line, static_cast<std::ptrdiff_t>(length));
+  return true;
+}
+
 // the value of a numeric line of an alias file (LENGTH, NSEQ, MAXOID,
 // MEMB_BIT): a non-negative number, then only white space (KI-43)
 auto alias_number(char const * text, char const * key) -> std::int64_t
@@ -393,52 +408,52 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
   auto * const line = buffer.data();
   while (fgets(line, line_size, db_file_xal) != nullptr)
   {
-    if (strncmp(line, "TITLE ", 6)== 0)
+    char const * rest = nullptr;
+    if (keyword(line, "TITLE ", rest))
     {
-      auto const * const text = std::next(line, 6);
-      auto const * const title = std::next(text, static_cast<std::ptrdiff_t>(strspn(text, " \t")));
+      auto const * const title = std::next(rest, static_cast<std::ptrdiff_t>(strspn(rest, " \t")));
       al_info->title.assign(title, strcspn(title, "\r\n"));
       title_found = true;
     }
-    else if (strncmp(line, "DBLIST", 6) == 0)
+    else if (keyword(line, "DBLIST", rest))
     {
-      al_info->dblist = getnames(std::next(line, 6));
+      al_info->dblist = getnames(rest);
     }
-    else if (strncmp(line, "OIDLIST", 7) == 0)
+    else if (keyword(line, "OIDLIST", rest))
     {
-      al_info->oidlist = getnames(std::next(line, 7));
+      al_info->oidlist = getnames(rest);
     }
-    else if (strncmp(line, "GILIST", 6) == 0)
+    else if (keyword(line, "GILIST", rest))
     {
       // not implemented
       fatal("GILIST in database alias files not implemented.");
     }
-    else if (strncmp(line, "TAXIDLIST", 9) == 0)
+    else if (keyword(line, "TAXIDLIST", rest))
     {
       // written by blastdb_aliastool -taxidlist: not implemented, and
       // ignoring it would search the whole database (KI-39)
       fatal("TAXIDLIST in database alias files not implemented.");
     }
-    else if (strncmp(line, "SEQIDLIST", 9) == 0)
+    else if (keyword(line, "SEQIDLIST", rest))
     {
       // written by blastdb_aliastool -seqidlist: not implemented (KI-39)
       fatal("SEQIDLIST in database alias files not implemented.");
     }
-    else if (strncmp(line, "LENGTH ", 7) == 0)
+    else if (keyword(line, "LENGTH ", rest))
     {
-      al_info->length = alias_number(std::next(line, 7), "LENGTH");
+      al_info->length = alias_number(rest, "LENGTH");
     }
-    else if (strncmp(line, "NSEQ ", 5) == 0)
+    else if (keyword(line, "NSEQ ", rest))
     {
-      al_info->nseq = alias_number(std::next(line, 5), "NSEQ");
+      al_info->nseq = alias_number(rest, "NSEQ");
     }
-    else if (strncmp(line, "MAXOID ", 7) == 0)
+    else if (keyword(line, "MAXOID ", rest))
     {
-      al_info->maxoid = alias_number(std::next(line, 7), "MAXOID");
+      al_info->maxoid = alias_number(rest, "MAXOID");
     }
-    else if (strncmp(line, "MEMB_BIT ", 9) == 0)
+    else if (keyword(line, "MEMB_BIT ", rest))
     {
-      al_info->memb_bit = alias_number(std::next(line, 9), "MEMB_BIT");
+      al_info->memb_bit = alias_number(rest, "MEMB_BIT");
     }
   }
 
