@@ -1207,29 +1207,40 @@ auto count_align(AlignedHit const & hit,
 
 auto hits_show_expect(double expect_value) -> void
 {
-  std::array<char, 10> temp {{}};
-  if (expect_value < 1e-180)
+  // the format of an expect value depends on its range: each bound is
+  // where the rounded value would need one more character
+  constexpr double zero_below = 1e-180;
+  constexpr double three_digit_exponent_below = 9.5e-100;
+  constexpr double exponent_below = 0.00095;
+  constexpr double three_decimals_below = 0.0995;
+  constexpr double two_decimals_below = 0.95;
+  constexpr double one_decimal_below = 9.5;
+  // "%-6.0e" of a value from 1e-180 on: at most 6 characters and the NUL
+  constexpr std::size_t exponent_text_size = 10;
+
+  std::array<char, exponent_text_size> temp {{}};
+  if (expect_value < zero_below)
   {
     fprint(out, "0.0  ");
   }
-  else if (expect_value < 9.5e-100)
+  else if (expect_value < three_digit_exponent_below)
   {
     snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
     fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
-  else if (expect_value < 0.00095)
+  else if (expect_value < exponent_below)
   {
     fprintf(out, "%-5.0e", expect_value);
   }
-  else if (expect_value < 0.0995)
+  else if (expect_value < three_decimals_below)
   {
     fprintf(out, "%-5.3f", expect_value);
   }
-  else if (expect_value < 0.95)
+  else if (expect_value < two_decimals_below)
   {
     fprintf(out, "%-5.2f", expect_value);
   }
-  else if (expect_value < 9.5)
+  else if (expect_value < one_decimal_below)
   {
     fprintf(out, "%-5.1f", expect_value);
   }
