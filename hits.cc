@@ -26,7 +26,7 @@
 #include "swipe.h"
 #include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
-#include <algorithm>  // std::min, std::sort
+#include <algorithm>  // std::min, std::move_backward, std::sort
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -318,9 +318,13 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
-  for (long j = move; j > 0; j--)
+  if (move > 0)
   {
-    hit_entry(place + j) = std::move(hit_entry(place + j - 1));
+    // entries place to place + move - 1 shift to place + 1 to place + move
+    assert(static_cast<std::size_t>(place + move) < hit_list.entries.size());
+    auto const first = std::next(hit_list.entries.begin(), place);
+    auto const last = std::next(first, move);
+    std::move_backward(first, last, std::next(last));
   }
 
   // fill new entry
