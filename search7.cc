@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "intrinsics_to_functions.h"  // v_adds_i8, v_subs_i8, v_max_u8
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
@@ -514,16 +515,16 @@ inline auto onestep7(__m128i const H,
 		     __m128i const Q,
 		     __m128i const R) -> void
 {
-  auto cell = _mm_adds_epi8(H, V);
-  cell = _mm_max_epu8(cell, F);
-  cell = _mm_max_epu8(cell, E);
-  S = _mm_max_epu8(cell, S);
-  F = _mm_subs_epi8(F, R);
-  E = _mm_subs_epi8(E, R);
+  auto cell = v_adds_i8(H, V);
+  cell = v_max_u8(cell, F);
+  cell = v_max_u8(cell, E);
+  S = v_max_u8(cell, S);
+  F = v_subs_i8(F, R);
+  E = v_subs_i8(E, R);
   N = cell;
-  cell = _mm_subs_epi8(cell, Q);
-  E = _mm_max_epu8(cell, E);
-  F = _mm_max_epu8(cell, F);
+  cell = v_subs_i8(cell, Q);
+  E = v_max_u8(cell, E);
+  F = v_max_u8(cell, F);
 }
 
 inline auto donormal7(__m128i * Sm,
@@ -580,7 +581,7 @@ inline auto domasked7(__m128i * Sm,
 		      __m128i const * Mm) -> void
 {
   auto const M = *Mm;
-  auto S = _mm_adds_epi8(*Sm, M);  // mask
+  auto S = v_adds_i8(*Sm, M);  // mask
   auto const Q = *Qm;
   auto const R = *Rm;
   auto H0 = *Zm;
@@ -598,8 +599,8 @@ inline auto domasked7(__m128i * Sm,
   for (long qi = 0; qi < ql; ++qi)
   {
     __m128i const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = _mm_adds_epi8(hep[2 * qi], M);  // load N0, mask
-    auto E = _mm_adds_epi8(hep[(2 * qi) + 1], M);  // load E, mask
+    auto const N0 = v_adds_i8(hep[2 * qi], M);  // load N0, mask
+    auto E = v_adds_i8(hep[(2 * qi) + 1], M);  // load E, mask
 
     onestep7(H0, N1, F0, x[0], E, S, Q, R);
     onestep7(H1, N2, F1, x[1], E, S, Q, R);

@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "intrinsics_to_functions.h"  // v_adds_i16, v_subs_i16, v_max_i16
 
 constexpr std::size_t CHANNELS = channels_16;
 constexpr std::size_t CDEPTH = 4;
@@ -50,16 +51,16 @@ inline auto onestep16(__m128i const H,
                       __m128i const Q,
                       __m128i const R) -> void
 {
-  auto cell = _mm_adds_epi16(H, V);
-  cell = _mm_max_epi16(cell, F);
-  cell = _mm_max_epi16(cell, E);
-  S = _mm_max_epi16(cell, S);
-  F = _mm_subs_epi16(F, R);
-  E = _mm_subs_epi16(E, R);
+  auto cell = v_adds_i16(H, V);
+  cell = v_max_i16(cell, F);
+  cell = v_max_i16(cell, E);
+  S = v_max_i16(cell, S);
+  F = v_subs_i16(F, R);
+  E = v_subs_i16(E, R);
   N = cell;
-  cell = _mm_subs_epi16(cell, Q);
-  E = _mm_max_epi16(cell, E);
-  F = _mm_max_epi16(cell, F);
+  cell = v_subs_i16(cell, Q);
+  E = v_max_i16(cell, E);
+  F = v_max_i16(cell, F);
 }
 
 inline auto donormal16(__m128i * Sm,
@@ -116,7 +117,7 @@ inline auto domasked16(__m128i * Sm,
                        __m128i const * Mm) -> void
 {
   auto const M = *Mm;
-  auto S = _mm_adds_epi16(_mm_adds_epi16(*Sm, M), M);  // add M
+  auto S = v_adds_i16(v_adds_i16(*Sm, M), M);  // add M
   auto const Q = *Qm;
   auto const R = *Rm;
   auto H0 = *Zm;
@@ -134,8 +135,8 @@ inline auto domasked16(__m128i * Sm,
   for (long qi = 0; qi < ql; ++qi)
   {
     __m128i const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = _mm_adds_epi16(_mm_adds_epi16(hep[2 * qi], M), M);  // load N0, add M
-    auto E = _mm_adds_epi16(_mm_adds_epi16(hep[(2 * qi) + 1], M), M);  // load E, add M
+    auto const N0 = v_adds_i16(v_adds_i16(hep[2 * qi], M), M);  // load N0, add M
+    auto E = v_adds_i16(v_adds_i16(hep[(2 * qi) + 1], M), M);  // load E, add M
 
     onestep16(H0, N1, F0, x[0], E, S, Q, R);
     onestep16(H1, N2, F1, x[1], E, S, Q, R);
