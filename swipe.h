@@ -180,6 +180,16 @@ extern long cpu_feature_ssse3;
 extern long cpu_feature_sse41;
 
 extern long * const score_matrix_63;
+
+// the score matrices are 32 x 32, row-major (symbol codes 0 to 31)
+constexpr std::size_t score_matrix_width = 32;
+
+inline auto score_matrix_cell(std::size_t const row, std::size_t const column) -> std::size_t
+{
+  assert((row < score_matrix_width) and (column < score_matrix_width));
+  return (row * score_matrix_width) + column;
+}
+
 extern long totalhits;
 extern std::array<char const *, 23> const gencode_names;
 extern long queryno;

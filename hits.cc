@@ -133,6 +133,13 @@ auto hits_per_sequence(Parameters const & parameters) -> std::int64_t
   return 1;  // blastp, sound
 }
 
+// the score of an aligned pair of residues (symbol codes)
+auto pair_score(char const query_symbol, char const db_symbol) -> long
+{
+  return score_matrix_63[score_matrix_cell(static_cast<unsigned char>(query_symbol),
+                                           static_cast<unsigned char>(db_symbol))];
+}
+
 auto percentage(long const part, long const whole) -> double
 {
   return 100.0 * static_cast<double>(part) / static_cast<double>(whole);
@@ -864,7 +871,7 @@ auto AlignmentLines::putalignop(char c, long len) -> void
       else
       {
 	a_line[line_pos] = (qs == ds) ? hit.sym[static_cast<int>(qs)] : 
-	  (score_matrix_63[(32*qs)+ds] > 0 ? '+' : ' ');
+	  (pair_score(qs, ds) > 0 ? '+' : ' ');
       }
       d_line[line_pos] = hit.sym[static_cast<int>(ds)];
       line_pos++;
@@ -1083,7 +1090,7 @@ auto whole_align(AlignedHit const & hit,
 	  (*identities)++;
 	  (*positives)++;
 	}
-	else if (score_matrix_63[(32*qs)+ds] > 0)
+	else if (pair_score(qs, ds) > 0)
 	{
 	  aline += '+';
 	  (*positives)++;
@@ -1152,7 +1159,7 @@ auto count_align(AlignedHit const & hit,
 	  (*identities)++;
 	  (*positives)++;
 	}
-	else if (score_matrix_63[(32 * qs) + ds] > 0)
+	else if (pair_score(qs, ds) > 0)
 	{
 	  (*positives)++;
 	}

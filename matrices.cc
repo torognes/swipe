@@ -336,7 +336,7 @@ long SCORELIMIT_16;
 
 // the score matrices, 32 x 32 (static storage, 16-byte aligned for the
 // SIMD kernels), and the pointers the other files read them through
-constexpr std::size_t score_matrix_size = std::size_t{32} * 32;
+constexpr std::size_t score_matrix_size = score_matrix_width * score_matrix_width;
 
 namespace {
 
@@ -452,9 +452,10 @@ auto parse_matrix_line(char const * line, char const * map,
 
 	      int const b = columns.order[static_cast<std::size_t>(i)];
 
-	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      auto const width = static_cast<int>(score_matrix_width);
+	      if ((a >= 0) && (b >= 0) && (a < width) && (b < width))
 	      {
-		score_matrix_63[(a << 5) + b] = sc;
+		score_matrix_63[score_matrix_cell(static_cast<std::size_t>(a), static_cast<std::size_t>(b))] = sc;
 	      }
 
 	    }
@@ -546,11 +547,13 @@ auto score_matrix_read(Parameters const & parameters) -> void
   
   if (parameters.symtype == SymbolType::blastn)
   {
-    for (int a = 1; a < 16; a++)
+    // the 4-bit nucleotide codes 1 to 15 (A, C, G, T and the ambiguity codes)
+    constexpr std::size_t nucleotide_codes = 16;
+    for (std::size_t a = 1; a < nucleotide_codes; a++)
     {
-      for (int b = 1; b < 16; b++)
+      for (std::size_t b = 1; b < nucleotide_codes; b++)
       {
-	score_matrix_63[(a << 5) + b] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
+	score_matrix_63[score_matrix_cell(a, b)] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
       }
     }
   }
@@ -598,11 +601,11 @@ auto score_matrix_read(Parameters const & parameters) -> void
   long hi = -100;
   long lo = 100;
 
-  for (int a = 0; a < 32; a++)
+  for (std::size_t a = 0; a < score_matrix_width; a++)
   {
-    for (int b = 0; b < 32; b++)
+    for (std::size_t b = 0; b < score_matrix_width; b++)
       {
-	long const sc = score_matrix_63[(a<<5) + b];
+	long const sc = score_matrix_63[score_matrix_cell(a, b)];
 	lo = std::min(sc, lo);
 	hi = std::max(sc, hi);
       }
@@ -622,11 +625,11 @@ auto score_matrix_read(Parameters const & parameters) -> void
     SCORELIMIT_16 = 0;
   }
 
-  for (int a = 0; a < 32; a++)
+  for (std::size_t a = 0; a < score_matrix_width; a++)
   {
-    for (int b = 0; b < 32; b++)
+    for (std::size_t b = 0; b < score_matrix_width; b++)
     {
-      long const sc = score_matrix_63[(a<<5) + b];
+      long const sc = score_matrix_63[score_matrix_cell(a, b)];
       
       // the 7-bit engine uses signed bytes: scores are clamped to
       // [-128, 127] (KI-12). This is exact: 7-bit scores are in [0,
@@ -635,9 +638,9 @@ auto score_matrix_read(Parameters const & parameters) -> void
       // (SCORELIMIT_7 <= 0)
       long const sc_7 = std::max<long>(std::numeric_limits<signed char>::min(),
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
-      score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
-      score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
-      score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
+      score_matrix_7 [score_matrix_cell(a, b)] = static_cast<char>(sc_7);
+      score_matrix_7t[score_matrix_cell(b, a)] = static_cast<char>(sc_7);
+      score_matrix_16[score_matrix_cell(a, b)] = static_cast<short>(sc);
     }
   }
 }
