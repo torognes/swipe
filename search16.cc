@@ -32,208 +32,124 @@ constexpr std::size_t CDEPTH = 4;
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
 
-// Register usage
-// rdi:   hep
-// rsi:   qp
-// rdx:   Qm
-// rcx:   Rm
-// r8:    ql
-// r9:    Sm/Mm
-
-// rax:   x, temp
-// r10:   ql2
-// r11:   qi
-// xmm0:  H0
-// xmm1:  H1
-// xmm2:  H2
-// xmm3:  H3
-// xmm4:  F0
-// xmm5:  F1
-// xmm6:  F2
-// xmm7:  F3
-// xmm8:  N0
-// xmm9:  N1
-// xmm10: N2
-// xmm11: N3
-// xmm12: E
-// xmm13: S
-// xmm14: Q 
-// xmm15: R
-
-#define INITIALIZE				\
-  "        movq    %0, %%rax               \n"	\
-  "        movdqa  (%%rax), %%xmm13        \n"	\
-  "        movdqa  (%3), %%xmm14           \n"	\
-  "        movdqa  (%4), %%xmm15           \n"	\
-  "        movq    %6, %%rax               \n"	\
-  "        movdqa  (%%rax), %%xmm0         \n"	\
-  "        movdqa  %%xmm0, %%xmm1          \n"	\
-  "        movdqa  %%xmm0, %%xmm2          \n"	\
-  "        movdqa  %%xmm0, %%xmm3          \n"	\
-  "        movdqa  %%xmm0, %%xmm4          \n"	\
-  "        movdqa  %%xmm0, %%xmm5          \n"	\
-  "        movdqa  %%xmm0, %%xmm6          \n"	\
-  "        movdqa  %%xmm0, %%xmm7          \n"	\
-  "        shlq    $3, %5                  \n"	\
-  "        movq    %5, %%r10               \n"	\
-  "        andq    $-16, %%r10             \n"	\
-  "        xorq    %%r11, %%r11            \n" 
-
-#define ONESTEP(H, N, F, V)			\
-  "        paddsw  " V "(%%rax), " H " \n"	\
-  "        pmaxsw  " F ", " H "        \n"	\
-  "        pmaxsw  %%xmm12, " H "      \n"	\
-  "        pmaxsw  " H ", %%xmm13      \n"	\
-  "        psubsw  %%xmm15, " F "      \n"	\
-  "        psubsw  %%xmm15, %%xmm12    \n"	\
-  "        movdqa  " H ", " N "        \n"	\
-  "        psubsw  %%xmm14, " H "      \n"	\
-  "        pmaxsw  " H ", %%xmm12      \n"	\
-  "        pmaxsw  " H ", " F "        \n"
-
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-inline auto donormal16(volatile __m128i * Sm,  /* r9  */
-		       __m128i * hep, /* rdi */
-		       __m128i * const * qp, /* rsi */
-		       __m128i const * Qm,  /* rdx */
-		       __m128i const * Rm,  /* rcx */
-		       long ql,       /* r8  */
-		       __m128i const * Zm) -> void
+// C++26 refactoring: std::simd, with std::add_sat and std::sub_sat
+
+// One cell of a block (the ONESTEP macro of the former inline
+// assembly): H is the score of the diagonal cell, N receives the score
+// of this cell (the diagonal of the next column), F and E are the
+// vertical and horizontal gap scores, S is the running maximum
+inline auto onestep16(__m128i const H,
+                      __m128i & N,
+                      __m128i & F,
+                      __m128i const V,
+                      __m128i & E,
+                      __m128i & S,
+                      __m128i const Q,
+                      __m128i const R) -> void
 {
-  __asm__
-    __volatile__
-    (
-     "## donormal16                             \n"
-     INITIALIZE
-     "        jmp       2f                      \n"
-     
-     "1:      movq      0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa    0(%1,%%r11,4), %%xmm8   \n" // load N0
-     "        movdqa    16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movq      8(%2,%%r11,1), %%rax    \n" // load x from qp[qi+1]
-     "        movdqa    %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "        movdqa    32(%1,%%r11,4), %%xmm0  \n" // load H0
-     "        movdqa    48(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa    %%xmm12, 48(%1,%%r11,4) \n" // save E
-     "        addq      $16, %%r11              \n" // qi++
-     "2:      cmpq      %%r11, %%r10            \n" // qi = ql4 ?
-     "        jne       1b                      \n" // loop
-     
-     "        cmpq      %%r11, %5               \n" 
-     "        je        3f                      \n"
-     "        movq      0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa    16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa    %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "3:      movq      %0, %%rax               \n" // save S
-     "        movdqa    %%xmm13, (%%rax)        \n"
-     "        shrq      $3, %5                    "		
-     : 
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "cc",
-       "memory"
-      );
+  auto cell = _mm_adds_epi16(H, V);
+  cell = _mm_max_epi16(cell, F);
+  cell = _mm_max_epi16(cell, E);
+  S = _mm_max_epi16(cell, S);
+  F = _mm_subs_epi16(F, R);
+  E = _mm_subs_epi16(E, R);
+  N = cell;
+  cell = _mm_subs_epi16(cell, Q);
+  E = _mm_max_epi16(cell, E);
+  F = _mm_max_epi16(cell, F);
+}
+
+inline auto donormal16(volatile __m128i * Sm,
+                       __m128i * hep,
+                       __m128i * const * qp,
+                       __m128i const * Qm,
+                       __m128i const * Rm,
+                       long ql,
+                       __m128i const * Zm) -> void
+{
+  auto S = *Sm;
+  auto const Q = *Qm;
+  auto const R = *Rm;
+  auto H0 = *Zm;
+  auto H1 = H0;
+  auto H2 = H0;
+  auto H3 = H0;
+  auto F0 = H0;
+  auto F1 = H0;
+  auto F2 = H0;
+  auto F3 = H0;
+  __m128i N1;
+  __m128i N2;
+  __m128i N3;
+
+  for (long qi = 0; qi < ql; ++qi)
+  {
+    __m128i const * const x = qp[qi];  // load x from qp[qi]
+    auto const N0 = hep[2 * qi];  // load N0
+    auto E = hep[(2 * qi) + 1];  // load E
+
+    onestep16(H0, N1, F0, x[0], E, S, Q, R);
+    onestep16(H1, N2, F1, x[1], E, S, Q, R);
+    onestep16(H2, N3, F2, x[2], E, S, Q, R);
+    onestep16(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
+
+    hep[(2 * qi) + 1] = E;  // save E
+    H0 = N0;
+    H1 = N1;
+    H2 = N2;
+    H3 = N3;
+  }
+
+  *Sm = S;  // save S
 }
 
 inline auto domasked16(volatile __m128i * Sm,
-		       __m128i * hep,
-		       __m128i * const * qp,
-		       __m128i const * Qm, 
-		       __m128i const * Rm, 
-		       long ql,      
-		       __m128i const * Zm,
-		       __m128i const * Mm) -> void
+                       __m128i * hep,
+                       __m128i * const * qp,
+                       __m128i const * Qm,
+                       __m128i const * Rm,
+                       long ql,
+                       __m128i const * Zm,
+                       __m128i const * Mm) -> void
 {
-  __asm__
-    __volatile__
-    (
-     "## domasked16                            \n"
-     INITIALIZE
-     "        paddsw  (%7), %%xmm13            \n" // add M
-     "        paddsw  (%7), %%xmm13            \n" // add M
-     "        jmp     2f                       \n"
-     
-     "1:      movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  0(%1,%%r11,4), %%xmm8    \n" // load N0
-     "        paddsw  (%7), %%xmm8             \n" // add M
-     "        paddsw  (%7), %%xmm8             \n" // add M
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "        movq    8(%2,%%r11,1), %%rax     \n" // load x from qp[qi+1]
-     "        movdqa  32(%1,%%r11,4), %%xmm0   \n" // load H0
-     "        paddsw  (%7), %%xmm0             \n" // add M
-     "        paddsw  (%7), %%xmm0             \n" // add M
-     "        movdqa  48(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 48(%1,%%r11,4)  \n" // save E
-     "        addq    $16, %%r11               \n" // qi++
-     "2:      cmpq    %%r11, %%r10             \n" // qi = ql4 ?
-     "        jne     1b                       \n" // loop
-     
-     "        cmpq    %%r11, %5                \n" 
-     "        je      3f                       \n"
-     "        movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "3:      movq    %0, %%rax                \n" // save S
-     "        movdqa  %%xmm13, (%%rax)         \n"
-     "        shrq    $3, %5                     "		
-     : 
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm),
-       "r"(Mm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "cc",
-       "memory"
-     );
+  auto const M = *Mm;
+  auto S = _mm_adds_epi16(_mm_adds_epi16(*Sm, M), M);  // add M
+  auto const Q = *Qm;
+  auto const R = *Rm;
+  auto H0 = *Zm;
+  auto H1 = H0;
+  auto H2 = H0;
+  auto H3 = H0;
+  auto F0 = H0;
+  auto F1 = H0;
+  auto F2 = H0;
+  auto F3 = H0;
+  __m128i N1;
+  __m128i N2;
+  __m128i N3;
+
+  for (long qi = 0; qi < ql; ++qi)
+  {
+    __m128i const * const x = qp[qi];  // load x from qp[qi]
+    auto const N0 = _mm_adds_epi16(_mm_adds_epi16(hep[2 * qi], M), M);  // load N0, add M
+    auto E = _mm_adds_epi16(_mm_adds_epi16(hep[(2 * qi) + 1], M), M);  // load E, add M
+
+    onestep16(H0, N1, F0, x[0], E, S, Q, R);
+    onestep16(H1, N2, F1, x[1], E, S, Q, R);
+    onestep16(H2, N3, F2, x[2], E, S, Q, R);
+    onestep16(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
+
+    hep[(2 * qi) + 1] = E;  // save E
+    H0 = N0;
+    H1 = N1;
+    H2 = N2;
+    H3 = N3;
+  }
+
+  *Sm = S;  // save S
 }
 
 inline auto dprofile_fill16(WORD * dprofile_word,
