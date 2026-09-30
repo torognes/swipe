@@ -226,8 +226,8 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
   }
 
   // no sequence: no storage, null pointers, zero lengths
-  query.nt.fill(sequence {});
-  query.aa.fill(sequence {});
+  query.nt.fill(sequence {nullptr, 0, Buffer<char>()});
+  query.aa.fill(sequence {nullptr, 0, Buffer<char>()});
 
   read_line(query.input, query.line);
 
@@ -248,8 +248,8 @@ auto query_free() -> void
   query.dlen = 0;
 
   // no sequence: no storage, null pointers, zero lengths
-  query.nt.fill(sequence {});
-  query.aa.fill(sequence {});
+  query.nt.fill(sequence {nullptr, 0, Buffer<char>()});
+  query.aa.fill(sequence {nullptr, 0, Buffer<char>()});
 }
 
 }  // anonymous namespace
