@@ -269,7 +269,7 @@ auto main(int argc, char**argv) -> int
     long const seqcount = db_getseqcount();
     for (long i = 0; i < seqcount; i++)
     {
-      db_show_fasta(t, i, 0, 0, parameters.dump - 1);
+      db_show_fasta(t, i, {0, 0}, parameters.dump - 1);
     }
     db_thread_destruct(t);
   }

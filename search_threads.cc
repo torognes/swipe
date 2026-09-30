@@ -430,8 +430,8 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const dframe = seqnosf & 3;
       
 	  long ntlen = 0;
-	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, dstrand,
-						     dframe, & ntlen, 0);
+	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, {dstrand, dframe},
+						     & ntlen, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
       

@@ -618,8 +618,8 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   // KI-37), the sequence itself only for hits with an alignment
   db_mapsequences(t, h->seqno, h->seqno);
 
-  View<char> const sequence = db_getsequence(t, h->seqno, h->dstrand,
-					     h->dframe, & ntlen, 0);
+  View<char> const sequence = db_getsequence(t, h->seqno, {h->dstrand, h->dframe},
+					     & ntlen, 0);
   h->dlen = static_cast<long>(sequence.size());
   h->dlennt = ntlen;
 

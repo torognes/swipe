@@ -415,8 +415,20 @@ auto score_matrix_init(Parameters const & parameters) -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
 auto revcompl(char const * seq, long len) -> Buffer<char>;
+// a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
+// untranslated_frame) of a nucleotide sequence
+struct StrandFrame
+{
+  long strand;
+  long frame;
+};
+
+// the genetic code of a translation: that of the query (-Q) or of the
+// database (-D)
+enum struct TranslationTable : bool { for_query, for_database };
+
 auto translate(char const * dna, long dlen,
-               long strand, long frame, long table,
+               StrandFrame where, TranslationTable table,
                Buffer<char> & protein, long * plenp) -> void;
 
 struct asnparse_info;
@@ -486,7 +498,7 @@ auto db_showheader(struct db_thread_s const * t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
-		   long strand, long frame, long split) -> void;
+		   StrandFrame where, long split) -> void;
 
 auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
@@ -531,7 +543,7 @@ extern ScoreMatrices score_matrices;
 
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
-auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
+auto db_getsequence(struct db_thread_s * t, long seqno, StrandFrame where,
 		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
 auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;

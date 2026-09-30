@@ -383,7 +383,7 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
-	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
+	    translate(query.nt[0].seq, query.nt[0].len, {s, f}, TranslationTable::for_query,
 		      frame_sequence.storage, & frame_sequence.len);
 	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
@@ -496,13 +496,15 @@ auto translate_init(long qtableno, long dtableno) -> void
 }
 
 auto translate(char const * dna, long dlen, 
-	       long strand, long frame, long table,
+	       StrandFrame const where, TranslationTable const table,
 	       Buffer<char> & protein, long * plenp) -> void
 {
+  long const strand = where.strand;
+  long const frame = where.frame;
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
   char const * ttable = nullptr;
-  if (table == 0)
+  if (table == TranslationTable::for_query)
   {
     ttable = translation_tables.query.data();
   }

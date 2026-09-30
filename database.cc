@@ -1327,9 +1327,11 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 namespace {
 
 auto db_translate(char const * dna, long dlen,
-		  long strand, long frame, 
+		  StrandFrame const where,
 		  char * prot) -> void
 {
+  long const strand = where.strand;
+  long const frame = where.frame;
   long pos = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
@@ -1366,9 +1368,11 @@ auto db_translate(char const * dna, long dlen,
 
 }  // anonymous namespace
 
-auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
+auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 		    long * ntlenp, std::size_t c) -> View<char>
 {
+  long const strand = where.strand;
+  long const frame = where.frame;
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 
   long s = 0;
@@ -1528,7 +1532,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
       }
       auto * const xx = xxbuffer.data();
       
-      db_translate(nt, nt_length, strand, frame, xx);
+      db_translate(nt, nt_length, {strand, frame}, xx);
 
       /* deallocate ntbuffer if big */
       
@@ -1585,8 +1589,10 @@ auto db_showheader(struct db_thread_s const * t, View<char> const header,
 
 namespace {
 
-auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
+auto db_print_seq(db_thread_t * t, long seqno, StrandFrame const where) -> void
 {
+  long const strand = where.strand;
+  long frame = where.frame;
   long ntlen = 0;
 
   // databases of translated searches are dumped as nucleotides,
@@ -1596,7 +1602,7 @@ auto db_print_seq(db_thread_t * t, long seqno, long strand, long frame) -> void
     frame = untranslated_frame;
   }
 
-  auto const sequence = db_getsequence(t, seqno, strand, frame, & ntlen, 0);
+  auto const sequence = db_getsequence(t, seqno, {strand, frame}, & ntlen, 0);
   auto const length = static_cast<long>(sequence.size());
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
@@ -1635,8 +1641,10 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
   return 1;
 }
 
-auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long split) -> void
+auto db_show_fasta(db_thread_t * t, long seqno, StrandFrame const where, long split) -> void
 {
+  long const strand = where.strand;
+  long const frame = where.frame;
 
   /* 
      Some fastacmd -D 1 peculiarities not implemented here:
@@ -1667,7 +1675,7 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
 	fprint(out, '>');
 	fprint(out, as_c_string(deflinetable[static_cast<std::size_t>(i)]));
 	fprint(out, '\n');
-	db_print_seq(t, seqno, strand, frame);
+	db_print_seq(t, seqno, {strand, frame});
       }
       else
       {
@@ -1680,7 +1688,7 @@ auto db_show_fasta(db_thread_t * t, long seqno, long strand, long frame, long sp
 	if (i==deflines-1)
 	{
 	  fprint(out, '\n');
-	  db_print_seq(t, seqno, strand, frame);
+	  db_print_seq(t, seqno, {strand, frame});
 	}
       }
     }

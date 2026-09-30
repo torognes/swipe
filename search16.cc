@@ -492,7 +492,7 @@ auto search16(WORD * * q_start,
 	    long const seqno = seqnosf >> 3;
 
 	    View<char> const sequence =
-	      db_getsequence(dbt, seqno, strand, frame, & ntlen, c);
+	      db_getsequence(dbt, seqno, {strand, frame}, & ntlen, c);
 		      
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
 	    d_pos[c] = d_begin[c];
