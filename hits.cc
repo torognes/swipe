@@ -340,17 +340,10 @@ auto hits_getcount() -> long
   return hit_list.count;
 }
 
-auto hits_gethit(long i, long * seqno, long * score, 
-		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe) -> void
+auto hits_gethit(long i) -> Hit
 {
-  struct hits_entry const * h = &hit_entry(i);
-  *seqno = h->seqno;
-  *score = h->score;
-  *qstrand = h->qstrand;
-  *qframe = h->qframe;
-  *dstrand = h->dstrand;
-  *dframe = h->dframe;
+  auto const & h = hit_entry(i);
+  return {h.seqno, h.score, {h.qstrand, h.qframe, h.dstrand, h.dframe}};
 }
 
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void

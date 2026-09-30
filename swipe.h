@@ -555,9 +555,16 @@ auto hits_show_end(OutputFormat view) -> void;
 auto hits_show(Parameters const & parameters) -> void;
 auto hits_empty() -> void;
 auto hits_exit() -> void;
-auto hits_gethit(long i, long * seqno, long * score, 
-		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe) -> void;
+// a hit of the list: its database sequence, score, strands and frames
+struct Hit
+{
+  long seqno;
+  long score;
+  HitStrands strands;
+};
+
+auto hits_gethit(long i) -> Hit;
+
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
 
 

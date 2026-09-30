@@ -210,21 +210,13 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
 	  long const hs = align_work.hits_sorted[static_cast<std::size_t>(hitno)];
-	  long seqno = 0;
-	  long score = 0;
-	  long hqstrand = 0;
-	  long hqframe = 0;
-	  long hdstrand = 0;
-	  long hdframe = 0;
-	
-	  hits_gethit(hs, & seqno, & score, & hqstrand, & hqframe, 
-		      & hdstrand, & hdframe);
+	  auto const hit = hits_gethit(hs);
 
-	  if ((qstrand == hqstrand) && (qframe == hqframe))
+	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
 	  {
 	    sdp->start_hits[sdp->start_count] = hs;
 	    sdp->start_list[sdp->start_count] = 
-	      (seqno << 3) | (hdstrand << 2) | hdframe;
+	      (hit.seqno << 3) | (hit.strands.dstrand << 2) | hit.strands.dframe;
 	    sdp->start_count++;
 	  }
 	}
@@ -303,24 +295,14 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   for(long i = 0; i<hits; i++)
   {
-    long seqno = 0;
-    long score = 0;
-    long qstrand = 0;
-    long qframe = 0;
-    long dstrand = 0;
-    long dframe = 0;
-
     if (i >= parameters.alignments)
     {
       align_work.volseqs[unaligned_bin]++;
     }
     else
     {
-      hits_gethit(i, & seqno, & score,
-		  & qstrand, & qframe,
-		  & dstrand, & dframe);
-      
-      align_work.volseqs[frame_index(qstrand, qframe)]++;
+      auto const strands = hits_gethit(i).strands;
+      align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
     }
   }
 
