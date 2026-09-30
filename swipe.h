@@ -219,12 +219,13 @@ extern char const * sym_ncbi_nt16u;
 extern char const * sym_ncbi_aa;
 extern char const * sym_sound;
 
-extern std::array<char, 16> const ntcompl;
-// the codon translation table of the database (16 x 16 x 16 codes of
-// nucleotides), filled by translate_init()
 // the 4-bit nucleotide codes: a bit per base (A, C, G, T), 16 values
 // (0: none, 15: any base)
 constexpr std::size_t nucleotide_codes = 16;
+
+extern std::array<char, nucleotide_codes> const ntcompl;
+// the codon translation table of the database (16 x 16 x 16 codes of
+// nucleotides), filled by translate_init()
 constexpr std::size_t translation_table_size = nucleotide_codes * nucleotide_codes * nucleotide_codes;
 extern std::array<char, translation_table_size> d_translate;
 
