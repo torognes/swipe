@@ -63,19 +63,30 @@ long opt_alignments;
 
 namespace {
 
-long stats_available = 0;
+// the statistical parameters of the search (Karlin-Altschul), set by
+// hits_init()
+struct Statistics
+{
+  long available = 0;
 
-double alpha;
-double beta;
-double lambda;
-double K;
-double H;
-double Kmn = 0;
+  double alpha = 0;
+  double beta = 0;
+  double lambda = 0;
+  double K = 0;
+  double H = 0;
+  double Kmn = 0;
 
-/* ungapped statistical parameters, only shown with -m 99 (KI-31) */
-double ungapped_lambda = 0;
-double ungapped_K = 0;
-double ungapped_H = 0;
+  /* ungapped statistical parameters, only shown with -m 99 (KI-31) */
+  double ungapped_lambda = 0;
+  double ungapped_K = 0;
+  double ungapped_H = 0;
+
+  double logK = 0;
+  double lambda_d_log2 = 0;
+  double logK_d_log2 = 0;
+};
+
+Statistics statistics;
 
 }  // anonymous namespace
 
@@ -88,20 +99,16 @@ constexpr double ln_2 = 0.693147180559945309417;
 
 namespace {
 
-double logK;
-double lambda_d_log2;
-double logK_d_log2;
-
 // E-value and bit score of a raw score, and a percentage (the same
 // expressions as at their former call sites: identical results)
 auto expect_value_of(long const score) -> double
 {
-  return Kmn * exp(- lambda * static_cast<double>(score));
+  return statistics.Kmn * exp(- statistics.lambda * static_cast<double>(score));
 }
 
 auto bit_score_of(long const score) -> double
 {
-  return (lambda_d_log2 * static_cast<double>(score)) - logK_d_log2;
+  return (statistics.lambda_d_log2 * static_cast<double>(score)) - statistics.logK_d_log2;
 }
 
 // the most hits of a database sequence: one per searched pair of a
@@ -463,7 +470,7 @@ auto hits_init(Parameters const & parameters) -> void
 
   //fprintf(out, "matrix=%s, go=%ld, ge=%ld\n", matrixname, gapopen, gapextend);
 
-  stats_available = 0;
+  statistics.available = 0;
 
   if (parameters.symtype == SymbolType::blastn)
   {
@@ -471,22 +478,22 @@ auto hits_init(Parameters const & parameters) -> void
 			   parameters.mismatchscore,
 			   parameters.gapopen,
 			   parameters.gapextend,
-			   & lambda,
-			   & K,
-			   & H,
-			   & alpha,
-			   & beta) != 0)
+			   & statistics.lambda,
+			   & statistics.K,
+			   & statistics.H,
+			   & statistics.alpha,
+			   & statistics.beta) != 0)
     {
-      stats_available = 1;
+      statistics.available = 1;
 
       /*
       fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
 	      lambda, K, H, alpha, beta);
       */
 
-      logK = log(K);
-      lambda_d_log2 = lambda / ln_2;
-      logK_d_log2 = logK / ln_2;
+      statistics.logK = log(statistics.K);
+      statistics.lambda_d_log2 = statistics.lambda / ln_2;
+      statistics.logK_d_log2 = statistics.logK / ln_2;
       
       long const qlen = query.nt[0].len;
 
@@ -500,7 +507,7 @@ auto hits_init(Parameters const & parameters) -> void
 	dlen = symcount;
       }
 
-      int const lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+      int const lenadj = length_adjustment(statistics.K, statistics.logK, statistics.alpha / statistics.lambda, statistics.beta,
 					   qlen, dlen, seqcount);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
@@ -511,41 +518,41 @@ auto hits_init(Parameters const & parameters) -> void
 	? parameters.effdbsize
 	: effective_db_length(dlen, seqcount, lenadj);
 
-      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
+      statistics.Kmn = statistics.K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
   else if (parameters.symtype < SymbolType::sound)
   {
     if (parameters.symtype == SymbolType::tblastx)
     {
-      stats_available = stats_getparams(parameters.matrixname,
+      statistics.available = stats_getparams(parameters.matrixname,
 					ungapped_penalty,
 					ungapped_penalty,
-					& lambda,
-					& K,
-					& H,
-					& alpha,
-					& beta);
+					& statistics.lambda,
+					& statistics.K,
+					& statistics.H,
+					& statistics.alpha,
+					& statistics.beta);
     }
     else
     {
-      stats_available = stats_getparams(parameters.matrixname,
+      statistics.available = stats_getparams(parameters.matrixname,
 					parameters.gapopen,
 					parameters.gapextend,
-					& lambda,
-					& K,
-					& H,
-					& alpha,
-					& beta);
+					& statistics.lambda,
+					& statistics.K,
+					& statistics.H,
+					& statistics.alpha,
+					& statistics.beta);
     }
 
 
-    if (stats_available != 0)
+    if (statistics.available != 0)
     {
       
-      logK = log(K);
-      lambda_d_log2 = lambda / ln_2;
-      logK_d_log2 = logK / ln_2;
+      statistics.logK = log(statistics.K);
+      statistics.lambda_d_log2 = statistics.lambda / ln_2;
+      statistics.logK_d_log2 = statistics.logK / ln_2;
       
       long qlen = query.aa[0].len;
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -570,7 +577,7 @@ auto hits_init(Parameters const & parameters) -> void
 	}
       }
 
-      int const lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+      int const lenadj = length_adjustment(statistics.K, statistics.logK, statistics.alpha / statistics.lambda, statistics.beta,
 					   qlen, dlen, seqcount);
 
       std::int64_t const m = qlen - lenadj;
@@ -579,37 +586,37 @@ auto hits_init(Parameters const & parameters) -> void
 	? parameters.effdbsize
 	: effective_db_length(dlen, seqcount, lenadj);
 
-      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
+      statistics.Kmn = statistics.K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
 
   /* ungapped statistical parameters (-m 99): the (0, 0) rows of the
      nucleotide tables, the ungapped rows of the matrix tables; the
      gapped values when there are none (KI-31) */
-  ungapped_lambda = lambda;
-  ungapped_K = K;
-  ungapped_H = H;
+  statistics.ungapped_lambda = statistics.lambda;
+  statistics.ungapped_K = statistics.K;
+  statistics.ungapped_H = statistics.H;
   double ungapped_alpha = 0;
   double ungapped_beta = 0;
   if (parameters.symtype == SymbolType::blastn)
   {
     stats_getparams_nt(parameters.matchscore, parameters.mismatchscore, 0, 0,
-                       & ungapped_lambda, & ungapped_K, & ungapped_H,
+                       & statistics.ungapped_lambda, & statistics.ungapped_K, & statistics.ungapped_H,
                        & ungapped_alpha, & ungapped_beta);
   }
   else if (parameters.symtype < SymbolType::sound)
   {
     stats_getparams(parameters.matrixname, ungapped_penalty, ungapped_penalty,
-		    &ungapped_lambda, &ungapped_K, &ungapped_H,
+		    &statistics.ungapped_lambda, &statistics.ungapped_K, &statistics.ungapped_H,
 		    &ungapped_alpha, &ungapped_beta);
   }
 
   scorethreshold = minscore;
   upperscorethreshold = maxscore;
   
-  if (stats_available != 0)
+  if (statistics.available != 0)
   {
-    auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
+    auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / statistics.Kmn) / statistics.lambda));
     if (minscore_expect > minscore)
     {
       scorethreshold = minscore_expect;
@@ -617,7 +624,7 @@ auto hits_init(Parameters const & parameters) -> void
 
     if (min_expect > 0.0)
     {
-      auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
+      auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / statistics.Kmn) / statistics.lambda));
       if (maxscore_expect < maxscore)
       {
 	upperscorethreshold = maxscore_expect;
@@ -1526,14 +1533,14 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, parameters.gapextend);
   fprint(out, "</gapPenaltyExtension>\n");
   fprint(out, "\t\t\t\t<ungapped>\n");
-  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
-  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
-  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", ungapped_H);
+  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", statistics.ungapped_lambda);
+  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", statistics.ungapped_K);
+  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", statistics.ungapped_H);
   fprint(out, "\t\t\t\t</ungapped>\n");
   fprint(out, "\t\t\t\t<gapped>\n");
-  fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", lambda);
-  fprintf(out, "\t\t\t\t\t<gappedKappa>%.4g</gappedKappa>\n", K);
-  fprintf(out, "\t\t\t\t\t<gappedEta>%.4g</gappedEta>\n", H);
+  fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", statistics.lambda);
+  fprintf(out, "\t\t\t\t\t<gappedKappa>%.4g</gappedKappa>\n", statistics.K);
+  fprintf(out, "\t\t\t\t\t<gappedEta>%.4g</gappedEta>\n", statistics.H);
   fprint(out, "\t\t\t\t</gapped>\n");
 
   fprint(out, "\t\t\t</gapPenalties>\n");
@@ -2060,7 +2067,7 @@ auto hits_show_tsv(Parameters const & parameters,
       fprint(out, "# Database: ");
       fprint(out, as_c_string(parameters.databasename));
       fprint(out, '\n');
-      if (stats_available != 0)
+      if (statistics.available != 0)
       {
 	fprint(out, "# Fields: Query id, Subject id, % identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, e-value, bit score\n");
       }
@@ -2100,7 +2107,7 @@ auto hits_show_tsv(Parameters const & parameters,
 	    hit.d_first,
 	    hit.d_last);
     
-    if (stats_available != 0)
+    if (statistics.available != 0)
     {
       auto const expect_value = expect_value_of(score);
       fprintf(out, "\t%.2g", expect_value);
@@ -2129,7 +2136,7 @@ auto hits_show_plain(Parameters const & parameters,
     }
     else
     {
-      if (stats_available != 0)
+      if (statistics.available != 0)
       {
 	fprint(out, "                                                                 Score    E\n");
 	fprint(out, "Sequences producing significant alignments:                      (bits) Value\n\n");
@@ -2179,7 +2186,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprint_integer(out, hit_entry(i).dframe + 1);
 	}
 
-	if (stats_available != 0)
+	if (statistics.available != 0)
 	{
 	  auto const bits = static_cast<long>(floor(bit_score_of(score) + 0.5));
 	  auto const expect_value = expect_value_of(score);
@@ -2225,7 +2232,7 @@ auto hits_show_plain(Parameters const & parameters,
 	      
 	auto const score = hit_entry(i).score;
 
-	if (stats_available != 0)
+	if (statistics.available != 0)
 	{
 	  auto const bits = bit_score_of(score);
 	  auto const expect_value = expect_value_of(score);
