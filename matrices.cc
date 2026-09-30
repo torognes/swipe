@@ -359,13 +359,13 @@ struct MatrixColumns
   int symbols = 0;
 };
 
-auto symbol_map(Parameters const & parameters) -> char const *
+auto symbol_map(Parameters const & parameters) -> std::array<char, byte_values> const &
 {
   if (parameters.symtype == SymbolType::sound)
   {
-    return map_sound.data();
+    return map_sound;
   }
-  return map_ncbi_aa.data();
+  return map_ncbi_aa;
 }
 
 // what parse_matrix_line() found
@@ -377,7 +377,7 @@ enum struct MatrixLine
 
 // one line of a score matrix (NUL-terminated), whether it comes from a
 // file or from a built-in matrix string
-auto parse_matrix_line(char const * line, char const * map,
+auto parse_matrix_line(char const * line, std::array<char, byte_values> const & map,
                        MatrixColumns & columns) -> MatrixLine
 {
       char const * p = line;
@@ -457,7 +457,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
     fatal("Cannot open score matrix file.");
   }
 
-  char const * const map = symbol_map(parameters);
+  auto const & map = symbol_map(parameters);
 
   long line_number = 0;
   while(fgets(line.data(), LINE_MAX, fp) != nullptr)
@@ -486,7 +486,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
     fatal("Cannot read score matrix string.");
   }
 
-  char const * const map = symbol_map(parameters);
+  auto const & map = symbol_map(parameters);
 
   while((*s) != 0)
     {

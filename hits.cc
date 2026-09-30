@@ -807,6 +807,14 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
   return hit;
 }
 
+// an operation of an alignment string: a letter (M, D, I; 0 ends the
+// alignment) and its count
+struct AlignmentOperation
+{
+  char op;
+  long len;
+};
+
 // show_align(): the alignment of a hit, in lines of ALIGNLEN columns
 class AlignmentLines
 {
@@ -814,7 +822,7 @@ public:
   explicit AlignmentLines(AlignedHit const & aligned) :
     hit(aligned), q_pos(aligned.q_align_start), d_pos(aligned.d_align_start) {}
 
-  auto putalignop(char c, long len) -> void;
+  auto putalignop(AlignmentOperation const & operation) -> void;
 
 private:
   AlignedHit hit;
@@ -828,8 +836,10 @@ private:
   std::array<char, ALIGNLEN + 1> d_line {{}};
 };
 
-auto AlignmentLines::putalignop(char c, long len) -> void
+auto AlignmentLines::putalignop(AlignmentOperation const & operation) -> void
 {
+  char const c = operation.op;
+  long const len = operation.len;
 
   long count = len;
   while(count != 0)
@@ -963,15 +973,9 @@ auto AlignmentLines::putalignop(char c, long len) -> void
 
 // one operation of an alignment string ("M12D3...", align.cc): its
 // letter and its count; the cursor moves past the count's digits
-struct AlignmentOperation
-{
-  char op = 0;
-  long len = 0;
-};
-
 auto next_operation(char const * & cursor) -> AlignmentOperation
 {
-  AlignmentOperation operation;
+  AlignmentOperation operation {0, 0};
   operation.op = *cursor;
   cursor = std::next(cursor);
   char * end = nullptr;
@@ -990,10 +994,10 @@ auto show_align(AlignedHit const & hit) -> void
   while(p < e)
   {
     auto const operation = next_operation(p);
-    lines.putalignop(operation.op, operation.len);
+    lines.putalignop(operation);
   }
   
-  lines.putalignop(0, 1);
+  lines.putalignop({0, 1});
 }
 
 // the counts of an alignment, for its summaries

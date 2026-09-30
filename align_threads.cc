@@ -196,8 +196,17 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   }
 }
 
-auto align_chunk(Parameters const & parameters, struct search_data * sdp, long hitfirst, long hitlast) -> void
+// the hits hitfirst to hitlast of the list, for align_chunk()
+struct HitChunk
 {
+  long first;
+  long last;
+};
+
+auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChunk const chunk) -> void
+{
+  long const hitfirst = chunk.first;
+  long const hitlast = chunk.last;
   if (hitlast < parameters.alignments)
   {
 
@@ -361,7 +370,7 @@ auto align_worker(Parameters const & parameters) -> void
   long j = 0;
   while (align_getwork(&i, &j) != 0)
   {
-    align_chunk(parameters, &sd, i, j);
+    align_chunk(parameters, &sd, {i, j});
   }
 
   align_done(&sd);
