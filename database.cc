@@ -25,7 +25,7 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint
-#include <algorithm>  // std::all_of, std::find, std::max, std::min
+#include <algorithm>  // std::all_of, std::fill_n, std::find, std::max, std::min
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isdigit, std::isspace
@@ -1412,10 +1412,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	    corrupted();
 	  }
 
-	  for (unsigned long rr = 0; rr < r; rr++)
-	  {
-	    nt[o + rr] = static_cast<char>(n);
-	  }
+	  std::fill_n(std::next(nt, static_cast<std::ptrdiff_t>(o)), r, static_cast<char>(n));
 	}
       }
       else
@@ -1434,10 +1431,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	    corrupted();
 	  }
 
-	  for (unsigned int rr = 0; rr < r; rr++)
-	  {
-	    nt[o + rr] = static_cast<char>(n);
-	  }
+	  std::fill_n(std::next(nt, static_cast<std::ptrdiff_t>(o)), r, static_cast<char>(n));
 	}
       }
     }
@@ -1454,11 +1448,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	}
 	auto * const xx = xxbuffer.data();
 
-	for (long i = 0; i < nt_length; i++)
-	{
-	  xx[i] = ntcompl[static_cast<std::size_t>(nt[nt_length - 1 - i])];
-	}
-	xx[nt_length] = 0;
+	reverse_complement(View<char>(nt, static_cast<std::size_t>(nt_length)), xx);
 
 	/* deallocate ntbuffer if big */
 	if (ntbuffer.size() > large_buffer_size)

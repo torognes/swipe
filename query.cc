@@ -382,15 +382,20 @@ auto query_read() -> int
   return 1;
 }
 
-auto revcompl(View<char> const sequence) -> Buffer<char>
+auto reverse_complement(View<char> const sequence, char * const complement) -> void
 {
   // the complements in reverse order, then a NUL
+  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement,
+                                    [](char const nucleotide) -> char {
+                                      return ntcompl[static_cast<std::size_t>(nucleotide)];
+                                    });
+  *end = 0;
+}
+
+auto revcompl(View<char> const sequence) -> Buffer<char>
+{
   Buffer<char> rc_buffer(sequence.size() + 1);
-  std::transform(sequence.rbegin(), sequence.rend(), rc_buffer.begin(),
-                 [](char const nucleotide) -> char {
-                   return ntcompl[static_cast<std::size_t>(nucleotide)];
-                 });
-  rc_buffer[sequence.size()] = 0;
+  reverse_complement(sequence, rc_buffer.data());
   return rc_buffer;
 }
 

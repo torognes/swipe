@@ -414,6 +414,9 @@ auto query_show() -> void;
 auto score_matrix_init(Parameters const & parameters) -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
+// the reverse complement of a nucleotide sequence, NUL-terminated, into
+// complement (at least sequence.size() + 1 bytes)
+auto reverse_complement(View<char> sequence, char * complement) -> void;
 auto revcompl(View<char> sequence) -> Buffer<char>;
 // a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
 // untranslated_frame) of a nucleotide sequence
