@@ -182,8 +182,13 @@ auto args_show(Parameters const & parameters) -> void;
 
 
 
-extern long cpu_feature_ssse3;
-extern long cpu_feature_sse41;
+// the SIMD instruction sets of the processor, detected once (cpuid)
+struct CpuFeatures
+{
+  bool sse2;
+  bool ssse3;
+};
+extern CpuFeatures const cpu_features;
 
 extern long * const score_matrix_63;
 

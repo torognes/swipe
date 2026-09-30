@@ -310,7 +310,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
 
-	if (cpu_feature_ssse3 != 0)
+	if (cpu_features.ssse3)
 	{
 	  search7_ssse3(qtable,
 			gapopenextend_7,

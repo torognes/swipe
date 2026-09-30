@@ -45,7 +45,7 @@ auto args_show(Parameters const & parameters) -> void
   if (parameters.view == OutputFormat::plain)
   {
     
-    if (cpu_feature_ssse3 == 0)
+    if (not cpu_features.ssse3)
     {
       fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }

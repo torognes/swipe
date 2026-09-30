@@ -49,9 +49,6 @@ extern char const * const swipe_name_and_version = "SWIPE " SWIPE_VERSION;
 
 long queryno;
 
-long cpu_feature_ssse3;
-long cpu_feature_sse41;
-
 long compute7;
 
 long totalhits;
@@ -59,13 +56,6 @@ long totalhits;
 FILE * out = stdout;  // default output: stdout (--out FILE)
 
 struct time_info ti;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-long cpu_feature_sse2;
-
-}  // anonymous namespace
 
 [[noreturn]] auto fatal(char const * message) noexcept -> void
 {
@@ -119,16 +109,15 @@ auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegister
   return registers;
 }
 
-auto cpu_features() -> void
+auto detect_cpu_features() -> CpuFeatures
 {
   // the feature bits of cpuid leaf 1
   constexpr unsigned int edx_sse2 = 26;
   constexpr unsigned int ecx_ssse3 = 9;
-  constexpr unsigned int ecx_sse41 = 19;
   auto const registers = cpuid(1, 0);
-  cpu_feature_sse2  = (registers.edx >> edx_sse2) & 1;
-  cpu_feature_ssse3 = (registers.ecx >> ecx_ssse3) & 1;
-  cpu_feature_sse41 = (registers.ecx >> ecx_sse41) & 1;
+  bool const sse2 = ((registers.edx >> edx_sse2) & 1U) != 0;
+  bool const ssse3 = ((registers.ecx >> ecx_ssse3) & 1U) != 0;
+  return {sse2, ssse3};
 }
 
 auto clock_start(struct time_info * tip) -> void
@@ -264,12 +253,13 @@ auto work(Parameters const & parameters) -> void
 
 }  // anonymous namespace
 
+// detected before main() (dynamic initialization: cpuid has no dependency)
+extern CpuFeatures const cpu_features = detect_cpu_features();
+
 auto main(int argc, char**argv) -> int
 {
 
-  cpu_features();
-
-  if (cpu_feature_sse2 == 0)
+  if (not cpu_features.sse2)
   {
     fatal("This program requires a processor with SSE2.");
   }
