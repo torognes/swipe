@@ -79,6 +79,12 @@
           exhausted the memory. It is now a fatal error ("Error parsing
           binary ASN.1 in database sequence definition.") (KI-45).
           Headers are also parsed faster (about 6% for a dump of pdbaa)
+        * Fix: the entries of the ambiguity table of a nucleotide
+          sequence (a run of ambiguous bases at a position) were used
+          without checks: in a corrupted database, an entry past the end
+          of the sequence was written outside of its buffer. It is now a
+          fatal error ("Database sequence file F is truncated or
+          corrupted.") (KI-46)
         * A write error on the output (full disk, quota exceeded, broken
           pipe), on standard output or on the file of -o, ends with the
           message "Unable to write to output file (...)" and status 1, as

@@ -180,6 +180,7 @@ struct db_volume_s
 
   long len_xsq;
   long len_xhr;
+  std::string name_xsq;  // for the error messages of db_getsequence()
 
   MemoryMap xin_map; // mapped address of xin file
   MemoryMap msk_map;
@@ -289,6 +290,7 @@ auto db_volume_reset(db_volume_t * v) -> void
 
   v->len_xsq = 0;
   v->len_xhr = 0;
+  v->name_xsq.clear();
   
   v->xin_map.reset();
   v->msk_map.reset();
@@ -568,6 +570,7 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   }
 
   volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
+  volume->name_xsq = name_psq;
 
   /* the index file must hold its header and its offset tables, and
      the offsets must stay within the header and sequence files: a
@@ -1340,9 +1343,21 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
     }
     nt[nt_length] = 0;
     
+    // the ambiguity table: a 32-bit entry count, then entries that
+    // must stay within the sequence (KI-46: a corrupted entry wrote
+    // past the buffer)
+    auto const corrupted = [v]() -> void
+      {
+        fatal(std::string("Database sequence file ") + v->name_xsq + " is truncated or corrupted.");
+      };
+
     if (amb_bytes > 0)
     {
       //    printf("#number of ambiguity fixup bytes: %ld\n", amb_bytes);
+      if (amb_bytes < uint32_bytes)
+      {
+        corrupted();
+      }
     
       auto const * ambp = std::next(address, aoff);
       unsigned long const amb_entries = load_uint32_be(ambp);
@@ -1361,6 +1376,10 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  unsigned long const n = e >> 60;
 	  unsigned long const r = ((e >> 48) & 0xfff) + 1;
 	  unsigned long const o = e & 0x0000fffffffffff;
+	  if (o + r > static_cast<unsigned long>(nt_length))
+	  {
+	    corrupted();
+	  }
 
 	  for (unsigned long rr = 0; rr < r; rr++)
 	  {
@@ -1379,6 +1398,10 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	  unsigned int const n = e >> 28;
 	  unsigned int const r = ((e >> 24) & 0xf) + 1;
 	  unsigned int const o = e & 0x00ffffff;
+	  if (o + r > static_cast<unsigned long>(nt_length))
+	  {
+	    corrupted();
+	  }
 
 	  for (unsigned int rr = 0; rr < r; rr++)
 	  {
