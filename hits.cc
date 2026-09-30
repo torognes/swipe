@@ -44,21 +44,6 @@
 #include <utility>  // std::move
 #include <vector>
 
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-long keephits;
-long scorethreshold;
-long upperscorethreshold;
-int hits_count;
-long init_threshold;
-long obvious;
-
-long opt_descriptions;
-long opt_alignments;
-
-}  // anonymous namespace
-
 /* parameters for bit scores and expect values */
 
 namespace {
@@ -227,17 +212,31 @@ struct hits_entry
   long align_d_end;
 };
 
-Buffer<hits_entry> hits_list;
+// the best hits of the query, sorted by decreasing score, entered by
+// the search threads (hits_enter(), under the mutex)
+struct HitList
+{
+  Buffer<hits_entry> entries;
+  int count = 0;
+  long keep = 0;  // the size of the list: the most descriptions or alignments
+  long score_threshold = 0;  // a hit below it is not kept
+  long upper_score_threshold = 0;
+  long init_threshold = 0;
+  long obvious = 0;  // the hits above upper_score_threshold
+  long descriptions = 0;  // -v
+  long alignments = 0;  // -b
+  std::mutex mutex;
+};
+
+HitList hit_list;
 
 // the hit of rank i in the list (a long, as the hit counts)
 auto hit_entry(long const i) -> struct hits_entry &
 {
-  assert((i >= 0) and (static_cast<std::size_t>(i) < hits_list.size()));
-  return hits_list[static_cast<std::size_t>(i)];
+  assert((i >= 0) and (static_cast<std::size_t>(i) < hit_list.entries.size()));
+  return hit_list.entries[static_cast<std::size_t>(i)];
 }
 
-
-std::mutex hitsmutex;
 
 auto hits_compare(void const * a, void const * b) -> int
 {
@@ -246,11 +245,11 @@ auto hits_compare(void const * a, void const * b) -> int
   struct hits_entry const * ap = &hit_entry(index_a);
   struct hits_entry const * bp = &hit_entry(index_b);
   
-  if ( static_cast<int>(index_a >= opt_alignments) < static_cast<int>(index_b >= opt_alignments) )
+  if ( static_cast<int>(index_a >= hit_list.alignments) < static_cast<int>(index_b >= hit_list.alignments) )
   {
     return -1;
   }
-  if ( static_cast<int>(index_a >= opt_alignments) > static_cast<int>(index_b >= opt_alignments) )
+  if ( static_cast<int>(index_a >= hit_list.alignments) > static_cast<int>(index_b >= hit_list.alignments) )
   {
     return +1;
   }
@@ -302,7 +301,7 @@ auto hits_compare(void const * a, void const * b) -> int
 
 auto hits_sort() -> Buffer<long>
 {
-  Buffer<long> hits_sorted(static_cast<std::size_t>(hits_count));
+  Buffer<long> hits_sorted(static_cast<std::size_t>(hit_list.count));
   std::iota(hits_sorted.begin(), hits_sorted.end(), 0L);
   std::sort(hits_sorted.begin(), hits_sorted.end(),
             [](long const lhs, long const rhs) -> bool {
@@ -320,24 +319,24 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
   
   // find correct place
 
-  std::lock_guard<std::mutex> const lock(hitsmutex);
+  std::lock_guard<std::mutex> const lock(hit_list.mutex);
 
-  if (score > upperscorethreshold)
+  if (score > hit_list.upper_score_threshold)
   {
-    obvious++;
+    hit_list.obvious++;
   }
 
-  if (score >= init_threshold)
+  if (score >= hit_list.init_threshold)
   {
     totalhits++;
   }
 
-  if ((score < scorethreshold) || (score > upperscorethreshold))
+  if ((score < hit_list.score_threshold) || (score > hit_list.upper_score_threshold))
   {
     return;
   }
 
-  long place = hits_count;
+  long place = hit_list.count;
 
   while ((place > 0) && ((score > hit_entry(place-1).score) ||
 			 ((score == hit_entry(place-1).score) &&
@@ -348,7 +347,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   // move entries down
   
-  long const move = (hits_count < keephits ? hits_count : keephits - 1) - place;
+  long const move = (hit_list.count < hit_list.keep ? hit_list.count : hit_list.keep - 1) - place;
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
@@ -359,7 +358,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   // fill new entry
 
-  if (place < keephits)
+  if (place < hit_list.keep)
   {
     hit_entry(place).seqno = seqno;
     hit_entry(place).qstrand = strands.qstrand;
@@ -370,23 +369,23 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
     // set by hits_enter_align_hint(), for the hits to align
     hit_entry(place).align_hint = -1;
     hit_entry(place).bestq = -1;
-    if (hits_count < keephits)
+    if (hit_list.count < hit_list.keep)
     {
-      hits_count++;
+      hit_list.count++;
     }
   }
   
   // no hit is kept with -v 0 -b 0: the list is empty (KI-10)
-  if ((keephits > 0) and (hits_count == keephits))
+  if ((hit_list.keep > 0) and (hit_list.count == hit_list.keep))
   {
-    scorethreshold = hit_entry(keephits - 1).score;
+    hit_list.score_threshold = hit_entry(hit_list.keep - 1).score;
   }
 
 }
 
 auto hits_getcount() -> long
 {
-  return hits_count;
+  return hit_list.count;
 }
 
 auto hits_gethit(long i, long * seqno, long * score, 
@@ -441,18 +440,18 @@ auto hits_init(Parameters const & parameters) -> void
   double const max_expect = parameters.expect;
   auto const show_nostats = static_cast<int>(parameters.view == OutputFormat::plain);
 
-  opt_descriptions = descriptions;
-  opt_alignments = max_alignments;
-  keephits = descriptions > max_alignments ? descriptions : max_alignments;
+  hit_list.descriptions = descriptions;
+  hit_list.alignments = max_alignments;
+  hit_list.keep = descriptions > max_alignments ? descriptions : max_alignments;
   
   auto const maxhits = db_getseqcount_masked() * hits_per_sequence(parameters);
 
-  keephits = static_cast<long>(std::min<std::int64_t>(keephits, maxhits));
+  hit_list.keep = static_cast<long>(std::min<std::int64_t>(hit_list.keep, maxhits));
 
-  obvious = 0;
-  hits_count = 0;
-  hits_list.clear();
-  hits_list.resize(static_cast<std::size_t>(keephits));
+  hit_list.obvious = 0;
+  hit_list.count = 0;
+  hit_list.entries.clear();
+  hit_list.entries.resize(static_cast<std::size_t>(hit_list.keep));
 
   std::int64_t seqcount = 0;
   std::int64_t symcount = 0;
@@ -611,15 +610,15 @@ auto hits_init(Parameters const & parameters) -> void
 		    &ungapped_alpha, &ungapped_beta);
   }
 
-  scorethreshold = minscore;
-  upperscorethreshold = maxscore;
+  hit_list.score_threshold = minscore;
+  hit_list.upper_score_threshold = maxscore;
   
   if (statistics.available != 0)
   {
     auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / statistics.Kmn) / statistics.lambda));
     if (minscore_expect > minscore)
     {
-      scorethreshold = minscore_expect;
+      hit_list.score_threshold = minscore_expect;
     }
 
     if (min_expect > 0.0)
@@ -627,7 +626,7 @@ auto hits_init(Parameters const & parameters) -> void
       auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / statistics.Kmn) / statistics.lambda));
       if (maxscore_expect < maxscore)
       {
-	upperscorethreshold = maxscore_expect;
+	hit_list.upper_score_threshold = maxscore_expect;
       }
     }
   }
@@ -639,14 +638,14 @@ auto hits_init(Parameters const & parameters) -> void
     }
   }
 
-  init_threshold = scorethreshold;
+  hit_list.init_threshold = hit_list.score_threshold;
 
   //  fprintf(out, "scorethreshold: %ld\n", scorethreshold);
 }
 
 auto hits_empty() -> void
 {
-  for (long i=0; i<hits_count; i++)
+  for (long i=0; i<hit_list.count; i++)
   {
     struct hits_entry * h = &hit_entry(i);
 
@@ -659,7 +658,7 @@ auto hits_empty() -> void
 auto hits_exit() -> void
 {
   hits_empty();
-  hits_list = Buffer<hits_entry>();
+  hit_list.entries = Buffer<hits_entry>();
 }
 
 auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void
@@ -682,7 +681,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   h->dlen = static_cast<long>(sequence.size());
   h->dlennt = ntlen;
 
-  if (i < opt_alignments)
+  if (i < hit_list.alignments)
   {
     h->dseq.assign(sequence.begin(), sequence.end());
     
@@ -1594,7 +1593,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, totalhits);
   fprint(out, "</totalCount>\n");
   fprint(out, "\t\t\t\t<obviousCount>");
-  fprint_integer(out, obvious);
+  fprint_integer(out, hit_list.obvious);
   fprint(out, "</obviousCount>\n");
   fprint(out, "\t\t\t\t<shownCount>");
   fprint_integer(out, showhits);
@@ -1963,7 +1962,7 @@ auto hits_show_xml(Parameters const & parameters,
   fprint(out, "<result>\n");
   fprint(out, "  <general>\n");
   fprint(out, "    <hitcount>");
-  fprint_integer(out, hits_count);
+  fprint_integer(out, hit_list.count);
   fprint(out, "</hitcount>\n");
   fprint(out, "  </general>\n");
   fprint(out, "  <hits>\n");
@@ -2130,7 +2129,7 @@ auto hits_show_plain(Parameters const & parameters,
 		     long showhits,
 		     struct db_thread_s const * t) -> void
 {
-    if (hits_count == 0)
+    if (hit_list.count == 0)
     {
       fprint(out, "\nNo hits.\n");
     }
@@ -2389,22 +2388,22 @@ auto hits_show(Parameters const & parameters) -> void
   long showalignments = 0;
   long showhits = 0;
 
-  if (hits_count < opt_descriptions)
+  if (hit_list.count < hit_list.descriptions)
   {
-    showhits = hits_count;
+    showhits = hit_list.count;
   }
   else
   {
-    showhits = opt_descriptions;
+    showhits = hit_list.descriptions;
   }
 
-  if (hits_count < opt_alignments)
+  if (hit_list.count < hit_list.alignments)
   {
-    showalignments = hits_count;
+    showalignments = hit_list.count;
   }
   else
   {
-    showalignments = opt_alignments;
+    showalignments = hit_list.alignments;
   }
 
   auto * t = db_thread_create();
