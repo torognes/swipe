@@ -104,6 +104,35 @@ auto bit_score_of(long const score) -> double
   return (lambda_d_log2 * static_cast<double>(score)) - logK_d_log2;
 }
 
+// the most hits of a database sequence: one per searched pair of a
+// query strand or frame and a database frame
+auto hits_per_sequence(Parameters const & parameters) -> std::int64_t
+{
+  auto const strands = static_cast<std::int64_t>(strand_count);
+  auto const frames = static_cast<std::int64_t>(frames_per_strand);
+  auto const all_frames = static_cast<std::int64_t>(frame_count);
+  auto const query_strands =
+    (parameters.querystrands == QueryStrands::both) ? strands : 1;
+
+  if (parameters.symtype == SymbolType::blastn)
+  {
+    return query_strands;
+  }
+  if (parameters.symtype == SymbolType::blastx)
+  {
+    return query_strands * frames;
+  }
+  if (parameters.symtype == SymbolType::tblastn)
+  {
+    return all_frames;
+  }
+  if (parameters.symtype == SymbolType::tblastx)
+  {
+    return query_strands * frames * all_frames;
+  }
+  return 1;  // blastp, sound
+}
+
 auto percentage(long const part, long const whole) -> double
 {
   return 100.0 * static_cast<double>(part) / static_cast<double>(whole);
@@ -365,40 +394,7 @@ auto hits_init(Parameters const & parameters) -> void
   opt_alignments = max_alignments;
   keephits = descriptions > max_alignments ? descriptions : max_alignments;
   
-  auto maxhits = db_getseqcount_masked();
-  if (parameters.symtype == SymbolType::blastn)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 2;
-      }
-    }
-  else if (parameters.symtype == SymbolType::blastx)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 6;
-      }
-      else
-      {
-	maxhits *= 3;
-      }
-    }
-  else if (parameters.symtype == SymbolType::tblastn)
-    {
-      maxhits *= 6;
-    }
-  else if (parameters.symtype == SymbolType::tblastx)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 36;
-      }
-      else
-      {
-	maxhits *= 18;
-      }
-    }
+  auto const maxhits = db_getseqcount_masked() * hits_per_sequence(parameters);
 
   keephits = static_cast<long>(std::min<std::int64_t>(keephits, maxhits));
 

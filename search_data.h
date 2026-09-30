@@ -46,7 +46,7 @@ struct search_data
 
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;
-  std::array<Buffer<BYTE *>, 6> qtable;  // empty: tables not allocated
+  std::array<Buffer<BYTE *>, frame_count> qtable;  // empty: tables not allocated
 
   Buffer<long> scores;
   Buffer<long> bestpos;
@@ -55,7 +55,7 @@ struct search_data
   Buffer<long> in_list;
   Buffer<long> out_list;
 
-  std::array<long, 6> qlen;
+  std::array<long, frame_count> qlen;
 
   std::size_t start_count;
   std::size_t in_count;

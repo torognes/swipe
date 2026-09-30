@@ -217,24 +217,30 @@ struct sequence
   Buffer<char> storage;  // owns seq
 };
 
+// a nucleotide sequence has two strands, each translated in three
+// reading frames
+constexpr std::size_t strand_count = 2;
+constexpr std::size_t frames_per_strand = 3;
+constexpr std::size_t frame_count = strand_count * frames_per_strand;
+
 // the index of a query strand (0: plus, 1: minus), and of a frame of a
 // translated query or of its search tables: (3 x strand) + frame
 inline auto strand_index(long const strand) -> std::size_t
 {
-  assert((strand >= 0) and (strand < 2));
+  assert((strand >= 0) and (static_cast<std::size_t>(strand) < strand_count));
   return static_cast<std::size_t>(strand);
 }
 
 inline auto frame_index(long const strand, long const frame) -> std::size_t
 {
-  assert((frame >= 0) and (frame < 3));
-  return (3 * strand_index(strand)) + static_cast<std::size_t>(frame);
+  assert((frame >= 0) and (static_cast<std::size_t>(frame) < frames_per_strand));
+  return (frames_per_strand * strand_index(strand)) + static_cast<std::size_t>(frame);
 }
 
 struct query_s
 {
-  std::array<struct sequence, 2> nt; /* 2 strands */
-  std::array<struct sequence, 6> aa; /* 6 frames */
+  std::array<struct sequence, strand_count> nt; /* 2 strands */
+  std::array<struct sequence, frame_count> aa; /* 6 frames */
   std::string description;
   long dlen;
   SymbolType symtype;
