@@ -118,6 +118,12 @@ constexpr char const * default_queryname = "-";
 constexpr char const * default_databasename = "";
 constexpr long default_gapopen = 0;
 constexpr long default_gapextend = 0;
+// the gap penalties of blastn and of sound searches when not given
+constexpr long default_blastn_gapopen = 5;
+constexpr long default_blastn_gapextend = 2;
+constexpr long default_sound_gapopen = 15;
+constexpr long default_sound_gapextend = 5;
+constexpr char const * default_sound_matrixname = "IDENTITY_5_1";
 constexpr char const * default_matrixname = "BLOSUM62";
 constexpr long default_matchscore = 1;
 constexpr long default_mismatchscore = -3;
@@ -191,7 +197,9 @@ inline auto score_matrix_cell(std::size_t const row, std::size_t const column) -
 }
 
 extern long totalhits;
-extern std::array<char const *, 23> const gencode_names;
+// the genetic codes 1 to 23 (nullptr: no code of that number)
+constexpr std::size_t gencode_count = 23;
+extern std::array<char const *, gencode_count> const gencode_names;
 extern long queryno;
 extern long compute7;
 

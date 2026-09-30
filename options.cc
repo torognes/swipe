@@ -305,6 +305,14 @@ auto parse_dbsize(char const * const text) -> std::int64_t
   return static_cast<std::int64_t>(value);
 }
 
+// a genetic code number of -Q and -D: one of the codes 1 to 23 that
+// exist
+auto is_known_gencode(long const code) -> bool
+{
+  return (code >= 1) and (code <= static_cast<long>(gencode_count)) and
+    (gencode_names[static_cast<std::size_t>(code - 1)] != nullptr);
+}
+
 }  // anonymous namespace
 
 auto args_init(int argc, char * const * argv) -> Parameters
@@ -584,11 +592,11 @@ auto args_init(int argc, char * const * argv) -> Parameters
   {
     if (not gapopen_given)
     {
-      parameters.gapopen = 5;
+      parameters.gapopen = default_blastn_gapopen;
     }
     if (not gapextend_given)
     {
-      parameters.gapextend = 2;
+      parameters.gapextend = default_blastn_gapextend;
     }
   }
   else if (parameters.symtype < SymbolType::sound)
@@ -622,15 +630,15 @@ auto args_init(int argc, char * const * argv) -> Parameters
   {
     if (strlen(parameters.matrixname) == 0)
     {
-      parameters.matrixname = "IDENTITY_5_1";
+      parameters.matrixname = default_sound_matrixname;
     }
     if (not gapopen_given)
     {
-      parameters.gapopen = 15;
+      parameters.gapopen = default_sound_gapopen;
     }
     if (not gapextend_given)
     {
-      parameters.gapextend = 5;
+      parameters.gapextend = default_sound_gapextend;
     }
   }
 
@@ -676,12 +684,12 @@ auto args_init(int argc, char * const * argv) -> Parameters
     fatal("Illegal strand specified for protein query.");
   }
 
-  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.query_gencode - 1)] == nullptr))
+  if (not is_known_gencode(parameters.query_gencode))
   {
     fatal("Illegal query genetic code specified.");
   }
 
-  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.db_gencode - 1)] == nullptr))
+  if (not is_known_gencode(parameters.db_gencode))
   {
     fatal("Illegal database genetic code specified.");
   }

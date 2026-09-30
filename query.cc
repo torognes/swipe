@@ -107,7 +107,7 @@ std::array<char, translation_table_size> q_translate {{}};
 
 std::array<char, translation_table_size> d_translate {{}};
 
-std::array<char const *, 23> const gencode_names {{
+std::array<char const *, gencode_count> const gencode_names {{
     "Standard Code",
     "Vertebrate Mitochondrial Code",
     "Yeast Mitochondrial Code",
