@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
 #include <algorithm>  // std::min, std::sort
 #include <array>
@@ -81,6 +82,9 @@ double ungapped_H = 0;
 /* gap penalties of the ungapped rows of the NCBI score matrix tables
    (INT2_MAX, see blastkar_partial.cc) */
 constexpr long ungapped_penalty = 32767;
+
+// the natural logarithm of 2: bit scores are in base 2
+constexpr double ln_2 = 0.693147180559945309417;
 
 namespace {
 
@@ -441,8 +445,8 @@ auto hits_init(Parameters const & parameters) -> void
       */
 
       logK = log(K);
-      lambda_d_log2 = lambda / log(2.0);
-      logK_d_log2 = logK / log(2.0);
+      lambda_d_log2 = lambda / ln_2;
+      logK_d_log2 = logK / ln_2;
       
       long const qlen = query.nt[0].len;
 
@@ -475,8 +479,8 @@ auto hits_init(Parameters const & parameters) -> void
     if (parameters.symtype == SymbolType::tblastx)
     {
       stats_available = stats_getparams(parameters.matrixname,
-					32767,
-					32767,
+					ungapped_penalty,
+					ungapped_penalty,
 					& lambda,
 					& K,
 					& H,
@@ -500,8 +504,8 @@ auto hits_init(Parameters const & parameters) -> void
     {
       
       logK = log(K);
-      lambda_d_log2 = lambda / log(2.0);
-      logK_d_log2 = logK / log(2.0);
+      lambda_d_log2 = lambda / ln_2;
+      logK_d_log2 = logK / ln_2;
       
       long qlen = query.aa[0].len;
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -808,13 +812,9 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
 
   long const maxqpos = hit.q_first > hit.q_last ? hit.q_first : hit.q_last; 
   long const maxdpos = hit.d_first > hit.d_last ? hit.d_first : hit.d_last; 
-  long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
-  hit.poswidth = 1;
-  while (maxpos > 9)
-  {
-    maxpos /= 10;
-    hit.poswidth++;
-  }
+  long const maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
+  decimal::Buffer buffer {{}};
+  hit.poswidth = static_cast<int>(decimal::to_decimal(buffer, maxpos).size());
 
   return hit;
 }
