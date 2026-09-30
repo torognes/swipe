@@ -28,6 +28,7 @@
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <iterator>  // std::next
 
 constexpr std::size_t CHANNELS = channels_7;
 static_assert(sizeof(__m128i) == vector_bytes, "an SSE vector");
@@ -45,7 +46,7 @@ constexpr std::ptrdiff_t matrix_row_vectors = 2;
 constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
 
 inline auto dprofile_shuffle7(BYTE * dprofile,
-			      BYTE * score_matrix,
+			      BYTE const * score_matrix,
 			      BYTE const * dseq_byte) -> void
 {
   __m128i a;
@@ -68,15 +69,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   __m128i t3;
   __m128i t4;
   __m128i t5;
-  __m128i t6;
-  __m128i t7;
-  __m128i t8;
-  __m128i t9;
-  __m128i t10;
-  __m128i t11;
-  __m128i t12;
-  __m128i t13;
-  __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
+  __m128i u0, u1, u2, u3, u4, u5;
 
   auto const * const dseq = reinterpret_cast<__m128i const *>(dseq_byte);
   
@@ -120,58 +113,41 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m6 = v_or(d, u4);
   m7 = v_or(d, u5);
 
-#define profline(j)					\
-  t6  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j)));   \
-  t7  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j))+1); \
-  t8  = v_shuffle_8(t6, m0);			\
-  t9  = v_shuffle_8(t7, m1);			\
-  t10 = v_shuffle_8(t6, m2);			\
-  t11 = v_shuffle_8(t7, m3);			\
-  u8  = v_shuffle_8(t6, m4);			\
-  u9  = v_shuffle_8(t7, m5);			\
-  u10 = v_shuffle_8(t6, m6);			\
-  u11 = v_shuffle_8(t7, m7);			\
-  t12 = v_or(t8,  t9);				\
-  t13 = v_or(t10, t11);				\
-  u12 = v_or(u8,  u9);				\
-  u13 = v_or(u10, u11);				\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j)),   t12);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t13);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, u13)
+  // one row of the score matrix, shuffled into the four vectors of a
+  // row of the profile (the former profline(j) macro)
+  auto const * const matrix = reinterpret_cast<__m128i const *>(score_matrix);
+  auto * const profile = reinterpret_cast<__m128i *>(dprofile);
+  auto const profile_row = [&](std::ptrdiff_t const row) -> void
+  {
+    auto const * const matrix_row = std::next(matrix, matrix_row_vectors * row);
+    auto * const profile_line = std::next(profile, profile_row_vectors * row);
+    auto const t6  = v_load(matrix_row);
+    auto const t7  = v_load(std::next(matrix_row));
+    auto const t8  = v_shuffle_8(t6, m0);
+    auto const t9  = v_shuffle_8(t7, m1);
+    auto const t10 = v_shuffle_8(t6, m2);
+    auto const t11 = v_shuffle_8(t7, m3);
+    auto const u8  = v_shuffle_8(t6, m4);
+    auto const u9  = v_shuffle_8(t7, m5);
+    auto const u10 = v_shuffle_8(t6, m6);
+    auto const u11 = v_shuffle_8(t7, m7);
+    v_store(profile_line, v_or(t8, t9));
+    v_store(std::next(profile_line, 1), v_or(t10, t11));
+    v_store(std::next(profile_line, 2), v_or(u8, u9));
+    v_store(std::next(profile_line, 3), v_or(u10, u11));
+  };
 
-  profline(0);
-  profline(1);
-  profline(2);
-  profline(3);
-  profline(4);
-  profline(5);
-  profline(6);
-  profline(7);
-  profline(8);
-  profline(9);
-  profline(10);
-  profline(11);
-  profline(12);
-  profline(13);
-  profline(14);
-  profline(15);
-  profline(16);
-  profline(17);
-  profline(18);
-  profline(19);
-  profline(20);
-  profline(21);
-  profline(22);
-  profline(23);
-  profline(24);
-  profline(25);
-  profline(26);
-  profline(27);
-  profline(28);
-  profline(29);
-  profline(30);
-  profline(31);
+  // four rows per iteration: GCC does not unroll the 32 rows of a
+  // one-row loop, whose overhead cost +0.54% instructions (callgrind,
+  // sprot50k); four rows cost +0.09% against the 32 unrolled macros
+  static_assert(score_matrix_width % 4 == 0, "rows in groups of four");
+  for (std::ptrdiff_t row = 0; row < static_cast<std::ptrdiff_t>(score_matrix_width); row += 4)
+  {
+    profile_row(row);
+    profile_row(row + 1);
+    profile_row(row + 2);
+    profile_row(row + 3);
+  }
 }
 
 #else
