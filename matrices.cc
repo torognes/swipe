@@ -356,7 +356,7 @@ namespace {
 
 // the next score of a matrix line, the cursor moved past it: a number,
 // then white space or the end of the line (KI-43), or fatal
-auto next_score(char * & cursor) -> long
+auto next_score(char const * & cursor) -> long
 {
   errno = 0;
   char * end = nullptr;
@@ -370,43 +370,29 @@ auto next_score(char * & cursor) -> long
   return score;
 }
 
-auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
+// the column symbols of a matrix, as the header lines list them
+struct MatrixColumns
 {
-  std::array<char, LINE_MAX> line {{}};
   std::array<char, LINE_MAX> order {{}};
-
-  int a = 0;
-  int b = 0;
-  int i = 0;
   int symbols = 0;
-  long sc = 0; 
-  char const * map = nullptr;
-  char * p = nullptr;
-  char * q = nullptr;
-  char c = 0;
+};
 
-  auto * fp = fopen(matrix, "r");
-
-  if (fp == nullptr)
-  {
-    fatal("Cannot open score matrix file.");
-  }
-
+auto symbol_map(Parameters const & parameters) -> char const *
+{
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound.data();
+    return map_sound.data();
   }
-  else
-  {
-    map = map_ncbi_aa.data();
-  }
+  return map_ncbi_aa.data();
+}
 
-  symbols = 0;
-
-  while(fgets(line.data(), LINE_MAX, fp) != nullptr)
-    {
-      p = line.data();
-      c = *p;
+// one line of a score matrix (NUL-terminated), whether it comes from a
+// file or from a built-in matrix string
+auto parse_matrix_line(char const * line, char const * map,
+                       MatrixColumns & columns) -> void
+{
+      char const * p = line;
+      char c = *p;
       p = std::next(p);
       
       switch(c)
@@ -425,7 +411,8 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	  
 	  /* read order of symbols, copy non-whitespace chars */
 	  
-	  q = order.data();
+	  {
+	  char * q = columns.order.data();
 
 	  while ((c = *p) != 0)
 	  {
@@ -434,8 +421,9 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	      {
 		*q = map[static_cast<unsigned char>(c)];
 		q = std::next(q);
-		symbols++;
+		columns.symbols++;
 	      }
+	  }
 	  }
 
 	  break;
@@ -444,12 +432,12 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
 	  /* ordinary lines */
 	  
-	  a = map[static_cast<unsigned char>(c)];
-	  for (i=0; i<symbols; i++)
+	  int const a = map[static_cast<unsigned char>(c)];
+	  for (int i=0; i<columns.symbols; i++)
 	    {
-	      sc = next_score(p);
+	      long const sc = next_score(p);
 
-	      b = order[static_cast<std::size_t>(i)];
+	      int const b = columns.order[static_cast<std::size_t>(i)];
 
 	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
 	      {
@@ -459,6 +447,25 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	    }
 	  break;
 	}
+}
+
+auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
+{
+  std::array<char, LINE_MAX> line {{}};
+  MatrixColumns columns;
+
+  auto * fp = fopen(matrix, "r");
+
+  if (fp == nullptr)
+  {
+    fatal("Cannot open score matrix file.");
+  }
+
+  char const * const map = symbol_map(parameters);
+
+  while(fgets(line.data(), LINE_MAX, fp) != nullptr)
+    {
+      parse_matrix_line(line.data(), map, columns);
     }
     
   static_cast<void>(fclose(fp));  // an input file
@@ -467,17 +474,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
   std::array<char, LINE_MAX> line {{}};
-  std::array<char, LINE_MAX> order {{}};
-
-  int a = 0;
-  int b = 0;
-  int i = 0;
-  int symbols = 0;
-  long sc = 0; 
-  char const * map = nullptr;
-  char * p = nullptr;
-  char * q = nullptr;
-  char c = 0;
+  MatrixColumns columns;
 
   char const * s = matrix;
 
@@ -486,16 +483,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
     fatal("Cannot read score matrix string.");
   }
 
-  if (parameters.symtype == SymbolType::sound)
-  {
-    map = map_sound.data();
-  }
-  else
-  {
-    map = map_ncbi_aa.data();
-  }
-
-  symbols = 0;
+  char const * const map = symbol_map(parameters);
 
   while((*s) != 0)
     {
@@ -514,59 +502,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
       std::memcpy(line.data(), s, linelen);
       line[linelen] = 0;
 
-      p = line.data();
-      c = *p;
-      p = std::next(p);
-      
-      switch(c)
-	{
-	  
-	case '\n':
-	case '#':
-	  
-	  /* ignore blank lines and comments starting with # */
-	  
-	  break;
-	
-	case '\t':
-	case ' ':
-	  
-	  /* read order of symbols, copy non-whitespace chars */
-	  
-	  q = order.data();
-
-	  while ((c = *p) != 0)
-	  {
-	    p = std::next(p);
-	    if (strchr(" \t\n", c) == nullptr)
-	      {
-		*q = map[static_cast<unsigned char>(c)];
-		q = std::next(q);
-		symbols++;
-	      }
-	  }
-
-	  break;
-	  
-	default:
-
-	  /* ordinary lines */
-	  
-	  a = map[static_cast<unsigned char>(c)];
-	  for (i=0; i<symbols; i++)
-	    {
-	      sc = next_score(p);
-
-	      b = order[static_cast<std::size_t>(i)];
-
-	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
-	      {
-		score_matrix_63[(a << 5) + b] = sc;
-	      }
-
-	    }
-	  break;
-	}
+      parse_matrix_line(line.data(), map, columns);
 
 	if (nextline != nullptr)
 	{
