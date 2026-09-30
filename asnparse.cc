@@ -225,15 +225,29 @@ auto parse_visiblestring(apt p) -> void
   
   //  printf("length=%lu ", length);
 
-  unsigned int i = 0;
-  p->parsed_string.clear();
-  
-  while (i < length)
+  // the string must end within the header: the current byte and the
+  // bytes after it (KI-45: zeros were read past the end, and a length
+  // of gigabytes exhausted the memory)
+  auto const available = static_cast<unsigned long>(std::distance(p->header_p, p->header_end)) + 1;
+  if (length > available)
     {
-      //      printf("%02x ", ch);
+      fprint(stderr, "Error: string longer than the header (");
+      fprint_integer(stderr, length);
+      fprint(stderr, " bytes).\n");
+      fatal("Error parsing binary ASN.1 in database sequence definition.");
+    }
+
+  // the current byte, then the length - 1 bytes after it, all within
+  // the header: one copy instead of a nextch() per byte
+  p->parsed_string.clear();
+  if (length > 0)
+    {
+      auto const rest = static_cast<std::ptrdiff_t>(length - 1);
       p->parsed_string += static_cast<char>(p->ch);
-      nextch(p);
-      i++;
+      p->parsed_string.append(reinterpret_cast<char const *>(p->header_p),
+                              static_cast<std::size_t>(rest));
+      p->header_p = std::next(p->header_p, rest);
+      nextch(p);  // the byte after the string
     }
 
 

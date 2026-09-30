@@ -72,6 +72,13 @@
           was ignored. It is now a fatal error naming the line:
           "Unexpected header line on line N of score matrix file F."
           (KI-44)
+        * Fix: in a database header, a string (a title, an identifier)
+          declared longer than the header was read past its end, as
+          zeros: the rest of the header was lost (the sequence identifier
+          was then missing from the outputs), and a length of gigabytes
+          exhausted the memory. It is now a fatal error ("Error parsing
+          binary ASN.1 in database sequence definition.") (KI-45).
+          Headers are also parsed faster (about 6% for a dump of pdbaa)
         * A write error on the output (full disk, quota exceeded, broken
           pipe), on standard output or on the file of -o, ends with the
           message "Unable to write to output file (...)" and status 1, as
