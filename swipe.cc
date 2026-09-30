@@ -83,7 +83,7 @@ long cpu_feature_sse2;
 
 auto xmalloc(size_t size) -> void *
 {
-  size_t const alignment = 16;
+  size_t const alignment = vector_bytes;  // the SIMD buffers are Buffers
   void * t = nullptr;
   if (posix_memalign(&t, alignment, size) != 0)
   {

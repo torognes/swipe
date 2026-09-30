@@ -28,6 +28,7 @@
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
 constexpr std::size_t CHANNELS = channels_7;
+static_assert(sizeof(__m128i) == vector_bytes, "an SSE vector");
 constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
@@ -762,7 +763,7 @@ search7
   std::array<BYTE const *, CHANNELS> d_end;
   
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
+  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
   
   auto * dseq = dseqalloc.data();
   BYTE const zero = 0;

@@ -487,9 +487,13 @@ constexpr std::size_t channels_16 = 8;
 constexpr std::size_t max_channels = channels_7;
 static_assert(channels_16 <= max_channels, "a buffer per channel");
 
+// the SIMD vectors of the kernels (SSE, __m128i) are 16 bytes, and
+// the buffers they load from and store to are aligned on them
+constexpr std::size_t vector_bytes = 16;
+
 // the H/E array of the kernels: per query position, H and E, one
-// 16-byte vector each
-constexpr std::size_t hearray_row_bytes = 32;
+// vector each
+constexpr std::size_t hearray_row_bytes = 2 * vector_bytes;
 
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides

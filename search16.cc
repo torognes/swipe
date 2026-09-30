@@ -364,7 +364,7 @@ auto search16(WORD * * q_start,
   std::array<BYTE const *, CHANNELS> d_end;
 
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
+  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
 
   auto * dseq = dseqalloc.data();
   BYTE const zero = 0;
