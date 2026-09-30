@@ -37,9 +37,6 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 
 #ifdef SWIPE_SSSE3
 
-// only used by the SSSE3 version (the score profile is shuffled)
-#define MATRIXWIDTH 32
-
 // profline(j) strides, in 16-byte vectors: a row of the 32 x 32 score
 // matrix is two vectors, a row of the profile one vector per CDEPTH
 constexpr std::ptrdiff_t matrix_row_vectors = 2;
@@ -49,7 +46,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
 			      BYTE * dseq_byte) -> void
 {
-#if MATRIXWIDTH > 16
   __m128i a;
   __m128i b;
   __m128i c;
@@ -79,9 +75,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   __m128i t12;
   __m128i t13;
   __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
-#else
-  __m128i m0, m1, m2, m3, t0, t1, t2, t3, t4;
-#endif
 
   auto * dseq = reinterpret_cast<__m128i*>(dseq_byte);
   
@@ -93,7 +86,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   /* Note: pshufb only on modern Intel cpus (SSSE3), not AMD */
   /* SSSE3: Supplemental SSE3 */
 
-#if MATRIXWIDTH > 16
   x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
                    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
 
@@ -147,26 +139,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\
   _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, u13)
 
-#else
-
-  m0 = _mm_load_si128(dseq);
-  m1 = _mm_load_si128(dseq+1);
-  m2 = _mm_load_si128(dseq+2);
-  m3 = _mm_load_si128(dseq+3);
-
-#define profline(j)					\
-  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j));	\
-  t1 = _mm_shuffle_epi8(t0, m0);			\
-  t2 = _mm_shuffle_epi8(t0, m1);			\
-  t3 = _mm_shuffle_epi8(t0, m2);			\
-  t4 = _mm_shuffle_epi8(t0, m3);			\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+0, t1);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t2);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, t3);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, t4)
-
-#endif
-
   profline(0);
   profline(1);
   profline(2);
@@ -183,8 +155,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   profline(13);
   profline(14);
   profline(15);
-
-#if MATRIXWIDTH > 16
   profline(16);
   profline(17);
   profline(18);
@@ -197,16 +167,10 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   profline(25);
   profline(26);
   profline(27);
-
-#if MATRIXWIDTH > 28
   profline(28);
   profline(29);
   profline(30);
   profline(31);
-#endif
-
-#endif
-
 }
 
 #else
