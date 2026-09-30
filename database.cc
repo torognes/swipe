@@ -469,6 +469,16 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
 }
 
 
+// the fields of an index file: big-endian 32-bit numbers, a 64-bit
+// residue count, padding to 4 bytes after the date
+constexpr long uint32_bytes = sizeof(std::uint32_t);
+constexpr long uint64_bytes = sizeof(std::uint64_t);
+constexpr std::uintptr_t field_alignment = 4;
+
+// the BLAST database versions read by swipe
+constexpr long db_version_4 = 4;
+constexpr long db_version_5 = 5;
+
 // numbers stored in the database files, read at any alignment: a cast
 // to an integer pointer is undefined behaviour when the address is not
 // aligned (reported by UBSan), memcpy is not
@@ -493,6 +503,13 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
   std::uint64_t value = 0;
   std::memcpy(&value, address, sizeof(value));
   return value;
+}
+
+// an entry of an offset table of the index file (at byte table of the
+// file: seqcount + 1 big-endian 32-bit offsets)
+auto offset_entry(db_volume_t const & volume, long const table, long const index) -> long
+{
+  return load_uint32_be(std::next(volume.xin_map.data(), table + (uint32_bytes * index)));
 }
 
 auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * volume) -> long
@@ -560,77 +577,71 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
   };
 
   auto const * p = volume->xin_map.data();
-  check_xin_room(p, 12);
-  volume->version = load_uint32_be(p);
+  // the next 32-bit field, the cursor moved past it
+  auto const next_uint32 = [&p]() -> UINT32
+  {
+    auto const value = load_uint32_be(p);
+    p = std::next(p, uint32_bytes);
+    return value;
+  };
+
+  check_xin_room(p, 3 * uint32_bytes);  // version, symbol type, title length
+  volume->version = next_uint32();
   
   // BLAST database versions 4 and 5 have the same files, except for
   // two fields of the index header of version 5: a volume number
   // after the symbol type, and the name of an LMDB file (accession
   // lookup, not needed by swipe) after the title
-  if ((volume->version != 4) and (volume->version != 5))
+  if ((volume->version != db_version_4) and (volume->version != db_version_5))
   {
     fatal("Illegal database version (must be 4 or 5).");
   }
 
-  p = std::next(p, 4);
-  volume->symtype = load_uint32_be(p);
-  p = std::next(p, 4);
-  if (volume->version == 5)
+  volume->symtype = next_uint32();
+  if (volume->version == db_version_5)
   {
-    check_xin_room(p, 8);
-    p = std::next(p, 4);  // volume number
+    check_xin_room(p, 2 * uint32_bytes);  // volume number, title length
+    static_cast<void>(next_uint32());  // volume number
   }
-  long const titlelen = load_uint32_be(p);
-  p = std::next(p, 4);
-  check_xin_room(p, titlelen + 4);
+  long const titlelen = next_uint32();
+  check_xin_room(p, titlelen + uint32_bytes);
   // up to the first NUL, as strncpy() did
   volume->title.assign(p, std::find(p, std::next(p, titlelen), '\0'));
   p = std::next(p, titlelen);
-  if (volume->version == 5)
+  if (volume->version == db_version_5)
   {
-    long const lmdb_name_length = load_uint32_be(p);
-    p = std::next(p, 4);
-    check_xin_room(p, lmdb_name_length + 4);
+    long const lmdb_name_length = next_uint32();
+    check_xin_room(p, lmdb_name_length + uint32_bytes);
     p = std::next(p, lmdb_name_length);  // LMDB file name
   }
-  unsigned const datelen = load_uint32_be(p);
-  p = std::next(p, 4);
+  unsigned const datelen = next_uint32();
   check_xin_room(p, datelen);
   volume->time.assign(p, std::find(p, std::next(p, datelen), '\0'));
   p = std::next(p, datelen);
-  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
+  while ((reinterpret_cast<std::uintptr_t>(p) & (field_alignment - 1)) != 0)
   {
     p = std::next(p);
   }
-  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
-  {
-    p = std::next(p);
-  }
-  if ((reinterpret_cast<std::uintptr_t>(p) & 3U) != 0)
-  {
-    p = std::next(p);
-  }
-  check_xin_room(p, 16);
-  volume->seqcount = load_uint32_be(p);
-  p = std::next(p, 4);
+  // sequence count, residue count, longest sequence
+  check_xin_room(p, uint32_bytes + uint64_bytes + uint32_bytes);
+  volume->seqcount = next_uint32();
   volume->symcount = static_cast<std::int64_t>(load_uint64_host(p));
-  p = std::next(p, 8);
-  volume->longest = load_uint32_be(p);
-  p = std::next(p, 4);
+  p = std::next(p, uint64_bytes);
+  volume->longest = next_uint32();
   volume->offset_xhr = p - volume->xin_map.data();
-  volume->offset_xsq = volume->offset_xhr + (4 * (volume->seqcount + 1));
-  volume->offset_amb = volume->offset_xsq + (4 * (volume->seqcount + 1));
+  volume->offset_xsq = volume->offset_xhr + (uint32_bytes * (volume->seqcount + 1));
+  volume->offset_amb = volume->offset_xsq + (uint32_bytes * (volume->seqcount + 1));
 
   /* offset tables: seqcount + 1 header and sequence offsets, and, for
      nucleotides, seqcount + 1 ambiguity offsets */
   bool const is_nucleotide = (symbol_type != SymbolType::blastp) and (symbol_type != SymbolType::blastx) and (symbol_type != SymbolType::sound);
   long const tables_end = (is_nucleotide ? volume->offset_amb : volume->offset_xsq) +
-    (4 * (volume->seqcount + 1));
+    (uint32_bytes * (volume->seqcount + 1));
   check_xin_room(volume->xin_map.data(), tables_end);
 
   auto const offset_at = [volume](long const table, long const seqno) -> long
     {
-      return load_uint32_be(std::next(volume->xin_map.data(), table + (4 * seqno)));
+      return offset_entry(*volume, table, seqno);
     };
 
   for (long seqno = 0; seqno < volume->seqcount; ++seqno)
@@ -1157,8 +1168,8 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
 
   // find new map area
   
-  long const offset1 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xsq / 4) + s1)));
-  long const offset2 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xsq / 4) + s2 + 1)));
+  long const offset1 = offset_entry(*v1, v1->offset_xsq, s1);
+  long const offset2 = offset_entry(*v1, v1->offset_xsq, s2 + 1);
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
@@ -1206,8 +1217,8 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 
   // find new map area
   
-  long const offset1 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xhr / 4) + s1)));
-  long const offset2 = load_uint32_be(std::next(v1->xin_map.data(), 4 * ((v1->offset_xhr / 4) + s2 + 1)));
+  long const offset1 = offset_entry(*v1, v1->offset_xhr, s1);
+  long const offset2 = offset_entry(*v1, v1->offset_xhr, s2 + 1);
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
@@ -1280,8 +1291,8 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   long s = 0;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s)));
-  long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xsq / 4 + s + 1)));
+  long const offset1 = offset_entry(*v, v->offset_xsq, s);
+  long const offset2 = offset_entry(*v, v->offset_xsq, s + 1);
   long const length = offset2 - offset1;
   auto * address = std::next(t->map_seq.region.data(), offset1 - t->map_seq.map_offset);
 
@@ -1289,7 +1300,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   {
     /* decompress nucleotide sequence */
 
-    long const offset3 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_amb / 4 + s)));
+    long const offset3 = offset_entry(*v, v->offset_amb, s);
     long const aoff = offset3 - offset1;
 
     long const amb_bytes = length - aoff;
@@ -1447,8 +1458,8 @@ auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
   db_volume_t * v = nullptr;
   seqno_volume(seqno, &s, &v);
 
-  long const offset1 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s)));
-  long const offset2 = load_uint32_be(std::next(v->xin_map.data(), 4 * (v->offset_xhr / 4 + s + 1)));
+  long const offset1 = offset_entry(*v, v->offset_xhr, s);
+  long const offset2 = offset_entry(*v, v->offset_xhr, s + 1);
   assert(offset2 >= offset1);
   return View<char>{std::next(t->map_hdr.region.data(), offset1 - t->map_hdr.map_offset),
 		    static_cast<std::size_t>(offset2 - offset1)};
