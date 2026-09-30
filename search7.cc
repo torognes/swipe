@@ -40,7 +40,7 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 
 #ifdef SWIPE_SSSE3
 
-// profline(j) strides, in 16-byte vectors: a row of the 32 x 32 score
+// profile_row(row) strides, in 16-byte vectors: a row of the 32 x 32 score
 // matrix is two vectors, a row of the profile one vector per CDEPTH
 constexpr std::ptrdiff_t matrix_row_vectors = 2;
 constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
