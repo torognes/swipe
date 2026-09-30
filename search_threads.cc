@@ -54,7 +54,6 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 {
   sdp->dbt = db_thread_create();
   sdp->dprofile.resize(profile_bytes);
-  long qlen = 0;
   long hearraylen = 0;
 
   if (parameters.symtype == SymbolType::blastn)
@@ -63,7 +62,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	qlen = query.nt[strand_index(s)].len;
+	long const qlen = query.nt[strand_index(s)].len;
 	sdp->qlen[frame_index(s, 0)] = qlen;
 	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
 	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
@@ -76,7 +75,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   }
   else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
-    qlen = query.aa[0].len;
+    long const qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
     sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
     for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
@@ -93,7 +92,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
       {
 	for(long f=0; f<3; f++)
 	{
-	  qlen = query.aa[frame_index(s, f)].len;
+	  long const qlen = query.aa[frame_index(s, f)].len;
 	  sdp->qlen[frame_index(s, f)] = qlen;
 	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
 	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
