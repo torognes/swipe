@@ -218,11 +218,10 @@ extern std::array<char, byte_values> const map_ncbi_nt16;
 extern std::array<char, byte_values> const map_ncbi_aa;
 extern std::array<char, byte_values> const map_sound;
 
-extern char const * sym_ncbi_nt4;
-extern char const * sym_ncbi_nt16;
-extern char const * sym_ncbi_nt16u;
-extern char const * sym_ncbi_aa;
-extern char const * sym_sound;
+extern char const * const sym_ncbi_nt16;
+extern char const * const sym_ncbi_nt16u;
+extern char const * const sym_ncbi_aa;
+extern char const * const sym_sound;
 
 // the 4-bit nucleotide codes: a bit per base (A, C, G, T), 16 values
 // (0: none, 15: any base)

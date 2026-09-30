@@ -165,13 +165,12 @@ std::array<char, 4> const remap {{ 2, 1, 3, 0 }};
 
 }  // anonymous namespace
   
-//                       00000000001111111111222222222233
-//                       01234567890123456789012345678901
-char const * sym_ncbi_nt4   = "acgt############################";
-char const * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
-char const * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
-char const * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
-char const * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
+//                                   00000000001111111111222222222233
+//                                   01234567890123456789012345678901
+char const * const sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
+char const * const sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
+char const * const sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
+char const * const sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
 
