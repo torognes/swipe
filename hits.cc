@@ -140,6 +140,36 @@ auto pair_score(char const query_symbol, char const db_symbol) -> long
                                            static_cast<unsigned char>(db_symbol))];
 }
 
+// the plain output: the list of hits has a description column, then
+// the strand or frames of the hit, then the score column(s); the
+// header of an alignment is indented and wrapped
+constexpr long description_width = 67;
+constexpr std::size_t score_width = 5;
+constexpr long alignment_header_indent = 10;
+constexpr long alignment_header_width = 79;
+
+// the width of the strand or frames of a hit, after its description:
+// " +" (blastn), " +1" (blastx, tblastn), " +1/-2" (tblastx)
+auto frame_mark_width(SymbolType const symbol_type) -> long
+{
+  constexpr long strand_mark = 2;
+  constexpr long frame_mark = 3;
+  constexpr long frame_pair_mark = 6;
+  if (symbol_type == SymbolType::blastn)
+  {
+    return strand_mark;
+  }
+  if ((symbol_type == SymbolType::blastx) or (symbol_type == SymbolType::tblastn))
+  {
+    return frame_mark;
+  }
+  if (symbol_type == SymbolType::tblastx)
+  {
+    return frame_pair_mark;
+  }
+  return 0;
+}
+
 // a whole percentage, rounded down, as in "Identities = 9/12 (75%)"
 auto whole_percentage(long const part, long const whole) -> long
 {
@@ -2094,19 +2124,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  
       for(long i=0; i<showhits; i++)
       {
-	long headerlen = 67;
-	if (parameters.symtype == SymbolType::blastn)
-	{
-	  headerlen = 65;
-	}
-	else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastn))
-	{
-	  headerlen = 64;
-	}
-	else if (parameters.symtype == SymbolType::tblastx)
-	{
-	  headerlen = 61;
-	}
+	long const headerlen = description_width - frame_mark_width(parameters.symtype);
 
 	HeaderLayout layout;
 	layout.show_gis = show_gis;
@@ -2150,7 +2168,7 @@ auto hits_show_plain(Parameters const & parameters,
 	  auto const expect_value = expect_value_of(score);
 		
 	  fprint(out, ' ');
-	  fprint_integer(out, bits, 5);
+	  fprint_integer(out, bits, score_width);
 		
 	  fprint(out, "   ");
 		
@@ -2159,7 +2177,7 @@ auto hits_show_plain(Parameters const & parameters,
 	else
 	{
 	  fprint(out, ' ');
-	  fprint_integer(out, score, 5);
+	  fprint_integer(out, score, score_width);
 	}
 
 	fprint(out, '\n');
@@ -2170,8 +2188,8 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, "\n");
 	HeaderLayout layout;
 	layout.show_gis = show_gis;
-	layout.indent = 10;
-	layout.linelen = 79;
+	layout.indent = alignment_header_indent;
+	layout.linelen = alignment_header_width;
 	layout.maxdeflines = LONG_MAX;
 	db_showheader(t, make_view(hit_entry(i).header_address), layout);
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
