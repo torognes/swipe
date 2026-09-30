@@ -598,8 +598,11 @@ auto score_matrix_read(Parameters const & parameters) -> void
     score_matrix_read_file(parameters, parameters.matrixname);
   }
 
-  long hi = -100;
-  long lo = 100;
+  // the highest and lowest scores start from -100 and 100 (so hi is at
+  // least -100 and lo at most 100)
+  constexpr long score_bounds_start = 100;
+  long hi = -score_bounds_start;
+  long lo = score_bounds_start;
 
   for (std::size_t a = 0; a < score_matrix_width; a++)
   {
@@ -611,8 +614,14 @@ auto score_matrix_read(Parameters const & parameters) -> void
       }
   }
 
-  SCORELIMIT_7  = 128 - hi;
-  SCORELIMIT_16 = 65536 - hi;
+  // the 7-bit and 16-bit search stages count 2^7 and 2^16 score values
+  // (the 16-bit stage from a bias of -32768): a score from the range
+  // minus the highest score on may have saturated, and goes to the next
+  // stage
+  constexpr long score_range_7 = 128;
+  constexpr long score_range_16 = 65536;
+  SCORELIMIT_7  = score_range_7 - hi;
+  SCORELIMIT_16 = score_range_16 - hi;
 
   // the 16-bit engine uses signed 16-bit scores and gap penalties:
   // when a score or a gap penalty does not fit (KI-13), it is not used

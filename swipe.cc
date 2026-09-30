@@ -121,10 +121,14 @@ auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegister
 
 auto cpu_features() -> void
 {
+  // the feature bits of cpuid leaf 1
+  constexpr unsigned int edx_sse2 = 26;
+  constexpr unsigned int ecx_ssse3 = 9;
+  constexpr unsigned int ecx_sse41 = 19;
   auto const registers = cpuid(1, 0);
-  cpu_feature_sse2  = (registers.edx >> 26) & 1;
-  cpu_feature_ssse3 = (registers.ecx >>  9) & 1;
-  cpu_feature_sse41 = (registers.ecx >> 19) & 1;
+  cpu_feature_sse2  = (registers.edx >> edx_sse2) & 1;
+  cpu_feature_ssse3 = (registers.ecx >> ecx_ssse3) & 1;
+  cpu_feature_sse41 = (registers.ecx >> ecx_sse41) & 1;
 }
 
 auto clock_start(struct time_info * tip) -> void
