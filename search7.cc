@@ -46,7 +46,7 @@ constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
 
 inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
-			      BYTE * dseq_byte) -> void
+			      BYTE const * dseq_byte) -> void
 {
   __m128i a;
   __m128i b;
@@ -78,7 +78,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   __m128i t13;
   __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
 
-  auto * dseq = reinterpret_cast<__m128i*>(dseq_byte);
+  auto const * const dseq = reinterpret_cast<__m128i const *>(dseq_byte);
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions
