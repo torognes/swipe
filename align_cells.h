@@ -60,7 +60,6 @@ struct Ops_16 {
 };
 
 
-
 // The masking of a kernel pass, selected by the type of its last
 // argument (as swarm's src/utils/mask_vectors.hpp): No_mask when every
 // channel continues its database sequence, Mask when some channels
@@ -112,6 +111,54 @@ inline auto onestep(__m128i const H,
   cell = Ops::sub(cell, Q);
   E = Ops::max(cell, E);
   F = Ops::max(cell, F);
+}
+
+
+// One pass over the query for a block of four database residues per
+// channel (the former donormal and domasked kernels of search7.cc and
+// search16.cc, selected by Masking)
+template <typename Ops, typename Masking>
+inline auto align_cells(__m128i & S,
+                        __m128i * hep,
+                        __m128i * const * qp,
+                        __m128i const Q,
+                        __m128i const R,
+                        long ql,
+                        __m128i const Z,
+                        Masking const & masking) -> void
+{
+  auto score = apply_mask<Ops>(S, masking);  // mask
+  auto H0 = Z;
+  auto H1 = H0;
+  auto H2 = H0;
+  auto H3 = H0;
+  auto F0 = H0;
+  auto F1 = H0;
+  auto F2 = H0;
+  auto F3 = H0;
+  __m128i N1;
+  __m128i N2;
+  __m128i N3;
+
+  for (long qi = 0; qi < ql; ++qi)
+  {
+    __m128i const * const x = qp[qi];  // load x from qp[qi]
+    auto const N0 = apply_mask<Ops>(hep[2 * qi], masking);  // load N0, mask
+    auto E = apply_mask<Ops>(hep[(2 * qi) + 1], masking);  // load E, mask
+
+    onestep<Ops>(H0, N1, F0, x[0], E, score, Q, R);
+    onestep<Ops>(H1, N2, F1, x[1], E, score, Q, R);
+    onestep<Ops>(H2, N3, F2, x[2], E, score, Q, R);
+    onestep<Ops>(H3, hep[2 * qi], F3, x[3], E, score, Q, R);
+
+    hep[(2 * qi) + 1] = E;  // save E
+    H0 = N0;
+    H1 = N1;
+    H2 = N2;
+    H3 = N3;
+  }
+
+  S = score;  // save S
 }
 
 #endif  // SWIPE_ALIGN_CELLS_H
