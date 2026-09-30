@@ -494,23 +494,23 @@ auto calc_chunks(View<long> const volume_sequences,
 }
 
 // the query tables of the strands or frames searched: for each query
-// residue, the row of the score profile (profile_row_bytes apart) that
+// residue, the row of the score profile (row_bytes apart) that
 // the kernels read; also the query lengths (sdp->qlen). Returns the
 // longest query length. Shared by search_init() and align_init(),
 // whose profiles have rows of 64 and 16 bytes.
 auto query_tables_init(Parameters const & parameters,
 		       struct search_data * sdp,
-		       std::ptrdiff_t const profile_row_bytes) -> long
+		       std::ptrdiff_t const row_bytes) -> long
 {
   auto * const dprofile = sdp->dprofile.data();
-  auto const fill_table = [dprofile, profile_row_bytes](Buffer<BYTE *> & qtable,
-							 View<char> const residues) -> void
+  auto const fill_table = [dprofile, row_bytes](Buffer<BYTE *> & qtable,
+						 View<char> const residues) -> void
   {
     qtable.resize(residues.size());
     std::transform(residues.begin(), residues.end(), qtable.begin(),
-		   [dprofile, profile_row_bytes](char const residue) -> BYTE *
+		   [dprofile, row_bytes](char const residue) -> BYTE *
 		   {
-		     return std::next(dprofile, profile_row_bytes * residue);
+		     return std::next(dprofile, row_bytes * residue);
 		   });
   };
 
