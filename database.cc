@@ -1243,7 +1243,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   long s1 = 0;
   long s2 = 0;
   auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
+  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1289,7 +1289,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   long s1 = 0;
   long s2 = 0;
   auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
+  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1519,7 +1519,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
 {
   long s = 0;
-  auto * const v = & db_main.volumes.find(seqno, s);
+  auto const * const v = & db_main.volumes.find(seqno, s);
 
   long const offset1 = v->offset_entry(v->offset_xhr, s);
   long const offset2 = v->offset_entry(v->offset_xhr, s + 1);
