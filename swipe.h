@@ -323,10 +323,10 @@ auto search16s(WORD * * q_start,
 
 auto fullsw(char const * dseq,
 	    char const * dend,
-	    char * qseq,
+	    char const * qseq,
 	    char const * qend,
 	    long * hearray, 
-	    long * score_matrix,
+	    long const * score_matrix,
 	    long gap_open_extend,
 	    long gap_extend_penalty) -> long;
 

@@ -30,40 +30,30 @@
 
 auto fullsw(char const * dseq,
 	    char const * dend,
-	    char * qseq,
+	    char const * qseq,
 	    char const * qend,
 	    long * hearray,
-	    long * score_matrix,
+	    long const * score_matrix,
 	    long gap_open_extend,
 	    long gap_extend) -> long
 {
-  long h = 0;
-  long n = 0;
-  long e = 0;
-  long f = 0;
   long s = 0;
-  long *hep = nullptr;
-  char *qp = nullptr;
-  char const *dp = nullptr;
-  long * sp = nullptr;
-
-  s = 0;
-  dp = dseq;
+  char const * dp = dseq;
   assert(qend >= qseq);
   memset(hearray, 0, 2 * sizeof(long) * static_cast<std::size_t>(qend - qseq));
   
   while (dp < dend)
     {
-      f = 0;
-      h = 0;
-      hep = hearray;
-      qp = qseq;
-      sp = score_matrix + (*dp << 5);
+      long f = 0;
+      long h = 0;
+      long * hep = hearray;
+      char const * qp = qseq;
+      long const * const sp = score_matrix + (*dp << 5);
       
       while (qp < qend)
         {
-          n = *hep;
-          e = *(hep+1);
+          long const n = *hep;
+          long e = *(hep+1);
           h += sp[static_cast<int>(*qp)];
 
           h = std::max(e, h);
