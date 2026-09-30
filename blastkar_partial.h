@@ -27,7 +27,27 @@
 
 // a row of statistical parameters (NCBI's tables: gap open, gap
 // extension, then the Karlin-Altschul parameters)
-using array_of_8 = std::array<double, 8>;
+constexpr std::size_t statistics_columns = 8;
+using array_of_8 = std::array<double, statistics_columns>;
+
+// the columns of a row, as the NCBI comments of blastkar_partial.cc
+// list them: score matrix tables, then blastn tables
+enum struct MatrixColumn : std::size_t
+{
+  gap_open, gap_extend, decline_to_align, lambda, K, H, alpha, beta
+};
+
+enum struct BlastnColumn : std::size_t
+{
+  gap_open, gap_extend, lambda, K, H, alpha, beta, theta
+};
+
+template <typename Column>
+inline auto value_of(array_of_8 const & row, Column const column) -> double
+{
+  static_assert(static_cast<std::size_t>(Column::beta) < statistics_columns, "table width");
+  return row[static_cast<std::size_t>(column)];
+}
 
 // the tables of a score matrix and of a blastn score pair (swipe
 // additions, in blastkar_partial.cc): empty views when unknown
