@@ -383,8 +383,8 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
-	    translate(query.nt[0].seq, query.nt[0].len, {s, f}, TranslationTable::for_query,
-		      frame_sequence.storage, & frame_sequence.len);
+	    frame_sequence.len = translate(query.nt[0].view(), {s, f}, TranslationTable::for_query,
+					   frame_sequence.storage);
 	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
 	}
@@ -498,10 +498,12 @@ auto translate_init(long qtableno, long dtableno) -> void
   translation_tables.database = translate_createtable(dtableno);
 }
 
-auto translate(char const * dna, long dlen, 
+auto translate(View<char> const sequence,
 	       StrandFrame const where, TranslationTable const table,
-	       Buffer<char> & protein, long * plenp) -> void
+	       Buffer<char> & protein) -> long
 {
+  auto const * const dna = sequence.data();
+  auto const dlen = static_cast<long>(sequence.size());
   long const strand = where.strand;
   long const frame = where.frame;
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
@@ -551,7 +553,7 @@ auto translate(char const * dna, long dlen,
   }
 
   prot[ppos] = 0;
-  *plenp = plen;
+  return plen;
 }
 
 

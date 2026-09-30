@@ -427,9 +427,9 @@ struct StrandFrame
 // database (-D)
 enum struct TranslationTable : bool { for_query, for_database };
 
-auto translate(char const * dna, long dlen,
+auto translate(View<char> sequence,
                StrandFrame where, TranslationTable table,
-               Buffer<char> & protein, long * plenp) -> void;
+               Buffer<char> & protein) -> long;
 
 struct asnparse_info;
 using apt = asnparse_info *;
