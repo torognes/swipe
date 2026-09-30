@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_load_64, v_merge_*
 #include "align_cells.h"  // Ops_16, onestep(), No_mask, Mask
 
 constexpr std::size_t CHANNELS = channels_16;
@@ -115,50 +116,50 @@ inline auto dprofile_fill16s(WORD * dprofile_word,
     //      for(int i=0; i<24; i += 8)
     for(std::size_t i=0; i<32; i += 8)
     {
-      xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
-      xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
-      xmm2  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
-      xmm3  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
-      xmm4  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
-      xmm5  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
-      xmm6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
-      xmm7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
+      xmm0  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
+      xmm1  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
+      xmm2  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
+      xmm3  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
+      xmm4  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
+      xmm5  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
+      xmm6  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
+      xmm7  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
       
-      xmm8  = _mm_unpacklo_epi16(xmm0,  xmm1);
-      xmm9  = _mm_unpackhi_epi16(xmm0,  xmm1);
-      xmm10 = _mm_unpacklo_epi16(xmm2,  xmm3);
-      xmm11 = _mm_unpackhi_epi16(xmm2,  xmm3);
-      xmm12 = _mm_unpacklo_epi16(xmm4,  xmm5);
-      xmm13 = _mm_unpackhi_epi16(xmm4,  xmm5);
-      xmm14 = _mm_unpacklo_epi16(xmm6,  xmm7);
-      xmm15 = _mm_unpackhi_epi16(xmm6,  xmm7);
+      xmm8  = v_merge_lo_16(xmm0,  xmm1);
+      xmm9  = v_merge_hi_16(xmm0,  xmm1);
+      xmm10 = v_merge_lo_16(xmm2,  xmm3);
+      xmm11 = v_merge_hi_16(xmm2,  xmm3);
+      xmm12 = v_merge_lo_16(xmm4,  xmm5);
+      xmm13 = v_merge_hi_16(xmm4,  xmm5);
+      xmm14 = v_merge_lo_16(xmm6,  xmm7);
+      xmm15 = v_merge_hi_16(xmm6,  xmm7);
       
-      xmm16 = _mm_unpacklo_epi32(xmm8,  xmm10);
-      xmm17 = _mm_unpackhi_epi32(xmm8,  xmm10);
-      xmm18 = _mm_unpacklo_epi32(xmm12, xmm14);
-      xmm19 = _mm_unpackhi_epi32(xmm12, xmm14);
-      xmm20 = _mm_unpacklo_epi32(xmm9,  xmm11);
-      xmm21 = _mm_unpackhi_epi32(xmm9,  xmm11);
-      xmm22 = _mm_unpacklo_epi32(xmm13, xmm15);
-      xmm23 = _mm_unpackhi_epi32(xmm13, xmm15);
+      xmm16 = v_merge_lo_32(xmm8,  xmm10);
+      xmm17 = v_merge_hi_32(xmm8,  xmm10);
+      xmm18 = v_merge_lo_32(xmm12, xmm14);
+      xmm19 = v_merge_hi_32(xmm12, xmm14);
+      xmm20 = v_merge_lo_32(xmm9,  xmm11);
+      xmm21 = v_merge_hi_32(xmm9,  xmm11);
+      xmm22 = v_merge_lo_32(xmm13, xmm15);
+      xmm23 = v_merge_hi_32(xmm13, xmm15);
       
-      xmm24 = _mm_unpacklo_epi64(xmm16, xmm18);
-      xmm25 = _mm_unpackhi_epi64(xmm16, xmm18);
-      xmm26 = _mm_unpacklo_epi64(xmm17, xmm19);
-      xmm27 = _mm_unpackhi_epi64(xmm17, xmm19);
-      xmm28 = _mm_unpacklo_epi64(xmm20, xmm22);
-      xmm29 = _mm_unpackhi_epi64(xmm20, xmm22);
-      xmm30 = _mm_unpacklo_epi64(xmm21, xmm23);
-      xmm31 = _mm_unpackhi_epi64(xmm21, xmm23);
+      xmm24 = v_merge_lo_64(xmm16, xmm18);
+      xmm25 = v_merge_hi_64(xmm16, xmm18);
+      xmm26 = v_merge_lo_64(xmm17, xmm19);
+      xmm27 = v_merge_hi_64(xmm17, xmm19);
+      xmm28 = v_merge_lo_64(xmm20, xmm22);
+      xmm29 = v_merge_hi_64(xmm20, xmm22);
+      xmm30 = v_merge_lo_64(xmm21, xmm23);
+      xmm31 = v_merge_hi_64(xmm21, xmm23);
       
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
     }
   }
 }

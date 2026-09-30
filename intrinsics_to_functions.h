@@ -23,8 +23,8 @@
     PO Box 1080 Blindern, NO-0316 Oslo, Norway
 */
 
-// The SSE2 lane operations of the alignment kernels, as named
-// functions. Same file name as in swarm (src/arch/x86_64/), but the
+// The SSE2 operations of the alignment kernels and of the score
+// profile builders, as named functions. Same file name as in swarm (src/arch/x86_64/), but the
 // functions are defined inline here (swarm defines them out of line
 // and relies on -flto), and their names carry the signedness and the
 // lane width, as swipe mixes signed saturated arithmetic and unsigned
@@ -76,6 +76,67 @@ inline auto v_subs_i16(__m128i const lhs, __m128i const rhs) -> __m128i
 inline auto v_max_i16(__m128i const lhs, __m128i const rhs) -> __m128i
 {
   return _mm_max_epi16(lhs, rhs);
+}
+
+
+// whole vectors
+
+// aligned load of 16 bytes (movdqa)
+inline auto v_load(__m128i const * const ptr) -> __m128i
+{
+  return _mm_load_si128(ptr);
+}
+
+// aligned store of 16 bytes (movdqa)
+inline auto v_store(__m128i * const ptr, __m128i const vector) -> void
+{
+  _mm_store_si128(ptr, vector);
+}
+
+// load of 8 bytes into the low half, the high half set to zero (movq)
+inline auto v_load_64(__m128i const * const ptr) -> __m128i
+{
+  return _mm_loadl_epi64(ptr);
+}
+
+
+// interleaving of the low (merge_lo) or high (merge_hi) halves of two
+// vectors, by lanes of 8, 16, 32 or 64 bits (punpckl*, punpckh*): the
+// transpositions of the score profile builders
+
+inline auto v_merge_lo_8(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpacklo_epi8(lhs, rhs);
+}
+
+inline auto v_merge_lo_16(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpacklo_epi16(lhs, rhs);
+}
+
+inline auto v_merge_hi_16(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpackhi_epi16(lhs, rhs);
+}
+
+inline auto v_merge_lo_32(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpacklo_epi32(lhs, rhs);
+}
+
+inline auto v_merge_hi_32(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpackhi_epi32(lhs, rhs);
+}
+
+inline auto v_merge_lo_64(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpacklo_epi64(lhs, rhs);
+}
+
+inline auto v_merge_hi_64(__m128i const lhs, __m128i const rhs) -> __m128i
+{
+  return _mm_unpackhi_epi64(lhs, rhs);
 }
 
 #endif  // SWIPE_INTRINSICS_TO_FUNCTIONS_H
