@@ -999,16 +999,32 @@ auto show_align(AlignedHit const & hit) -> void
   lines.putalignop(0, 1);
 }
 
-auto whole_align(AlignedHit const & hit,
-		 long * identities,
-		 long * positives,
-		 long * indels,
-		 long * aligned,
-		 long * gaps,
-		 std::string & qline,
-		 std::string & aline,
-		 std::string & dline) -> void
+// the counts of an alignment, for its summaries
+struct AlignmentCounts
 {
+  long identities = 0;
+  long positives = 0;
+  long indels = 0;  // gap positions
+  long aligned = 0;  // alignment columns
+  long gaps = 0;  // gap openings
+};
+
+// an alignment: its counts, and its query, middle and database lines
+struct WholeAlignment
+{
+  AlignmentCounts counts;
+  std::string qline;
+  std::string aline;
+  std::string dline;
+};
+
+auto whole_align(AlignedHit const & hit) -> WholeAlignment
+{
+  WholeAlignment alignment;
+  auto & counts = alignment.counts;
+  auto & qline = alignment.qline;
+  auto & aline = alignment.aline;
+  auto & dline = alignment.dline;
 
   long al = 0;
   char const * p = hit.alignment;
@@ -1019,15 +1035,8 @@ auto whole_align(AlignedHit const & hit,
 
   for (auto * line : {&qline, &aline, &dline})
   {
-    line->clear();
     line->reserve(static_cast<std::size_t>(al));
   }
-
-  *identities = 0;
-  *positives = 0;
-  *indels = 0;
-  *gaps = 0;
-  *aligned = 0;
   
   long q_pos = hit.q_align_start;
   long d_pos = hit.d_align_start;
@@ -1040,7 +1049,7 @@ auto whole_align(AlignedHit const & hit,
     char const op = operation.op;
     long const len = operation.len;
     
-    *aligned += len;
+    counts.aligned += len;
     if (op == 'D')
     {
       for(long j=0; j<len; j++)
@@ -1050,8 +1059,8 @@ auto whole_align(AlignedHit const & hit,
 	aline += ' ';
 	dline += '-';
       }
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
     }
     else if (op == 'I')
     {
@@ -1062,8 +1071,8 @@ auto whole_align(AlignedHit const & hit,
 	aline += ' ';
 	dline += hit.sym[static_cast<int>(ds)];
       }
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
     }
     else if (op == 'M')
     {
@@ -1075,13 +1084,13 @@ auto whole_align(AlignedHit const & hit,
 	if (qs == ds)
 	{
 	  aline += '|';
-	  (*identities)++;
-	  (*positives)++;
+	  counts.identities++;
+	  counts.positives++;
 	}
 	else if (pair_score(qs, ds) > 0)
 	{
 	  aline += '+';
-	  (*positives)++;
+	  counts.positives++;
 	}
 	else
 	{
@@ -1096,20 +1105,12 @@ auto whole_align(AlignedHit const & hit,
     }
   }
 
+  return alignment;
 }
 
-auto count_align(AlignedHit const & hit,
-		 long * identities,
-		 long * positives,
-		 long * indels,
-		 long * aligned,
-		 long * gaps) -> void
+auto count_align(AlignedHit const & hit) -> AlignmentCounts
 {
-  *identities = 0;
-  *positives = 0;
-  *indels = 0;
-  *gaps = 0;
-  *aligned = 0;
+  AlignmentCounts counts;
   
   long q_pos = hit.q_align_start;
   long d_pos = hit.d_align_start;
@@ -1123,17 +1124,17 @@ auto count_align(AlignedHit const & hit,
     char const op = operation.op;
     long const len = operation.len;
     
-    *aligned += len;
+    counts.aligned += len;
     if (op == 'D')
     {
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
       q_pos += len;
     }
     else if (op == 'I')
     {
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
       d_pos += len;
     }
     else
@@ -1144,16 +1145,17 @@ auto count_align(AlignedHit const & hit,
 	char const ds = hit.d_seq[d_pos++];
 	if (qs == ds)
 	{
-	  (*identities)++;
-	  (*positives)++;
+	  counts.identities++;
+	  counts.positives++;
 	}
 	else if (pair_score(qs, ds) > 0)
 	{
-	  (*positives)++;
+	  counts.positives++;
 	}
       }
     }
   }
+  return counts;
 }
 
 auto hits_show_expect(double expect_value) -> void
@@ -1776,19 +1778,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       auto const score = hit_entry(i).score;
       auto const e = expect_value_of(score);
 
-      long identities = 0;
-      long positives = 0;
-      long indels = 0;
-      long gaps = 0;
-      long aligned = 0;
     
-      std::string qline;
-      std::string aline;
-      std::string dline;
         
       auto const hit = aligned_hit(parameters, i);
-      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  qline, aline, dline);
+      auto const alignment = whole_align(hit);
+      auto const & counts = alignment.counts;
 
       fprint(out, "\t\t\t\t<alignment>\n");
       fprint(out, "\t\t\t\t\t<subalignment>\n");
@@ -1798,59 +1792,59 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprintf(out, "\t\t\t\t\t\t<longVersionEValue>%.2g</longVersionEValue>\n", e);
       fprint(out, "\t\t\t\t\t\t<identical>\n");
       fprint(out, "\t\t\t\t\t\t\t<identicalNominator>");
-      fprint_integer(out, identities);
+      fprint_integer(out, counts.identities);
       fprint(out, "</identicalNominator>\n");
       fprint(out, "\t\t\t\t\t\t\t<identicalDenominator>");
-      fprint_integer(out, aligned);
+      fprint_integer(out, counts.aligned);
       fprint(out, "</identicalDenominator>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(identities, aligned));
+      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(counts.identities, counts.aligned));
       fprint(out, "\t\t\t\t\t\t</identical>\n");
 
       if (parameters.symtype != SymbolType::blastn)
       {
 	fprint(out, "\t\t\t\t\t\t<positive>\n");
 	fprint(out, "\t\t\t\t\t\t\t<positiveNominator>");
-	fprint_integer(out, positives);
+	fprint_integer(out, counts.positives);
 	fprint(out, "</positiveNominator>\n");
 	fprint(out, "\t\t\t\t\t\t\t<positiveDenominator>");
-	fprint_integer(out, aligned);
+	fprint_integer(out, counts.aligned);
 	fprint(out, "</positiveDenominator>\n");
-	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(positives, aligned));
+	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(counts.positives, counts.aligned));
 	fprint(out, "\t\t\t\t\t\t</positive>\n");
       }
 
       fprint(out, "\t\t\t\t\t\t<indels>\n");
       fprint(out, "\t\t\t\t\t\t\t<indelsNominator>");
-      fprint_integer(out, indels);
+      fprint_integer(out, counts.indels);
       fprint(out, "</indelsNominator>\n");
       fprint(out, "\t\t\t\t\t\t\t<indelsDenominator>");
-      fprint_integer(out, aligned);
+      fprint_integer(out, counts.aligned);
       fprint(out, "</indelsDenominator>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(indels, aligned));
+      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(counts.indels, counts.aligned));
       fprint(out, "\t\t\t\t\t\t</indels>\n");
       fprint(out, "\t\t\t\t\t\t<gaps>");
-      fprint_integer(out, gaps);
+      fprint_integer(out, counts.gaps);
       fprint(out, "</gaps>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentQuery>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryStart>");
       fprint_integer(out, hit.q_first);
       fprint(out, "</alignmentQueryStart>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryLine>");
-      fprint(out, as_c_string(qline.c_str()));
+      fprint(out, as_c_string(alignment.qline.c_str()));
       fprint(out, "</alignmentQueryLine>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>");
       fprint_integer(out, hit.q_last);
       fprint(out, "</alignmentQueryEnd>\n");
       fprint(out, "\t\t\t\t\t\t</alignmentQuery>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentLine>");
-      fprint(out, as_c_string(aline.c_str()));
+      fprint(out, as_c_string(alignment.aline.c_str()));
       fprint(out, "</alignmentLine>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>");
       fprint_integer(out, hit.d_first);
       fprint(out, "</alignmentDatabaseStart>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>");
-      fprint(out, as_c_string(dline.c_str()));
+      fprint(out, as_c_string(alignment.dline.c_str()));
       fprint(out, "</alignmentDatabaseLine>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>");
       fprint_integer(out, hit.d_last);
@@ -1946,19 +1940,10 @@ auto hits_show_xml(Parameters const & parameters,
     
     if (i < showalignments)
     {
-      long identities = 0;
-      long positives = 0;
-      long gaps = 0;
-      long aligned = 0;
-      long indels = 0;
 
-      std::string qline;
-      std::string aline;
-      std::string dline;
         
       auto const hit = aligned_hit(parameters, i);
-      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  qline, aline, dline);
+      auto const alignment = whole_align(hit);
 
       fprint(out, "      <alignment>");
       fprint(out, as_c_string(hit_entry(i).alignment.c_str()));
@@ -1976,13 +1961,13 @@ auto hits_show_xml(Parameters const & parameters,
       fprint(out, "</dpos>\n");
       
       fprint(out, "      <qseq>");
-      fprint(out, as_c_string(qline.c_str()));
+      fprint(out, as_c_string(alignment.qline.c_str()));
       fprint(out, "</qseq>\n");
       fprint(out, "      <aseq>");
-      fprint(out, as_c_string(aline.c_str()));
+      fprint(out, as_c_string(alignment.aline.c_str()));
       fprint(out, "</aseq>\n");
       fprint(out, "      <dseq>");
-      fprint(out, as_c_string(dline.c_str()));
+      fprint(out, as_c_string(alignment.dline.c_str()));
       fprint(out, "</dseq>\n");
 
     }
@@ -2030,22 +2015,17 @@ auto hits_show_tsv(Parameters const & parameters,
     layout.text = DeflineText::identifier;
     db_showheader(t, make_view(hit_entry(i).header_address), layout);
     
-    long identities = 0;
-    long positives = 0;
-    long gaps = 0;
-    long aligned = 0;
-    long indels = 0;
     
     auto const hit = aligned_hit(parameters, i);
-    count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
+    auto const counts = count_align(hit);
     
     auto const score = hit_entry(i).score;
     
     fprintf(out, "\t%.2f\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld", 
-	    percentage(identities, aligned),
-	    aligned,
-	    aligned - identities - indels,
-	    gaps,
+	    percentage(counts.identities, counts.aligned),
+	    counts.aligned,
+	    counts.aligned - counts.identities - counts.indels,
+	    counts.gaps,
 	    hit.q_first,
 	    hit.q_last,
 	    hit.d_first,
@@ -2192,40 +2172,35 @@ auto hits_show_plain(Parameters const & parameters,
 
 	fprint(out, '\n');
 
-	long identities = 0;
-	long positives = 0;
-	long gaps = 0;
-	long aligned = 0;
-	long indels = 0;
 
 	auto const hit = aligned_hit(parameters, i);
-	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
+	auto const counts = count_align(hit);
 	      
 	fprint(out, " Identities = ");
-	fprint_integer(out, identities);
+	fprint_integer(out, counts.identities);
 	fprint(out, '/');
-	fprint_integer(out, aligned);
+	fprint_integer(out, counts.aligned);
 	fprint(out, " (");
-	fprint_integer(out, whole_percentage(identities, aligned));
+	fprint_integer(out, whole_percentage(counts.identities, counts.aligned));
 	fprint(out, "%)");
 	if (parameters.symtype > SymbolType::blastn)
 	{
 	  fprint(out, ", Positives = ");
-	  fprint_integer(out, positives);
+	  fprint_integer(out, counts.positives);
 	  fprint(out, '/');
-	  fprint_integer(out, aligned);
+	  fprint_integer(out, counts.aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, whole_percentage(positives, aligned));
+	  fprint_integer(out, whole_percentage(counts.positives, counts.aligned));
 	  fprint(out, "%)");
 	}
-	if (indels != 0)
+	if (counts.indels != 0)
 	{
 	  fprint(out, ", Gaps = ");
-	  fprint_integer(out, indels);
+	  fprint_integer(out, counts.indels);
 	  fprint(out, '/');
-	  fprint_integer(out, aligned);
+	  fprint_integer(out, counts.aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, whole_percentage(indels, aligned));
+	  fprint_integer(out, whole_percentage(counts.indels, counts.aligned));
 	  fprint(out, "%)");
 	}
 	fprint(out, "\n");
