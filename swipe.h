@@ -50,13 +50,7 @@
 #include "view.h"  // View
 
 
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#define bswap_32 OSSwapInt32
-#define bswap_64 OSSwapInt64
-#else
-#include <byteswap.h>
-#endif
+#include "os_byteswap.h"  // bswap_32, bswap_64
 
 #ifndef LINE_MAX
 #define LINE_MAX 2048
