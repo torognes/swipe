@@ -40,6 +40,77 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
+// a cell of the alignment matrix: position a in the query sequence,
+// position b in the database sequence
+struct Cell
+{
+  long a;
+  long b;
+};
+
+// Reverse pass of region(): from the end cell of the best local
+// alignment, whose score is known, find the cell where it begins. HH
+// and EE are work arrays of at least end.b + 1 elements.
+auto region_begin(char const * a_seq,
+		  char const * b_seq,
+		  long const * scorematrix,
+		  long const q,
+		  long const r,
+		  Cell const end,
+		  long const score,
+		  long * HH,
+		  long * EE) -> Cell
+{
+  for (long j = end.b; j >= 0; j--)
+    {
+      HH[j] = -1;
+      EE[j] = -1;
+    }
+
+  long Cost = 0;
+
+  for (long i = end.a; i >= 0; i--)
+    {
+      long h = -1;
+      long f = -1;
+      long p = 0;
+      if (i == end.a)
+      {
+	p = 0;
+      }
+      else
+      {
+	p = -1;
+      }
+      for (long j = end.b; j >= 0; j--)
+	{
+	  f = std::max(f, h - q) - r;
+	  EE[j] = std::max(EE[j], HH[j] - q) - r;
+
+	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
+
+	  h = std::max(f, h);
+	  h = std::max(EE[j], h);
+
+
+	  p = HH[j];
+
+	  HH[j] = h;
+
+	  if (h > Cost)
+	    {
+	      Cost = h;
+	      if (Cost >= score)
+	      {
+		return {i, j};
+	      }
+	    }
+	}
+    }
+
+  fatal("Internal error in align function.");
+}
+
 auto region(char const * a_seq,
 	    char const * b_seq,
 	    long M,
@@ -59,9 +130,6 @@ auto region(char const * a_seq,
   long * HH = hh_buffer.data();
   long * EE = ee_buffer.data();
 
-  long i = 0;
-  long j = 0;
-
   long score = 0;
 
   // Forward pass
@@ -73,18 +141,18 @@ auto region(char const * a_seq,
   else
   {
 
-    for (j = 0; j < N; j++)
+    for (long j = 0; j < N; j++)
     {
       HH[j] = 0;
       EE[j] = - q;
     }
     
-    for (i = 0; i < M; i++)
+    for (long i = 0; i < M; i++)
     {
       long h = 0;
       long p = 0;
       long f = - q;
-      for (j = 0; j < N; j++)
+      for (long j = 0; j < N; j++)
       {
 	f = std::max(f, h - q) - r;
 	EE[j] = std::max(EE[j], HH[j] - q) - r;
@@ -111,59 +179,10 @@ auto region(char const * a_seq,
 
   // Reverse pass
 
-  for (j = *b_end; j >= 0; j--)
-    {
-      HH[j] = -1;
-      EE[j] = -1;
-    }
-
-  long Cost = 0;
-
-  for (i = *a_end; i >= 0; i--)
-    {
-      long h = -1;
-      long f = -1;
-      long p = 0;
-      if (i == *a_end)
-      {
-	p = 0;
-      }
-      else
-      {
-	p = -1;
-      }
-      for (j = *b_end; j >= 0; j--)
-	{
-	  f = std::max(f, h - q) - r;
-	  EE[j] = std::max(EE[j], HH[j] - q) - r;
-
-	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
-
-	  h = std::max(f, h);
-	  h = std::max(EE[j], h);
-
-
-	  p = HH[j];
-
-	  HH[j] = h;
-
-	  if (h > Cost)
-	    {
-	      Cost = h;
-	      *a_begin = i;
-	      *b_begin = j;
-	      if (Cost >= score)
-	      {
-		goto Found;
-	      }
-	    }
-	}
-    }
-
-  fatal("Internal error in align function.");
-
- Found:
-
+  auto const begin = region_begin(a_seq, b_seq, scorematrix, q, r,
+                                  {*a_end, *b_end}, score, HH, EE);
+  *a_begin = begin.a;
+  *b_begin = begin.b;
   *s = score;
 }
 

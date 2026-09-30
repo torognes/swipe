@@ -28,6 +28,7 @@
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <iterator>  // std::next
 
 constexpr std::size_t CHANNELS = channels_7;
 static_assert(sizeof(__m128i) == vector_bytes, "an SSE vector");
@@ -39,13 +40,13 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 
 #ifdef SWIPE_SSSE3
 
-// profline(j) strides, in 16-byte vectors: a row of the 32 x 32 score
+// profile_row(row) strides, in 16-byte vectors: a row of the 32 x 32 score
 // matrix is two vectors, a row of the profile one vector per CDEPTH
 constexpr std::ptrdiff_t matrix_row_vectors = 2;
 constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
 
 inline auto dprofile_shuffle7(BYTE * dprofile,
-			      BYTE * score_matrix,
+			      BYTE const * score_matrix,
 			      BYTE const * dseq_byte) -> void
 {
   __m128i a;
@@ -68,15 +69,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   __m128i t3;
   __m128i t4;
   __m128i t5;
-  __m128i t6;
-  __m128i t7;
-  __m128i t8;
-  __m128i t9;
-  __m128i t10;
-  __m128i t11;
-  __m128i t12;
-  __m128i t13;
-  __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
+  __m128i u0, u1, u2, u3, u4, u5;
 
   auto const * const dseq = reinterpret_cast<__m128i const *>(dseq_byte);
   
@@ -120,64 +113,47 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m6 = v_or(d, u4);
   m7 = v_or(d, u5);
 
-#define profline(j)					\
-  t6  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j)));   \
-  t7  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j))+1); \
-  t8  = v_shuffle_8(t6, m0);			\
-  t9  = v_shuffle_8(t7, m1);			\
-  t10 = v_shuffle_8(t6, m2);			\
-  t11 = v_shuffle_8(t7, m3);			\
-  u8  = v_shuffle_8(t6, m4);			\
-  u9  = v_shuffle_8(t7, m5);			\
-  u10 = v_shuffle_8(t6, m6);			\
-  u11 = v_shuffle_8(t7, m7);			\
-  t12 = v_or(t8,  t9);				\
-  t13 = v_or(t10, t11);				\
-  u12 = v_or(u8,  u9);				\
-  u13 = v_or(u10, u11);				\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j)),   t12);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t13);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\
-  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, u13)
+  // one row of the score matrix, shuffled into the four vectors of a
+  // row of the profile (the former profline(j) macro)
+  auto const * const matrix = reinterpret_cast<__m128i const *>(score_matrix);
+  auto * const profile = reinterpret_cast<__m128i *>(dprofile);
+  auto const profile_row = [&](std::ptrdiff_t const row) -> void
+  {
+    auto const * const matrix_row = std::next(matrix, matrix_row_vectors * row);
+    auto * const profile_line = std::next(profile, profile_row_vectors * row);
+    auto const t6  = v_load(matrix_row);
+    auto const t7  = v_load(std::next(matrix_row));
+    auto const t8  = v_shuffle_8(t6, m0);
+    auto const t9  = v_shuffle_8(t7, m1);
+    auto const t10 = v_shuffle_8(t6, m2);
+    auto const t11 = v_shuffle_8(t7, m3);
+    auto const u8  = v_shuffle_8(t6, m4);
+    auto const u9  = v_shuffle_8(t7, m5);
+    auto const u10 = v_shuffle_8(t6, m6);
+    auto const u11 = v_shuffle_8(t7, m7);
+    v_store(profile_line, v_or(t8, t9));
+    v_store(std::next(profile_line, 1), v_or(t10, t11));
+    v_store(std::next(profile_line, 2), v_or(u8, u9));
+    v_store(std::next(profile_line, 3), v_or(u10, u11));
+  };
 
-  profline(0);
-  profline(1);
-  profline(2);
-  profline(3);
-  profline(4);
-  profline(5);
-  profline(6);
-  profline(7);
-  profline(8);
-  profline(9);
-  profline(10);
-  profline(11);
-  profline(12);
-  profline(13);
-  profline(14);
-  profline(15);
-  profline(16);
-  profline(17);
-  profline(18);
-  profline(19);
-  profline(20);
-  profline(21);
-  profline(22);
-  profline(23);
-  profline(24);
-  profline(25);
-  profline(26);
-  profline(27);
-  profline(28);
-  profline(29);
-  profline(30);
-  profline(31);
+  // four rows per iteration: GCC does not unroll the 32 rows of a
+  // one-row loop, whose overhead cost +0.54% instructions (callgrind,
+  // sprot50k); four rows cost +0.09% against the 32 unrolled macros
+  static_assert(score_matrix_width % 4 == 0, "rows in groups of four");
+  for (std::ptrdiff_t row = 0; row < static_cast<std::ptrdiff_t>(score_matrix_width); row += 4)
+  {
+    profile_row(row);
+    profile_row(row + 1);
+    profile_row(row + 2);
+    profile_row(row + 3);
+  }
 }
 
 #else
 
 inline auto dprofile_fill7(BYTE * dprofile,
-			   BYTE * score_matrix,
+			   BYTE const * score_matrix,
 			   BYTE const * dseq) -> void
 {
   __m128i xmm0;
@@ -208,23 +184,23 @@ inline auto dprofile_fill7(BYTE * dprofile,
       d[i] = static_cast<unsigned>(dseq[(j * CHANNELS) + i]) << 5;
     }
 
-    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
-    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[2] ));
-    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[4] ));
-    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[6] ));
-    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[8] ));
-    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[10]));
-    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[12]));
-    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[14]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[0] ));
+    xmm2  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[2] ));
+    xmm4  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[4] ));
+    xmm6  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[6] ));
+    xmm8  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[8] ));
+    xmm10 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[10]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[12]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + d[14]));
 
-    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[1] )));
-    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[3] )));
-    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[5] )));
-    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[7] )));
-    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[9] )));
-    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i*>(score_matrix + d[11])));
-    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i*>(score_matrix + d[13])));
-    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i*>(score_matrix + d[15])));
+    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i const *>(score_matrix + d[1] )));
+    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i const *>(score_matrix + d[3] )));
+    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i const *>(score_matrix + d[5] )));
+    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i const *>(score_matrix + d[7] )));
+    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i const *>(score_matrix + d[9] )));
+    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i const *>(score_matrix + d[11])));
+    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i const *>(score_matrix + d[13])));
+    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i const *>(score_matrix + d[15])));
       
     xmm1 = xmm0;
     xmm0 = v_merge_lo_16(xmm0, xmm2);
@@ -277,22 +253,22 @@ inline auto dprofile_fill7(BYTE * dprofile,
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[0 ]));
-    xmm1  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[1 ]));
-    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[2 ]));
-    xmm3  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[3 ]));
-    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[4 ]));
-    xmm5  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[5 ]));
-    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[6 ]));
-    xmm7  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[7 ]));
-    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[8 ]));
-    xmm9  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[9 ]));
-    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[10]));
-    xmm11 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[11]));
-    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[12]));
-    xmm13 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[13]));
-    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[14]));
-    xmm15 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[15]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[0 ]));
+    xmm1  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[1 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[2 ]));
+    xmm3  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[3 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[4 ]));
+    xmm5  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[5 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[6 ]));
+    xmm7  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[7 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[8 ]));
+    xmm9  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[9 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[10]));
+    xmm11 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[11]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[12]));
+    xmm13 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[13]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[14]));
+    xmm15 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 8 + d[15]));
 
     xmm0  = v_merge_lo_8(xmm0,  xmm1);
     xmm2  = v_merge_lo_8(xmm2,  xmm3);
@@ -352,23 +328,23 @@ inline auto dprofile_fill7(BYTE * dprofile,
     v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+448), xmm15);
 
 
-    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[0 ]));
-    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[2 ]));
-    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[4 ]));
-    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[6 ]));
-    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[8 ]));
-    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[10]));
-    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[12]));
-    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[14]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[0 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[2 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[4 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[6 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[8 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[10]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[12]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[14]));
 
-    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[1 ])));
-    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[3 ])));
-    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[5 ])));
-    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[7 ])));
-    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[9 ])));
-    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[11 ])));
-    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[13 ])));
-    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[15 ])));
+    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[1 ])));
+    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[3 ])));
+    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[5 ])));
+    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[7 ])));
+    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[9 ])));
+    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[11 ])));
+    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[13 ])));
+    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i const *>(score_matrix + 16 + d[15 ])));
       
     xmm1 = xmm0;
     xmm0 = v_merge_lo_16(xmm0, xmm2);
@@ -421,22 +397,22 @@ inline auto dprofile_fill7(BYTE * dprofile,
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[0 ]));
-    xmm1  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[1 ]));
-    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[2 ]));
-    xmm3  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[3 ]));
-    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[4 ]));
-    xmm5  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[5 ]));
-    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[6 ]));
-    xmm7  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[7 ]));
-    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[8 ]));
-    xmm9  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[9 ]));
-    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[10]));
-    xmm11 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[11]));
-    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[12]));
-    xmm13 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[13]));
-    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[14]));
-    xmm15 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[15]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[0 ]));
+    xmm1  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[1 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[2 ]));
+    xmm3  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[3 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[4 ]));
+    xmm5  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[5 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[6 ]));
+    xmm7  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[7 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[8 ]));
+    xmm9  = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[9 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[10]));
+    xmm11 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[11]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[12]));
+    xmm13 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[13]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[14]));
+    xmm15 = v_load_64(reinterpret_cast<__m128i const *>(score_matrix + 24 + d[15]));
 
     xmm0  = v_merge_lo_8(xmm0,  xmm1);
     xmm2  = v_merge_lo_8(xmm2,  xmm3);
@@ -509,7 +485,7 @@ search7
        (BYTE * * q_start,
 	BYTE gap_open_penalty,
 	BYTE gap_extend_penalty,
-	BYTE * score_matrix,
+	BYTE const * score_matrix,
 	BYTE * dprofile,
 	BYTE * hearray,
 	struct db_thread_s * dbt,
