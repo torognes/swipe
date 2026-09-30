@@ -145,6 +145,52 @@ private:
   long length_ = 0;
 };
 
+// a file opened read-only, closed by reset() or by the destructor
+class ReadOnlyFile
+{
+public:
+  ReadOnlyFile() = default;
+  ReadOnlyFile(ReadOnlyFile const &) = delete;
+  ReadOnlyFile(ReadOnlyFile &&) = delete;
+  auto operator=(ReadOnlyFile const &) -> ReadOnlyFile & = delete;
+  auto operator=(ReadOnlyFile &&) -> ReadOnlyFile & = delete;
+  ~ReadOnlyFile()
+  {
+    reset();
+  }
+
+  // false when open() fails (the previous file is closed)
+  auto open(std::string const & name) -> bool
+  {
+    reset();
+    descriptor_ = ::open(name.c_str(), O_RDONLY);
+    return descriptor_ >= 0;
+  }
+
+  auto reset() noexcept -> void
+  {
+    if (descriptor_ >= 0)
+    {
+      static_cast<void>(::close(descriptor_));  // a file read only
+      descriptor_ = -1;
+    }
+  }
+
+  auto descriptor() const noexcept -> int
+  {
+    return descriptor_;
+  }
+
+  // the length of the file, in bytes
+  auto size() const -> long
+  {
+    return lseek(descriptor_, 0, SEEK_END);
+  }
+
+private:
+  int descriptor_ = -1;
+};
+
 }  // anonymous namespace
 
 struct db_volume_s
@@ -173,10 +219,10 @@ struct db_volume_s
   long offset_xsq;
   long offset_amb;
 
-  int fd_xin; // entire mapped
-  int fd_xsq; // partially mapped
-  int fd_xhr; // open for normal read
-  int fd_msk; // mapped
+  ReadOnlyFile fd_xin; // entire mapped
+  ReadOnlyFile fd_xsq; // partially mapped
+  ReadOnlyFile fd_xhr; // open for normal read
+  ReadOnlyFile fd_msk; // mapped
 
   long len_xsq;
   long len_xhr;
@@ -283,10 +329,10 @@ auto db_volume_reset(db_volume_t * v) -> void
   v->offset_xsq = 0;
   v->offset_amb = 0;
 
-  v->fd_xin = 0;
-  v->fd_xsq = 0;
-  v->fd_xhr = 0;
-  v->fd_msk = 0;
+  v->fd_xin.reset();
+  v->fd_xsq.reset();
+  v->fd_xhr.reset();
+  v->fd_msk.reset();
 
   v->len_xsq = 0;
   v->len_xhr = 0;
@@ -541,35 +587,32 @@ auto db_open_xin(SymbolType symbol_type, char const * basename, db_volume_t * vo
       name_psq += ".nsq";
     }
 
-  volume->fd_xin = open(name_pin.c_str(), O_RDONLY);
-  if (volume->fd_xin < 0)
+  if (not volume->fd_xin.open(name_pin))
   {
     fatal(std::string("Unable to open file ") + name_pin + ".");
   }
 
-  long const len_xin = lseek(volume->fd_xin, 0, SEEK_END);
+  long const len_xin = volume->fd_xin.size();
 
-  if (not volume->xin_map.map(volume->fd_xin, 0, len_xin))
+  if (not volume->xin_map.map(volume->fd_xin.descriptor(), 0, len_xin))
   {
     fatal(std::string("Unable to map file ") + name_pin + " in memory. It may be empty or too large.");
   }
 
-  volume->fd_xhr = open(name_phr.c_str(), O_RDONLY);
-  if (volume->fd_xhr < 0)
+  if (not volume->fd_xhr.open(name_phr))
   {
     fatal(std::string("Unable to open file ") + name_phr + ".");
   }
 
-  volume->len_xhr = lseek(volume->fd_xhr, 0, SEEK_END);
+  volume->len_xhr = volume->fd_xhr.size();
 
 
-  volume->fd_xsq = open(name_psq.c_str(), O_RDONLY, 0);
-  if (volume->fd_xsq < 0)
+  if (not volume->fd_xsq.open(name_psq))
   {
     fatal(std::string("Unable to open file ") + name_psq + ".");
   }
 
-  volume->len_xsq = lseek(volume->fd_xsq, 0, SEEK_END);
+  volume->len_xsq = volume->fd_xsq.size();
   volume->name_xsq = name_psq;
 
   /* the index file must hold its header and its offset tables, and
@@ -746,16 +789,14 @@ auto db_open_msk(db_volume_t * v) -> void
   //  fprintf(stderr, "Opening msk file: %s\n", v->masked_mskfile);
   //  fprintf(stderr, "Maxoid: %ld\n", v->masked_maxoid);
 
-  v->fd_msk = open(v->masked_mskfile.c_str(), O_RDONLY);
-
-  if (v->fd_msk < 0)
+  if (not v->fd_msk.open(v->masked_mskfile))
   {
     fatal(std::string("Unable to open msk file ") + v->masked_mskfile + ".");
   }
 
-  long const len_msk = lseek(v->fd_msk, 0, SEEK_END);
+  long const len_msk = v->fd_msk.size();
 
-  if (not v->msk_map.map(v->fd_msk, 0, len_msk))
+  if (not v->msk_map.map(v->fd_msk.descriptor(), 0, len_msk))
   {
     fatal(std::string("Unable to mmap msk file ") + v->masked_mskfile + ".");
   }
@@ -1056,16 +1097,12 @@ auto db_volume_close(db_volume_t * v) -> void
   v->masked_mskfile.clear();
 
   v->xin_map.reset();
+  v->msk_map.reset();
 
-  if (v->fd_msk != 0)
-  {
-    v->msk_map.reset();
-    close(v->fd_msk);
-  }
-
-  close(v->fd_xin);
-  close(v->fd_xhr);
-  close(v->fd_xsq);
+  v->fd_msk.reset();
+  v->fd_xin.reset();
+  v->fd_xhr.reset();
+  v->fd_xsq.reset();
 }
 
 }  // anonymous namespace
@@ -1188,7 +1225,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   
   // map it
   
-  auto const mapped = m->region.map(v1->fd_xsq, offset, length);
+  auto const mapped = m->region.map(v1->fd_xsq.descriptor(), offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1237,7 +1274,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   
   // map it
   
-  auto const mapped = m->region.map(v1->fd_xhr, offset, length);
+  auto const mapped = m->region.map(v1->fd_xhr.descriptor(), offset, length);
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
