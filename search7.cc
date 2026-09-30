@@ -24,8 +24,7 @@
 */
 
 #include "swipe.h"
-#include "align_cells.h"  // Ops_7, onestep()
-#include "intrinsics_to_functions.h"  // v_adds_i8, v_subs_i8, v_max_u8
+#include "align_cells.h"  // Ops_7, onestep(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
@@ -501,18 +500,20 @@ inline auto dprofile_fill7(BYTE * dprofile,
 
 #endif
 
-inline auto donormal7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i * const * qp,
-		      __m128i const * Qm,
-		      __m128i const * Rm,
-		      long ql,
-		      __m128i const * Zm) -> void
+// One pass over the query for a block of database residues (the
+// former donormal and domasked kernels, selected by Masking)
+template <typename Masking>
+inline auto align_cells7(__m128i & S,
+                         __m128i * hep,
+                         __m128i * const * qp,
+                         __m128i const Q,
+                         __m128i const R,
+                         long ql,
+                         __m128i const Z,
+                         Masking const & masking) -> void
 {
-  auto S = *Sm;
-  auto const Q = *Qm;
-  auto const R = *Rm;
-  auto H0 = *Zm;
+  auto score = apply_mask<Ops_7>(S, masking);  // mask
+  auto H0 = Z;
   auto H1 = H0;
   auto H2 = H0;
   auto H3 = H0;
@@ -527,59 +528,13 @@ inline auto donormal7(__m128i * Sm,
   for (long qi = 0; qi < ql; ++qi)
   {
     __m128i const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = hep[2 * qi];  // load N0
-    auto E = hep[(2 * qi) + 1];  // load E
+    auto const N0 = apply_mask<Ops_7>(hep[2 * qi], masking);  // load N0, mask
+    auto E = apply_mask<Ops_7>(hep[(2 * qi) + 1], masking);  // load E, mask
 
-    onestep<Ops_7>(H0, N1, F0, x[0], E, S, Q, R);
-    onestep<Ops_7>(H1, N2, F1, x[1], E, S, Q, R);
-    onestep<Ops_7>(H2, N3, F2, x[2], E, S, Q, R);
-    onestep<Ops_7>(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
-
-    hep[(2 * qi) + 1] = E;  // save E
-    H0 = N0;
-    H1 = N1;
-    H2 = N2;
-    H3 = N3;
-  }
-
-  *Sm = S;  // save S
-}
-
-inline auto domasked7(__m128i * Sm,
-		      __m128i * hep,
-		      __m128i * const * qp,
-		      __m128i const * Qm, 
-		      __m128i const * Rm, 
-		      long ql,      
-		      __m128i const * Zm,
-		      __m128i const * Mm) -> void
-{
-  auto const M = *Mm;
-  auto S = v_adds_i8(*Sm, M);  // mask
-  auto const Q = *Qm;
-  auto const R = *Rm;
-  auto H0 = *Zm;
-  auto H1 = H0;
-  auto H2 = H0;
-  auto H3 = H0;
-  auto F0 = H0;
-  auto F1 = H0;
-  auto F2 = H0;
-  auto F3 = H0;
-  __m128i N1;
-  __m128i N2;
-  __m128i N3;
-
-  for (long qi = 0; qi < ql; ++qi)
-  {
-    __m128i const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = v_adds_i8(hep[2 * qi], M);  // load N0, mask
-    auto E = v_adds_i8(hep[(2 * qi) + 1], M);  // load E, mask
-
-    onestep<Ops_7>(H0, N1, F0, x[0], E, S, Q, R);
-    onestep<Ops_7>(H1, N2, F1, x[1], E, S, Q, R);
-    onestep<Ops_7>(H2, N3, F2, x[2], E, S, Q, R);
-    onestep<Ops_7>(H3, hep[2 * qi], F3, x[3], E, S, Q, R);
+    onestep<Ops_7>(H0, N1, F0, x[0], E, score, Q, R);
+    onestep<Ops_7>(H1, N2, F1, x[1], E, score, Q, R);
+    onestep<Ops_7>(H2, N3, F2, x[2], E, score, Q, R);
+    onestep<Ops_7>(H3, hep[2 * qi], F3, x[3], E, score, Q, R);
 
     hep[(2 * qi) + 1] = E;  // save E
     H0 = N0;
@@ -588,7 +543,7 @@ inline auto domasked7(__m128i * Sm,
     H3 = N3;
   }
 
-  *Sm = S;  // save S
+  S = score;  // save S
 }
 
 void
@@ -681,7 +636,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 
-      donormal7(&S, hep, qp, &Q, &R, qlen, &Z);
+      align_cells7(S, hep, qp, Q, R, qlen, Z, No_mask{});
     }
     else
     {
@@ -796,7 +751,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 	  
-      domasked7(&S, hep, qp, &Q, &R, qlen, &Z, &M);
+      align_cells7(S, hep, qp, Q, R, qlen, Z, Mask{M});
     }
   }
 }

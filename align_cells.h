@@ -39,6 +39,10 @@
 
 // 16 lanes of 7-bit scores: signed saturated arithmetic, unsigned maxima
 struct Ops_7 {
+  // the zero score is 0x80, and scores are at most 0xff: as signed
+  // bytes, at most -1, so that one saturated addition of a -128 lane
+  // resets the score to zero
+  static auto mask(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i8(lhs, rhs); }
   static auto add(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i8(lhs, rhs); }
   static auto sub(__m128i const lhs, __m128i const rhs) -> __m128i { return v_subs_i8(lhs, rhs); }
   static auto max(__m128i const lhs, __m128i const rhs) -> __m128i { return v_max_u8(lhs, rhs); }
@@ -46,10 +50,40 @@ struct Ops_7 {
 
 // 8 lanes of 16-bit scores: signed saturated arithmetic, signed maxima
 struct Ops_16 {
+  // the zero score is 0x8000 (-32768), and scores span the whole signed
+  // range: two saturated additions of a -32768 lane reset any score to
+  // zero
+  static auto mask(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i16(v_adds_i16(lhs, rhs), rhs); }
   static auto add(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i16(lhs, rhs); }
   static auto sub(__m128i const lhs, __m128i const rhs) -> __m128i { return v_subs_i16(lhs, rhs); }
   static auto max(__m128i const lhs, __m128i const rhs) -> __m128i { return v_max_i16(lhs, rhs); }
 };
+
+
+
+// The masking of a kernel pass, selected by the type of its last
+// argument (as swarm's src/utils/mask_vectors.hpp): No_mask when every
+// channel continues its database sequence, Mask when some channels
+// start a new one (their lanes of 'lanes' are set, the others are
+// zero), so that their scores are reset first. The No_mask overload
+// returns its argument: the regular kernel contains no masking code.
+struct No_mask {};
+
+struct Mask {
+  __m128i lanes;
+};
+
+template <typename Ops>
+inline auto apply_mask(__m128i const vector, No_mask const & /*masking*/) -> __m128i
+{
+  return vector;
+}
+
+template <typename Ops>
+inline auto apply_mask(__m128i const vector, Mask const & masking) -> __m128i
+{
+  return Ops::mask(vector, masking.lanes);
+}
 
 
 // C++26 refactoring: std::simd, with std::add_sat and std::sub_sat
