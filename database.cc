@@ -45,7 +45,24 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::array<unsigned int, byte_values> decompress_nt {{}};
+// the four nucleotides of a packed byte (2 bits each, first in the high
+// bits), as four 4-bit codes in the bytes of an unsigned int
+auto make_decompress_nt() -> std::array<unsigned int, byte_values>
+{
+  std::array<unsigned int, byte_values> table {{}};
+  for(std::size_t b=0; b<table.size(); b++)
+  {
+    unsigned int unpacked = 0;
+    for (long i = 0; i < 4; i++)
+    {
+      (reinterpret_cast<unsigned char *>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3 - (i & 3)) << 1)) & 3));
+    }
+    table[b] = unpacked;
+  }
+  return table;
+}
+
+std::array<unsigned int, byte_values> const decompress_nt = make_decompress_nt();
 
 struct al_info
 {
@@ -1107,18 +1124,6 @@ auto db_open(Parameters const & parameters) -> void
   }
 
   
-  /* prepare nucleotide decompression table */
-
-  for(std::size_t b=0; b<decompress_nt.size(); b++)
-  {
-    unsigned int unpacked = 0;
-    for (long i = 0; i < 4; i++)
-    {
-      (reinterpret_cast<unsigned char *>(&unpacked))[i] = static_cast<unsigned char>(1 << ((b >> ((3 - (i & 3)) << 1)) & 3));
-    }
-    decompress_nt[b] = unpacked;
-  }
-
   if (taxidfilename != nullptr)
   {
     db_read_taxid_file(taxidfilename);
