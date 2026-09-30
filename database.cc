@@ -874,7 +874,7 @@ auto db_open(Parameters const & parameters) -> void
 {
   SymbolType const symbol_type = parameters.symtype;
   char const * const basename = parameters.databasename;
-  char * const taxidfilename = parameters.taxidfilename;
+  char const * const taxidfilename = parameters.taxidfilename;
   std::unique_ptr<al_info_t> ai;
 
   db_init(& db_main);
@@ -1221,7 +1221,6 @@ auto db_translate(char const * dna, long dlen,
 		  char * prot) -> void
 {
   long pos = 0;
-  long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
 
@@ -1230,7 +1229,7 @@ auto db_translate(char const * dna, long dlen,
     pos = frame;
     while(ppos < plen)
     {
-      c = dna[pos++];
+      long c = dna[pos++];
       c <<= 4;
       c |= dna[pos++];
       c <<= 4;
@@ -1243,7 +1242,7 @@ auto db_translate(char const * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[static_cast<std::size_t>(dna[pos--])];
+      long c = ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
