@@ -24,11 +24,12 @@
 */
 
 #include "search_data.h"
-#include <algorithm>  // std::copy_n, std::max, std::min, std::transform
+#include <algorithm>  // std::copy_n, std::max, std::max_element, std::min, std::transform
+#include <cassert>
 #include <cmath>  // std::floor, std::sqrt
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
-#include <iterator>  // std::next
+#include <iterator>  // std::distance, std::next
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <thread>
@@ -475,20 +476,18 @@ auto calc_chunks(View<long> const volume_sequences,
 
   while((biggest_chunk_size > upper) || (chunks < minchunks))
   {
+    // at least one volume here (biggest_chunk_size > 0, or chunks <
+    // minchunks <= totalseqs)
+    assert(vv < chunksizes.size());
     volume_chunks[vv]++;
     chunks++;
     chunksizes[vv] = (volume_sequences[vv] + volume_chunks[vv] - 1) / volume_chunks[vv];
 
-    biggest_chunk_size = 0;
-    vv = 0;
-    for(std::size_t v = 0; v < volumes; v++)
-    {
-      if (chunksizes[v] > biggest_chunk_size)
-      {
-	vv = v;
-	biggest_chunk_size = chunksizes[v];
-      }
-    }
+    // the first of the largest chunks (sizes are never negative: when
+    // they are all zero, the first volume)
+    auto const biggest = std::max_element(chunksizes.begin(), chunksizes.end());
+    vv = static_cast<std::size_t>(std::distance(chunksizes.begin(), biggest));
+    biggest_chunk_size = *biggest;
   }
   
   return biggest_chunk_size;
