@@ -45,7 +45,7 @@ auto args_show(Parameters const & parameters) -> void
   if (parameters.view == OutputFormat::plain)
   {
     
-    if (cpu_feature_ssse3 == 0)
+    if (not cpu_features.ssse3)
     {
       fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
     }
@@ -269,7 +269,7 @@ auto parse_long(char const * const text, char const * const message) -> long
   assert(text != nullptr);
   char * end = nullptr;
   errno = 0;
-  auto const value = std::strtol(text, &end, 10);
+  auto const value = std::strtol(text, &end, decimal_base);
   if ((end == text) or (*end != '\0') or (errno == ERANGE))
   {
     fatal(message);
@@ -303,6 +303,14 @@ auto parse_dbsize(char const * const text) -> std::int64_t
     fatal(message);
   }
   return static_cast<std::int64_t>(value);
+}
+
+// a genetic code number of -Q and -D: one of the codes 1 to 23 that
+// exist
+auto is_known_gencode(long const code) -> bool
+{
+  return (code >= 1) and (code <= static_cast<long>(gencode_count)) and
+    (gencode_names[static_cast<std::size_t>(code - 1)] != nullptr);
 }
 
 }  // anonymous namespace
@@ -352,7 +360,6 @@ auto args_init(int argc, char * const * argv) -> Parameters
   }};
   
   int option_index = 0;
-  int c = 0;
 
   // gap penalties not given on the command line take the default
   // values of the score matrix or of the symbol type; a penalty of
@@ -362,7 +369,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
   
   while (true)
     {
-      c = getopt_long(argc, argv, short_options, long_options.data(), &option_index);
+      int const c = getopt_long(argc, argv, short_options, long_options.data(), &option_index);
       if (c == -1)
       {
 	break;
@@ -578,18 +585,15 @@ auto args_init(int argc, char * const * argv) -> Parameters
 	}
     }
   
-  long gopen_default = 0;
-  long gextend_default = 0;
-
   if (parameters.symtype == SymbolType::blastn)
   {
     if (not gapopen_given)
     {
-      parameters.gapopen = 5;
+      parameters.gapopen = default_blastn_gapopen;
     }
     if (not gapextend_given)
     {
-      parameters.gapextend = 2;
+      parameters.gapextend = default_blastn_gapextend;
     }
   }
   else if (parameters.symtype < SymbolType::sound)
@@ -599,15 +603,16 @@ auto args_init(int argc, char * const * argv) -> Parameters
       parameters.matrixname = default_matrixname;
     }
 
-    if (stats_getprefs(parameters.matrixname, & gopen_default, & gextend_default) != 0)
+    auto const defaults = stats_getprefs(parameters.matrixname);
+    if (defaults.found)
     {
       if (not gapopen_given)
       {
-	parameters.gapopen = gopen_default;
+	parameters.gapopen = defaults.penalties.open;
       }
       if (not gapextend_given)
       {
-	parameters.gapextend = gextend_default;
+	parameters.gapextend = defaults.penalties.extend;
       }
     }
     else
@@ -623,15 +628,15 @@ auto args_init(int argc, char * const * argv) -> Parameters
   {
     if (strlen(parameters.matrixname) == 0)
     {
-      parameters.matrixname = "IDENTITY_5_1";
+      parameters.matrixname = default_sound_matrixname;
     }
     if (not gapopen_given)
     {
-      parameters.gapopen = 15;
+      parameters.gapopen = default_sound_gapopen;
     }
     if (not gapextend_given)
     {
-      parameters.gapextend = 5;
+      parameters.gapextend = default_sound_gapextend;
     }
   }
 
@@ -677,12 +682,12 @@ auto args_init(int argc, char * const * argv) -> Parameters
     fatal("Illegal strand specified for protein query.");
   }
 
-  if ((parameters.query_gencode < 1) || (parameters.query_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.query_gencode - 1)] == nullptr))
+  if (not is_known_gencode(parameters.query_gencode))
   {
     fatal("Illegal query genetic code specified.");
   }
 
-  if ((parameters.db_gencode < 1) || (parameters.db_gencode > 23) || (gencode_names[static_cast<std::size_t>(parameters.db_gencode - 1)] == nullptr))
+  if (not is_known_gencode(parameters.db_gencode))
   {
     fatal("Illegal database genetic code specified.");
   }

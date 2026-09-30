@@ -90,6 +90,14 @@ struct asnparse_info
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
+// a parsed string stored the way the C parser strcpy()'d it: up to
+// its first NUL, if the VisibleString contains one (assigned in place:
+// the capacity of the target is reused from one header to the next)
+auto assign_up_to_nul(std::string & target, std::string const & text) -> void
+{
+  target.assign(text.c_str(), std::strlen(text.c_str()));
+}
+
 // The headers are NCBI's Blast-def-line-set, encoded with the Basic
 // Encoding Rules of ASN.1 (ITU-T X.690) as makeblastdb writes them:
 // constructed types with an indefinite length, closed by an
@@ -217,15 +225,29 @@ auto parse_visiblestring(apt p) -> void
   
   //  printf("length=%lu ", length);
 
-  unsigned int i = 0;
-  p->parsed_string.clear();
-  
-  while (i < length)
+  // the string must end within the header: the current byte and the
+  // bytes after it (KI-45: zeros were read past the end, and a length
+  // of gigabytes exhausted the memory)
+  auto const available = static_cast<unsigned long>(std::distance(p->header_p, p->header_end)) + 1;
+  if (length > available)
     {
-      //      printf("%02x ", ch);
+      fprint(stderr, "Error: string longer than the header (");
+      fprint_integer(stderr, length);
+      fprint(stderr, " bytes).\n");
+      fatal("Error parsing binary ASN.1 in database sequence definition.");
+    }
+
+  // the current byte, then the length - 1 bytes after it, all within
+  // the header: one copy instead of a nextch() per byte
+  p->parsed_string.clear();
+  if (length > 0)
+    {
+      auto const rest = static_cast<std::ptrdiff_t>(length - 1);
       p->parsed_string += static_cast<char>(p->ch);
-      nextch(p);
-      i++;
+      p->parsed_string.append(reinterpret_cast<char const *>(p->header_p),
+                              static_cast<std::size_t>(rest));
+      p->header_p = std::next(p->header_p, rest);
+      nextch(p);  // the byte after the string
     }
 
 
@@ -250,7 +272,7 @@ auto parse_object_id(apt p) -> void
   case tag(ObjectId::str):
     match_obj(p, tag(ObjectId::str));
     parse_visiblestring(p);
-    p->gnl_id_string = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->gnl_id_string, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   default:
@@ -266,7 +288,7 @@ auto parse_dbtag(apt p) -> void
 
   match_obj(p, tag(Dbtag::db));
   parse_visiblestring(p);
-  p->gnl_db = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+  assign_up_to_nul(p->gnl_db, p->parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
   match_obj(p, tag(Dbtag::tag));
@@ -286,7 +308,7 @@ auto parse_id_pat(apt p) -> void
   /* Country */
   match_obj(p, tag(IdPat::country));
   parse_visiblestring(p);
-  p->pat_country = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+  assign_up_to_nul(p->pat_country, p->parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
   /* id */
@@ -298,7 +320,7 @@ auto parse_id_pat(apt p) -> void
     /* granted patent number */
     p->pat_granted = 1;
     parse_visiblestring(p);
-    p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->pat_id, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   case tag(IdPatId::app_number):
@@ -306,7 +328,7 @@ auto parse_id_pat(apt p) -> void
     /* patent application number */
     p->pat_granted = 0;
     parse_visiblestring(p);
-    p->pat_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->pat_id, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   default:
@@ -355,21 +377,21 @@ auto parse_textseq_id(apt p) -> void
   {
     match_obj(p, tag(TextseqId::name));
     parse_visiblestring(p);
-    p->name = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->name, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
   if (p->obj == tag(TextseqId::accession))
   {
     match_obj(p, tag(TextseqId::accession));
     parse_visiblestring(p);
-    p->accession = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->accession, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
   if (p->obj == tag(TextseqId::release))
   {
     match_obj(p, tag(TextseqId::release));
     parse_visiblestring(p);
-    p->release = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->release, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
   if (p->obj == tag(TextseqId::version))
@@ -489,7 +511,7 @@ auto parse_pdb_seq_id(apt p) -> void
 
   match_obj(p, tag(PdbSeqId::mol));
   parse_visiblestring(p);
-  p->pdb_molid = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+  assign_up_to_nul(p->pdb_molid, p->parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
   if (p->obj == tag(PdbSeqId::chain))
@@ -513,7 +535,7 @@ auto parse_pdb_seq_id(apt p) -> void
   {
     match_obj(p, tag(PdbSeqId::chain_id));
     parse_visiblestring(p);
-    p->pdb_chain_id = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+    assign_up_to_nul(p->pdb_chain_id, p->parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
 
@@ -691,7 +713,7 @@ auto parse_blast_def_line(apt p) -> void
     {
       match_obj(p, tag(BlastDefLine::title));
       parse_visiblestring(p);
-      p->title = p->parsed_string.c_str();  // up to a NUL, as strcpy()
+      assign_up_to_nul(p->title, p->parsed_string);  // up to a NUL, as strcpy()
       match_obj(p, ber::end_of_contents);
     }
 

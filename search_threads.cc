@@ -38,13 +38,20 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::mutex countmutex;
-std::mutex workmutex;
-long maxchunksize;
-std::size_t volnext;
-long seqnext;
-Buffer<long> volchunks;
-Buffer<long> volseqs;
+// the distribution of the database sequences among the search threads:
+// chunks of each volume, handed out by search_getwork() under the mutex
+struct SearchWork
+{
+  std::mutex mutex;
+  std::mutex count_mutex;  // for run.compute7 (swipe.cc)
+  long maxchunksize = 0;  // the largest chunk: the size of the lists
+  std::size_t volnext = 0;  // the next volume with chunks left
+  long seqnext = 0;  // the first sequence of the next chunk
+  Buffer<long> volchunks;  // the chunks left in each volume
+  Buffer<long> volseqs;  // the sequences left in each volume
+};
+
+SearchWork search_work;
 
 // the bytes of a symbol's row in the score profile of search7() and
 // search16(): 4 database residues x 16 bytes of lanes
@@ -54,7 +61,6 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 {
   sdp->dbt = db_thread_create();
   sdp->dprofile.resize(profile_bytes);
-  long qlen = 0;
   long hearraylen = 0;
 
   if (parameters.symtype == SymbolType::blastn)
@@ -63,7 +69,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	qlen = query.nt[strand_index(s)].len;
+	long const qlen = query.nt[strand_index(s)].len;
 	sdp->qlen[frame_index(s, 0)] = qlen;
 	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
 	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
@@ -76,7 +82,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   }
   else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
-    qlen = query.aa[0].len;
+    long const qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
     sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
     for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
@@ -93,7 +99,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
       {
 	for(long f=0; f<3; f++)
 	{
-	  qlen = query.aa[frame_index(s, f)].len;
+	  long const qlen = query.aa[frame_index(s, f)].len;
 	  sdp->qlen[frame_index(s, f)] = qlen;
 	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
 	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
@@ -110,12 +116,12 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
 
   // at least one row: the kernels memset() the array, and an empty
   // Buffer has no storage (a null data(), for an empty query)
-  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * 32);
+  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * hearray_row_bytes);
 
-  auto listsize = static_cast<std::size_t>(maxchunksize);
+  auto listsize = static_cast<std::size_t>(search_work.maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
-    listsize *= 6;
+    listsize *= frame_count;  // the database frames
   }
 
   sdp->start_list.resize(listsize);
@@ -198,26 +204,26 @@ auto search_getwork(long * first, long * last) -> int
   int status = 0;
   auto const volcount = static_cast<std::size_t>(db_getvolumecount());
   
-  std::lock_guard<std::mutex> const lock(workmutex);
-  if (volnext < volcount)
+  std::lock_guard<std::mutex> const lock(search_work.mutex);
+  if (search_work.volnext < volcount)
   {
-    long const seqcount = volseqs[volnext];
-    long const chunks = volchunks[volnext];
+    long const seqcount = search_work.volseqs[search_work.volnext];
+    long const chunks = search_work.volchunks[search_work.volnext];
     long const chunksize = ((seqcount+chunks-1) / chunks);
 
-    * first = seqnext;
-    * last = seqnext + chunksize - 1;
-    seqnext += chunksize;
+    * first = search_work.seqnext;
+    * last = search_work.seqnext + chunksize - 1;
+    search_work.seqnext += chunksize;
     status = 1;
 
     //    fprintf(out, "Processing sequences %d to %d (%d sequences) in volume %ld.\n", *first, *last, *last - * first + 1, volnext);
 
-    volseqs[volnext] -= chunksize;
-    volchunks[volnext]--;
+    search_work.volseqs[search_work.volnext] -= chunksize;
+    search_work.volchunks[search_work.volnext]--;
 
-    while ((volnext < volcount) && (volchunks[volnext] == 0))
+    while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
     {
-      volnext++;
+      search_work.volnext++;
     }
   }
   return status;
@@ -305,18 +311,18 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       if (sdp->in_count > 0)
       {
 	{
-	  std::lock_guard<std::mutex> const lock(countmutex);
-	  compute7 += static_cast<long>(sdp->in_count);
+	  std::lock_guard<std::mutex> const lock(search_work.count_mutex);
+	  run.compute7 += static_cast<long>(sdp->in_count);
 	}
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
 
-	if (cpu_feature_ssse3 != 0)
+	if (cpu_features.ssse3)
 	{
 	  search7_ssse3(qtable,
 			gapopenextend_7,
 			gapextend_7,
-			reinterpret_cast<BYTE*>(score_matrix_7t),
+			reinterpret_cast<BYTE*>(score_matrices.score_7t.data()),
 			sdp->dprofile.data(),
 			sdp->hearray.data(),
 			sdp->dbt,
@@ -330,7 +336,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  search7(qtable,
 		  gapopenextend_7,
 		  gapextend_7,
-		  reinterpret_cast<BYTE *>(score_matrix_7),
+		  reinterpret_cast<BYTE *>(score_matrices.score_7.data()),
 		  sdp->dprofile.data(),
 		  sdp->hearray.data(),
 		  sdp->dbt,
@@ -347,7 +353,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
       
-	  if (score < SCORELIMIT_7)
+	  if (score < score_matrices.limit_7)
 	  {
 	    long const seqno = seqnosf >> 3;
 	    long const dstrand = (seqnosf >> 2) & 1;
@@ -376,7 +382,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	search16(reinterpret_cast<WORD**>(qtable),
 		 static_cast<WORD>(parameters.gapopenextend),
 		 static_cast<WORD>(parameters.gapextend),
-		 reinterpret_cast<WORD*>(score_matrix_16),
+		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		 reinterpret_cast<WORD*>(sdp->dprofile.data()),
 		 reinterpret_cast<WORD*>(sdp->hearray.data()),
 		 sdp->dbt,
@@ -392,7 +398,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	{
 	  long const seqnosf = sdp->in_list[i];
 	  long const score = sdp->scores[i];
-	  if (score < SCORELIMIT_16)
+	  if (score < score_matrices.limit_16)
 	  {
 	    long const seqno = seqnosf >> 3;
 	    long const dstrand = (seqnosf >> 2) & 1;
@@ -424,12 +430,12 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  long const dframe = seqnosf & 3;
       
 	  long ntlen = 0;
-	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, dstrand,
-						     dframe, & ntlen, 0);
+	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, {dstrand, dframe},
+						     & ntlen, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
       
-	  char * q = nullptr;
+	  char const * q = nullptr;
 	  if (parameters.symtype == SymbolType::blastn)
 	  {
 	    q = query.nt[strand_index(qstrand)].seq;
@@ -444,7 +450,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			      q, 
 			      std::next(q, qlen),
 			      reinterpret_cast<long*>(sdp->hearray.data()),
-			      score_matrix_63,
+			      score_matrices.score_63.data(),
 			      parameters.gapopenextend,
 			      parameters.gapextend);
 
@@ -473,17 +479,15 @@ auto worker(Parameters const & parameters) -> void
 
 }  // anonymous namespace
 
-auto calc_chunks(long volcount, 
-		 long par,
-		 long channels,
-		 long const * volume_sequences,
+auto calc_chunks(View<long> const volume_sequences,
 		 long * volume_chunks,
-		 long * totalchunks,
-		 long * biggestchunk) -> void
+		 Chunking const chunking) -> long
 {
+  long const par = chunking.threads;
+  long const channels = chunking.channels;
 
   long volsused = 0;
-  auto const volumes = static_cast<std::size_t>(volcount);
+  auto const volumes = volume_sequences.size();
   std::vector<long> chunksizes(volumes);
   long totalseqs = 0;
   long biggest_chunk_size = 0;
@@ -536,36 +540,29 @@ auto calc_chunks(long volcount,
     }
   }
   
-  *biggestchunk = biggest_chunk_size;
-  *totalchunks = chunks;
+  return biggest_chunk_size;
 }
 
 auto prepare_search(long par) -> void
 {
-  volnext = 0;
-  seqnext = 0;
+  search_work.volnext = 0;
+  search_work.seqnext = 0;
 
   auto const volcount = static_cast<std::size_t>(db_getvolumecount());
-  volseqs.resize(volcount);
-  volchunks.resize(volcount);
+  search_work.volseqs.resize(volcount);
+  search_work.volchunks.resize(volcount);
   for (std::size_t v = 0; v < volcount; v++)
   {
-    volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
+    search_work.volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
   }
 
-  long totalchunks = 0;
+  search_work.maxchunksize = calc_chunks(make_view(search_work.volseqs),
+                                         search_work.volchunks.data(),
+                                         {par, static_cast<long>(channels_7)});
 
-  calc_chunks(static_cast<long>(volcount),
-	      par,
-	      16,
-	      volseqs.data(),
-	      volchunks.data(),
-	      & totalchunks,
-	      & maxchunksize);
-
-  while ((volnext < volcount) && (volchunks[volnext] == 0))
+  while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
   {
-    volnext++;
+    search_work.volnext++;
   }
 }
 

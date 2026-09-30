@@ -24,10 +24,13 @@
 */
 
 #include "swipe.h"
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
+#include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
-constexpr std::size_t CHANNELS = 16;
+constexpr std::size_t CHANNELS = channels_7;
+static_assert(sizeof(__m128i) == vector_bytes, "an SSE vector");
 constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
@@ -36,14 +39,15 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 
 #ifdef SWIPE_SSSE3
 
-// only used by the SSSE3 version (the score profile is shuffled)
-#define MATRIXWIDTH 32
+// profline(j) strides, in 16-byte vectors: a row of the 32 x 32 score
+// matrix is two vectors, a row of the profile one vector per CDEPTH
+constexpr std::ptrdiff_t matrix_row_vectors = 2;
+constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
 
 inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
-			      BYTE * dseq_byte) -> void
+			      BYTE const * dseq_byte) -> void
 {
-#if MATRIXWIDTH > 16
   __m128i a;
   __m128i b;
   __m128i c;
@@ -73,11 +77,8 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   __m128i t12;
   __m128i t13;
   __m128i u0, u1, u2, u3, u4, u5,         u8, u9, u10, u11, u12, u13;
-#else
-  __m128i m0, m1, m2, m3, t0, t1, t2, t3, t4;
-#endif
 
-  auto * dseq = reinterpret_cast<__m128i*>(dseq_byte);
+  auto const * const dseq = reinterpret_cast<__m128i const *>(dseq_byte);
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions
@@ -87,79 +88,57 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   /* Note: pshufb only on modern Intel cpus (SSSE3), not AMD */
   /* SSSE3: Supplemental SSE3 */
 
-#if MATRIXWIDTH > 16
-  x = _mm_set_epi8(0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
-                   0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10);
+  x = v_dup_i8(0x10);
 
-  y = _mm_set1_epi8(byte_0x80);
+  y = v_dup_i8(byte_0x80);
 
-  a  = _mm_load_si128(dseq);
-  t0 = _mm_and_si128(a, x);
-  t1 = _mm_slli_epi16(t0, 3);
-  t2 = _mm_xor_si128(t1, y);
-  m0 = _mm_or_si128(a, t1);
-  m1 = _mm_or_si128(a, t2);
+  a  = v_load(dseq);
+  t0 = v_and(a, x);
+  t1 = v_shift_left_i16<3>(t0);
+  t2 = v_xor(t1, y);
+  m0 = v_or(a, t1);
+  m1 = v_or(a, t2);
 
-  b  = _mm_load_si128(dseq+1);
-  t3 = _mm_and_si128(b, x);
-  t4 = _mm_slli_epi16(t3, 3);
-  t5 = _mm_xor_si128(t4, y);
-  m2 = _mm_or_si128(b, t4);
-  m3 = _mm_or_si128(b, t5);
+  b  = v_load(dseq+1);
+  t3 = v_and(b, x);
+  t4 = v_shift_left_i16<3>(t3);
+  t5 = v_xor(t4, y);
+  m2 = v_or(b, t4);
+  m3 = v_or(b, t5);
 
-  c  = _mm_load_si128(dseq+2);
-  u0 = _mm_and_si128(c, x);
-  u1 = _mm_slli_epi16(u0, 3);
-  u2 = _mm_xor_si128(u1, y);
-  m4 = _mm_or_si128(c, u1);
-  m5 = _mm_or_si128(c, u2);
+  c  = v_load(dseq+2);
+  u0 = v_and(c, x);
+  u1 = v_shift_left_i16<3>(u0);
+  u2 = v_xor(u1, y);
+  m4 = v_or(c, u1);
+  m5 = v_or(c, u2);
 
-  d  = _mm_load_si128(dseq+3);
-  u3 = _mm_and_si128(d, x);
-  u4 = _mm_slli_epi16(u3, 3);
-  u5 = _mm_xor_si128(u4, y);
-  m6 = _mm_or_si128(d, u4);
-  m7 = _mm_or_si128(d, u5);
+  d  = v_load(dseq+3);
+  u3 = v_and(d, x);
+  u4 = v_shift_left_i16<3>(u3);
+  u5 = v_xor(u4, y);
+  m6 = v_or(d, u4);
+  m7 = v_or(d, u5);
 
 #define profline(j)					\
-  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j)));   \
-  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j))+1); \
-  t8  = _mm_shuffle_epi8(t6, m0);			\
-  t9  = _mm_shuffle_epi8(t7, m1);			\
-  t10 = _mm_shuffle_epi8(t6, m2);			\
-  t11 = _mm_shuffle_epi8(t7, m3);			\
-  u8  = _mm_shuffle_epi8(t6, m4);			\
-  u9  = _mm_shuffle_epi8(t7, m5);			\
-  u10 = _mm_shuffle_epi8(t6, m6);			\
-  u11 = _mm_shuffle_epi8(t7, m7);			\
-  t12 = _mm_or_si128(t8,  t9);				\
-  t13 = _mm_or_si128(t10, t11);				\
-  u12 = _mm_or_si128(u8,  u9);				\
-  u13 = _mm_or_si128(u10, u11);				\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j)),   t12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t13);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, u12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, u13)
-
-#else
-
-  m0 = _mm_load_si128(dseq);
-  m1 = _mm_load_si128(dseq+1);
-  m2 = _mm_load_si128(dseq+2);
-  m3 = _mm_load_si128(dseq+3);
-
-#define profline(j)					\
-  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j));	\
-  t1 = _mm_shuffle_epi8(t0, m0);			\
-  t2 = _mm_shuffle_epi8(t0, m1);			\
-  t3 = _mm_shuffle_epi8(t0, m2);			\
-  t4 = _mm_shuffle_epi8(t0, m3);			\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+0, t1);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t2);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, t3);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, t4)
-
-#endif
+  t6  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j)));   \
+  t7  = v_load(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j))+1); \
+  t8  = v_shuffle_8(t6, m0);			\
+  t9  = v_shuffle_8(t7, m1);			\
+  t10 = v_shuffle_8(t6, m2);			\
+  t11 = v_shuffle_8(t7, m3);			\
+  u8  = v_shuffle_8(t6, m4);			\
+  u9  = v_shuffle_8(t7, m5);			\
+  u10 = v_shuffle_8(t6, m6);			\
+  u11 = v_shuffle_8(t7, m7);			\
+  t12 = v_or(t8,  t9);				\
+  t13 = v_or(t10, t11);				\
+  u12 = v_or(u8,  u9);				\
+  u13 = v_or(u10, u11);				\
+  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j)),   t12);	\
+  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t13);	\
+  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\
+  v_store(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, u13)
 
   profline(0);
   profline(1);
@@ -177,8 +156,6 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   profline(13);
   profline(14);
   profline(15);
-
-#if MATRIXWIDTH > 16
   profline(16);
   profline(17);
   profline(18);
@@ -191,16 +168,10 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   profline(25);
   profline(26);
   profline(27);
-
-#if MATRIXWIDTH > 28
   profline(28);
   profline(29);
   profline(30);
   profline(31);
-#endif
-
-#endif
-
 }
 
 #else
@@ -237,494 +208,297 @@ inline auto dprofile_fill7(BYTE * dprofile,
       d[i] = static_cast<unsigned>(dseq[(j * CHANNELS) + i]) << 5;
     }
 
-    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
-    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[2] ));
-    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[4] ));
-    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[6] ));
-    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[8] ));
-    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[10]));
-    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[12]));
-    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + d[14]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[0] ));
+    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[2] ));
+    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[4] ));
+    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[6] ));
+    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[8] ));
+    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[10]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[12]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + d[14]));
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  *reinterpret_cast<__m128i*>(score_matrix + d[1] ));
-    xmm2  = _mm_unpacklo_epi8(xmm2,  *reinterpret_cast<__m128i*>(score_matrix + d[3] ));
-    xmm4  = _mm_unpacklo_epi8(xmm4,  *reinterpret_cast<__m128i*>(score_matrix + d[5] ));
-    xmm6  = _mm_unpacklo_epi8(xmm6,  *reinterpret_cast<__m128i*>(score_matrix + d[7] ));
-    xmm8  = _mm_unpacklo_epi8(xmm8,  *reinterpret_cast<__m128i*>(score_matrix + d[9] ));
-    xmm10 = _mm_unpacklo_epi8(xmm10, *reinterpret_cast<__m128i*>(score_matrix + d[11]));
-    xmm12 = _mm_unpacklo_epi8(xmm12, *reinterpret_cast<__m128i*>(score_matrix + d[13]));
-    xmm14 = _mm_unpacklo_epi8(xmm14, *reinterpret_cast<__m128i*>(score_matrix + d[15]));
+    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[1] )));
+    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[3] )));
+    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[5] )));
+    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[7] )));
+    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i*>(score_matrix + d[9] )));
+    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i*>(score_matrix + d[11])));
+    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i*>(score_matrix + d[13])));
+    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i*>(score_matrix + d[15])));
       
     xmm1 = xmm0;
-    xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-    xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
+    xmm0 = v_merge_lo_16(xmm0, xmm2);
+    xmm1 = v_merge_hi_16(xmm1, xmm2);
     xmm5 = xmm4;
-    xmm4 = _mm_unpacklo_epi16(xmm4, xmm6);
-    xmm5 = _mm_unpackhi_epi16(xmm5, xmm6);
+    xmm4 = v_merge_lo_16(xmm4, xmm6);
+    xmm5 = v_merge_hi_16(xmm5, xmm6);
     xmm9 = xmm8;
-    xmm8 = _mm_unpacklo_epi16(xmm8, xmm10);
-    xmm9 = _mm_unpackhi_epi16(xmm9, xmm10);
+    xmm8 = v_merge_lo_16(xmm8, xmm10);
+    xmm9 = v_merge_hi_16(xmm9, xmm10);
     xmm13 = xmm12;
-    xmm12 = _mm_unpacklo_epi16(xmm12, xmm14);
-    xmm13 = _mm_unpackhi_epi16(xmm13, xmm14);
+    xmm12 = v_merge_lo_16(xmm12, xmm14);
+    xmm13 = v_merge_hi_16(xmm13, xmm14);
 
     xmm2  = xmm0;
-    xmm0  = _mm_unpacklo_epi32(xmm0, xmm4);
-    xmm2  = _mm_unpackhi_epi32(xmm2, xmm4);
+    xmm0  = v_merge_lo_32(xmm0, xmm4);
+    xmm2  = v_merge_hi_32(xmm2, xmm4);
     xmm6  = xmm1;
-    xmm1  = _mm_unpacklo_epi32(xmm1, xmm5);
-    xmm6  = _mm_unpackhi_epi32(xmm6, xmm5);
+    xmm1  = v_merge_lo_32(xmm1, xmm5);
+    xmm6  = v_merge_hi_32(xmm6, xmm5);
     xmm10 = xmm8;
-    xmm8  = _mm_unpacklo_epi32(xmm8, xmm12);
-    xmm10 = _mm_unpackhi_epi32(xmm10, xmm12);
+    xmm8  = v_merge_lo_32(xmm8, xmm12);
+    xmm10 = v_merge_hi_32(xmm10, xmm12);
     xmm14 = xmm9;
-    xmm9  = _mm_unpacklo_epi32(xmm9, xmm13);
-    xmm14 = _mm_unpackhi_epi32(xmm14, xmm13);
+    xmm9  = v_merge_lo_32(xmm9, xmm13);
+    xmm14 = v_merge_hi_32(xmm14, xmm13);
       
     xmm3  = xmm0;
-    xmm0  = _mm_unpacklo_epi64(xmm0, xmm8);
-    xmm3  = _mm_unpackhi_epi64(xmm3, xmm8);
+    xmm0  = v_merge_lo_64(xmm0, xmm8);
+    xmm3  = v_merge_hi_64(xmm3, xmm8);
     xmm7  = xmm2;
-    xmm2  = _mm_unpacklo_epi64(xmm2, xmm10);
-    xmm7  = _mm_unpackhi_epi64(xmm7, xmm10);
+    xmm2  = v_merge_lo_64(xmm2, xmm10);
+    xmm7  = v_merge_hi_64(xmm7, xmm10);
     xmm11 = xmm1;
-    xmm1  = _mm_unpacklo_epi64(xmm1, xmm9);
-    xmm11 = _mm_unpackhi_epi64(xmm11, xmm9);
+    xmm1  = v_merge_lo_64(xmm1, xmm9);
+    xmm11 = v_merge_hi_64(xmm11, xmm9);
     xmm15 = xmm6;
-    xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
-    xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
+    xmm6  = v_merge_lo_64(xmm6, xmm14);
+    xmm15 = v_merge_hi_64(xmm15, xmm14);
 
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+  0), xmm0);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+ 64), xmm3);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+128), xmm2);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+192), xmm7);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+256), xmm1);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+320), xmm11);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+384), xmm6);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+448), xmm15);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+  0), xmm0);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+ 64), xmm3);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+128), xmm2);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+192), xmm7);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+256), xmm1);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+320), xmm11);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+384), xmm6);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+448), xmm15);
 
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[0 ]));
-    xmm1  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[1 ]));
-    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[2 ]));
-    xmm3  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[3 ]));
-    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[4 ]));
-    xmm5  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[5 ]));
-    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[6 ]));
-    xmm7  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[7 ]));
-    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[8 ]));
-    xmm9  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[9 ]));
-    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[10]));
-    xmm11 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[11]));
-    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[12]));
-    xmm13 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[13]));
-    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[14]));
-    xmm15 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[15]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[0 ]));
+    xmm1  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[1 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[2 ]));
+    xmm3  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[3 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[4 ]));
+    xmm5  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[5 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[6 ]));
+    xmm7  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[7 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[8 ]));
+    xmm9  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[9 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[10]));
+    xmm11 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[11]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[12]));
+    xmm13 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[13]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[14]));
+    xmm15 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 8 + d[15]));
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  xmm1);
-    xmm2  = _mm_unpacklo_epi8(xmm2,  xmm3);
-    xmm4  = _mm_unpacklo_epi8(xmm4,  xmm5);
-    xmm6  = _mm_unpacklo_epi8(xmm6,  xmm7);
-    xmm8  = _mm_unpacklo_epi8(xmm8,  xmm9);
-    xmm10 = _mm_unpacklo_epi8(xmm10, xmm11);
-    xmm12 = _mm_unpacklo_epi8(xmm12, xmm13);
-    xmm14 = _mm_unpacklo_epi8(xmm14, xmm15);
+    xmm0  = v_merge_lo_8(xmm0,  xmm1);
+    xmm2  = v_merge_lo_8(xmm2,  xmm3);
+    xmm4  = v_merge_lo_8(xmm4,  xmm5);
+    xmm6  = v_merge_lo_8(xmm6,  xmm7);
+    xmm8  = v_merge_lo_8(xmm8,  xmm9);
+    xmm10 = v_merge_lo_8(xmm10, xmm11);
+    xmm12 = v_merge_lo_8(xmm12, xmm13);
+    xmm14 = v_merge_lo_8(xmm14, xmm15);
       
     xmm1 = xmm0;
-    xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-    xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
+    xmm0 = v_merge_lo_16(xmm0, xmm2);
+    xmm1 = v_merge_hi_16(xmm1, xmm2);
     xmm5 = xmm4;
-    xmm4 = _mm_unpacklo_epi16(xmm4, xmm6);
-    xmm5 = _mm_unpackhi_epi16(xmm5, xmm6);
+    xmm4 = v_merge_lo_16(xmm4, xmm6);
+    xmm5 = v_merge_hi_16(xmm5, xmm6);
     xmm9 = xmm8;
-    xmm8 = _mm_unpacklo_epi16(xmm8, xmm10);
-    xmm9 = _mm_unpackhi_epi16(xmm9, xmm10);
+    xmm8 = v_merge_lo_16(xmm8, xmm10);
+    xmm9 = v_merge_hi_16(xmm9, xmm10);
     xmm13 = xmm12;
-    xmm12 = _mm_unpacklo_epi16(xmm12, xmm14);
-    xmm13 = _mm_unpackhi_epi16(xmm13, xmm14);
+    xmm12 = v_merge_lo_16(xmm12, xmm14);
+    xmm13 = v_merge_hi_16(xmm13, xmm14);
 
     xmm2  = xmm0;
-    xmm0  = _mm_unpacklo_epi32(xmm0, xmm4);
-    xmm2  = _mm_unpackhi_epi32(xmm2, xmm4);
+    xmm0  = v_merge_lo_32(xmm0, xmm4);
+    xmm2  = v_merge_hi_32(xmm2, xmm4);
     xmm6  = xmm1;
-    xmm1  = _mm_unpacklo_epi32(xmm1, xmm5);
-    xmm6  = _mm_unpackhi_epi32(xmm6, xmm5);
+    xmm1  = v_merge_lo_32(xmm1, xmm5);
+    xmm6  = v_merge_hi_32(xmm6, xmm5);
     xmm10 = xmm8;
-    xmm8  = _mm_unpacklo_epi32(xmm8, xmm12);
-    xmm10 = _mm_unpackhi_epi32(xmm10, xmm12);
+    xmm8  = v_merge_lo_32(xmm8, xmm12);
+    xmm10 = v_merge_hi_32(xmm10, xmm12);
     xmm14 = xmm9;
-    xmm9  = _mm_unpacklo_epi32(xmm9, xmm13);
-    xmm14 = _mm_unpackhi_epi32(xmm14, xmm13);
+    xmm9  = v_merge_lo_32(xmm9, xmm13);
+    xmm14 = v_merge_hi_32(xmm14, xmm13);
       
     xmm3  = xmm0;
-    xmm0  = _mm_unpacklo_epi64(xmm0, xmm8);
-    xmm3  = _mm_unpackhi_epi64(xmm3, xmm8);
+    xmm0  = v_merge_lo_64(xmm0, xmm8);
+    xmm3  = v_merge_hi_64(xmm3, xmm8);
     xmm7  = xmm2;
-    xmm2  = _mm_unpacklo_epi64(xmm2, xmm10);
-    xmm7  = _mm_unpackhi_epi64(xmm7, xmm10);
+    xmm2  = v_merge_lo_64(xmm2, xmm10);
+    xmm7  = v_merge_hi_64(xmm7, xmm10);
     xmm11 = xmm1;
-    xmm1  = _mm_unpacklo_epi64(xmm1, xmm9);
-    xmm11 = _mm_unpackhi_epi64(xmm11, xmm9);
+    xmm1  = v_merge_lo_64(xmm1, xmm9);
+    xmm11 = v_merge_hi_64(xmm11, xmm9);
     xmm15 = xmm6;
-    xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
-    xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
+    xmm6  = v_merge_lo_64(xmm6, xmm14);
+    xmm15 = v_merge_hi_64(xmm15, xmm14);
 
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+  0), xmm0);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+ 64), xmm3);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+128), xmm2);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+192), xmm7);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+256), xmm1);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+320), xmm11);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+384), xmm6);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+448), xmm15);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+  0), xmm0);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+ 64), xmm3);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+128), xmm2);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+192), xmm7);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+256), xmm1);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+320), xmm11);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+384), xmm6);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+512+448), xmm15);
 
 
-    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[0 ]));
-    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[2 ]));
-    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[4 ]));
-    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[6 ]));
-    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[8 ]));
-    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[10]));
-    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[12]));
-    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[14]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[0 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[2 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[4 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[6 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[8 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[10]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[12]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 16 + d[14]));
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[1 ]));
-    xmm2  = _mm_unpacklo_epi8(xmm2,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[3 ]));
-    xmm4  = _mm_unpacklo_epi8(xmm4,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[5 ]));
-    xmm6  = _mm_unpacklo_epi8(xmm6,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[7 ]));
-    xmm8  = _mm_unpacklo_epi8(xmm8,  *reinterpret_cast<__m128i*>(score_matrix + 16 + d[9 ]));
-    xmm10 = _mm_unpacklo_epi8(xmm10, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[11 ]));
-    xmm12 = _mm_unpacklo_epi8(xmm12, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[13 ]));
-    xmm14 = _mm_unpacklo_epi8(xmm14, *reinterpret_cast<__m128i*>(score_matrix + 16 + d[15 ]));
+    xmm0  = v_merge_lo_8(xmm0,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[1 ])));
+    xmm2  = v_merge_lo_8(xmm2,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[3 ])));
+    xmm4  = v_merge_lo_8(xmm4,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[5 ])));
+    xmm6  = v_merge_lo_8(xmm6,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[7 ])));
+    xmm8  = v_merge_lo_8(xmm8,  v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[9 ])));
+    xmm10 = v_merge_lo_8(xmm10, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[11 ])));
+    xmm12 = v_merge_lo_8(xmm12, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[13 ])));
+    xmm14 = v_merge_lo_8(xmm14, v_load(reinterpret_cast<__m128i*>(score_matrix + 16 + d[15 ])));
       
     xmm1 = xmm0;
-    xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-    xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
+    xmm0 = v_merge_lo_16(xmm0, xmm2);
+    xmm1 = v_merge_hi_16(xmm1, xmm2);
     xmm5 = xmm4;
-    xmm4 = _mm_unpacklo_epi16(xmm4, xmm6);
-    xmm5 = _mm_unpackhi_epi16(xmm5, xmm6);
+    xmm4 = v_merge_lo_16(xmm4, xmm6);
+    xmm5 = v_merge_hi_16(xmm5, xmm6);
     xmm9 = xmm8;
-    xmm8 = _mm_unpacklo_epi16(xmm8, xmm10);
-    xmm9 = _mm_unpackhi_epi16(xmm9, xmm10);
+    xmm8 = v_merge_lo_16(xmm8, xmm10);
+    xmm9 = v_merge_hi_16(xmm9, xmm10);
     xmm13 = xmm12;
-    xmm12 = _mm_unpacklo_epi16(xmm12, xmm14);
-    xmm13 = _mm_unpackhi_epi16(xmm13, xmm14);
+    xmm12 = v_merge_lo_16(xmm12, xmm14);
+    xmm13 = v_merge_hi_16(xmm13, xmm14);
 
     xmm2  = xmm0;
-    xmm0  = _mm_unpacklo_epi32(xmm0, xmm4);
-    xmm2  = _mm_unpackhi_epi32(xmm2, xmm4);
+    xmm0  = v_merge_lo_32(xmm0, xmm4);
+    xmm2  = v_merge_hi_32(xmm2, xmm4);
     xmm6  = xmm1;
-    xmm1  = _mm_unpacklo_epi32(xmm1, xmm5);
-    xmm6  = _mm_unpackhi_epi32(xmm6, xmm5);
+    xmm1  = v_merge_lo_32(xmm1, xmm5);
+    xmm6  = v_merge_hi_32(xmm6, xmm5);
     xmm10 = xmm8;
-    xmm8  = _mm_unpacklo_epi32(xmm8, xmm12);
-    xmm10 = _mm_unpackhi_epi32(xmm10, xmm12);
+    xmm8  = v_merge_lo_32(xmm8, xmm12);
+    xmm10 = v_merge_hi_32(xmm10, xmm12);
     xmm14 = xmm9;
-    xmm9  = _mm_unpacklo_epi32(xmm9, xmm13);
-    xmm14 = _mm_unpackhi_epi32(xmm14, xmm13);
+    xmm9  = v_merge_lo_32(xmm9, xmm13);
+    xmm14 = v_merge_hi_32(xmm14, xmm13);
       
     xmm3  = xmm0;
-    xmm0  = _mm_unpacklo_epi64(xmm0, xmm8);
-    xmm3  = _mm_unpackhi_epi64(xmm3, xmm8);
+    xmm0  = v_merge_lo_64(xmm0, xmm8);
+    xmm3  = v_merge_hi_64(xmm3, xmm8);
     xmm7  = xmm2;
-    xmm2  = _mm_unpacklo_epi64(xmm2, xmm10);
-    xmm7  = _mm_unpackhi_epi64(xmm7, xmm10);
+    xmm2  = v_merge_lo_64(xmm2, xmm10);
+    xmm7  = v_merge_hi_64(xmm7, xmm10);
     xmm11 = xmm1;
-    xmm1  = _mm_unpacklo_epi64(xmm1, xmm9);
-    xmm11 = _mm_unpackhi_epi64(xmm11, xmm9);
+    xmm1  = v_merge_lo_64(xmm1, xmm9);
+    xmm11 = v_merge_hi_64(xmm11, xmm9);
     xmm15 = xmm6;
-    xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
-    xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
+    xmm6  = v_merge_lo_64(xmm6, xmm14);
+    xmm15 = v_merge_hi_64(xmm15, xmm14);
 
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+  0), xmm0);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+ 64), xmm3);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+128), xmm2);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+192), xmm7);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+256), xmm1);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+320), xmm11);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+384), xmm6);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+448), xmm15);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+  0), xmm0);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+ 64), xmm3);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+128), xmm2);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+192), xmm7);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+256), xmm1);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+320), xmm11);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+384), xmm6);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1024+448), xmm15);
 
 
     // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
 
-    xmm0  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[0 ]));
-    xmm1  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[1 ]));
-    xmm2  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[2 ]));
-    xmm3  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[3 ]));
-    xmm4  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[4 ]));
-    xmm5  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[5 ]));
-    xmm6  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[6 ]));
-    xmm7  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[7 ]));
-    xmm8  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[8 ]));
-    xmm9  = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[9 ]));
-    xmm10 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[10]));
-    xmm11 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[11]));
-    xmm12 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[12]));
-    xmm13 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[13]));
-    xmm14 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[14]));
-    xmm15 = _mm_loadl_epi64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[15]));
+    xmm0  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[0 ]));
+    xmm1  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[1 ]));
+    xmm2  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[2 ]));
+    xmm3  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[3 ]));
+    xmm4  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[4 ]));
+    xmm5  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[5 ]));
+    xmm6  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[6 ]));
+    xmm7  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[7 ]));
+    xmm8  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[8 ]));
+    xmm9  = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[9 ]));
+    xmm10 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[10]));
+    xmm11 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[11]));
+    xmm12 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[12]));
+    xmm13 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[13]));
+    xmm14 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[14]));
+    xmm15 = v_load_64(reinterpret_cast<__m128i*>(score_matrix + 24 + d[15]));
 
-    xmm0  = _mm_unpacklo_epi8(xmm0,  xmm1);
-    xmm2  = _mm_unpacklo_epi8(xmm2,  xmm3);
-    xmm4  = _mm_unpacklo_epi8(xmm4,  xmm5);
-    xmm6  = _mm_unpacklo_epi8(xmm6,  xmm7);
-    xmm8  = _mm_unpacklo_epi8(xmm8,  xmm9);
-    xmm10 = _mm_unpacklo_epi8(xmm10, xmm11);
-    xmm12 = _mm_unpacklo_epi8(xmm12, xmm13);
-    xmm14 = _mm_unpacklo_epi8(xmm14, xmm15);
+    xmm0  = v_merge_lo_8(xmm0,  xmm1);
+    xmm2  = v_merge_lo_8(xmm2,  xmm3);
+    xmm4  = v_merge_lo_8(xmm4,  xmm5);
+    xmm6  = v_merge_lo_8(xmm6,  xmm7);
+    xmm8  = v_merge_lo_8(xmm8,  xmm9);
+    xmm10 = v_merge_lo_8(xmm10, xmm11);
+    xmm12 = v_merge_lo_8(xmm12, xmm13);
+    xmm14 = v_merge_lo_8(xmm14, xmm15);
       
     xmm1 = xmm0;
-    xmm0 = _mm_unpacklo_epi16(xmm0, xmm2);
-    xmm1 = _mm_unpackhi_epi16(xmm1, xmm2);
+    xmm0 = v_merge_lo_16(xmm0, xmm2);
+    xmm1 = v_merge_hi_16(xmm1, xmm2);
     xmm5 = xmm4;
-    xmm4 = _mm_unpacklo_epi16(xmm4, xmm6);
-    xmm5 = _mm_unpackhi_epi16(xmm5, xmm6);
+    xmm4 = v_merge_lo_16(xmm4, xmm6);
+    xmm5 = v_merge_hi_16(xmm5, xmm6);
     xmm9 = xmm8;
-    xmm8 = _mm_unpacklo_epi16(xmm8, xmm10);
-    xmm9 = _mm_unpackhi_epi16(xmm9, xmm10);
+    xmm8 = v_merge_lo_16(xmm8, xmm10);
+    xmm9 = v_merge_hi_16(xmm9, xmm10);
     xmm13 = xmm12;
-    xmm12 = _mm_unpacklo_epi16(xmm12, xmm14);
-    xmm13 = _mm_unpackhi_epi16(xmm13, xmm14);
+    xmm12 = v_merge_lo_16(xmm12, xmm14);
+    xmm13 = v_merge_hi_16(xmm13, xmm14);
 
     xmm2  = xmm0;
-    xmm0  = _mm_unpacklo_epi32(xmm0, xmm4);
-    xmm2  = _mm_unpackhi_epi32(xmm2, xmm4);
+    xmm0  = v_merge_lo_32(xmm0, xmm4);
+    xmm2  = v_merge_hi_32(xmm2, xmm4);
     xmm6  = xmm1;
-    xmm1  = _mm_unpacklo_epi32(xmm1, xmm5);
-    xmm6  = _mm_unpackhi_epi32(xmm6, xmm5);
+    xmm1  = v_merge_lo_32(xmm1, xmm5);
+    xmm6  = v_merge_hi_32(xmm6, xmm5);
     xmm10 = xmm8;
-    xmm8  = _mm_unpacklo_epi32(xmm8, xmm12);
-    xmm10 = _mm_unpackhi_epi32(xmm10, xmm12);
+    xmm8  = v_merge_lo_32(xmm8, xmm12);
+    xmm10 = v_merge_hi_32(xmm10, xmm12);
     xmm14 = xmm9;
-    xmm9  = _mm_unpacklo_epi32(xmm9, xmm13);
-    xmm14 = _mm_unpackhi_epi32(xmm14, xmm13);
+    xmm9  = v_merge_lo_32(xmm9, xmm13);
+    xmm14 = v_merge_hi_32(xmm14, xmm13);
       
     xmm3  = xmm0;
-    xmm0  = _mm_unpacklo_epi64(xmm0, xmm8);
-    xmm3  = _mm_unpackhi_epi64(xmm3, xmm8);
+    xmm0  = v_merge_lo_64(xmm0, xmm8);
+    xmm3  = v_merge_hi_64(xmm3, xmm8);
     xmm7  = xmm2;
-    xmm2  = _mm_unpacklo_epi64(xmm2, xmm10);
-    xmm7  = _mm_unpackhi_epi64(xmm7, xmm10);
+    xmm2  = v_merge_lo_64(xmm2, xmm10);
+    xmm7  = v_merge_hi_64(xmm7, xmm10);
     xmm11 = xmm1;
-    xmm1  = _mm_unpacklo_epi64(xmm1, xmm9);
-    xmm11 = _mm_unpackhi_epi64(xmm11, xmm9);
+    xmm1  = v_merge_lo_64(xmm1, xmm9);
+    xmm11 = v_merge_hi_64(xmm11, xmm9);
     xmm15 = xmm6;
-    xmm6  = _mm_unpacklo_epi64(xmm6, xmm14);
-    xmm15 = _mm_unpackhi_epi64(xmm15, xmm14);
+    xmm6  = v_merge_lo_64(xmm6, xmm14);
+    xmm15 = v_merge_hi_64(xmm15, xmm14);
 
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+  0), xmm0);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+ 64), xmm3);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+128), xmm2);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+192), xmm7);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+256), xmm1);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+320), xmm11);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+384), xmm6);
-    _mm_store_si128(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+448), xmm15);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+  0), xmm0);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+ 64), xmm3);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+128), xmm2);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+192), xmm7);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+256), xmm1);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+320), xmm11);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+384), xmm6);
+    v_store(reinterpret_cast<__m128i*>(dprofile+(16*j)+1536+448), xmm15);
   }
 
 }
 
 #endif
-
-// Register usage
-// rdi:   hep
-// rsi:   qp
-// rdx:   Qm
-// rcx:   Rm
-// r8:    ql
-// r9:    Sm/Mm
-
-// rax:   x, temp
-// r10:   ql2
-// r11:   qi
-// xmm0:  H0
-// xmm1:  H1
-// xmm2:  H2
-// xmm3:  H3
-// xmm4:  F0
-// xmm5:  F1
-// xmm6:  F2
-// xmm7:  F3
-// xmm8:  N0
-// xmm9:  N1
-// xmm10: N2
-// xmm11: N3
-// xmm12: E
-// xmm13: S
-// xmm14: Q 
-// xmm15: R
-
-
-#define INITIALIZE					\
-  "        movq    %0, %%rax        \n"			\
-  "        movdqa  (%%rax), %%xmm13 \n"			\
-  "        movdqa  (%3), %%xmm14    \n"			\
-  "        movdqa  (%4), %%xmm15    \n"			\
-  "        movq    %6, %%rax        \n"			\
-  "        movdqa  (%%rax), %%xmm0  \n"			\
-  "        movdqa  %%xmm0, %%xmm1   \n"			\
-  "        movdqa  %%xmm0, %%xmm2   \n"			\
-  "        movdqa  %%xmm0, %%xmm3   \n"			\
-  "        movdqa  %%xmm0, %%xmm4   \n"			\
-  "        movdqa  %%xmm0, %%xmm5   \n"			\
-  "        movdqa  %%xmm0, %%xmm6   \n"			\
-  "        movdqa  %%xmm0, %%xmm7   \n"			\
-  "        movq    %5, %%r12        \n"			\
-  "        shlq    $3, %%r12        \n"			\
-  "        movq    %%r12, %%r10     \n"			\
-  "        andq    $-16, %%r10      \n"			\
-  "        xorq    %%r11, %%r11     \n"
-
-#define ONESTEP(H, N, F, V)                             \
-  "        paddsb  " V "(%%rax), " H "\n"               \
-  "        pmaxub  " F ", " H "       \n"               \
-  "        pmaxub  %%xmm12, " H "     \n"               \
-  "        pmaxub  " H ", %%xmm13     \n"               \
-  "        psubsb  %%xmm15, " F "     \n"               \
-  "        psubsb  %%xmm15, %%xmm12   \n"               \
-  "        movdqa  " H ", " N "       \n"               \
-  "        psubsb  %%xmm14, " H "     \n"               \
-  "        pmaxub  " H ", %%xmm12     \n"               \
-  "        pmaxub  " H ", " F "       \n"
-
-inline auto donormal7(__m128i const * Sm,
-		      __m128i const * hep,
-		      __m128i * const * qp,
-		      __m128i const * Qm,
-		      __m128i const * Rm,
-		      long ql,
-		      __m128i const * Zm) -> void
-{
-  
-  __asm__
-    __volatile__
-    (
-     "## donormal7                             \n"
-     INITIALIZE
-     "        jmp     2f                      \n"
-     
-     "1:      movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa  0(%1,%%r11,4), %%xmm8   \n" // load N0
-     "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "        movq    8(%2,%%r11,1), %%rax    \n" // load x from qp[qi+1]
-     "        movdqa  32(%1,%%r11,4), %%xmm0  \n" // load H0
-     "        movdqa  48(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 48(%1,%%r11,4) \n" // save E
-     "        addq    $16, %%r11              \n" // qi++
-     "2:      cmpq    %%r11, %%r10            \n" // qi = ql4 ?
-     "        jne     1b                      \n" // loop
-     
-     "        cmpq    %%r11, %%r12            \n" 
-     "        je      3f                      \n"
-     "        movq    0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa  16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "3:      movq    %0, %%rax               \n" // save S
-     "        movdqa  %%xmm13, (%%rax)          "
-     :
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "r12",
-       "cc"
-     );
-}
-
-inline auto domasked7(__m128i const * Sm,
-		      __m128i const * hep,
-		      __m128i * const * qp,
-		      __m128i const * Qm, 
-		      __m128i const * Rm, 
-		      long ql,      
-		      __m128i const * Zm,
-		      __m128i const * Mm) -> void
-{
-  
-  __asm__
-    __volatile__
-    (
-     "## domasked7                             \n"
-     INITIALIZE
-     "        paddsb  (%7), %%xmm13            \n" // mask
-     "        jmp     2f                       \n"
-     
-     "1:      movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  0(%1,%%r11,4), %%xmm8    \n" // load N0
-     "        paddsb  (%7), %%xmm8             \n" // mask
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsb  (%7), %%xmm12            \n" // mask
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "        movq    8(%2,%%r11,1), %%rax     \n" // load x from qp[qi+1]
-     "        movdqa  32(%1,%%r11,4), %%xmm0   \n" // load H0
-     "        paddsb  (%7), %%xmm0             \n" // mask
-     "        movdqa  48(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsb  (%7), %%xmm12            \n" // mask
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 48(%1,%%r11,4)  \n" // save E
-     "        addq    $16, %%r11               \n" // qi++
-     "2:      cmpq    %%r11, %%r10             \n" // qi = ql4 ?
-     "        jne     1b                       \n" // loop
-     
-     "        cmpq    %%r11, %%r12             \n" 
-     "        je      3f                       \n"
-     "        movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsb  (%7), %%xmm12            \n" // mask
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "3:      movq    %0, %%rax                \n" // save S
-     "        movdqa  %%xmm13, (%%rax)           "
-     : 
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm),
-       "r"(Mm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "r12",
-       "cc"
-     );
-}
 
 void
 #ifdef SWIPE_SSSE3
@@ -757,7 +531,7 @@ search7
   std::array<BYTE const *, CHANNELS> d_end;
   
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
+  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
   
   auto * dseq = dseqalloc.data();
   BYTE const zero = 0;
@@ -766,13 +540,12 @@ search7
   long next_id = 0;
   unsigned done = 0;
   
-  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * 32);
+  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
 
-  Z  = _mm_set1_epi8(byte_0x80);
-  T0 = _mm_set_epi8(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, byte_0x80);
-  Q  = _mm_set1_epi8(static_cast<char>(gap_open_penalty));
-  R  = _mm_set1_epi8(static_cast<char>(gap_extend_penalty));
+  Z  = v_dup_i8(byte_0x80);
+  T0 = v_first_lane_i8(byte_0x80);
+  Q  = v_dup_i8(static_cast<char>(gap_open_penalty));
+  R  = v_dup_i8(static_cast<char>(gap_extend_penalty));
 
   S = Z;
 
@@ -816,7 +589,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 
-      donormal7(&S, hep, qp, &Q, &R, qlen, &Z);
+      align_cells<Ops_7>(S, hep, qp, Q, R, qlen, Z, No_mask{});
     }
     else
     {
@@ -825,7 +598,7 @@ search7
 
       easy = 1;
 
-      M = _mm_setzero_si128();
+      M = v_zero();
       T = T0;
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
@@ -854,7 +627,7 @@ search7
 	  // sequence in channel c ended
 	  // change of sequence
 
-	  M = _mm_xor_si128(M, T);
+	  M = v_xor(M, T);
 
 	  long const cand_id = seq_id[c];
 		  
@@ -878,7 +651,7 @@ search7
 	    long const seqno = seqnosf >> 3;
 
 	    View<char> const sequence =
-	      db_getsequence(dbt, seqno, strand, frame, &ntlen, c);
+	      db_getsequence(dbt, seqno, {strand, frame}, &ntlen, c);
 		      
 	    // printf("Seqno: %ld Address: %p\n", seqno, address);
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
@@ -917,7 +690,7 @@ search7
 
 	}
 
-	T = _mm_slli_si128(T, 1);
+	T = v_shift_bytes_left<1>(T);
       }
 
       if (done == sequences)
@@ -931,7 +704,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 	  
-      domasked7(&S, hep, qp, &Q, &R, qlen, &Z, &M);
+      align_cells<Ops_7>(S, hep, qp, Q, R, qlen, Z, Mask{M});
     }
   }
 }

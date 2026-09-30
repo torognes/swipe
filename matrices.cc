@@ -34,6 +34,7 @@
 #include <cstring>  // std::memcpy
 #include <iterator>  // std::next
 #include <limits>
+#include <string>  // std::string, std::to_string
 
 // the built-in score matrices, in the NCBI format read by
 // score_matrix_read_string()
@@ -330,37 +331,18 @@ e  -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 
 }  // anonymous namespace
 
-long SCORELIMIT_7;
-long SCORELIMIT_16;
-
-// the score matrices, 32 x 32 (static storage, 16-byte aligned for the
-// SIMD kernels), and the pointers the other files read them through
-constexpr std::size_t score_matrix_size = std::size_t{32} * 32;
-
-namespace {
-
-alignas(16) std::array<char, score_matrix_size> score_matrix_7_storage {{}};
-alignas(16) std::array<char, score_matrix_size> score_matrix_7t_storage {{}};
-alignas(16) std::array<short, score_matrix_size> score_matrix_16_storage {{}};
-alignas(16) std::array<long, score_matrix_size> score_matrix_63_storage {{}};
-
-}  // anonymous namespace
-
-extern char * const score_matrix_7 = score_matrix_7_storage.data();
-extern char * const score_matrix_7t = score_matrix_7t_storage.data();
-extern short * const score_matrix_16 = score_matrix_16_storage.data();
-extern long * const score_matrix_63 = score_matrix_63_storage.data();
+ScoreMatrices score_matrices;
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
 // the next score of a matrix line, the cursor moved past it: a number,
 // then white space or the end of the line (KI-43), or fatal
-auto next_score(char * & cursor) -> long
+auto next_score(char const * & cursor) -> long
 {
   errno = 0;
   char * end = nullptr;
-  auto const score = std::strtol(cursor, & end, 10);
+  auto const score = std::strtol(cursor, & end, decimal_base);
   if ((end == cursor) or (errno == ERANGE) or
       ((*end != '\0') and (std::isspace(static_cast<unsigned char>(*end)) == 0)))
   {
@@ -370,43 +352,36 @@ auto next_score(char * & cursor) -> long
   return score;
 }
 
-auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
+// the column symbols of a matrix, as the header lines list them
+struct MatrixColumns
 {
-  std::array<char, LINE_MAX> line {{}};
-  std::array<char, LINE_MAX> order {{}};
-
-  int a = 0;
-  int b = 0;
-  int i = 0;
+  std::array<char, line_buffer_size> order {{}};
   int symbols = 0;
-  long sc = 0; 
-  char const * map = nullptr;
-  char * p = nullptr;
-  char * q = nullptr;
-  char c = 0;
+};
 
-  auto * fp = fopen(matrix, "r");
-
-  if (fp == nullptr)
-  {
-    fatal("Cannot open score matrix file.");
-  }
-
+auto symbol_map(Parameters const & parameters) -> std::array<char, byte_values> const &
+{
   if (parameters.symtype == SymbolType::sound)
   {
-    map = map_sound.data();
+    return map_sound;
   }
-  else
-  {
-    map = map_ncbi_aa.data();
-  }
+  return map_ncbi_aa;
+}
 
-  symbols = 0;
+// what parse_matrix_line() found
+enum struct MatrixLine
+{
+  accepted,
+  second_header  // a header line listing symbols after the first one (KI-44)
+};
 
-  while(fgets(line.data(), LINE_MAX, fp) != nullptr)
-    {
-      p = line.data();
-      c = *p;
+// one line of a score matrix (NUL-terminated), whether it comes from a
+// file or from a built-in matrix string
+auto parse_matrix_line(char const * line, std::array<char, byte_values> const & map,
+                       MatrixColumns & columns) -> MatrixLine
+{
+      char const * p = line;
+      char c = *p;
       p = std::next(p);
       
       switch(c)
@@ -425,7 +400,9 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	  
 	  /* read order of symbols, copy non-whitespace chars */
 	  
-	  q = order.data();
+	  {
+	  int const known_symbols = columns.symbols;
+	  char * q = columns.order.data();
 
 	  while ((c = *p) != 0)
 	  {
@@ -434,8 +411,13 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 	      {
 		*q = map[static_cast<unsigned char>(c)];
 		q = std::next(q);
-		symbols++;
+		columns.symbols++;
 	      }
+	  }
+	  if ((known_symbols > 0) and (columns.symbols > known_symbols))
+	  {
+	    return MatrixLine::second_header;
+	  }
 	  }
 
 	  break;
@@ -444,21 +426,49 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
 	  /* ordinary lines */
 	  
-	  a = map[static_cast<unsigned char>(c)];
-	  for (i=0; i<symbols; i++)
+	  int const a = map[static_cast<unsigned char>(c)];
+	  for (int i=0; i<columns.symbols; i++)
 	    {
-	      sc = next_score(p);
+	      long const sc = next_score(p);
 
-	      b = order[static_cast<std::size_t>(i)];
+	      int const b = columns.order[static_cast<std::size_t>(i)];
 
-	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
+	      auto const width = static_cast<int>(score_matrix_width);
+	      if ((a >= 0) && (b >= 0) && (a < width) && (b < width))
 	      {
-		score_matrix_63[(a << 5) + b] = sc;
+		score_matrices.score_63[score_matrix_cell(static_cast<std::size_t>(a), static_cast<std::size_t>(b))] = sc;
 	      }
 
 	    }
 	  break;
 	}
+  return MatrixLine::accepted;
+}
+
+auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
+{
+  std::array<char, line_buffer_size> line {{}};
+  MatrixColumns columns;
+
+  auto * fp = fopen(matrix, "r");
+
+  if (fp == nullptr)
+  {
+    fatal("Cannot open score matrix file.");
+  }
+
+  auto const & map = symbol_map(parameters);
+
+  long line_number = 0;
+  while(fgets(line.data(), static_cast<int>(line.size()), fp) != nullptr)
+    {
+      line_number++;
+      if (parse_matrix_line(line.data(), map, columns) == MatrixLine::second_header)
+      {
+        std::string const message = "Unexpected header line on line " +
+          std::to_string(line_number) + " of score matrix file " + matrix + ".";
+        fatal(message);
+      }
     }
     
   static_cast<void>(fclose(fp));  // an input file
@@ -466,18 +476,8 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
 auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
-  std::array<char, LINE_MAX> line {{}};
-  std::array<char, LINE_MAX> order {{}};
-
-  int a = 0;
-  int b = 0;
-  int i = 0;
-  int symbols = 0;
-  long sc = 0; 
-  char const * map = nullptr;
-  char * p = nullptr;
-  char * q = nullptr;
-  char c = 0;
+  std::array<char, line_buffer_size> line {{}};
+  MatrixColumns columns;
 
   char const * s = matrix;
 
@@ -486,16 +486,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
     fatal("Cannot read score matrix string.");
   }
 
-  if (parameters.symtype == SymbolType::sound)
-  {
-    map = map_sound.data();
-  }
-  else
-  {
-    map = map_ncbi_aa.data();
-  }
-
-  symbols = 0;
+  auto const & map = symbol_map(parameters);
 
   while((*s) != 0)
     {
@@ -510,63 +501,14 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	linelen = strlen(s);
       }
 
-      assert(linelen < LINE_MAX);
+      assert(linelen < line.size());
       std::memcpy(line.data(), s, linelen);
       line[linelen] = 0;
 
-      p = line.data();
-      c = *p;
-      p = std::next(p);
-      
-      switch(c)
-	{
-	  
-	case '\n':
-	case '#':
-	  
-	  /* ignore blank lines and comments starting with # */
-	  
-	  break;
-	
-	case '\t':
-	case ' ':
-	  
-	  /* read order of symbols, copy non-whitespace chars */
-	  
-	  q = order.data();
-
-	  while ((c = *p) != 0)
-	  {
-	    p = std::next(p);
-	    if (strchr(" \t\n", c) == nullptr)
-	      {
-		*q = map[static_cast<unsigned char>(c)];
-		q = std::next(q);
-		symbols++;
-	      }
-	  }
-
-	  break;
-	  
-	default:
-
-	  /* ordinary lines */
-	  
-	  a = map[static_cast<unsigned char>(c)];
-	  for (i=0; i<symbols; i++)
-	    {
-	      sc = next_score(p);
-
-	      b = order[static_cast<std::size_t>(i)];
-
-	      if ((a >= 0) && (b >= 0) && (a < 32) && (b < 32))
-	      {
-		score_matrix_63[(a << 5) + b] = sc;
-	      }
-
-	    }
-	  break;
-	}
+      // the built-in matrices have a single header line
+      MatrixLine const found = parse_matrix_line(line.data(), map, columns);
+      assert(found == MatrixLine::accepted);
+      static_cast<void>(found);  // read by assert() only
 
 	if (nextline != nullptr)
 	{
@@ -582,21 +524,16 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
 auto score_matrix_read(Parameters const & parameters) -> void
 {
-  int a = 0;
-  int b = 0;
-  long sc = 0;
-  long lo = 0;
-  long hi = 0; 
-  
-  score_matrix_63_storage.fill(-1);
+  score_matrices.score_63.fill(-1);
   
   if (parameters.symtype == SymbolType::blastn)
   {
-    for (a = 1; a < 16; a++)
+    // the 4-bit nucleotide codes 1 to 15 (A, C, G, T and the ambiguity codes)
+    for (std::size_t a = 1; a < nucleotide_codes; a++)
     {
-      for (b = 1; b < 16; b++)
+      for (std::size_t b = 1; b < nucleotide_codes; b++)
       {
-	score_matrix_63[(a << 5) + b] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
+	score_matrices.score_63[score_matrix_cell(a, b)] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
       }
     }
   }
@@ -641,21 +578,30 @@ auto score_matrix_read(Parameters const & parameters) -> void
     score_matrix_read_file(parameters, parameters.matrixname);
   }
 
-  hi = -100;
-  lo = 100;
+  // the highest and lowest scores start from -100 and 100 (so hi is at
+  // least -100 and lo at most 100)
+  constexpr long score_bounds_start = 100;
+  long hi = -score_bounds_start;
+  long lo = score_bounds_start;
 
-  for (a = 0; a < 32; a++)
+  for (std::size_t a = 0; a < score_matrix_width; a++)
   {
-    for(b=0;b<32;b++)
+    for (std::size_t b = 0; b < score_matrix_width; b++)
       {
-	sc = score_matrix_63[(a<<5) + b];
+	long const sc = score_matrices.score_63[score_matrix_cell(a, b)];
 	lo = std::min(sc, lo);
 	hi = std::max(sc, hi);
       }
   }
 
-  SCORELIMIT_7  = 128 - hi;
-  SCORELIMIT_16 = 65536 - hi;
+  // the 7-bit and 16-bit search stages count 2^7 and 2^16 score values
+  // (the 16-bit stage from a bias of -32768): a score from the range
+  // minus the highest score on may have saturated, and goes to the next
+  // stage
+  constexpr long score_range_7 = 128;
+  constexpr long score_range_16 = 65536;
+  score_matrices.limit_7  = score_range_7 - hi;
+  score_matrices.limit_16 = score_range_16 - hi;
 
   // the 16-bit engine uses signed 16-bit scores and gap penalties:
   // when a score or a gap penalty does not fit (KI-13), it is not used
@@ -665,14 +611,14 @@ auto score_matrix_read(Parameters const & parameters) -> void
   long const min_16 = std::numeric_limits<short>::min();
   if ((hi > max_16) or (lo < min_16) or (parameters.gapopenextend > max_16))
   {
-    SCORELIMIT_16 = 0;
+    score_matrices.limit_16 = 0;
   }
 
-  for (a = 0; a < 32; a++)
+  for (std::size_t a = 0; a < score_matrix_width; a++)
   {
-    for(b=0;b<32;b++)
+    for (std::size_t b = 0; b < score_matrix_width; b++)
     {
-      sc = score_matrix_63[(a<<5) + b];
+      long const sc = score_matrices.score_63[score_matrix_cell(a, b)];
       
       // the 7-bit engine uses signed bytes: scores are clamped to
       // [-128, 127] (KI-12). This is exact: 7-bit scores are in [0,
@@ -681,9 +627,9 @@ auto score_matrix_read(Parameters const & parameters) -> void
       // (SCORELIMIT_7 <= 0)
       long const sc_7 = std::max<long>(std::numeric_limits<signed char>::min(),
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
-      score_matrix_7 [(a<<5) + b] = static_cast<char>(sc_7);
-      score_matrix_7t[(b<<5) + a] = static_cast<char>(sc_7);
-      score_matrix_16[(a<<5) + b] = static_cast<short>(sc);
+      score_matrices.score_7.data() [score_matrix_cell(a, b)] = static_cast<char>(sc_7);
+      score_matrices.score_7t[score_matrix_cell(b, a)] = static_cast<char>(sc_7);
+      score_matrices.score_16[score_matrix_cell(a, b)] = static_cast<short>(sc);
     }
   }
 }

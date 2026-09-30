@@ -35,37 +35,16 @@
 
 // the version number is read from the file VERSION by the Makefile
 #ifndef SWIPE_VERSION
-#ifdef __CPPCHECK__
-// static analysis with cppcheck, run without the Makefile's flags
-#define SWIPE_VERSION "0.0.0"
-#else
 #error "SWIPE_VERSION is not defined: build swipe with make"
-#endif
 #endif
 
 extern char const * const swipe_name_and_version = "SWIPE " SWIPE_VERSION;
 
 /* Other variables */
 
-long queryno;
-
-long cpu_feature_ssse3;
-long cpu_feature_sse41;
-
-long compute7;
-
-long totalhits;
+SearchRun run;
 
 FILE * out = stdout;  // default output: stdout (--out FILE)
-
-struct time_info ti;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-long cpu_feature_sse2;
-
-}  // anonymous namespace
 
 [[noreturn]] auto fatal(char const * message) noexcept -> void
 {
@@ -83,7 +62,7 @@ long cpu_feature_sse2;
 
 auto xmalloc(size_t size) -> void *
 {
-  size_t const alignment = 16;
+  size_t const alignment = vector_bytes;  // the SIMD buffers are Buffers
   void * t = nullptr;
   if (posix_memalign(&t, alignment, size) != 0)
   {
@@ -119,12 +98,15 @@ auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegister
   return registers;
 }
 
-auto cpu_features() -> void
+auto detect_cpu_features() -> CpuFeatures
 {
+  // the feature bits of cpuid leaf 1
+  constexpr unsigned int edx_sse2 = 26;
+  constexpr unsigned int ecx_ssse3 = 9;
   auto const registers = cpuid(1, 0);
-  cpu_feature_sse2  = (registers.edx >> 26) & 1;
-  cpu_feature_ssse3 = (registers.ecx >>  9) & 1;
-  cpu_feature_sse41 = (registers.ecx >> 19) & 1;
+  bool const sse2 = ((registers.edx >> edx_sse2) & 1U) != 0;
+  bool const ssse3 = ((registers.ecx >> ecx_ssse3) & 1U) != 0;
+  return {sse2, ssse3};
 }
 
 auto clock_start(struct time_info * tip) -> void
@@ -206,7 +188,7 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
     fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
     if (tip->elapsed > 0.0)
     {
-      fprintf(out, "Speed:             %.3f GCUPS\n", tip->speed / 1e9);
+      fprintf(out, "Speed:             %.3f GCUPS\n", gcups(tip->speed));
     }
     else
     {
@@ -223,7 +205,7 @@ auto work(Parameters const & parameters) -> void
   args_show(parameters);
   hits_init(parameters);
 
-  compute7 = 0;
+  run.compute7 = 0;
 
   //  totalhits = 0;
 
@@ -235,7 +217,7 @@ auto work(Parameters const & parameters) -> void
     static_cast<void>(fflush(out));  // a write error is reported at the end (main())
   }
 
-  clock_start(&ti);
+  clock_start(&run.ti);
   
   run_threads(parameters);
  
@@ -244,7 +226,7 @@ auto work(Parameters const & parameters) -> void
     fprint(out, "...............................................done\n\n");
   }
  
-  clock_stop(parameters, &ti);
+  clock_stop(parameters, &run.ti);
 
   //  if (view == 0)
   //    clock_start(&ti);
@@ -260,12 +242,13 @@ auto work(Parameters const & parameters) -> void
 
 }  // anonymous namespace
 
+// detected before main() (dynamic initialization: cpuid has no dependency)
+extern CpuFeatures const cpu_features = detect_cpu_features();
+
 auto main(int argc, char**argv) -> int
 {
 
-  cpu_features();
-
-  if (cpu_feature_sse2 == 0)
+  if (not cpu_features.sse2)
   {
     fatal("This program requires a processor with SSE2.");
   }
@@ -281,7 +264,7 @@ auto main(int argc, char**argv) -> int
     long const seqcount = db_getseqcount();
     for (long i = 0; i < seqcount; i++)
     {
-      db_show_fasta(t, i, 0, 0, parameters.dump - 1);
+      db_show_fasta(t, i, {0, 0}, parameters.dump - 1);
     }
     db_thread_destruct(t);
   }
@@ -289,7 +272,7 @@ auto main(int argc, char**argv) -> int
   {
     score_matrix_init(parameters);
 
-    queryno = 0;
+    run.queryno = 0;
     
     query_init(parameters.queryname, parameters.symtype, parameters.querystrands);
     
@@ -302,7 +285,7 @@ auto main(int argc, char**argv) -> int
       
       work(parameters);
       
-      queryno++;
+      run.queryno++;
     }
     
     {

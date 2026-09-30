@@ -46,7 +46,7 @@ struct search_data
 
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;
-  std::array<Buffer<BYTE *>, 6> qtable;  // empty: tables not allocated
+  std::array<Buffer<BYTE *>, frame_count> qtable;  // empty: tables not allocated
 
   Buffer<long> scores;
   Buffer<long> bestpos;
@@ -55,7 +55,7 @@ struct search_data
   Buffer<long> in_list;
   Buffer<long> out_list;
 
-  std::array<long, 6> qlen;
+  std::array<long, frame_count> qlen;
 
   std::size_t start_count;
   std::size_t in_count;
@@ -69,13 +69,18 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
-auto calc_chunks(long volcount,
-		 long par,
-		 long channels,
-		 long const * volume_sequences,
+// the threads that share the work, and the channels of their kernel
+struct Chunking
+{
+  long threads;
+  long channels;
+};
+
+// the chunks of each volume (or bin) of volume_sequences, written to
+// volume_chunks (as many entries); returns the size of the largest one
+auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
-		 long * totalchunks,
-		 long * biggestchunk) -> void;
+		 Chunking chunking) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads
 auto prepare_search(long par) -> void;

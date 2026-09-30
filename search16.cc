@@ -24,217 +24,18 @@
 */
 
 #include "swipe.h"
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
+#include "align_cells.h"  // Ops_16, align_cells(), No_mask, Mask
 
-constexpr std::size_t CHANNELS = 8;
+constexpr std::size_t CHANNELS = channels_16;
 constexpr std::size_t CDEPTH = 4;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
 
-// Register usage
-// rdi:   hep
-// rsi:   qp
-// rdx:   Qm
-// rcx:   Rm
-// r8:    ql
-// r9:    Sm/Mm
-
-// rax:   x, temp
-// r10:   ql2
-// r11:   qi
-// xmm0:  H0
-// xmm1:  H1
-// xmm2:  H2
-// xmm3:  H3
-// xmm4:  F0
-// xmm5:  F1
-// xmm6:  F2
-// xmm7:  F3
-// xmm8:  N0
-// xmm9:  N1
-// xmm10: N2
-// xmm11: N3
-// xmm12: E
-// xmm13: S
-// xmm14: Q 
-// xmm15: R
-
-#define INITIALIZE				\
-  "        movq    %0, %%rax               \n"	\
-  "        movdqa  (%%rax), %%xmm13        \n"	\
-  "        movdqa  (%3), %%xmm14           \n"	\
-  "        movdqa  (%4), %%xmm15           \n"	\
-  "        movq    %6, %%rax               \n"	\
-  "        movdqa  (%%rax), %%xmm0         \n"	\
-  "        movdqa  %%xmm0, %%xmm1          \n"	\
-  "        movdqa  %%xmm0, %%xmm2          \n"	\
-  "        movdqa  %%xmm0, %%xmm3          \n"	\
-  "        movdqa  %%xmm0, %%xmm4          \n"	\
-  "        movdqa  %%xmm0, %%xmm5          \n"	\
-  "        movdqa  %%xmm0, %%xmm6          \n"	\
-  "        movdqa  %%xmm0, %%xmm7          \n"	\
-  "        shlq    $3, %5                  \n"	\
-  "        movq    %5, %%r10               \n"	\
-  "        andq    $-16, %%r10             \n"	\
-  "        xorq    %%r11, %%r11            \n" 
-
-#define ONESTEP(H, N, F, V)			\
-  "        paddsw  " V "(%%rax), " H " \n"	\
-  "        pmaxsw  " F ", " H "        \n"	\
-  "        pmaxsw  %%xmm12, " H "      \n"	\
-  "        pmaxsw  " H ", %%xmm13      \n"	\
-  "        psubsw  %%xmm15, " F "      \n"	\
-  "        psubsw  %%xmm15, %%xmm12    \n"	\
-  "        movdqa  " H ", " N "        \n"	\
-  "        psubsw  %%xmm14, " H "      \n"	\
-  "        pmaxsw  " H ", %%xmm12      \n"	\
-  "        pmaxsw  " H ", " F "        \n"
-
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
-
-inline auto donormal16(volatile __m128i const * Sm,  /* r9  */
-		       __m128i const * hep, /* rdi */
-		       __m128i * const * qp, /* rsi */
-		       __m128i const * Qm,  /* rdx */
-		       __m128i const * Rm,  /* rcx */
-		       long ql,       /* r8  */
-		       __m128i const * Zm) -> void
-{
-  __asm__
-    __volatile__
-    (
-     "## donormal16                             \n"
-     INITIALIZE
-     "        jmp       2f                      \n"
-     
-     "1:      movq      0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa    0(%1,%%r11,4), %%xmm8   \n" // load N0
-     "        movdqa    16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movq      8(%2,%%r11,1), %%rax    \n" // load x from qp[qi+1]
-     "        movdqa    %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "        movdqa    32(%1,%%r11,4), %%xmm0  \n" // load H0
-     "        movdqa    48(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa    %%xmm12, 48(%1,%%r11,4) \n" // save E
-     "        addq      $16, %%r11              \n" // qi++
-     "2:      cmpq      %%r11, %%r10            \n" // qi = ql4 ?
-     "        jne       1b                      \n" // loop
-     
-     "        cmpq      %%r11, %5               \n" 
-     "        je        3f                      \n"
-     "        movq      0(%2,%%r11,1), %%rax    \n" // load x from qp[qi]
-     "        movdqa    16(%1,%%r11,4), %%xmm12 \n" // load E
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa    %%xmm12, 16(%1,%%r11,4) \n" // save E
-     "3:      movq      %0, %%rax               \n" // save S
-     "        movdqa    %%xmm13, (%%rax)        \n"
-     "        shrq      $3, %5                    "		
-     : 
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "cc",
-       "memory"
-      );
-}
-
-inline auto domasked16(volatile __m128i const * Sm,
-		       __m128i const * hep,
-		       __m128i * const * qp,
-		       __m128i const * Qm, 
-		       __m128i const * Rm, 
-		       long ql,      
-		       __m128i const * Zm,
-		       __m128i const * Mm) -> void
-{
-  __asm__
-    __volatile__
-    (
-     "## domasked16                            \n"
-     INITIALIZE
-     "        paddsw  (%7), %%xmm13            \n" // add M
-     "        paddsw  (%7), %%xmm13            \n" // add M
-     "        jmp     2f                       \n"
-     
-     "1:      movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  0(%1,%%r11,4), %%xmm8    \n" // load N0
-     "        paddsw  (%7), %%xmm8             \n" // add M
-     "        paddsw  (%7), %%xmm8             \n" // add M
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "        movq    8(%2,%%r11,1), %%rax     \n" // load x from qp[qi+1]
-     "        movdqa  32(%1,%%r11,4), %%xmm0   \n" // load H0
-     "        paddsw  (%7), %%xmm0             \n" // add M
-     "        paddsw  (%7), %%xmm0             \n" // add M
-     "        movdqa  48(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm8",  "%%xmm1",           "%%xmm4", "0" )
-     ONESTEP("%%xmm9",  "%%xmm2",           "%%xmm5", "16")
-     ONESTEP("%%xmm10", "%%xmm3",           "%%xmm6", "32")
-     ONESTEP("%%xmm11", "32(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 48(%1,%%r11,4)  \n" // save E
-     "        addq    $16, %%r11               \n" // qi++
-     "2:      cmpq    %%r11, %%r10             \n" // qi = ql4 ?
-     "        jne     1b                       \n" // loop
-     
-     "        cmpq    %%r11, %5                \n" 
-     "        je      3f                       \n"
-     "        movq    0(%2,%%r11,1), %%rax     \n" // load x from qp[qi]
-     "        movdqa  16(%1,%%r11,4), %%xmm12  \n" // load E
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     "        paddsw  (%7), %%xmm12            \n" // add M
-     
-     ONESTEP("%%xmm0",  "%%xmm9",          "%%xmm4", "0" )
-     ONESTEP("%%xmm1",  "%%xmm10",         "%%xmm5", "16")
-     ONESTEP("%%xmm2",  "%%xmm11",         "%%xmm6", "32")
-     ONESTEP("%%xmm3",  "0(%1,%%r11,4)",   "%%xmm7", "48")
-     
-     "        movdqa  %%xmm12, 16(%1,%%r11,4)  \n" // save E
-     "3:      movq    %0, %%rax                \n" // save S
-     "        movdqa  %%xmm13, (%%rax)         \n"
-     "        shrq    $3, %5                     "		
-     : 
-     : "m"(Sm), "r"(hep),"r"(qp), "r"(Qm), "r"(Rm), "r"(ql), "m"(Zm),
-       "r"(Mm)
-     : "xmm0",  "xmm1",  "xmm2",  "xmm3",
-       "xmm4",  "xmm5",  "xmm6",  "xmm7",
-       "xmm8",  "xmm9",  "xmm10", "xmm11", 
-       "xmm12", "xmm13", "xmm14", "xmm15",
-       "rax",   "r10",   "r11",   "cc",
-       "memory"
-     );
-}
 
 inline auto dprofile_fill16(WORD * dprofile_word,
 			    WORD * score_matrix_word,
@@ -284,50 +85,50 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     //      for(int i=0; i<24; i += 8)
     for(std::size_t i=0; i<32; i += 8)
     {
-      xmm0  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
-      xmm1  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
-      xmm2  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
-      xmm3  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
-      xmm4  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
-      xmm5  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
-      xmm6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
-      xmm7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
+      xmm0  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
+      xmm1  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
+      xmm2  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
+      xmm3  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
+      xmm4  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
+      xmm5  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
+      xmm6  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
+      xmm7  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
       
-      xmm8  = _mm_unpacklo_epi16(xmm0,  xmm1);
-      xmm9  = _mm_unpackhi_epi16(xmm0,  xmm1);
-      xmm10 = _mm_unpacklo_epi16(xmm2,  xmm3);
-      xmm11 = _mm_unpackhi_epi16(xmm2,  xmm3);
-      xmm12 = _mm_unpacklo_epi16(xmm4,  xmm5);
-      xmm13 = _mm_unpackhi_epi16(xmm4,  xmm5);
-      xmm14 = _mm_unpacklo_epi16(xmm6,  xmm7);
-      xmm15 = _mm_unpackhi_epi16(xmm6,  xmm7);
+      xmm8  = v_merge_lo_16(xmm0,  xmm1);
+      xmm9  = v_merge_hi_16(xmm0,  xmm1);
+      xmm10 = v_merge_lo_16(xmm2,  xmm3);
+      xmm11 = v_merge_hi_16(xmm2,  xmm3);
+      xmm12 = v_merge_lo_16(xmm4,  xmm5);
+      xmm13 = v_merge_hi_16(xmm4,  xmm5);
+      xmm14 = v_merge_lo_16(xmm6,  xmm7);
+      xmm15 = v_merge_hi_16(xmm6,  xmm7);
       
-      xmm16 = _mm_unpacklo_epi32(xmm8,  xmm10);
-      xmm17 = _mm_unpackhi_epi32(xmm8,  xmm10);
-      xmm18 = _mm_unpacklo_epi32(xmm12, xmm14);
-      xmm19 = _mm_unpackhi_epi32(xmm12, xmm14);
-      xmm20 = _mm_unpacklo_epi32(xmm9,  xmm11);
-      xmm21 = _mm_unpackhi_epi32(xmm9,  xmm11);
-      xmm22 = _mm_unpacklo_epi32(xmm13, xmm15);
-      xmm23 = _mm_unpackhi_epi32(xmm13, xmm15);
+      xmm16 = v_merge_lo_32(xmm8,  xmm10);
+      xmm17 = v_merge_hi_32(xmm8,  xmm10);
+      xmm18 = v_merge_lo_32(xmm12, xmm14);
+      xmm19 = v_merge_hi_32(xmm12, xmm14);
+      xmm20 = v_merge_lo_32(xmm9,  xmm11);
+      xmm21 = v_merge_hi_32(xmm9,  xmm11);
+      xmm22 = v_merge_lo_32(xmm13, xmm15);
+      xmm23 = v_merge_hi_32(xmm13, xmm15);
       
-      xmm24 = _mm_unpacklo_epi64(xmm16, xmm18);
-      xmm25 = _mm_unpackhi_epi64(xmm16, xmm18);
-      xmm26 = _mm_unpacklo_epi64(xmm17, xmm19);
-      xmm27 = _mm_unpackhi_epi64(xmm17, xmm19);
-      xmm28 = _mm_unpacklo_epi64(xmm20, xmm22);
-      xmm29 = _mm_unpackhi_epi64(xmm20, xmm22);
-      xmm30 = _mm_unpacklo_epi64(xmm21, xmm23);
-      xmm31 = _mm_unpackhi_epi64(xmm21, xmm23);
+      xmm24 = v_merge_lo_64(xmm16, xmm18);
+      xmm25 = v_merge_hi_64(xmm16, xmm18);
+      xmm26 = v_merge_lo_64(xmm17, xmm19);
+      xmm27 = v_merge_hi_64(xmm17, xmm19);
+      xmm28 = v_merge_lo_64(xmm20, xmm22);
+      xmm29 = v_merge_hi_64(xmm20, xmm22);
+      xmm30 = v_merge_lo_64(xmm21, xmm23);
+      xmm31 = v_merge_hi_64(xmm21, xmm23);
       
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
-      _mm_store_si128(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
+      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
     }
   }
 }
@@ -348,7 +149,7 @@ auto search16(WORD * * q_start,
 	      int qlen) -> void
 {
   
-  volatile __m128i S;
+  __m128i S;
   __m128i SL;
   __m128i Q;
   __m128i R;
@@ -364,7 +165,7 @@ auto search16(WORD * * q_start,
   std::array<BYTE const *, CHANNELS> d_end;
 
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(16) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
+  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
 
   auto * dseq = dseqalloc.data();
   BYTE const zero = 0;
@@ -373,10 +174,10 @@ auto search16(WORD * * q_start,
   long next_id = 0;
   unsigned done = 0;
   
-  Z = _mm_set1_epi16(word_0x8000);
-  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
-  Q  = _mm_set1_epi16(static_cast<short>(gap_open_penalty));
-  R  = _mm_set1_epi16(static_cast<short>(gap_extend_penalty));
+  Z = v_dup_i16(word_0x8000);
+  T0 = v_first_lane_i16(word_0x8000);
+  Q  = v_dup_i16(static_cast<short>(gap_open_penalty));
+  R  = v_dup_i16(static_cast<short>(gap_extend_penalty));
   
   S = Z;
   SL = Z;
@@ -423,11 +224,11 @@ auto search16(WORD * * q_start,
 	
       dprofile_fill16(dprofile, score_matrix, dseq);
       	  
-      donormal16(&S, hep, qp, &Q, &R, qlen, &Z);
+      align_cells<Ops_16>(S, hep, qp, Q, R, qlen, Z, No_mask{});
 
       /* save column address if new highscore */
       
-      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      auto const mask = v_mask_gt_i16(S, SL);
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if ((mask & (3 << 2 * c)) != 0)
@@ -443,7 +244,7 @@ auto search16(WORD * * q_start,
 
       easy = 1;
  
-      M = _mm_setzero_si128();
+      M = v_zero();
       T = T0;
 
       for (std::size_t c = 0; c < CHANNELS; c++)
@@ -469,13 +270,13 @@ auto search16(WORD * * q_start,
 	}
 	else
 	{
-	  M = _mm_xor_si128(M, T);
+	  M = v_xor(M, T);
 		  
 	  long const cand_id = seq_id[c];
 		  
 	  if (cand_id >= 0)
 	  {
-	    long const score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
+	    long const score = reinterpret_cast<WORD *>(&S)[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];
 	    done++;
@@ -492,7 +293,7 @@ auto search16(WORD * * q_start,
 	    long const seqno = seqnosf >> 3;
 
 	    View<char> const sequence =
-	      db_getsequence(dbt, seqno, strand, frame, & ntlen, c);
+	      db_getsequence(dbt, seqno, {strand, frame}, & ntlen, c);
 		      
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
 	    d_pos[c] = d_begin[c];
@@ -529,7 +330,7 @@ auto search16(WORD * * q_start,
 	    }
 	  }
 	}
-	T = _mm_slli_si128(T, 2);
+	T = v_shift_bytes_left<2>(T);
       }
 
       if (done == sequences)
@@ -539,13 +340,13 @@ auto search16(WORD * * q_start,
 
       dprofile_fill16(dprofile, score_matrix, dseq);
       	  
-      domasked16(&S, hep, qp, &Q, &R, qlen, &Z, &M);
+      align_cells<Ops_16>(S, hep, qp, Q, R, qlen, Z, Mask{M});
 
       /* save column address if new highscore */
       
-      SL = _mm_adds_epi16(SL, M);
-      SL = _mm_adds_epi16(SL, M);
-      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      SL = v_adds_i16(SL, M);
+      SL = v_adds_i16(SL, M);
+      auto const mask = v_mask_gt_i16(S, SL);
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
 	if ((mask & (3 << 2 * c)) != 0)

@@ -97,7 +97,7 @@ else ifdef PROFILE
   LINKOPT=-pg
 else ifdef COVERAGE
   # "make COVERAGE=1": line and branch coverage with gcov
-  OPTIMIZATION=-DCOVERAGE -fprofile-arcs -ftest-coverage -O0
+  OPTIMIZATION=-fprofile-arcs -ftest-coverage -O0
   LINKOPT=--coverage
   LIBS+=-lgcov
 endif

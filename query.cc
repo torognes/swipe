@@ -38,7 +38,7 @@
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
 
-std::array<char, 256> const map_sound {{
+std::array<char, byte_values> const map_sound {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -57,7 +57,7 @@ std::array<char, 256> const map_sound {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   }};
 
-std::array<char, 256> const map_ncbi_aa {{
+std::array<char, byte_values> const map_ncbi_aa {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 25, -1, -1,  0, -1, -1,
@@ -76,7 +76,7 @@ std::array<char, 256> const map_ncbi_aa {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   }};
 
-std::array<char, 256> const map_ncbi_nt16 {{
+std::array<char, byte_values> const map_ncbi_nt16 {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -96,18 +96,11 @@ std::array<char, 256> const map_ncbi_nt16 {{
   }};
 
 
-std::array<char, 16> const ntcompl {{ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 }};
+std::array<char, nucleotide_codes> const ntcompl {{ 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 }};
 
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
+TranslationTables translation_tables;
 
-std::array<char, translation_table_size> q_translate {{}};
-
-}  // anonymous namespace
-
-std::array<char, translation_table_size> d_translate {{}};
-
-std::array<char const *, 23> const gencode_names {{
+std::array<char const *, gencode_count> const gencode_names {{
     "Standard Code",
     "Vertebrate Mitochondrial Code",
     "Yeast Mitochondrial Code",
@@ -165,23 +158,16 @@ std::array<char, 4> const remap {{ 2, 1, 3, 0 }};
 
 }  // anonymous namespace
   
-//                       00000000001111111111222222222233
-//                       01234567890123456789012345678901
-char const * sym_ncbi_nt4   = "acgt############################";
-char const * sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
-char const * sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
-char const * sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
-char const * sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
+//                                   00000000001111111111222222222233
+//                                   01234567890123456789012345678901
+char const * const sym_ncbi_nt16  = "-acmgrsvtwyhkdbn################";
+char const * const sym_ncbi_nt16u = "-ACMGRSVTWYHKDBN################";
+char const * const sym_ncbi_aa    = "-ABCDEFGHIKLMNPQRSTVWXYZU*OJ####";
+char const * const sym_sound      = "-ABCDEFGHIJKLMNOPQRSTUVWXYZabcde";
 
 struct query_s query;
 
 namespace {
-
-FILE * query_fp;
-
-// next line of the query file, with its end-of-line character (an
-// empty string means the end of the file)
-std::string query_line;
 
 // read the next line of fp into line, whatever its length (KI-16,
 // KI-17), including its end-of-line character; line is empty at the
@@ -206,14 +192,14 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
 {
   if (strcmp(query_filename, "-") == 0)
   {
-    query_fp = stdin;
+    query.input = stdin;
   }
   else
   {
-    query_fp = fopen(query_filename, "r");
+    query.input = fopen(query_filename, "r");
   }
 
-  if (query_fp == nullptr)
+  if (query.input == nullptr)
   {
     fatal("Cannot open query file.");
   }
@@ -251,14 +237,14 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
     }
   }
 
-  read_line(query_fp, query_line);
+  read_line(query.input, query.line);
 
   // skip empty lines at the beginning of the file (KI-18): an empty
   // first line was read as an empty query, and the rest of the file
   // was ignored
-  while ((query_line == "\n") or (query_line == "\r\n"))
+  while ((query.line == "\n") or (query.line == "\r\n"))
   {
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
 }
 
@@ -288,9 +274,9 @@ auto query_free() -> void
 
 auto query_exit() -> void
 {
-  if (query_fp != stdin)
+  if (query.input != stdin)
   {
-    static_cast<void>(fclose(query_fp));  // an input file
+    static_cast<void>(fclose(query.input));  // an input file
   }
 
   query_free();
@@ -298,7 +284,7 @@ auto query_exit() -> void
 
 auto query_read() -> int
 {
-  if (query_line.empty())
+  if (query.line.empty())
   {
     return 0;
   }
@@ -309,7 +295,7 @@ auto query_read() -> int
 
   // the line up to its first null byte, without its line ending
   // (\n, or \r\n: KI-21)
-  std::string header(query_line, 0, query_line.find('\0'));
+  std::string header(query.line, 0, query.line.find('\0'));
   if ((not header.empty()) and (header.back() == '\n'))
   {
     header.pop_back();
@@ -324,7 +310,7 @@ auto query_read() -> int
   {
     query.description.assign(header, 1, std::string::npos);
     query.dlen = len-1;
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
   else
   {
@@ -332,7 +318,7 @@ auto query_read() -> int
     query.dlen = 0;
   }
 
-  int size = LINE_MAX;
+  auto size = static_cast<int>(line_buffer_size);
   Buffer<char> query_sequence(static_cast<std::size_t>(size));
   query_sequence[0] = 0;
   long query_length = 0;
@@ -352,10 +338,10 @@ auto query_read() -> int
     map = map_ncbi_nt16.data();
   }
 
-  while((not query_line.empty()) and (query_line[0] != '>'))
+  while((not query.line.empty()) and (query.line[0] != '>'))
   {
     // up to a NUL, as the loop over c_str() it replaces
-    for (char const character : as_c_string(query_line))
+    for (char const character : as_c_string(query.line))
     {
       // bytes above 0x7f must not be negative indexes (KI-19)
       int const c = static_cast<unsigned char>(character);
@@ -364,13 +350,13 @@ auto query_read() -> int
       {
 	if (query_length + 1 >= size)
 	{
-	  size += LINE_MAX;
+	  size += static_cast<int>(line_buffer_size);
 	  query_sequence.resize(static_cast<std::size_t>(size));
 	}
 	query_sequence[static_cast<std::size_t>(query_length++)] = symbol;
       }
     }
-    read_line(query_fp, query_line);
+    read_line(query.input, query.line);
   }
   query_sequence[static_cast<std::size_t>(query_length)] = 0;
     
@@ -397,7 +383,7 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
-	    translate(query.nt[0].seq, query.nt[0].len, s, f, 0,
+	    translate(query.nt[0].seq, query.nt[0].len, {s, f}, TranslationTable::for_query,
 		      frame_sequence.storage, & frame_sequence.len);
 	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
@@ -433,22 +419,23 @@ auto translate_createtable(long tableno, char * table) -> void
 {
   /* initialize translation table */
 
-  for (long a = 0; a < 16; a++)
+  constexpr long bases = 4;  // the codons are numbered in base 4
+  for (std::size_t a = 0; a < nucleotide_codes; a++)
   {
-    for (long b = 0; b < 16; b++)
+    for (std::size_t b = 0; b < nucleotide_codes; b++)
     {
-      for(long c=0; c<16; c++)
+      for (std::size_t c = 0; c < nucleotide_codes; c++)
       {
 	char aa = '-';
-	for (long i = 0; i < 4; i++)
+	for (long i = 0; i < bases; i++)
 	{
-	  for (long j = 0; j < 4; j++)
+	  for (long j = 0; j < bases; j++)
 	  {
-	    for(long k=0; k<4; k++)
+	    for (long k = 0; k < bases; k++)
 	    {
-	      if (((a & (1<<i)) != 0) && ((b & (1<<j)) != 0) && ((c & (1<<k)) != 0))
+	      if (((a & (1U << i)) != 0) && ((b & (1U << j)) != 0) && ((c & (1U << k)) != 0))
 	      {
-		long const codon = (remap[static_cast<std::size_t>(i)]*16) + (remap[static_cast<std::size_t>(j)]*4) + remap[static_cast<std::size_t>(k)];
+		long const codon = (remap[static_cast<std::size_t>(i)] * bases * bases) + (remap[static_cast<std::size_t>(j)] * bases) + remap[static_cast<std::size_t>(k)];
 		char const x = code[static_cast<std::size_t>(tableno-1)][codon];
 		if (aa == '-')
 		{
@@ -493,7 +480,7 @@ auto translate_createtable(long tableno, char * table) -> void
 	  aa = 'X';
 	}
 
-	table[(256*a)+(16*b)+c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
+	table[(((a * nucleotide_codes) + b) * nucleotide_codes) + c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
       }
     }
   }
@@ -504,28 +491,29 @@ auto translate_createtable(long tableno, char * table) -> void
 
 auto translate_init(long qtableno, long dtableno) -> void
 {
-  translate_createtable(qtableno, q_translate.data());
-  translate_createtable(dtableno, d_translate.data());
+  translate_createtable(qtableno, translation_tables.query.data());
+  translate_createtable(dtableno, translation_tables.database.data());
 }
 
 auto translate(char const * dna, long dlen, 
-	       long strand, long frame, long table,
+	       StrandFrame const where, TranslationTable const table,
 	       Buffer<char> & protein, long * plenp) -> void
 {
+  long const strand = where.strand;
+  long const frame = where.frame;
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
   char const * ttable = nullptr;
-  if (table == 0)
+  if (table == TranslationTable::for_query)
   {
-    ttable = q_translate.data();
+    ttable = translation_tables.query.data();
   }
   else
   {
-    ttable = d_translate.data();
+    ttable = translation_tables.database.data();
   }
 
   long pos = 0;
-  long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
@@ -537,7 +525,7 @@ auto translate(char const * dna, long dlen,
     pos = frame;
     while(ppos < plen)
     {
-      c = dna[pos++];
+      long c = dna[pos++];
       c <<= 4;
       c |= dna[pos++];
       c <<= 4;
@@ -550,7 +538,7 @@ auto translate(char const * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[static_cast<std::size_t>(dna[pos--])];
+      long c = ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;

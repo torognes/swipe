@@ -39,7 +39,6 @@
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <cmath>
-#include <x86intrin.h>
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -50,17 +49,11 @@
 #include "view.h"  // View
 
 
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#define bswap_32 OSSwapInt32
-#define bswap_64 OSSwapInt64
-#else
-#include <byteswap.h>
-#endif
+#include "os_byteswap.h"  // bswap_32, bswap_64
 
-#ifndef LINE_MAX
-#define LINE_MAX 2048
-#endif
+// the size of the line buffers: a line of a score matrix, and the
+// first allocation (then the growth step) of a query sequence
+constexpr std::size_t line_buffer_size = 2048;
 
 // "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
 extern char const * const swipe_name_and_version;
@@ -118,6 +111,12 @@ constexpr char const * default_queryname = "-";
 constexpr char const * default_databasename = "";
 constexpr long default_gapopen = 0;
 constexpr long default_gapextend = 0;
+// the gap penalties of blastn and of sound searches when not given
+constexpr long default_blastn_gapopen = 5;
+constexpr long default_blastn_gapextend = 2;
+constexpr long default_sound_gapopen = 15;
+constexpr long default_sound_gapextend = 5;
+constexpr char const * default_sound_matrixname = "IDENTITY_5_1";
 constexpr char const * default_matrixname = "BLOSUM62";
 constexpr long default_matchscore = 1;
 constexpr long default_mismatchscore = -3;
@@ -176,39 +175,63 @@ auto args_show(Parameters const & parameters) -> void;
 
 
 
-extern long cpu_feature_ssse3;
-extern long cpu_feature_sse41;
+// the SIMD instruction sets of the processor, detected once (cpuid)
+struct CpuFeatures
+{
+  bool sse2;
+  bool ssse3;
+};
+extern CpuFeatures const cpu_features;
 
-extern long * const score_matrix_63;
-extern long totalhits;
-extern std::array<char const *, 23> const gencode_names;
-extern long queryno;
-extern long compute7;
+// the score matrices are 32 x 32, row-major (symbol codes 0 to 31)
+constexpr std::size_t score_matrix_width = 32;
 
-extern std::array<char, 256> const map_ncbi_nt16;
-extern std::array<char, 256> const map_ncbi_aa;
-extern std::array<char, 256> const map_sound;
+inline auto score_matrix_cell(std::size_t const row, std::size_t const column) -> std::size_t
+{
+  assert((row < score_matrix_width) and (column < score_matrix_width));
+  return (row * score_matrix_width) + column;
+}
 
-extern char const * sym_ncbi_nt4;
-extern char const * sym_ncbi_nt16;
-extern char const * sym_ncbi_nt16u;
-extern char const * sym_ncbi_aa;
-extern char const * sym_sound;
+// the genetic codes 1 to 23 (nullptr: no code of that number)
+constexpr std::size_t gencode_count = 23;
+extern std::array<char const *, gencode_count> const gencode_names;
 
-extern std::array<char, 16> const ntcompl;
-// the codon translation table of the database (16 x 16 x 16 codes of
-// nucleotides), filled by translate_init()
-constexpr std::size_t translation_table_size = std::size_t{16} * 16 * 16;
-extern std::array<char, translation_table_size> d_translate;
+// the tables indexed by a byte (an unsigned char)
+constexpr std::size_t byte_values = 256;
+
+// the base of the numbers read by strtol() and its siblings
+constexpr int decimal_base = 10;
+
+extern std::array<char, byte_values> const map_ncbi_nt16;
+extern std::array<char, byte_values> const map_ncbi_aa;
+extern std::array<char, byte_values> const map_sound;
+
+extern char const * const sym_ncbi_nt16;
+extern char const * const sym_ncbi_nt16u;
+extern char const * const sym_ncbi_aa;
+extern char const * const sym_sound;
+
+// the 4-bit nucleotide codes: a bit per base (A, C, G, T), 16 values
+// (0: none, 15: any base)
+constexpr std::size_t nucleotide_codes = 16;
+
+extern std::array<char, nucleotide_codes> const ntcompl;
+constexpr std::size_t translation_table_size = nucleotide_codes * nucleotide_codes * nucleotide_codes;
+
+// the codon translation tables of the genetic codes of the query (-Q)
+// and of the database (-D), in query.cc
+struct TranslationTables
+{
+  std::array<char, translation_table_size> query {{}};
+  // the codon translation table of the database (16 x 16 x 16 codes of
+  // nucleotides), filled by translate_init()
+  std::array<char, translation_table_size> database {{}};
+};
+
+extern TranslationTables translation_tables;
 
 extern FILE * out;
 
-extern long SCORELIMIT_7;
-extern long SCORELIMIT_16;
-
-extern char * const score_matrix_7;
-extern char * const score_matrix_7t;
-extern short * const score_matrix_16;
 
 struct sequence
 {
@@ -217,30 +240,41 @@ struct sequence
   Buffer<char> storage;  // owns seq
 };
 
+// a nucleotide sequence has two strands, each translated in three
+// reading frames
+constexpr std::size_t strand_count = 2;
+constexpr std::size_t frames_per_strand = 3;
+constexpr std::size_t frame_count = strand_count * frames_per_strand;
+
 // the index of a query strand (0: plus, 1: minus), and of a frame of a
 // translated query or of its search tables: (3 x strand) + frame
 inline auto strand_index(long const strand) -> std::size_t
 {
-  assert((strand >= 0) and (strand < 2));
+  assert((strand >= 0) and (static_cast<std::size_t>(strand) < strand_count));
   return static_cast<std::size_t>(strand);
 }
 
 inline auto frame_index(long const strand, long const frame) -> std::size_t
 {
-  assert((frame >= 0) and (frame < 3));
-  return (3 * strand_index(strand)) + static_cast<std::size_t>(frame);
+  assert((frame >= 0) and (static_cast<std::size_t>(frame) < frames_per_strand));
+  return (frames_per_strand * strand_index(strand)) + static_cast<std::size_t>(frame);
 }
 
 struct query_s
 {
-  std::array<struct sequence, 2> nt; /* 2 strands */
-  std::array<struct sequence, 6> aa; /* 6 frames */
+  std::array<struct sequence, strand_count> nt; /* 2 strands */
+  std::array<struct sequence, frame_count> aa; /* 6 frames */
   std::string description;
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
   char const * map;
   char const * sym;
+
+  FILE * input;  // the query file (stdin with "-")
+  // next line of the query file, with its end-of-line character (an
+  // empty string means the end of the file)
+  std::string line;
 };
 
 extern struct query_s query;
@@ -248,6 +282,17 @@ extern struct query_s query;
 //extern long qlen;
 
 struct db_thread_s;
+
+// a date of the outputs ("%a, %e %b %Y %T UTC"): at most 29 characters,
+// "Wed, 30 Sep 2026 07:10:01 UTC", and the terminating NUL
+constexpr std::size_t date_string_size = 30;
+
+// a speed in GCUPS: billions of cell updates per second
+inline auto gcups(double const cell_updates_per_second) -> double
+{
+  constexpr double billion = 1e9;
+  return cell_updates_per_second / billion;
+}
 
 struct time_info
 {
@@ -257,13 +302,23 @@ struct time_info
   std::chrono::steady_clock::time_point clock2;
 
   // kept until the results are shown (-m 99, KI-28)
-  std::array<char, 30> starttime;
-  std::array<char, 30> endtime;
+  std::array<char, date_string_size> starttime;
+  std::array<char, date_string_size> endtime;
   double elapsed;
   double speed;
 };
 
-extern struct time_info ti;
+// the state of the run (swipe.cc): the query being searched, the
+// counts of the -m 99 output, and the timing of the search
+struct SearchRun
+{
+  long queryno = 0;  // the number of the query, from 0
+  long compute7 = 0;  // sequences searched by the 7-bit stage
+  long totalhits = 0;  // hits at or above the initial score threshold
+  struct time_info ti;
+};
+
+extern SearchRun run;
 
 // print the message to stderr and exit with status 1; [[noreturn]]
 // belongs on the declarations: callers know that fatal() never returns
@@ -323,10 +378,10 @@ auto search16s(WORD * * q_start,
 
 auto fullsw(char const * dseq,
 	    char const * dend,
-	    char * qseq,
+	    char const * qseq,
 	    char const * qend,
 	    long * hearray, 
-	    long * score_matrix,
+	    long const * score_matrix,
 	    long gap_open_extend,
 	    long gap_extend_penalty) -> long;
 
@@ -353,8 +408,20 @@ auto score_matrix_init(Parameters const & parameters) -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
 auto revcompl(char const * seq, long len) -> Buffer<char>;
+// a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
+// untranslated_frame) of a nucleotide sequence
+struct StrandFrame
+{
+  long strand;
+  long frame;
+};
+
+// the genetic code of a translation: that of the query (-Q) or of the
+// database (-D)
+enum struct TranslationTable : bool { for_query, for_database };
+
 auto translate(char const * dna, long dlen,
-               long strand, long frame, long table,
+               StrandFrame where, TranslationTable table,
                Buffer<char> & protein, long * plenp) -> void;
 
 struct asnparse_info;
@@ -424,7 +491,7 @@ auto db_showheader(struct db_thread_s const * t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
 auto db_show_fasta(struct db_thread_s * t, long seqno,
-		   long strand, long frame, long split) -> void;
+		   StrandFrame where, long split) -> void;
 
 auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
 
@@ -434,9 +501,42 @@ auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
+// the channels (database sequences searched at once) of the kernels:
+// 16 bytes in the 7-bit kernel, 8 words in the 16-bit kernels; c, the
+// channel of db_getsequence(), is below max_channels
+constexpr std::size_t channels_7 = 16;
+constexpr std::size_t channels_16 = 8;
+constexpr std::size_t max_channels = channels_7;
+static_assert(channels_16 <= max_channels, "a buffer per channel");
+
+// the SIMD vectors of the kernels (SSE, __m128i) are 16 bytes, and
+// the buffers they load from and store to are aligned on them
+constexpr std::size_t vector_bytes = 16;
+
+// the H/E array of the kernels: per query position, H and E, one
+// vector each
+constexpr std::size_t hearray_row_bytes = 2 * vector_bytes;
+
+// the score matrices of the search (matrices.cc): 32 x 32, aligned for
+// the SIMD kernels, in the four score widths of the search stages, and
+// the limits below which a 7-bit or 16-bit score is accepted
+constexpr std::size_t score_matrix_size = score_matrix_width * score_matrix_width;
+
+struct ScoreMatrices
+{
+  alignas(vector_bytes) std::array<char, score_matrix_size> score_7 {{}};
+  alignas(vector_bytes) std::array<char, score_matrix_size> score_7t {{}};  // transposed
+  alignas(vector_bytes) std::array<short, score_matrix_size> score_16 {{}};
+  alignas(vector_bytes) std::array<long, score_matrix_size> score_63 {{}};
+  long limit_7 = 0;  // SCORELIMIT_7
+  long limit_16 = 0;  // SCORELIMIT_16
+};
+
+extern ScoreMatrices score_matrices;
+
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
-auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,
+auto db_getsequence(struct db_thread_s * t, long seqno, StrandFrame where,
 		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
 auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
@@ -460,34 +560,60 @@ auto hits_show_end(OutputFormat view) -> void;
 auto hits_show(Parameters const & parameters) -> void;
 auto hits_empty() -> void;
 auto hits_exit() -> void;
-auto hits_gethit(long i, long * seqno, long * score, 
-		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe) -> void;
+// a hit of the list: its database sequence, score, strands and frames
+struct Hit
+{
+  long seqno;
+  long score;
+  HitStrands strands;
+};
+
+auto hits_gethit(long i) -> Hit;
+
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void;
 
 
-auto stats_getparams_nt(long match_score,
-			long mismatch_score, 
-			long gopen,
-			long gextend,
-			double * lambda,
-			double * K,
-			double * H,
-			double * alpha,
-			double * beta) -> long;
+// the gap penalties of a scoring system: opening and extension
+struct GapPenalties
+{
+  long open;
+  long extend;
+};
 
-auto stats_getparams(char const * matrix,
-		     long gopen,
-		     long gextend,
-		     double * lambda,
-		     double * K,
-		     double * H,
-		     double * alpha,
-		     double * beta) -> long;
+// the scores of a nucleotide match and mismatch (blastn)
+struct BlastnScores
+{
+  long match;
+  long mismatch;
+};
 
-auto stats_getprefs(char const * matrix,
-		    long * gopen,
-		    long * gextend) -> long;
+// the Karlin-Altschul parameters of a scoring system (NCBI tables)
+struct KarlinAltschul
+{
+  double lambda;
+  double K;
+  double H;
+  double alpha;
+  double beta;
+};
+
+// the parameters of a scoring system, if the NCBI tables have them
+struct StatisticsLookup
+{
+  bool found;
+  KarlinAltschul values;
+};
+
+// the default gap penalties of a score matrix, if it has some
+struct DefaultGaps
+{
+  bool found;
+  GapPenalties penalties;
+};
+
+auto stats_getparams_nt(BlastnScores scores, GapPenalties gaps) -> StatisticsLookup;
+auto stats_getparams(char const * matrix, GapPenalties gaps) -> StatisticsLookup;
+auto stats_getprefs(char const * matrix) -> DefaultGaps;
 
 
 // the NCBI integer types of blastkar_partial.ccc: 4 and 8 bytes

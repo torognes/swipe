@@ -64,6 +64,27 @@
           value that is not a number, is followed by other characters,
           is out of range (or, in an alias file, negative) is now a fatal
           error; it was read as 0, truncated or clamped (KI-43)
+        * Fix: a second header line in a score matrix file (a line
+          starting with white space and listing symbols, after the first
+          one) was not detected: the columns were renumbered, rows then
+          needed more scores than listed (reported as "Problem parsing
+          score matrix file."), and a second header after the last row
+          was ignored. It is now a fatal error naming the line:
+          "Unexpected header line on line N of score matrix file F."
+          (KI-44)
+        * Fix: in a database header, a string (a title, an identifier)
+          declared longer than the header was read past its end, as
+          zeros: the rest of the header was lost (the sequence identifier
+          was then missing from the outputs), and a length of gigabytes
+          exhausted the memory. It is now a fatal error ("Error parsing
+          binary ASN.1 in database sequence definition.") (KI-45).
+          Headers are also parsed faster (about 6% for a dump of pdbaa)
+        * Fix: the entries of the ambiguity table of a nucleotide
+          sequence (a run of ambiguous bases at a position) were used
+          without checks: in a corrupted database, an entry past the end
+          of the sequence was written outside of its buffer. It is now a
+          fatal error ("Database sequence file F is truncated or
+          corrupted.") (KI-46)
         * A write error on the output (full disk, quota exceeded, broken
           pipe), on standard output or on the file of -o, ends with the
           message "Unable to write to output file (...)" and status 1, as

@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
 #include <algorithm>  // std::min, std::sort
 #include <array>
@@ -40,41 +41,53 @@
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
 #include <string>
+#include <tuple>  // std::make_tuple
 #include <utility>  // std::move
 #include <vector>
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-long keephits;
-long scorethreshold;
-long upperscorethreshold;
-int hits_count;
-long init_threshold;
-long obvious;
-
-long opt_descriptions;
-long opt_alignments;
-
-}  // anonymous namespace
 
 /* parameters for bit scores and expect values */
 
 namespace {
 
-long stats_available = 0;
+// the statistical parameters of the search (Karlin-Altschul), set by
+// hits_init()
+struct Statistics
+{
+  long available = 0;
 
-double alpha;
-double beta;
-double lambda;
-double K;
-double H;
-double Kmn = 0;
+  double alpha = 0;
+  double beta = 0;
+  double lambda = 0;
+  double K = 0;
+  double H = 0;
+  double Kmn = 0;
 
-/* ungapped statistical parameters, only shown with -m 99 (KI-31) */
-double ungapped_lambda = 0;
-double ungapped_K = 0;
-double ungapped_H = 0;
+  /* ungapped statistical parameters, only shown with -m 99 (KI-31) */
+  double ungapped_lambda = 0;
+  double ungapped_K = 0;
+  double ungapped_H = 0;
+
+  double logK = 0;
+  double lambda_d_log2 = 0;
+  double logK_d_log2 = 0;
+};
+
+Statistics statistics;
+
+// the parameters of a lookup, if found: 1 (statistics available), or 0
+auto take_statistics(StatisticsLookup const & lookup) -> long
+{
+  if (not lookup.found)
+  {
+    return 0;
+  }
+  statistics.lambda = lookup.values.lambda;
+  statistics.K = lookup.values.K;
+  statistics.H = lookup.values.H;
+  statistics.alpha = lookup.values.alpha;
+  statistics.beta = lookup.values.beta;
+  return 1;
+}
 
 }  // anonymous namespace
 
@@ -82,22 +95,94 @@ double ungapped_H = 0;
    (INT2_MAX, see blastkar_partial.cc) */
 constexpr long ungapped_penalty = 32767;
 
-namespace {
+// the natural logarithm of 2: bit scores are in base 2
+constexpr double ln_2 = 0.693147180559945309417;
 
-double logK;
-double lambda_d_log2;
-double logK_d_log2;
+namespace {
 
 // E-value and bit score of a raw score, and a percentage (the same
 // expressions as at their former call sites: identical results)
 auto expect_value_of(long const score) -> double
 {
-  return Kmn * exp(- lambda * static_cast<double>(score));
+  return statistics.Kmn * exp(- statistics.lambda * static_cast<double>(score));
 }
 
 auto bit_score_of(long const score) -> double
 {
-  return (lambda_d_log2 * static_cast<double>(score)) - logK_d_log2;
+  return (statistics.lambda_d_log2 * static_cast<double>(score)) - statistics.logK_d_log2;
+}
+
+// the most hits of a database sequence: one per searched pair of a
+// query strand or frame and a database frame
+auto hits_per_sequence(Parameters const & parameters) -> std::int64_t
+{
+  auto const strands = static_cast<std::int64_t>(strand_count);
+  auto const frames = static_cast<std::int64_t>(frames_per_strand);
+  auto const all_frames = static_cast<std::int64_t>(frame_count);
+  auto const query_strands =
+    (parameters.querystrands == QueryStrands::both) ? strands : 1;
+
+  if (parameters.symtype == SymbolType::blastn)
+  {
+    return query_strands;
+  }
+  if (parameters.symtype == SymbolType::blastx)
+  {
+    return query_strands * frames;
+  }
+  if (parameters.symtype == SymbolType::tblastn)
+  {
+    return all_frames;
+  }
+  if (parameters.symtype == SymbolType::tblastx)
+  {
+    return query_strands * frames * all_frames;
+  }
+  return 1;  // blastp, sound
+}
+
+// the score of an aligned pair of residues (symbol codes)
+auto pair_score(char const query_symbol, char const db_symbol) -> long
+{
+  return score_matrices.score_63[score_matrix_cell(static_cast<unsigned char>(query_symbol),
+                                           static_cast<unsigned char>(db_symbol))];
+}
+
+// the plain output: the list of hits has a description column, then
+// the strand or frames of the hit, then the score column(s); the
+// header of an alignment is indented and wrapped
+constexpr long description_width = 67;
+constexpr std::size_t score_width = 5;
+constexpr long alignment_header_indent = 10;
+constexpr long alignment_header_width = 79;
+
+// the width of the strand or frames of a hit, after its description:
+// " +" (blastn), " +1" (blastx, tblastn), " +1/-2" (tblastx)
+auto frame_mark_width(SymbolType const symbol_type) -> long
+{
+  constexpr long strand_mark = 2;
+  constexpr long frame_mark = 3;
+  constexpr long frame_pair_mark = 6;
+  if (symbol_type == SymbolType::blastn)
+  {
+    return strand_mark;
+  }
+  if ((symbol_type == SymbolType::blastx) or (symbol_type == SymbolType::tblastn))
+  {
+    return frame_mark;
+  }
+  if (symbol_type == SymbolType::tblastx)
+  {
+    return frame_pair_mark;
+  }
+  return 0;
+}
+
+// a whole percentage, rounded down, as in "Identities = 9/12 (75%)"
+auto whole_percentage(long const part, long const whole) -> long
+{
+  constexpr long hundred = 100;
+  return part * hundred / whole;
 }
 
 auto percentage(long const part, long const whole) -> double
@@ -143,87 +228,52 @@ struct hits_entry
   long align_d_end;
 };
 
-Buffer<hits_entry> hits_list;
+// the best hits of the query, sorted by decreasing score, entered by
+// the search threads (hits_enter(), under the mutex)
+struct HitList
+{
+  Buffer<hits_entry> entries;
+  int count = 0;
+  long keep = 0;  // the size of the list: the most descriptions or alignments
+  long score_threshold = 0;  // a hit below it is not kept
+  long upper_score_threshold = 0;
+  long init_threshold = 0;
+  long obvious = 0;  // the hits above upper_score_threshold
+  long descriptions = 0;  // -v
+  long alignments = 0;  // -b
+  std::mutex mutex;
+};
+
+HitList hit_list;
 
 // the hit of rank i in the list (a long, as the hit counts)
 auto hit_entry(long const i) -> struct hits_entry &
 {
-  assert((i >= 0) and (static_cast<std::size_t>(i) < hits_list.size()));
-  return hits_list[static_cast<std::size_t>(i)];
+  assert((i >= 0) and (static_cast<std::size_t>(i) < hit_list.entries.size()));
+  return hit_list.entries[static_cast<std::size_t>(i)];
 }
 
 
-std::mutex hitsmutex;
-
-auto hits_compare(void const * a, void const * b) -> int
+// the order of the hits for the alignment step: the hits to align
+// first, then by query strand and frame, sequence, database strand and
+// frame
+auto hits_less(long const lhs, long const rhs) -> bool
 {
-  auto const index_a = *static_cast<long const *>(a);
-  auto const index_b = *static_cast<long const *>(b);
-  struct hits_entry const * ap = &hit_entry(index_a);
-  struct hits_entry const * bp = &hit_entry(index_b);
-  
-  if ( static_cast<int>(index_a >= opt_alignments) < static_cast<int>(index_b >= opt_alignments) )
-  {
-    return -1;
-  }
-  if ( static_cast<int>(index_a >= opt_alignments) > static_cast<int>(index_b >= opt_alignments) )
-  {
-    return +1;
-  }
-  if (ap->qstrand < bp->qstrand)
-  {
-    return -1;
-  }
-  if (ap->qstrand > bp->qstrand)
-  {
-    return +1;
-  }
-  if (ap->qframe < bp->qframe)
-  {
-    return -1;
-  }
-  if (ap->qframe > bp->qframe)
-  {
-    return +1;
-  }
-  if (ap->seqno < bp->seqno)
-  {
-    return -1;
-  }
-  if (ap->seqno > bp->seqno)
-  {
-    return +1;
-  }
-  if (ap->dstrand < bp->dstrand)
-  {
-    return -1;
-  }
-  if (ap->dstrand > bp->dstrand)
-  {
-    return +1;
-  }
-  if (ap->dframe < bp->dframe)
-  {
-    return -1;
-  }
-  if (ap->dframe > bp->dframe)
-  {
-    return +1;
-  }
-
-  return 0;
+  auto const & a = hit_entry(lhs);
+  auto const & b = hit_entry(rhs);
+  bool const a_unaligned = lhs >= hit_list.alignments;
+  bool const b_unaligned = rhs >= hit_list.alignments;
+  return std::make_tuple(a_unaligned, a.qstrand, a.qframe, a.seqno, a.dstrand, a.dframe) <
+    std::make_tuple(b_unaligned, b.qstrand, b.qframe, b.seqno, b.dstrand, b.dframe);
 }
 
 }  // anonymous namespace
 
 auto hits_sort() -> Buffer<long>
 {
-  Buffer<long> hits_sorted(static_cast<std::size_t>(hits_count));
+  Buffer<long> hits_sorted(static_cast<std::size_t>(hit_list.count));
   std::iota(hits_sorted.begin(), hits_sorted.end(), 0L);
-  std::sort(hits_sorted.begin(), hits_sorted.end(),
-            [](long const lhs, long const rhs) -> bool {
-              return hits_compare(&lhs, &rhs) < 0;
-            });
+  std::sort(hits_sorted.begin(), hits_sorted.end(), hits_less);
   return hits_sorted;
 }
 
@@ -236,24 +286,24 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
   
   // find correct place
 
-  std::lock_guard<std::mutex> const lock(hitsmutex);
+  std::lock_guard<std::mutex> const lock(hit_list.mutex);
 
-  if (score > upperscorethreshold)
+  if (score > hit_list.upper_score_threshold)
   {
-    obvious++;
+    hit_list.obvious++;
   }
 
-  if (score >= init_threshold)
+  if (score >= hit_list.init_threshold)
   {
-    totalhits++;
+    run.totalhits++;
   }
 
-  if ((score < scorethreshold) || (score > upperscorethreshold))
+  if ((score < hit_list.score_threshold) || (score > hit_list.upper_score_threshold))
   {
     return;
   }
 
-  long place = hits_count;
+  long place = hit_list.count;
 
   while ((place > 0) && ((score > hit_entry(place-1).score) ||
 			 ((score == hit_entry(place-1).score) &&
@@ -264,7 +314,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   // move entries down
   
-  long const move = (hits_count < keephits ? hits_count : keephits - 1) - place;
+  long const move = (hit_list.count < hit_list.keep ? hit_list.count : hit_list.keep - 1) - place;
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
@@ -275,7 +325,7 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   // fill new entry
 
-  if (place < keephits)
+  if (place < hit_list.keep)
   {
     hit_entry(place).seqno = seqno;
     hit_entry(place).qstrand = strands.qstrand;
@@ -286,36 +336,29 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
     // set by hits_enter_align_hint(), for the hits to align
     hit_entry(place).align_hint = -1;
     hit_entry(place).bestq = -1;
-    if (hits_count < keephits)
+    if (hit_list.count < hit_list.keep)
     {
-      hits_count++;
+      hit_list.count++;
     }
   }
   
   // no hit is kept with -v 0 -b 0: the list is empty (KI-10)
-  if ((keephits > 0) and (hits_count == keephits))
+  if ((hit_list.keep > 0) and (hit_list.count == hit_list.keep))
   {
-    scorethreshold = hit_entry(keephits - 1).score;
+    hit_list.score_threshold = hit_entry(hit_list.keep - 1).score;
   }
 
 }
 
 auto hits_getcount() -> long
 {
-  return hits_count;
+  return hit_list.count;
 }
 
-auto hits_gethit(long i, long * seqno, long * score, 
-		 long * qstrand, long * qframe,
-		 long * dstrand, long * dframe) -> void
+auto hits_gethit(long i) -> Hit
 {
-  struct hits_entry const * h = &hit_entry(i);
-  *seqno = h->seqno;
-  *score = h->score;
-  *qstrand = h->qstrand;
-  *qframe = h->qframe;
-  *dstrand = h->dstrand;
-  *dframe = h->dframe;
+  auto const & h = hit_entry(i);
+  return {h.seqno, h.score, {h.qstrand, h.qframe, h.dstrand, h.dframe}};
 }
 
 auto hits_enter_align_hint(long i, long q_end, long d_end) -> void
@@ -357,51 +400,18 @@ auto hits_init(Parameters const & parameters) -> void
   double const max_expect = parameters.expect;
   auto const show_nostats = static_cast<int>(parameters.view == OutputFormat::plain);
 
-  opt_descriptions = descriptions;
-  opt_alignments = max_alignments;
-  keephits = descriptions > max_alignments ? descriptions : max_alignments;
+  hit_list.descriptions = descriptions;
+  hit_list.alignments = max_alignments;
+  hit_list.keep = descriptions > max_alignments ? descriptions : max_alignments;
   
-  auto maxhits = db_getseqcount_masked();
-  if (parameters.symtype == SymbolType::blastn)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 2;
-      }
-    }
-  else if (parameters.symtype == SymbolType::blastx)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 6;
-      }
-      else
-      {
-	maxhits *= 3;
-      }
-    }
-  else if (parameters.symtype == SymbolType::tblastn)
-    {
-      maxhits *= 6;
-    }
-  else if (parameters.symtype == SymbolType::tblastx)
-    {
-      if (parameters.querystrands == QueryStrands::both)
-      {
-	maxhits *= 36;
-      }
-      else
-      {
-	maxhits *= 18;
-      }
-    }
+  auto const maxhits = db_getseqcount_masked() * hits_per_sequence(parameters);
 
-  keephits = static_cast<long>(std::min<std::int64_t>(keephits, maxhits));
+  hit_list.keep = static_cast<long>(std::min<std::int64_t>(hit_list.keep, maxhits));
 
-  obvious = 0;
-  hits_count = 0;
-  hits_list.clear();
-  hits_list.resize(static_cast<std::size_t>(keephits));
+  hit_list.obvious = 0;
+  hit_list.count = 0;
+  hit_list.entries.clear();
+  hit_list.entries.resize(static_cast<std::size_t>(hit_list.keep));
 
   std::int64_t seqcount = 0;
   std::int64_t symcount = 0;
@@ -419,35 +429,23 @@ auto hits_init(Parameters const & parameters) -> void
 
   //fprintf(out, "matrix=%s, go=%ld, ge=%ld\n", matrixname, gapopen, gapextend);
 
-  stats_available = 0;
+  statistics.available = 0;
 
-  std::int64_t m = 0;
-  std::int64_t n = 0;
-  int lenadj = 0;
   if (parameters.symtype == SymbolType::blastn)
   {
-    if (stats_getparams_nt(parameters.matchscore,
-			   parameters.mismatchscore,
-			   parameters.gapopen,
-			   parameters.gapextend,
-			   & lambda,
-			   & K,
-			   & H,
-			   & alpha,
-			   & beta) != 0)
+    statistics.available = take_statistics(stats_getparams_nt({parameters.matchscore, parameters.mismatchscore},
+                                                              {parameters.gapopen, parameters.gapextend}));
+    if (statistics.available != 0)
     {
-      stats_available = 1;
 
       /*
       fprintf(out, "Params: lambda=%6.3g K=%6.3g H=%6.3g alpha=%6.3g beta=%6.3g\n",
 	      lambda, K, H, alpha, beta);
       */
 
-      logK = log(K);
-      lambda_d_log2 = lambda / log(2.0);
-      logK_d_log2 = logK / log(2.0);
-      
-      lenadj = 0;
+      statistics.logK = log(statistics.K);
+      statistics.lambda_d_log2 = statistics.lambda / ln_2;
+      statistics.logK_d_log2 = statistics.logK / ln_2;
       
       long const qlen = query.nt[0].len;
 
@@ -461,59 +459,40 @@ auto hits_init(Parameters const & parameters) -> void
 	dlen = symcount;
       }
 
-      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
-				 qlen, dlen, seqcount);
+      int const lenadj = length_adjustment(statistics.K, statistics.logK, statistics.alpha / statistics.lambda, statistics.beta,
+					   qlen, dlen, seqcount);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
 
-      m = qlen - lenadj;
+      std::int64_t const m = qlen - lenadj;
 
-      if (parameters.effdbsize > 0)
-      {
-	n = parameters.effdbsize;
-      }
-      else
-      {
-	n = effective_db_length(dlen, seqcount, lenadj);
-      }
+      std::int64_t const n = (parameters.effdbsize > 0)
+	? parameters.effdbsize
+	: effective_db_length(dlen, seqcount, lenadj);
 
-      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
+      statistics.Kmn = statistics.K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
   else if (parameters.symtype < SymbolType::sound)
   {
     if (parameters.symtype == SymbolType::tblastx)
     {
-      stats_available = stats_getparams(parameters.matrixname,
-					32767,
-					32767,
-					& lambda,
-					& K,
-					& H,
-					& alpha,
-					& beta);
+      statistics.available = take_statistics(stats_getparams(parameters.matrixname,
+                                                             {ungapped_penalty, ungapped_penalty}));
     }
     else
     {
-      stats_available = stats_getparams(parameters.matrixname,
-					parameters.gapopen,
-					parameters.gapextend,
-					& lambda,
-					& K,
-					& H,
-					& alpha,
-					& beta);
+      statistics.available = take_statistics(stats_getparams(parameters.matrixname,
+                                                             {parameters.gapopen, parameters.gapextend}));
     }
 
 
-    if (stats_available != 0)
+    if (statistics.available != 0)
     {
       
-      logK = log(K);
-      lambda_d_log2 = lambda / log(2.0);
-      logK_d_log2 = logK / log(2.0);
-      
-      lenadj = 0;
+      statistics.logK = log(statistics.K);
+      statistics.lambda_d_log2 = statistics.lambda / ln_2;
+      statistics.logK_d_log2 = statistics.logK / ln_2;
       
       long qlen = query.aa[0].len;
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -538,62 +517,58 @@ auto hits_init(Parameters const & parameters) -> void
 	}
       }
 
-      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
-				 qlen, dlen, seqcount);
+      int const lenadj = length_adjustment(statistics.K, statistics.logK, statistics.alpha / statistics.lambda, statistics.beta,
+					   qlen, dlen, seqcount);
 
-      m = qlen - lenadj;
+      std::int64_t const m = qlen - lenadj;
 
-      if (parameters.effdbsize > 0)
-      {
-	n = parameters.effdbsize;
-      }
-      else
-      {
-	n = effective_db_length(dlen, seqcount, lenadj);
-      }
+      std::int64_t const n = (parameters.effdbsize > 0)
+	? parameters.effdbsize
+	: effective_db_length(dlen, seqcount, lenadj);
 
-      Kmn = K * static_cast<double>(m) * static_cast<double>(n);
+      statistics.Kmn = statistics.K * static_cast<double>(m) * static_cast<double>(n);
     }
   }
 
   /* ungapped statistical parameters (-m 99): the (0, 0) rows of the
      nucleotide tables, the ungapped rows of the matrix tables; the
      gapped values when there are none (KI-31) */
-  ungapped_lambda = lambda;
-  ungapped_K = K;
-  ungapped_H = H;
-  double ungapped_alpha = 0;
-  double ungapped_beta = 0;
+  statistics.ungapped_lambda = statistics.lambda;
+  statistics.ungapped_K = statistics.K;
+  statistics.ungapped_H = statistics.H;
+  StatisticsLookup ungapped {false, {0, 0, 0, 0, 0}};
   if (parameters.symtype == SymbolType::blastn)
   {
-    stats_getparams_nt(parameters.matchscore, parameters.mismatchscore, 0, 0,
-                       & ungapped_lambda, & ungapped_K, & ungapped_H,
-                       & ungapped_alpha, & ungapped_beta);
+    ungapped = stats_getparams_nt({parameters.matchscore, parameters.mismatchscore}, {0, 0});
   }
   else if (parameters.symtype < SymbolType::sound)
   {
-    stats_getparams(parameters.matrixname, ungapped_penalty, ungapped_penalty,
-		    &ungapped_lambda, &ungapped_K, &ungapped_H,
-		    &ungapped_alpha, &ungapped_beta);
+    ungapped = stats_getparams(parameters.matrixname, {ungapped_penalty, ungapped_penalty});
+  }
+  if (ungapped.found)
+  {
+    statistics.ungapped_lambda = ungapped.values.lambda;
+    statistics.ungapped_K = ungapped.values.K;
+    statistics.ungapped_H = ungapped.values.H;
   }
 
-  scorethreshold = minscore;
-  upperscorethreshold = maxscore;
+  hit_list.score_threshold = minscore;
+  hit_list.upper_score_threshold = maxscore;
   
-  if (stats_available != 0)
+  if (statistics.available != 0)
   {
-    auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / Kmn) / lambda));
+    auto const minscore_expect = threshold_to_long(ceil(- log(max_expect / statistics.Kmn) / statistics.lambda));
     if (minscore_expect > minscore)
     {
-      scorethreshold = minscore_expect;
+      hit_list.score_threshold = minscore_expect;
     }
 
     if (min_expect > 0.0)
     {
-      auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / Kmn) / lambda));
+      auto const maxscore_expect = threshold_to_long(floor(- log(min_expect / statistics.Kmn) / statistics.lambda));
       if (maxscore_expect < maxscore)
       {
-	upperscorethreshold = maxscore_expect;
+	hit_list.upper_score_threshold = maxscore_expect;
       }
     }
   }
@@ -605,14 +580,14 @@ auto hits_init(Parameters const & parameters) -> void
     }
   }
 
-  init_threshold = scorethreshold;
+  hit_list.init_threshold = hit_list.score_threshold;
 
   //  fprintf(out, "scorethreshold: %ld\n", scorethreshold);
 }
 
 auto hits_empty() -> void
 {
-  for (long i=0; i<hits_count; i++)
+  for (long i=0; i<hit_list.count; i++)
   {
     struct hits_entry * h = &hit_entry(i);
 
@@ -625,7 +600,7 @@ auto hits_empty() -> void
 auto hits_exit() -> void
 {
   hits_empty();
-  hits_list = Buffer<hits_entry>();
+  hit_list.entries = Buffer<hits_entry>();
 }
 
 auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void
@@ -643,12 +618,12 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   // KI-37), the sequence itself only for hits with an alignment
   db_mapsequences(t, h->seqno, h->seqno);
 
-  View<char> const sequence = db_getsequence(t, h->seqno, h->dstrand,
-					     h->dframe, & ntlen, 0);
+  View<char> const sequence = db_getsequence(t, h->seqno, {h->dstrand, h->dframe},
+					     & ntlen, 0);
   h->dlen = static_cast<long>(sequence.size());
   h->dlennt = ntlen;
 
-  if (i < opt_alignments)
+  if (i < hit_list.alignments)
   {
     h->dseq.assign(sequence.begin(), sequence.end());
     
@@ -684,7 +659,7 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 	  h->dseq.data(),
 	  qlen,
 	  h->dlen,
-	  score_matrix_63,
+	  score_matrices.score_63.data(),
 	  parameters.gapopen,
 	  parameters.gapextend,
 	  & h->align_q_start,
@@ -825,16 +800,20 @@ auto aligned_hit(Parameters const & parameters, long const i) -> AlignedHit
 
   long const maxqpos = hit.q_first > hit.q_last ? hit.q_first : hit.q_last; 
   long const maxdpos = hit.d_first > hit.d_last ? hit.d_first : hit.d_last; 
-  long maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
-  hit.poswidth = 1;
-  while (maxpos > 9)
-  {
-    maxpos /= 10;
-    hit.poswidth++;
-  }
+  long const maxpos = maxqpos > maxdpos ? maxqpos : maxdpos;
+  decimal::Buffer buffer {{}};
+  hit.poswidth = static_cast<int>(decimal::to_decimal(buffer, maxpos).size());
 
   return hit;
 }
+
+// an operation of an alignment string: a letter (M, D, I; 0 ends the
+// alignment) and its count
+struct AlignmentOperation
+{
+  char op;
+  long len;
+};
 
 // show_align(): the alignment of a hit, in lines of ALIGNLEN columns
 class AlignmentLines
@@ -843,7 +822,7 @@ public:
   explicit AlignmentLines(AlignedHit const & aligned) :
     hit(aligned), q_pos(aligned.q_align_start), d_pos(aligned.d_align_start) {}
 
-  auto putalignop(char c, long len) -> void;
+  auto putalignop(AlignmentOperation const & operation) -> void;
 
 private:
   AlignedHit hit;
@@ -857,8 +836,10 @@ private:
   std::array<char, ALIGNLEN + 1> d_line {{}};
 };
 
-auto AlignmentLines::putalignop(char c, long len) -> void
+auto AlignmentLines::putalignop(AlignmentOperation const & operation) -> void
 {
+  char const c = operation.op;
+  long const len = operation.len;
 
   long count = len;
   while(count != 0)
@@ -885,7 +866,7 @@ auto AlignmentLines::putalignop(char c, long len) -> void
       else
       {
 	a_line[line_pos] = (qs == ds) ? hit.sym[static_cast<int>(qs)] : 
-	  (score_matrix_63[(32*qs)+ds] > 0 ? '+' : ' ');
+	  (pair_score(qs, ds) > 0 ? '+' : ' ');
       }
       d_line[line_pos] = hit.sym[static_cast<int>(ds)];
       line_pos++;
@@ -992,19 +973,13 @@ auto AlignmentLines::putalignop(char c, long len) -> void
 
 // one operation of an alignment string ("M12D3...", align.cc): its
 // letter and its count; the cursor moves past the count's digits
-struct AlignmentOperation
-{
-  char op = 0;
-  long len = 0;
-};
-
 auto next_operation(char const * & cursor) -> AlignmentOperation
 {
-  AlignmentOperation operation;
+  AlignmentOperation operation {0, 0};
   operation.op = *cursor;
   cursor = std::next(cursor);
   char * end = nullptr;
-  operation.len = std::strtol(cursor, & end, 10);
+  operation.len = std::strtol(cursor, & end, decimal_base);
   cursor = end;
   return operation;
 }
@@ -1019,22 +994,38 @@ auto show_align(AlignedHit const & hit) -> void
   while(p < e)
   {
     auto const operation = next_operation(p);
-    lines.putalignop(operation.op, operation.len);
+    lines.putalignop(operation);
   }
   
-  lines.putalignop(0, 1);
+  lines.putalignop({0, 1});
 }
 
-auto whole_align(AlignedHit const & hit,
-		 long * identities,
-		 long * positives,
-		 long * indels,
-		 long * aligned,
-		 long * gaps,
-		 std::string & qline,
-		 std::string & aline,
-		 std::string & dline) -> void
+// the counts of an alignment, for its summaries
+struct AlignmentCounts
 {
+  long identities = 0;
+  long positives = 0;
+  long indels = 0;  // gap positions
+  long aligned = 0;  // alignment columns
+  long gaps = 0;  // gap openings
+};
+
+// an alignment: its counts, and its query, middle and database lines
+struct WholeAlignment
+{
+  AlignmentCounts counts;
+  std::string qline;
+  std::string aline;
+  std::string dline;
+};
+
+auto whole_align(AlignedHit const & hit) -> WholeAlignment
+{
+  WholeAlignment alignment;
+  auto & counts = alignment.counts;
+  auto & qline = alignment.qline;
+  auto & aline = alignment.aline;
+  auto & dline = alignment.dline;
 
   long al = 0;
   char const * p = hit.alignment;
@@ -1045,15 +1036,8 @@ auto whole_align(AlignedHit const & hit,
 
   for (auto * line : {&qline, &aline, &dline})
   {
-    line->clear();
     line->reserve(static_cast<std::size_t>(al));
   }
-
-  *identities = 0;
-  *positives = 0;
-  *indels = 0;
-  *gaps = 0;
-  *aligned = 0;
   
   long q_pos = hit.q_align_start;
   long d_pos = hit.d_align_start;
@@ -1066,7 +1050,7 @@ auto whole_align(AlignedHit const & hit,
     char const op = operation.op;
     long const len = operation.len;
     
-    *aligned += len;
+    counts.aligned += len;
     if (op == 'D')
     {
       for(long j=0; j<len; j++)
@@ -1076,8 +1060,8 @@ auto whole_align(AlignedHit const & hit,
 	aline += ' ';
 	dline += '-';
       }
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
     }
     else if (op == 'I')
     {
@@ -1088,8 +1072,8 @@ auto whole_align(AlignedHit const & hit,
 	aline += ' ';
 	dline += hit.sym[static_cast<int>(ds)];
       }
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
     }
     else if (op == 'M')
     {
@@ -1101,13 +1085,13 @@ auto whole_align(AlignedHit const & hit,
 	if (qs == ds)
 	{
 	  aline += '|';
-	  (*identities)++;
-	  (*positives)++;
+	  counts.identities++;
+	  counts.positives++;
 	}
-	else if (score_matrix_63[(32*qs)+ds] > 0)
+	else if (pair_score(qs, ds) > 0)
 	{
 	  aline += '+';
-	  (*positives)++;
+	  counts.positives++;
 	}
 	else
 	{
@@ -1122,20 +1106,12 @@ auto whole_align(AlignedHit const & hit,
     }
   }
 
+  return alignment;
 }
 
-auto count_align(AlignedHit const & hit,
-		 long * identities,
-		 long * positives,
-		 long * indels,
-		 long * aligned,
-		 long * gaps) -> void
+auto count_align(AlignedHit const & hit) -> AlignmentCounts
 {
-  *identities = 0;
-  *positives = 0;
-  *indels = 0;
-  *gaps = 0;
-  *aligned = 0;
+  AlignmentCounts counts;
   
   long q_pos = hit.q_align_start;
   long d_pos = hit.d_align_start;
@@ -1149,17 +1125,17 @@ auto count_align(AlignedHit const & hit,
     char const op = operation.op;
     long const len = operation.len;
     
-    *aligned += len;
+    counts.aligned += len;
     if (op == 'D')
     {
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
       q_pos += len;
     }
     else if (op == 'I')
     {
-      *gaps += 1;
-      *indels += len;
+      counts.gaps += 1;
+      counts.indels += len;
       d_pos += len;
     }
     else
@@ -1170,43 +1146,55 @@ auto count_align(AlignedHit const & hit,
 	char const ds = hit.d_seq[d_pos++];
 	if (qs == ds)
 	{
-	  (*identities)++;
-	  (*positives)++;
+	  counts.identities++;
+	  counts.positives++;
 	}
-	else if (score_matrix_63[(32 * qs) + ds] > 0)
+	else if (pair_score(qs, ds) > 0)
 	{
-	  (*positives)++;
+	  counts.positives++;
 	}
       }
     }
   }
+  return counts;
 }
 
 auto hits_show_expect(double expect_value) -> void
 {
-  std::array<char, 10> temp {{}};
-  if (expect_value < 1e-180)
+  // the format of an expect value depends on its range: each bound is
+  // where the rounded value would need one more character
+  constexpr double zero_below = 1e-180;
+  constexpr double three_digit_exponent_below = 9.5e-100;
+  constexpr double exponent_below = 0.00095;
+  constexpr double three_decimals_below = 0.0995;
+  constexpr double two_decimals_below = 0.95;
+  constexpr double one_decimal_below = 9.5;
+  // "%-6.0e" of a value from 1e-180 on: at most 6 characters and the NUL
+  constexpr std::size_t exponent_text_size = 10;
+
+  std::array<char, exponent_text_size> temp {{}};
+  if (expect_value < zero_below)
   {
     fprint(out, "0.0  ");
   }
-  else if (expect_value < 9.5e-100)
+  else if (expect_value < three_digit_exponent_below)
   {
     snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
     fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
-  else if (expect_value < 0.00095)
+  else if (expect_value < exponent_below)
   {
     fprintf(out, "%-5.0e", expect_value);
   }
-  else if (expect_value < 0.0995)
+  else if (expect_value < three_decimals_below)
   {
     fprintf(out, "%-5.3f", expect_value);
   }
-  else if (expect_value < 0.95)
+  else if (expect_value < two_decimals_below)
   {
     fprintf(out, "%-5.2f", expect_value);
   }
-  else if (expect_value < 9.5)
+  else if (expect_value < one_decimal_below)
   {
     fprintf(out, "%-5.1f", expect_value);
   }
@@ -1256,6 +1244,12 @@ auto xml_print(char const * const text,
   }
 }
 
+// ParAlign XML (-m 99): the buffer of an anchor ("query_hit_frame_strand...":
+// numbers and marks, far below the size), and the length of the short
+// name of a hit (the start of its title)
+constexpr std::size_t anchor_size = 200;
+constexpr std::size_t short_name_length = 35;
+
 auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, long query_index, long i) -> void
 {
   switch(symbol_type)
@@ -1299,12 +1293,12 @@ auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, 
   }
 }
 
-auto hits_defline_split(char * defline, 
+auto hits_defline_split(char const * defline, 
 			long * gi,
-			char ** link, std::size_t * linklen, 
-			char ** rest) -> void
+			char const ** link, std::size_t * linklen, 
+			char const ** rest) -> void
 {
-  char * p = defline;
+  char const * p = defline;
 
   *gi = 0;  // no gi (KI-42: it kept the gi of the previous defline)
   *link = nullptr;
@@ -1318,7 +1312,7 @@ auto hits_defline_split(char * defline,
   {
     auto * const number = std::next(p, gi_prefix_length);
     char * end = nullptr;
-    auto const value = std::strtol(number, & end, 10);
+    auto const value = std::strtol(number, & end, decimal_base);
     if (end != number)
     {
       *gi = value;
@@ -1331,7 +1325,7 @@ auto hits_defline_split(char * defline,
     p = std::next(p);
   }
 
-  auto * r = strchr(p, ' ');
+  auto const * const r = strchr(p, ' ');
   if (r != nullptr)
   {
     *linklen = static_cast<std::size_t>(r - p);
@@ -1344,9 +1338,19 @@ auto hits_defline_split(char * defline,
   }
 }
 
+// the numbers of hits shown: descriptions (-v) and alignments (-b),
+// at most the hits found
+struct ShownHits
+{
+  long descriptions;
+  long alignments;
+};
+
+// the tabular output (-m 8, -m 9): with or without comment lines
+enum struct TabularComments : bool { without, with };
+
 auto hits_show_xml_paralign(Parameters const & parameters,
-			    long showalignments,
-			    long showhits,
+			    ShownHits const & shown,
 			    struct db_thread_s const * t) -> void
 {
   /* ParAlign XML */
@@ -1486,14 +1490,14 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, parameters.gapextend);
   fprint(out, "</gapPenaltyExtension>\n");
   fprint(out, "\t\t\t\t<ungapped>\n");
-  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", ungapped_lambda);
-  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", ungapped_K);
-  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", ungapped_H);
+  fprintf(out, "\t\t\t\t\t<ungappedLambda>%.4g</ungappedLambda>\n", statistics.ungapped_lambda);
+  fprintf(out, "\t\t\t\t\t<ungappedKappa>%.4g</ungappedKappa>\n", statistics.ungapped_K);
+  fprintf(out, "\t\t\t\t\t<ungappedEta>%.4g</ungappedEta>\n", statistics.ungapped_H);
   fprint(out, "\t\t\t\t</ungapped>\n");
   fprint(out, "\t\t\t\t<gapped>\n");
-  fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", lambda);
-  fprintf(out, "\t\t\t\t\t<gappedKappa>%.4g</gappedKappa>\n", K);
-  fprintf(out, "\t\t\t\t\t<gappedEta>%.4g</gappedEta>\n", H);
+  fprintf(out, "\t\t\t\t\t<gappedLambda>%.4g</gappedLambda>\n", statistics.lambda);
+  fprintf(out, "\t\t\t\t\t<gappedKappa>%.4g</gappedKappa>\n", statistics.K);
+  fprintf(out, "\t\t\t\t\t<gappedEta>%.4g</gappedEta>\n", statistics.H);
   fprint(out, "\t\t\t\t</gapped>\n");
 
   fprint(out, "\t\t\t</gapPenalties>\n");
@@ -1519,15 +1523,15 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
   fprint(out, "\t\t\t<searchInformation>\n");
   fprint(out, "\t\t\t\t<searchStarted>");
-  fprint(out, as_c_string(ti.starttime.data()));
+  fprint(out, as_c_string(run.ti.starttime.data()));
   fprint(out, "</searchStarted>\n");
   fprint(out, "\t\t\t\t<searchCompleted>");
-  fprint(out, as_c_string(ti.endtime.data()));
+  fprint(out, as_c_string(run.ti.endtime.data()));
   fprint(out, "</searchCompleted>\n");
-  fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", ti.elapsed);
-  if (ti.elapsed > 0.0)
+  fprintf(out, "\t\t\t\t<searchElapsedTime>%.2fs</searchElapsedTime>\n", run.ti.elapsed);
+  if (run.ti.elapsed > 0.0)
   {
-    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", ti.speed / 1e9);
+    fprintf(out, "\t\t\t\t<searchSpeed>%.3f GCUPS</searchSpeed>\n", gcups(run.ti.speed));
   }
   else
   {
@@ -1535,7 +1539,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   }
   fprint(out, "\t\t\t\t<searchSWAlignments>\n");
   fprint(out, "\t\t\t\t\t<SWAbsolute>");
-  fprint_integer(out, compute7);
+  fprint_integer(out, run.compute7);
   fprint(out, "</SWAbsolute>\n");
   fprint(out, "\t\t\t\t\t<SWPercent>100</SWPercent>\n");
   fprint(out, "\t\t\t\t</searchSWAlignments>\n");
@@ -1544,39 +1548,39 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint(out, "\t\t<resultInformation>\n");
   fprint(out, "\t\t\t<resultHits>\n");
   fprint(out, "\t\t\t\t<totalCount>");
-  fprint_integer(out, totalhits);
+  fprint_integer(out, run.totalhits);
   fprint(out, "</totalCount>\n");
   fprint(out, "\t\t\t\t<obviousCount>");
-  fprint_integer(out, obvious);
+  fprint_integer(out, hit_list.obvious);
   fprint(out, "</obviousCount>\n");
   fprint(out, "\t\t\t\t<shownCount>");
-  fprint_integer(out, showhits);
+  fprint_integer(out, shown.descriptions);
   fprint(out, "</shownCount>\n");
   fprint(out, "\t\t\t</resultHits>\n");
   fprint(out, "\t\t\t<alignmentCount>");
-  fprint_integer(out, showalignments);
+  fprint_integer(out, shown.alignments);
   fprint(out, "</alignmentCount>\n");
   fprint(out, "\t\t</resultInformation>\n");
   
   fprint(out, "\t\t<shortVersionHits>\n");
   
-  for(long i=0; i<showhits; i++)
+  for(long i=0; i<shown.descriptions; i++)
   {
     auto const score = hit_entry(i).score;
     auto const e = expect_value_of(score);
 
-    std::array<char, 200> anchor {{}};
-    make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
+    std::array<char, anchor_size> anchor {{}};
+    make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
 
     long deflines = 0;
     std::vector<std::string> deflinetable;
     long gi = 0;
-    char * link = nullptr;
-    char * title = nullptr;
+    char const * link = nullptr;
+    char const * title = nullptr;
     std::size_t linklen = 0;
     db_parse_header(t, make_view(hit_entry(i).header_address),
 		    1, & deflines, & deflinetable);
-    hits_defline_split(&deflinetable[0][0], 
+    hits_defline_split(deflinetable[0].c_str(), 
 		       & gi,
 		       & link, & linklen,
 		       & title);
@@ -1613,7 +1617,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
-    xml_print(title, 35);
+    xml_print(title, short_name_length);
     fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
@@ -1655,15 +1659,15 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
   fprint(out, "\t\t</shortVersionHits>\n");
 
-  if (showalignments != 0)
+  if (shown.alignments != 0)
   {
     fprint(out, "\t\t<longVersionHits>\n");
     
-    for(long i=0; i<showalignments; i++)
+    for(long i=0; i<shown.alignments; i++)
     {
       
-      std::array<char, 200> anchor {{}};
-      make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
+      std::array<char, anchor_size> anchor {{}};
+      make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");
@@ -1673,8 +1677,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       long deflines = 0;
       std::vector<std::string> deflinetable;
       long gi = 0;
-      char * link = nullptr;
-      char * title = nullptr;
+      char const * link = nullptr;
+      char const * title = nullptr;
       std::size_t linklen = 0;
       db_parse_header(t, make_view(hit_entry(i).header_address),
 		      1, & deflines, & deflinetable);
@@ -1682,7 +1686,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       
       for (int d=0; d < deflines; d++)
       {
-	hits_defline_split(&deflinetable[static_cast<std::size_t>(d)][0], 
+	hits_defline_split(deflinetable[static_cast<std::size_t>(d)].c_str(), 
 			   & gi,
 			   & link, & linklen,
 			   & title);
@@ -1785,19 +1789,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       auto const score = hit_entry(i).score;
       auto const e = expect_value_of(score);
 
-      long identities = 0;
-      long positives = 0;
-      long indels = 0;
-      long gaps = 0;
-      long aligned = 0;
     
-      std::string qline;
-      std::string aline;
-      std::string dline;
         
       auto const hit = aligned_hit(parameters, i);
-      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  qline, aline, dline);
+      auto const alignment = whole_align(hit);
+      auto const & counts = alignment.counts;
 
       fprint(out, "\t\t\t\t<alignment>\n");
       fprint(out, "\t\t\t\t\t<subalignment>\n");
@@ -1807,59 +1803,59 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprintf(out, "\t\t\t\t\t\t<longVersionEValue>%.2g</longVersionEValue>\n", e);
       fprint(out, "\t\t\t\t\t\t<identical>\n");
       fprint(out, "\t\t\t\t\t\t\t<identicalNominator>");
-      fprint_integer(out, identities);
+      fprint_integer(out, counts.identities);
       fprint(out, "</identicalNominator>\n");
       fprint(out, "\t\t\t\t\t\t\t<identicalDenominator>");
-      fprint_integer(out, aligned);
+      fprint_integer(out, counts.aligned);
       fprint(out, "</identicalDenominator>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(identities, aligned));
+      fprintf(out, "\t\t\t\t\t\t\t<identicalPercentage>%.1f</identicalPercentage>\n", percentage(counts.identities, counts.aligned));
       fprint(out, "\t\t\t\t\t\t</identical>\n");
 
       if (parameters.symtype != SymbolType::blastn)
       {
 	fprint(out, "\t\t\t\t\t\t<positive>\n");
 	fprint(out, "\t\t\t\t\t\t\t<positiveNominator>");
-	fprint_integer(out, positives);
+	fprint_integer(out, counts.positives);
 	fprint(out, "</positiveNominator>\n");
 	fprint(out, "\t\t\t\t\t\t\t<positiveDenominator>");
-	fprint_integer(out, aligned);
+	fprint_integer(out, counts.aligned);
 	fprint(out, "</positiveDenominator>\n");
-	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(positives, aligned));
+	fprintf(out, "\t\t\t\t\t\t\t<positivePercentage>%.1f</positivePercentage>\n", percentage(counts.positives, counts.aligned));
 	fprint(out, "\t\t\t\t\t\t</positive>\n");
       }
 
       fprint(out, "\t\t\t\t\t\t<indels>\n");
       fprint(out, "\t\t\t\t\t\t\t<indelsNominator>");
-      fprint_integer(out, indels);
+      fprint_integer(out, counts.indels);
       fprint(out, "</indelsNominator>\n");
       fprint(out, "\t\t\t\t\t\t\t<indelsDenominator>");
-      fprint_integer(out, aligned);
+      fprint_integer(out, counts.aligned);
       fprint(out, "</indelsDenominator>\n");
-      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(indels, aligned));
+      fprintf(out, "\t\t\t\t\t\t\t<indelsPercentage>%.1f</indelsPercentage>\n", percentage(counts.indels, counts.aligned));
       fprint(out, "\t\t\t\t\t\t</indels>\n");
       fprint(out, "\t\t\t\t\t\t<gaps>");
-      fprint_integer(out, gaps);
+      fprint_integer(out, counts.gaps);
       fprint(out, "</gaps>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentQuery>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryStart>");
       fprint_integer(out, hit.q_first);
       fprint(out, "</alignmentQueryStart>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryLine>");
-      fprint(out, as_c_string(qline.c_str()));
+      fprint(out, as_c_string(alignment.qline.c_str()));
       fprint(out, "</alignmentQueryLine>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentQueryEnd>");
       fprint_integer(out, hit.q_last);
       fprint(out, "</alignmentQueryEnd>\n");
       fprint(out, "\t\t\t\t\t\t</alignmentQuery>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentLine>");
-      fprint(out, as_c_string(aline.c_str()));
+      fprint(out, as_c_string(alignment.aline.c_str()));
       fprint(out, "</alignmentLine>\n");
       fprint(out, "\t\t\t\t\t\t<alignmentDatabase>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseStart>");
       fprint_integer(out, hit.d_first);
       fprint(out, "</alignmentDatabaseStart>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseLine>");
-      fprint(out, as_c_string(dline.c_str()));
+      fprint(out, as_c_string(alignment.dline.c_str()));
       fprint(out, "</alignmentDatabaseLine>\n");
       fprint(out, "\t\t\t\t\t\t\t<alignmentDatabaseEnd>");
       fprint_integer(out, hit.d_last);
@@ -1906,9 +1902,7 @@ auto show_description_xml(char const * const desc) -> void
 }
 
 auto hits_show_xml(Parameters const & parameters,
-		   long show_gis,
-		   long showalignments,
-		   long showhits,
+		   ShownHits const & shown,
 		   struct db_thread_s const * t) -> void
 {
   /* Simple XML */
@@ -1916,12 +1910,12 @@ auto hits_show_xml(Parameters const & parameters,
   fprint(out, "<result>\n");
   fprint(out, "  <general>\n");
   fprint(out, "    <hitcount>");
-  fprint_integer(out, hits_count);
+  fprint_integer(out, hit_list.count);
   fprint(out, "</hitcount>\n");
   fprint(out, "  </general>\n");
   fprint(out, "  <hits>\n");
   
-  for(long i=0; i<showhits; i++)
+  for(long i=0; i<shown.descriptions; i++)
   {
     auto const seqno = hit_entry(i).seqno;
     auto const score = hit_entry(i).score;
@@ -1942,7 +1936,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprint(out, "</query>\n");
     fprint(out, "      <name>");
     HeaderLayout layout;
-    layout.show_gis = show_gis;
+    layout.show_gis = parameters.show_gis;
     layout.escaping = Escaping::xml;
     db_showheader(t, make_view(hit_entry(i).header_address), layout);
     fprint(out, "</name>\n");
@@ -1953,21 +1947,12 @@ auto hits_show_xml(Parameters const & parameters,
     fprint_integer(out, score);
     fprint(out, "</score>\n");
     
-    if (i < showalignments)
+    if (i < shown.alignments)
     {
-      long identities = 0;
-      long positives = 0;
-      long gaps = 0;
-      long aligned = 0;
-      long indels = 0;
 
-      std::string qline;
-      std::string aline;
-      std::string dline;
         
       auto const hit = aligned_hit(parameters, i);
-      whole_align(hit, & identities, & positives, & indels, & aligned, & gaps,
-		  qline, aline, dline);
+      auto const alignment = whole_align(hit);
 
       fprint(out, "      <alignment>");
       fprint(out, as_c_string(hit_entry(i).alignment.c_str()));
@@ -1985,13 +1970,13 @@ auto hits_show_xml(Parameters const & parameters,
       fprint(out, "</dpos>\n");
       
       fprint(out, "      <qseq>");
-      fprint(out, as_c_string(qline.c_str()));
+      fprint(out, as_c_string(alignment.qline.c_str()));
       fprint(out, "</qseq>\n");
       fprint(out, "      <aseq>");
-      fprint(out, as_c_string(aline.c_str()));
+      fprint(out, as_c_string(alignment.aline.c_str()));
       fprint(out, "</aseq>\n");
       fprint(out, "      <dseq>");
-      fprint(out, as_c_string(dline.c_str()));
+      fprint(out, as_c_string(alignment.dline.c_str()));
       fprint(out, "</dseq>\n");
 
     }
@@ -2002,14 +1987,13 @@ auto hits_show_xml(Parameters const & parameters,
 }
 
 auto hits_show_tsv(Parameters const & parameters,
-		   long showalignments,
-		   long showcomments,
+		   ShownHits const & shown,
+		   TabularComments const comments,
 		   struct db_thread_s const * t) -> void
 {
-  constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  
-  if (showcomments != 0)
+  if (comments == TabularComments::with)
     {
+      constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
       fprint(out, "# ");
       fprint(out, as_c_string(swipe_name_and_version));
       fprint(out, " - ");
@@ -2021,7 +2005,7 @@ auto hits_show_tsv(Parameters const & parameters,
       fprint(out, "# Database: ");
       fprint(out, as_c_string(parameters.databasename));
       fprint(out, '\n');
-      if (stats_available != 0)
+      if (statistics.available != 0)
       {
 	fprint(out, "# Fields: Query id, Subject id, % identity, alignment length, mismatches, gap openings, q. start, q. end, s. start, s. end, e-value, bit score\n");
       }
@@ -2031,7 +2015,7 @@ auto hits_show_tsv(Parameters const & parameters,
       }
     }
 
-  for(long i=0; i<showalignments; i++)
+  for(long i=0; i<shown.alignments; i++)
   {
     show_description(query.description.c_str());
     fprint(out, '\t');
@@ -2040,28 +2024,23 @@ auto hits_show_tsv(Parameters const & parameters,
     layout.text = DeflineText::identifier;
     db_showheader(t, make_view(hit_entry(i).header_address), layout);
     
-    long identities = 0;
-    long positives = 0;
-    long gaps = 0;
-    long aligned = 0;
-    long indels = 0;
     
     auto const hit = aligned_hit(parameters, i);
-    count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
+    auto const counts = count_align(hit);
     
     auto const score = hit_entry(i).score;
     
     fprintf(out, "\t%.2f\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld\t%ld", 
-	    percentage(identities, aligned),
-	    aligned,
-	    aligned - identities - indels,
-	    gaps,
+	    percentage(counts.identities, counts.aligned),
+	    counts.aligned,
+	    counts.aligned - counts.identities - counts.indels,
+	    counts.gaps,
 	    hit.q_first,
 	    hit.q_last,
 	    hit.d_first,
 	    hit.d_last);
     
-    if (stats_available != 0)
+    if (statistics.available != 0)
     {
       auto const expect_value = expect_value_of(score);
       fprintf(out, "\t%.2g", expect_value);
@@ -2079,18 +2058,16 @@ auto hits_show_tsv(Parameters const & parameters,
 }
 
 auto hits_show_plain(Parameters const & parameters,
-		     long show_gis,
-		     long showalignments,
-		     long showhits,
+		     ShownHits const & shown,
 		     struct db_thread_s const * t) -> void
 {
-    if (hits_count == 0)
+    if (hit_list.count == 0)
     {
       fprint(out, "\nNo hits.\n");
     }
     else
     {
-      if (stats_available != 0)
+      if (statistics.available != 0)
       {
 	fprint(out, "                                                                 Score    E\n");
 	fprint(out, "Sequences producing significant alignments:                      (bits) Value\n\n");
@@ -2100,24 +2077,12 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, "Sequences producing significant alignments:                         Score\n\n");
       }
 	  
-      for(long i=0; i<showhits; i++)
+      for(long i=0; i<shown.descriptions; i++)
       {
-	long headerlen = 67;
-	if (parameters.symtype == SymbolType::blastn)
-	{
-	  headerlen = 65;
-	}
-	else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastn))
-	{
-	  headerlen = 64;
-	}
-	else if (parameters.symtype == SymbolType::tblastx)
-	{
-	  headerlen = 61;
-	}
+	long const headerlen = description_width - frame_mark_width(parameters.symtype);
 
 	HeaderLayout layout;
-	layout.show_gis = show_gis;
+	layout.show_gis = parameters.show_gis;
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
@@ -2152,13 +2117,13 @@ auto hits_show_plain(Parameters const & parameters,
 	  fprint_integer(out, hit_entry(i).dframe + 1);
 	}
 
-	if (stats_available != 0)
+	if (statistics.available != 0)
 	{
 	  auto const bits = static_cast<long>(floor(bit_score_of(score) + 0.5));
 	  auto const expect_value = expect_value_of(score);
 		
 	  fprint(out, ' ');
-	  fprint_integer(out, bits, 5);
+	  fprint_integer(out, bits, score_width);
 		
 	  fprint(out, "   ");
 		
@@ -2167,19 +2132,19 @@ auto hits_show_plain(Parameters const & parameters,
 	else
 	{
 	  fprint(out, ' ');
-	  fprint_integer(out, score, 5);
+	  fprint_integer(out, score, score_width);
 	}
 
 	fprint(out, '\n');
       }
 
-      for(long i=0; i<showalignments; i++)
+      for(long i=0; i<shown.alignments; i++)
       {
 	fprint(out, "\n");
 	HeaderLayout layout;
-	layout.show_gis = show_gis;
-	layout.indent = 10;
-	layout.linelen = 79;
+	layout.show_gis = parameters.show_gis;
+	layout.indent = alignment_header_indent;
+	layout.linelen = alignment_header_width;
 	layout.maxdeflines = LONG_MAX;
 	db_showheader(t, make_view(hit_entry(i).header_address), layout);
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
@@ -2198,7 +2163,7 @@ auto hits_show_plain(Parameters const & parameters,
 	      
 	auto const score = hit_entry(i).score;
 
-	if (stats_available != 0)
+	if (statistics.available != 0)
 	{
 	  auto const bits = bit_score_of(score);
 	  auto const expect_value = expect_value_of(score);
@@ -2214,40 +2179,35 @@ auto hits_show_plain(Parameters const & parameters,
 
 	fprint(out, '\n');
 
-	long identities = 0;
-	long positives = 0;
-	long gaps = 0;
-	long aligned = 0;
-	long indels = 0;
 
 	auto const hit = aligned_hit(parameters, i);
-	count_align(hit, & identities, & positives, & indels, & aligned, & gaps);
+	auto const counts = count_align(hit);
 	      
 	fprint(out, " Identities = ");
-	fprint_integer(out, identities);
+	fprint_integer(out, counts.identities);
 	fprint(out, '/');
-	fprint_integer(out, aligned);
+	fprint_integer(out, counts.aligned);
 	fprint(out, " (");
-	fprint_integer(out, identities * 100 / aligned);
+	fprint_integer(out, whole_percentage(counts.identities, counts.aligned));
 	fprint(out, "%)");
 	if (parameters.symtype > SymbolType::blastn)
 	{
 	  fprint(out, ", Positives = ");
-	  fprint_integer(out, positives);
+	  fprint_integer(out, counts.positives);
 	  fprint(out, '/');
-	  fprint_integer(out, aligned);
+	  fprint_integer(out, counts.aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, positives * 100 / aligned);
+	  fprint_integer(out, whole_percentage(counts.positives, counts.aligned));
 	  fprint(out, "%)");
 	}
-	if (indels != 0)
+	if (counts.indels != 0)
 	{
 	  fprint(out, ", Gaps = ");
-	  fprint_integer(out, indels);
+	  fprint_integer(out, counts.indels);
 	  fprint(out, '/');
-	  fprint_integer(out, aligned);
+	  fprint_integer(out, counts.aligned);
 	  fprint(out, " (");
-	  fprint_integer(out, indels * 100 / aligned);
+	  fprint_integer(out, whole_percentage(counts.indels, counts.aligned));
 	  fprint(out, "%)");
 	}
 	fprint(out, "\n");
@@ -2348,48 +2308,32 @@ auto hits_show_end(OutputFormat view) -> void
 auto hits_show(Parameters const & parameters) -> void
 {
   OutputFormat const view = parameters.view;
-  long const show_gis = parameters.show_gis;
 
   // compute number of hits and alignments to actually show
 
-  long showalignments = 0;
-  long showhits = 0;
-
-  if (hits_count < opt_descriptions)
-  {
-    showhits = hits_count;
-  }
-  else
-  {
-    showhits = opt_descriptions;
-  }
-
-  if (hits_count < opt_alignments)
-  {
-    showalignments = hits_count;
-  }
-  else
-  {
-    showalignments = opt_alignments;
-  }
+  long const count = hit_list.count;
+  ShownHits const shown {std::min(count, hit_list.descriptions),
+                         std::min(count, hit_list.alignments)};
 
   auto * t = db_thread_create();
 
   if(view == OutputFormat::plain)
   {
-    hits_show_plain(parameters, show_gis, showalignments, showhits, t);
+    hits_show_plain(parameters, shown, t);
   }
   else if (view==OutputFormat::xml)
   {
-    hits_show_xml(parameters, show_gis, showalignments, showhits, t);
+    hits_show_xml(parameters, shown, t);
   }
   else if ((view==OutputFormat::tabular)||(view==OutputFormat::tabular_with_comments))
   {
-    hits_show_tsv(parameters, showalignments, static_cast<long>(view == OutputFormat::tabular_with_comments), t);
+    auto const comments = (view == OutputFormat::tabular_with_comments) ?
+      TabularComments::with : TabularComments::without;
+    hits_show_tsv(parameters, shown, comments, t);
   }
   else if (view==OutputFormat::paralign_xml)
   {
-    hits_show_xml_paralign(parameters, showalignments, showhits, t);
+    hits_show_xml_paralign(parameters, shown, t);
   }
   db_thread_destruct(t);
 }

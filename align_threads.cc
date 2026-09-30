@@ -36,19 +36,25 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::mutex workmutex;
-long maxchunksize;
-
-long alignedhits;
-Buffer<long> hits_sorted;
-
-std::size_t align_volnext;
-
 // the alignment work is distributed in 7 bins: one per query strand
 // and frame (3 x 2), and one for the hits that are not aligned
-constexpr std::size_t align_bins = 7;
-std::array<long, align_bins> align_volseqs {{}};
-std::array<long, align_bins> align_volchunks {{}};
+constexpr std::size_t unaligned_bin = frame_count;
+constexpr std::size_t align_bins = frame_count + 1;
+
+// the distribution of the hits among the alignment threads: chunks of
+// each bin, handed out by align_getwork() under the mutex
+struct AlignWork
+{
+  std::mutex mutex;
+  long maxchunksize = 0;  // the largest chunk: the size of the lists
+  long alignedhits = 0;  // the first hit of the next chunk
+  Buffer<long> hits_sorted;  // the hits, in alignment order
+  std::size_t volnext = 0;  // the next bin with chunks left
+  std::array<long, align_bins> volseqs {{}};  // the hits left in each bin
+  std::array<long, align_bins> volchunks {{}};  // the chunks left in each bin
+};
+
+AlignWork align_work;
 
 // the bytes of a symbol's row in the score profile of search16s(): 1
 // database residue x 16 bytes of lanes
@@ -61,7 +67,6 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
 
   sdp->dprofile.resize(profile_bytes);
-  long qlen = 0;
   long hearraylen = 0;
 
   if (parameters.symtype == SymbolType::blastn)
@@ -70,7 +75,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
     {
       if (searches_strand(parameters.querystrands, s))
       {
-	qlen = query.nt[strand_index(s)].len;
+	long const qlen = query.nt[strand_index(s)].len;
 	sdp->qlen[frame_index(s, 0)] = qlen;
 	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
 	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
@@ -83,7 +88,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   }
   else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
-    qlen = query.aa[0].len;
+    long const qlen = query.aa[0].len;
     sdp->qlen[0] = qlen;
     sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
     for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
@@ -100,7 +105,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
       {
 	for(long f=0; f<3; f++)
 	{
-	  qlen = query.aa[frame_index(s, f)].len;
+	  long const qlen = query.aa[frame_index(s, f)].len;
 	  sdp->qlen[frame_index(s, f)] = qlen;
 	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
 	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
@@ -115,9 +120,9 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * 32);
+  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
 
-  auto const listsize = static_cast<std::size_t>(maxchunksize);
+  auto const listsize = static_cast<std::size_t>(align_work.maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
@@ -191,8 +196,17 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   }
 }
 
-auto align_chunk(Parameters const & parameters, struct search_data * sdp, long hitfirst, long hitlast) -> void
+// the hits hitfirst to hitlast of the list, for align_chunk()
+struct HitChunk
 {
+  long first;
+  long last;
+};
+
+auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChunk const chunk) -> void
+{
+  long const hitfirst = chunk.first;
+  long const hitlast = chunk.last;
   if (hitlast < parameters.alignments)
   {
 
@@ -204,22 +218,14 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
-	  long const hs = hits_sorted[static_cast<std::size_t>(hitno)];
-	  long seqno = 0;
-	  long score = 0;
-	  long hqstrand = 0;
-	  long hqframe = 0;
-	  long hdstrand = 0;
-	  long hdframe = 0;
-	
-	  hits_gethit(hs, & seqno, & score, & hqstrand, & hqframe, 
-		      & hdstrand, & hdframe);
+	  long const hs = align_work.hits_sorted[static_cast<std::size_t>(hitno)];
+	  auto const hit = hits_gethit(hs);
 
-	  if ((qstrand == hqstrand) && (qframe == hqframe))
+	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
 	  {
 	    sdp->start_hits[sdp->start_count] = hs;
 	    sdp->start_list[sdp->start_count] = 
-	      (seqno << 3) | (hdstrand << 2) | hdframe;
+	      (hit.seqno << 3) | (hit.strands.dstrand << 2) | hit.strands.dframe;
 	    sdp->start_count++;
 	  }
 	}
@@ -239,7 +245,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  search16s(reinterpret_cast<WORD**>(qtable),
 		    static_cast<WORD>(parameters.gapopenextend),
 		    static_cast<WORD>(parameters.gapextend),
-		    reinterpret_cast<WORD*>(score_matrix_16),
+		    reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		    reinterpret_cast<WORD*>(sdp->dprofile.data()),
 		    reinterpret_cast<WORD*>(sdp->hearray.data()),
 		    sdp->dbta.data(),
@@ -259,7 +265,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 	  
 	    long const hitno = sdp->start_hits[i];
 
-	    if (sdp->scores[i] < SCORELIMIT_16)
+	    if (sdp->scores[i] < score_matrices.limit_16)
 	    {
 	      hits_enter_align_hint(hitno, bestq, pos);
 	    }
@@ -271,7 +277,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(parameters, sdp->dbt, hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, sdp->dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
   }
 }
 
@@ -292,80 +298,64 @@ auto align_threads_init(Parameters const & parameters) -> void
 {
   auto const hits = hits_getcount();
 
-  hits_sorted = hits_sort();
+  align_work.hits_sorted = hits_sort();
 
-  align_volseqs.fill(0);
+  align_work.volseqs.fill(0);
 
   for(long i = 0; i<hits; i++)
   {
-    long seqno = 0;
-    long score = 0;
-    long qstrand = 0;
-    long qframe = 0;
-    long dstrand = 0;
-    long dframe = 0;
-
     if (i >= parameters.alignments)
     {
-      align_volseqs[6]++;
+      align_work.volseqs[unaligned_bin]++;
     }
     else
     {
-      hits_gethit(i, & seqno, & score,
-		  & qstrand, & qframe,
-		  & dstrand, & dframe);
-      
-      align_volseqs[static_cast<std::size_t>((3*qstrand)+qframe)]++;
+      auto const strands = hits_gethit(i).strands;
+      align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
     }
   }
 
-  long totalchunks = 0;
+  align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
+                                        align_work.volchunks.data(),
+                                        {parameters.threads, static_cast<long>(channels_16)});
 
-  calc_chunks(static_cast<long>(align_bins),
-	      parameters.threads,
-	      8,
-	      align_volseqs.data(),
-	      align_volchunks.data(),
-	      & totalchunks,
-	      & maxchunksize);
+  align_work.alignedhits = 0;
+  align_work.volnext = 0;
 
-  alignedhits = 0;
-  align_volnext = 0;
-
-  while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
+  while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
   {
-    align_volnext++;
+    align_work.volnext++;
   }
 }
 
 auto align_threads_done() -> void
 {
-  hits_sorted = Buffer<long>();
+  align_work.hits_sorted = Buffer<long>();
 }
 
 auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
 
-  std::lock_guard<std::mutex> const lock(workmutex);
-  if (align_volnext < align_bins)
+  std::lock_guard<std::mutex> const lock(align_work.mutex);
+  if (align_work.volnext < align_bins)
   {
-    long const seqcount = align_volseqs[align_volnext];
-    long const chunks = align_volchunks[align_volnext];
+    long const seqcount = align_work.volseqs[align_work.volnext];
+    long const chunks = align_work.volchunks[align_work.volnext];
     long const chunksize = ((seqcount+chunks-1) / chunks);
 
-    * first = alignedhits;
-    * last = alignedhits + chunksize - 1;
+    * first = align_work.alignedhits;
+    * last = align_work.alignedhits + chunksize - 1;
 
-    alignedhits += chunksize;
+    align_work.alignedhits += chunksize;
     status = 1;
 
-    align_volseqs[align_volnext] -= chunksize;
-    align_volchunks[align_volnext]--;
+    align_work.volseqs[align_work.volnext] -= chunksize;
+    align_work.volchunks[align_work.volnext]--;
 
-    while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
+    while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
     {
-      align_volnext++;
+      align_work.volnext++;
     }
   }
   return status;
@@ -380,7 +370,7 @@ auto align_worker(Parameters const & parameters) -> void
   long j = 0;
   while (align_getwork(&i, &j) != 0)
   {
-    align_chunk(parameters, &sd, i, j);
+    align_chunk(parameters, &sd, {i, j});
   }
 
   align_done(&sd);

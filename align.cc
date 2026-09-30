@@ -233,8 +233,6 @@ auto diff(struct aligner_info * aip,
 	  long tb,
 	  long te) -> void
 {
-  long MaxScore = 0;
-
   if (N == 0)
     {
       if (M > 0)
@@ -255,6 +253,7 @@ auto diff(struct aligner_info * aip,
       // tb = 0 or q depending on whether a gap is already open on left of B
       // te = 0 or q depending on whether a gap is already open on right of B
 
+      long MaxScore = 0;
       long J = 0;
 
       if (tb <= te)
@@ -414,7 +413,7 @@ auto diff(struct aligner_info * aip,
 
 
 
-      MaxScore = LONG_MIN;
+      long MaxScore = LONG_MIN;
       long P = -1;
       long J = -1;
 
@@ -430,8 +429,8 @@ auto diff(struct aligner_info * aip,
 	}
 
       // released before the recursive calls (peak memory: one level)
-      hh_buffer = Buffer<long>();
-      xx_buffer = Buffer<long>();
+      Buffer<long>().swap(hh_buffer);
+      Buffer<long>().swap(xx_buffer);
 
       for (j=0; j <= N; j++)
 	{
@@ -444,8 +443,8 @@ auto diff(struct aligner_info * aip,
 	    }
 	}
 
-      ee_buffer = Buffer<long>();
-      yy_buffer = Buffer<long>();
+      Buffer<long>().swap(ee_buffer);
+      Buffer<long>().swap(yy_buffer);
 
       if (P == 0)
 	{
