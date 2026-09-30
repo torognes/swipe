@@ -1358,22 +1358,20 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint(out, "\t<paralignOutput>\n");
   
   char const * qseqtypedescr = nullptr;
-  struct sequence q;
+  bool const protein_query = (query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn) || (query.symtype == SymbolType::sound);
+  auto const & q = protein_query ? query.aa[0] : query.nt[0];
   if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     qseqtypedescr = "Amino Acid";
-    q = query.aa[0];
   }
   else if (query.symtype == SymbolType::sound)
   {
     /* sound queries are stored as amino acid queries (KI-30) */
     qseqtypedescr = "Sound";
-    q = query.aa[0];
   }
   else
   {
     qseqtypedescr = "Nucleotide";
-    q = query.nt[0];
   }
   
   fprint(out, "\t\t<queryInformation>\n");
@@ -1390,9 +1388,9 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, q.len);
   fprint(out, "</queryLength>\n");
   fprint(out, "\t\t\t<querySequence>");
-  for (int i = 0; i < q.len; i++)
+  for (auto const residue : q.view())
   {
-    fprint(out, query.sym[static_cast<int>(q.seq[i])]);
+    fprint(out, query.sym[static_cast<int>(residue)]);
   }
   fprint(out, "</querySequence>\n");
   fprint(out, "\t\t</queryInformation>\n");
@@ -1684,9 +1682,10 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 		      1, & deflines, & deflinetable);
       fprint(out, "\t\t\t\t<linkContainer>\n");
       
-      for (int d=0; d < deflines; d++)
+      assert(static_cast<std::size_t>(deflines) == deflinetable.size());
+      for (auto const & defline : deflinetable)
       {
-	hits_defline_split(deflinetable[static_cast<std::size_t>(d)].c_str(), 
+	hits_defline_split(defline.c_str(), 
 			   & gi,
 			   & link, & linklen,
 			   & title);
