@@ -76,33 +76,7 @@ struct al_info
 };
 using al_info_t = al_info;
 
-struct db_main_s
-{
-  std::string path;  // directory of the database, with its final /
-
-  SymbolType symtype;
-  long version;
-  std::string title;
-  std::string time;
-
-  std::int64_t seqcount;
-  long longest;
-  std::int64_t symcount;
-
-  std::int64_t masked_seqcount;
-  std::int64_t masked_symcount;
-  long memb_bit;
-
-  FILE * taxid_file;
-  Buffer<unsigned char> taxid_bitmap;  // one bit per taxid (-x); empty: no filter
-
-  long show_taxid;  // -H: taxids and memberships in the deflines
-};
-using db_main_t = db_main_s;
-
 namespace {
-
-db_main_t db_main;
 
 // a read-only memory mapping of (a region of) a file, unmapped by
 // reset() or by the destructor
@@ -265,105 +239,7 @@ public:
 };
 using db_volume_t = Volume;
 
-struct db_map_s
-{
-  MemoryMap region; // address in mem of mapped region (multiple of pagesize)
-  db_volume_t * map_volume = nullptr; // volume mapped
-  long map_offset = 0;    // offset in file of the mapped region
-};
-
-}  // anonymous namespace
-
-using db_map_t = db_map_s;
-
-using mapp = db_map_t *;
-
-struct db_thread_s
-{
-  // the windows over the sequence and header files: a cache, remapped
-  // by db_mapsequences() and db_mapheaders() (mutable: they take a
-  // const db thread)
-  mutable db_map_s map_seq;
-  mutable db_map_s map_hdr;
-  apt parser;
-  // per channel (c) of db_getsequence(): the decompressed nucleotide
-  // sequence, and its reverse complement or translation
-  std::array<Buffer<char>, max_channels> ntbuffer;
-  std::array<Buffer<char>, max_channels> xxbuffer;
-};
-using db_thread_t = db_thread_s;
-
-namespace {
-
-auto db_print_seq_map(char const * address, long length, char const * map) -> void
-{
-  long const linelength = 80;
-  long i = 0;
-  while (i<length)
-  {
-    long end = i + linelength;
-    end = std::min(length, end);
-    while(i<end)
-    {
-      fprint(out, map[static_cast<int>(address[i])]);
-      i++;
-    }
-    fprint(out, '\n');
-  }
-}
-
-}  // anonymous namespace
-
-auto db_thread_create() -> db_thread_t *
-{
-  auto * t = new db_thread_s();
-  t->parser = parser_create(db_main.show_taxid);
-  return t;
-}
-
-auto db_thread_destruct(struct db_thread_s * t) -> void
-{
-  parser_destruct(t->parser);
-  delete t;
-}
-
 constexpr long MAXVOLUMES = 256;
-
-namespace {
-
-auto Volume::reset() -> void
-{
-  symtype = -1;
-  version = 0;
-  title.clear();
-  time.clear();
-
-  seqcount = 0;
-  longest = 0;
-  symcount = 0;
-  
-  masked_length = 0;
-  masked_nseq = 0;
-  masked_maxoid = 0;
-  masked_memb_bit = 0;
-  masked_mskfile.clear();
-
-  offset_xhr = 0;
-  offset_xsq = 0;
-  offset_amb = 0;
-
-  fd_xin.reset();
-  fd_xsq.reset();
-  fd_xhr.reset();
-  fd_msk.reset();
-
-  len_xsq = 0;
-  len_xhr = 0;
-  name_xsq.clear();
-  
-  xin_map.reset();
-  msk_map.reset();
-}
 
 // the volumes of the database, in the order of their sequences
 class VolumeTable
@@ -431,7 +307,135 @@ private:
   long count_ = 0;
 };
 
-VolumeTable db_volumes;
+
+// the database: its volumes and their totals, the taxid filter
+struct Database
+{
+  VolumeTable volumes;
+
+  std::string path;  // directory of the database, with its final /
+
+  SymbolType symtype;
+  long version;
+  std::string title;
+  std::string time;
+
+  std::int64_t seqcount;
+  long longest;
+  std::int64_t symcount;
+
+  std::int64_t masked_seqcount;
+  std::int64_t masked_symcount;
+  long memb_bit;
+
+  FILE * taxid_file;
+  Buffer<unsigned char> taxid_bitmap;  // one bit per taxid (-x); empty: no filter
+
+  long show_taxid;  // -H: taxids and memberships in the deflines
+};
+using db_main_t = Database;
+
+// the database of the search (one per run)
+db_main_t db_main;
+
+struct db_map_s
+{
+  MemoryMap region; // address in mem of mapped region (multiple of pagesize)
+  db_volume_t * map_volume = nullptr; // volume mapped
+  long map_offset = 0;    // offset in file of the mapped region
+};
+
+}  // anonymous namespace
+
+using db_map_t = db_map_s;
+
+using mapp = db_map_t *;
+
+struct db_thread_s
+{
+  // the windows over the sequence and header files: a cache, remapped
+  // by db_mapsequences() and db_mapheaders() (mutable: they take a
+  // const db thread)
+  mutable db_map_s map_seq;
+  mutable db_map_s map_hdr;
+  apt parser;
+  // per channel (c) of db_getsequence(): the decompressed nucleotide
+  // sequence, and its reverse complement or translation
+  std::array<Buffer<char>, max_channels> ntbuffer;
+  std::array<Buffer<char>, max_channels> xxbuffer;
+};
+using db_thread_t = db_thread_s;
+
+namespace {
+
+auto db_print_seq_map(char const * address, long length, char const * map) -> void
+{
+  long const linelength = 80;
+  long i = 0;
+  while (i<length)
+  {
+    long end = i + linelength;
+    end = std::min(length, end);
+    while(i<end)
+    {
+      fprint(out, map[static_cast<int>(address[i])]);
+      i++;
+    }
+    fprint(out, '\n');
+  }
+}
+
+}  // anonymous namespace
+
+auto db_thread_create() -> db_thread_t *
+{
+  auto * t = new db_thread_s();
+  t->parser = parser_create(db_main.show_taxid);
+  return t;
+}
+
+auto db_thread_destruct(struct db_thread_s * t) -> void
+{
+  parser_destruct(t->parser);
+  delete t;
+}
+
+namespace {
+
+auto Volume::reset() -> void
+{
+  symtype = -1;
+  version = 0;
+  title.clear();
+  time.clear();
+
+  seqcount = 0;
+  longest = 0;
+  symcount = 0;
+  
+  masked_length = 0;
+  masked_nseq = 0;
+  masked_maxoid = 0;
+  masked_memb_bit = 0;
+  masked_mskfile.clear();
+
+  offset_xhr = 0;
+  offset_xsq = 0;
+  offset_amb = 0;
+
+  fd_xin.reset();
+  fd_xsq.reset();
+  fd_xhr.reset();
+  fd_msk.reset();
+
+  len_xsq = 0;
+  len_xhr = 0;
+  name_xsq.clear();
+  
+  xin_map.reset();
+  msk_map.reset();
+}
+
 
 auto db_init(db_main_t * v) -> void
 {
@@ -832,7 +836,7 @@ auto addpath(std::string const & path, std::string const & base) -> std::string
 auto db_getvolume(long seqno) -> long
 {
   long dummy = 0;
-  return db_volumes.index_of(db_volumes.find(seqno, dummy));
+  return db_main.volumes.index_of(db_main.volumes.find(seqno, dummy));
 }
 
 
@@ -879,7 +883,7 @@ auto db_check_msk(long seqno) -> long
   // find() sets s: it must be called before s is read (the order of a
   // call and of its arguments is unspecified in C++11)
   long s = 0;
-  auto const & volume = db_volumes.find(seqno, s);
+  auto const & volume = db_main.volumes.find(seqno, s);
   return volume.is_member(s) ? 1 : 0;
 }
 
@@ -1045,7 +1049,7 @@ auto db_open(Parameters const & parameters) -> void
 	{
 	  auto const basename3 = addpath(db_main.path, ai2->dblist[j]);
 	  
-	  auto * const v = & db_volumes.add();
+	  auto * const v = & db_main.volumes.add();
 	  v->open(symbol_type, basename3.c_str());
 	  
 	  if (ai->memb_bit != 0)
@@ -1078,7 +1082,7 @@ auto db_open(Parameters const & parameters) -> void
 	    fatal("Illegal alias file (1).");
 	  }
 
-	auto * const v = & db_volumes.add();
+	auto * const v = & db_main.volumes.add();
 	v->open(symbol_type, basename2.c_str());
 	
 	if (ai->memb_bit != 0)
@@ -1101,21 +1105,21 @@ auto db_open(Parameters const & parameters) -> void
   }
   else
   {
-    auto * const v = & db_volumes.add();
+    auto * const v = & db_main.volumes.add();
     v->open(symbol_type, basename);
     
 
 
     db_main.memb_bit = 0;
-    db_main.title    = db_volumes.at(0).title;
-    db_main.seqcount = db_volumes.at(0).seqcount;
-    db_main.symcount = db_volumes.at(0).symcount;
-    db_main.longest  = db_volumes.at(0).longest;
+    db_main.title    = db_main.volumes.at(0).title;
+    db_main.seqcount = db_main.volumes.at(0).seqcount;
+    db_main.symcount = db_main.volumes.at(0).symcount;
+    db_main.longest  = db_main.volumes.at(0).longest;
 
   }
   
-  db_main.version  = db_volumes.at(0).version;
-  db_main.time     = db_volumes.at(0).time;
+  db_main.version  = db_main.volumes.at(0).version;
+  db_main.time     = db_main.volumes.at(0).time;
   
   if(db_main.memb_bit == 0)
   {
@@ -1149,7 +1153,7 @@ auto Volume::close() -> void
 
 auto db_close() -> void
 {
-  db_volumes.close();
+  db_main.volumes.close();
   db_main.path.clear();
   db_main.title.clear();
   db_main.time.clear();
@@ -1170,7 +1174,7 @@ auto db_ismasked() -> long
 
 auto db_getvolumecount() -> long
 {
-  return db_volumes.size();
+  return db_main.volumes.size();
 }
 
 auto db_getseqcount() -> std::int64_t
@@ -1180,12 +1184,12 @@ auto db_getseqcount() -> std::int64_t
 
 auto db_getseqcount_volume(long v) -> long
 {
-  return db_volumes.at(v).seqcount;
+  return db_main.volumes.at(v).seqcount;
 }
 
 auto db_getseqcount_volume_masked(long v) -> long
 {
-  return db_volumes.at(v).masked_nseq;
+  return db_main.volumes.at(v).masked_nseq;
 }
 
 auto db_getseqcount_masked() -> std::int64_t
@@ -1238,8 +1242,8 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
 
   long s1 = 0;
   long s2 = 0;
-  auto * const v1 = & db_volumes.find(firstseqno, s1);
-  auto * const v2 = & db_volumes.find(lastseqno, s2);
+  auto * const v1 = & db_main.volumes.find(firstseqno, s1);
+  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1284,8 +1288,8 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
 
   long s1 = 0;
   long s2 = 0;
-  auto * const v1 = & db_volumes.find(firstseqno, s1);
-  auto * const v2 = & db_volumes.find(lastseqno, s2);
+  auto * const v1 = & db_main.volumes.find(firstseqno, s1);
+  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1368,7 +1372,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
   //  printf("db_getsequence called with seqno %ld.\n", seqno);
 
   long s = 0;
-  auto * const v = & db_volumes.find(seqno, s);
+  auto * const v = & db_main.volumes.find(seqno, s);
 
   long const offset1 = v->offset_entry(v->offset_xsq, s);
   long const offset2 = v->offset_entry(v->offset_xsq, s + 1);
@@ -1554,7 +1558,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
 {
   long s = 0;
-  auto * const v = & db_volumes.find(seqno, s);
+  auto * const v = & db_main.volumes.find(seqno, s);
 
   long const offset1 = v->offset_entry(v->offset_xhr, s);
   long const offset2 = v->offset_entry(v->offset_xhr, s + 1);
