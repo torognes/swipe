@@ -187,4 +187,50 @@ inline auto v_shuffle_8(__m128i const table, __m128i const indices) -> __m128i
 }
 #endif
 
+
+// all 8 lanes of 16 bits set to value
+inline auto v_dup_i16(short const value) -> __m128i
+{
+  return _mm_set1_epi16(value);
+}
+
+// all lanes set to zero
+inline auto v_zero() -> __m128i
+{
+  return _mm_setzero_si128();
+}
+
+// lane 0 of 8 bits set to value, the others to zero
+inline auto v_first_lane_i8(char const value) -> __m128i
+{
+  return _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, value);
+}
+
+// lane 0 of 16 bits set to value, the others to zero
+inline auto v_first_lane_i16(short const value) -> __m128i
+{
+  return _mm_set_epi16(0, 0, 0, 0, 0, 0, 0, value);
+}
+
+// the whole vector shifted left (towards the higher lanes) by 'count'
+// bytes, zeros shifted in (pslldq); an immediate, hence the template
+template <int count>
+inline auto v_shift_bytes_left(__m128i const vector) -> __m128i
+{
+  return _mm_slli_si128(vector, count);
+}
+
+// lanewise comparisons of 16-bit signed lanes, packed into a byte mask
+// (pcmpgtw or pcmpeqw, then pmovmskb): two bits per lane, bit 2i and
+// 2i + 1 for lane i
+inline auto v_mask_gt_i16(__m128i const lhs, __m128i const rhs) -> int
+{
+  return _mm_movemask_epi8(_mm_cmpgt_epi16(lhs, rhs));
+}
+
+inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> int
+{
+  return _mm_movemask_epi8(_mm_cmpeq_epi16(lhs, rhs));
+}
+
 #endif  // SWIPE_INTRINSICS_TO_FUNCTIONS_H

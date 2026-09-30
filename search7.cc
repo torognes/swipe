@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_shuffle_8, ...
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -542,11 +542,10 @@ search7
   
   memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
 
-  Z  = _mm_set1_epi8(byte_0x80);
-  T0 = _mm_set_epi8(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-		    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, byte_0x80);
-  Q  = _mm_set1_epi8(static_cast<char>(gap_open_penalty));
-  R  = _mm_set1_epi8(static_cast<char>(gap_extend_penalty));
+  Z  = v_dup_i8(byte_0x80);
+  T0 = v_first_lane_i8(byte_0x80);
+  Q  = v_dup_i8(static_cast<char>(gap_open_penalty));
+  R  = v_dup_i8(static_cast<char>(gap_extend_penalty));
 
   S = Z;
 
@@ -599,7 +598,7 @@ search7
 
       easy = 1;
 
-      M = _mm_setzero_si128();
+      M = v_zero();
       T = T0;
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
@@ -628,7 +627,7 @@ search7
 	  // sequence in channel c ended
 	  // change of sequence
 
-	  M = _mm_xor_si128(M, T);
+	  M = v_xor(M, T);
 
 	  long const cand_id = seq_id[c];
 		  
@@ -691,7 +690,7 @@ search7
 
 	}
 
-	T = _mm_slli_si128(T, 1);
+	T = v_shift_bytes_left<1>(T);
       }
 
       if (done == sequences)

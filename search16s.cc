@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_load_64, v_merge_*
+#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_16, onestep(), No_mask, Mask
 
 constexpr std::size_t CHANNELS = channels_16;
@@ -206,10 +206,10 @@ auto search16s(WORD * * q_start,
   long next_id = 0;
   unsigned done = 0;
   
-  Z = _mm_set1_epi16(word_0x8000);
-  T0 = _mm_set_epi16(0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, word_0x8000);
-  Q  = _mm_set1_epi16(static_cast<short>(gap_open_penalty));
-  R  = _mm_set1_epi16(static_cast<short>(gap_extend_penalty));
+  Z = v_dup_i16(word_0x8000);
+  T0 = v_first_lane_i16(word_0x8000);
+  Q  = v_dup_i16(static_cast<short>(gap_open_penalty));
+  R  = v_dup_i16(static_cast<short>(gap_extend_penalty));
   
   S = Z;
   SL = Z;
@@ -261,7 +261,7 @@ auto search16s(WORD * * q_start,
       
       /* save column address if new highscore */
 
-      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      auto const mask = v_mask_gt_i16(S, SL);
       if (mask != 0)
       {
 	for (std::size_t c = 0; c < CHANNELS; c++)
@@ -274,7 +274,7 @@ auto search16s(WORD * * q_start,
 
 	for(long i = qlen-1; i >= 0; i--)
 	{
-	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
+	  int const m2 = mask & v_mask_eq_i16(hep[2*i], S);
 	  if (m2 != 0)
 	  {
 	    for (std::size_t c = 0; c < CHANNELS; c++)
@@ -295,7 +295,7 @@ auto search16s(WORD * * q_start,
 
       easy = 1;
  
-      M = _mm_setzero_si128();
+      M = v_zero();
       T = T0;
 
       for (std::size_t c = 0; c < CHANNELS; c++)
@@ -321,7 +321,7 @@ auto search16s(WORD * * q_start,
 	}
 	else
 	{
-	  M = _mm_xor_si128(M, T);
+	  M = v_xor(M, T);
 		  
 	  long const cand_id = seq_id[c];
 		  
@@ -383,7 +383,7 @@ auto search16s(WORD * * q_start,
 	    }
 	  }
 	}
-	T = _mm_slli_si128(T, 2);
+	T = v_shift_bytes_left<2>(T);
       }
 
       if (done == sequences)
@@ -397,9 +397,9 @@ auto search16s(WORD * * q_start,
 
       /* save column address if new highscore */
 
-      SL = _mm_adds_epi16(SL, M);
-      SL = _mm_adds_epi16(SL, M);
-      auto const mask = _mm_movemask_epi8(_mm_cmpgt_epi16(S, SL));
+      SL = v_adds_i16(SL, M);
+      SL = v_adds_i16(SL, M);
+      auto const mask = v_mask_gt_i16(S, SL);
       if (mask != 0)
       {
 	for (std::size_t c = 0; c < CHANNELS; c++)
@@ -412,7 +412,7 @@ auto search16s(WORD * * q_start,
 
 	for(long i = qlen-1; i >= 0; i--)
 	{
-	  int const m2 = mask & _mm_movemask_epi8(_mm_cmpeq_epi16(hep[2*i], S));
+	  int const m2 = mask & v_mask_eq_i16(hep[2*i], S);
 	  if (m2 != 0)
 	  {
 	    for (std::size_t c = 0; c < CHANNELS; c++)
