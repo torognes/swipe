@@ -28,6 +28,7 @@
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 
 constexpr std::size_t CHANNELS = 16;
+static_assert(CHANNELS <= max_channels, "the database threads have a buffer per channel");
 constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not

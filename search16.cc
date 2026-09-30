@@ -26,6 +26,7 @@
 #include "swipe.h"
 
 constexpr std::size_t CHANNELS = 8;
+static_assert(CHANNELS <= max_channels, "the database threads have a buffer per channel");
 constexpr std::size_t CDEPTH = 4;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000

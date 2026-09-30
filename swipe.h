@@ -450,6 +450,9 @@ auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
 constexpr long untranslated_frame = -1;
+// the most channels (database sequences searched at once) of a kernel:
+// 16 in the 7-bit kernel; c, the channel of db_getsequence(), is below
+constexpr std::size_t max_channels = 16;
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
 auto db_getsequence(struct db_thread_s * t, long seqno, long strand, long frame,

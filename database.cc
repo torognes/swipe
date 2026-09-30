@@ -209,8 +209,8 @@ struct db_thread_s
   apt parser;
   // per channel (c) of db_getsequence(): the decompressed nucleotide
   // sequence, and its reverse complement or translation
-  std::array<Buffer<char>, 16> ntbuffer;
-  std::array<Buffer<char>, 16> xxbuffer;
+  std::array<Buffer<char>, max_channels> ntbuffer;
+  std::array<Buffer<char>, max_channels> xxbuffer;
 };
 using db_thread_t = db_thread_s;
 
@@ -504,6 +504,10 @@ auto load_uint64_host(char const * const address) -> std::uint64_t
   std::memcpy(&value, address, sizeof(value));
   return value;
 }
+
+// a decoded nucleotide buffer larger than this (in bytes) is released
+// after use
+constexpr std::size_t large_buffer_size = 1000000;
 
 // an entry of an offset table of the index file (at byte table of the
 // file: seqcount + 1 big-endian 32-bit offsets)
@@ -1398,7 +1402,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 	xx[nt_length] = 0;
 
 	/* deallocate ntbuffer if big */
-	if (ntbuffer.size() > 1000000)
+	if (ntbuffer.size() > large_buffer_size)
 	{
 	  //	printf("Deallocating large buffer (%ld) for channel %d\n", 
 	  //	       t->ntbuffersize[c], c);
@@ -1429,7 +1433,7 @@ auto db_getsequence(db_thread_t * t, long seqno, long strand, long frame,
 
       /* deallocate ntbuffer if big */
       
-      if (ntbuffer.size() > 1000000)
+      if (ntbuffer.size() > large_buffer_size)
       {
 	//	printf("Deallocating large buffer (%ld) for channel %d\n", 
 	//	       t->ntbuffersize[c], c);
