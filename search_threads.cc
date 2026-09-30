@@ -428,7 +428,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
       
-	  char * q = nullptr;
+	  char const * q = nullptr;
 	  if (parameters.symtype == SymbolType::blastn)
 	  {
 	    q = query.nt[strand_index(qstrand)].seq;
