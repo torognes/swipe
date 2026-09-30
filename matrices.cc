@@ -34,6 +34,7 @@
 #include <cstring>  // std::memcpy
 #include <iterator>  // std::next
 #include <limits>
+#include <string>  // std::string, std::to_string
 
 // the built-in score matrices, in the NCBI format read by
 // score_matrix_read_string()
@@ -386,10 +387,17 @@ auto symbol_map(Parameters const & parameters) -> char const *
   return map_ncbi_aa.data();
 }
 
+// what parse_matrix_line() found
+enum struct MatrixLine
+{
+  accepted,
+  second_header  // a header line listing symbols after the first one (KI-44)
+};
+
 // one line of a score matrix (NUL-terminated), whether it comes from a
 // file or from a built-in matrix string
 auto parse_matrix_line(char const * line, char const * map,
-                       MatrixColumns & columns) -> void
+                       MatrixColumns & columns) -> MatrixLine
 {
       char const * p = line;
       char c = *p;
@@ -412,6 +420,7 @@ auto parse_matrix_line(char const * line, char const * map,
 	  /* read order of symbols, copy non-whitespace chars */
 	  
 	  {
+	  int const known_symbols = columns.symbols;
 	  char * q = columns.order.data();
 
 	  while ((c = *p) != 0)
@@ -423,6 +432,10 @@ auto parse_matrix_line(char const * line, char const * map,
 		q = std::next(q);
 		columns.symbols++;
 	      }
+	  }
+	  if ((known_symbols > 0) and (columns.symbols > known_symbols))
+	  {
+	    return MatrixLine::second_header;
 	  }
 	  }
 
@@ -447,6 +460,7 @@ auto parse_matrix_line(char const * line, char const * map,
 	    }
 	  break;
 	}
+  return MatrixLine::accepted;
 }
 
 auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
@@ -463,9 +477,16 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
   char const * const map = symbol_map(parameters);
 
+  long line_number = 0;
   while(fgets(line.data(), LINE_MAX, fp) != nullptr)
     {
-      parse_matrix_line(line.data(), map, columns);
+      line_number++;
+      if (parse_matrix_line(line.data(), map, columns) == MatrixLine::second_header)
+      {
+        std::string const message = "Unexpected header line on line " +
+          std::to_string(line_number) + " of score matrix file " + matrix + ".";
+        fatal(message);
+      }
     }
     
   static_cast<void>(fclose(fp));  // an input file
@@ -502,7 +523,10 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
       std::memcpy(line.data(), s, linelen);
       line[linelen] = 0;
 
-      parse_matrix_line(line.data(), map, columns);
+      // the built-in matrices have a single header line
+      MatrixLine const found = parse_matrix_line(line.data(), map, columns);
+      assert(found == MatrixLine::accepted);
+      static_cast<void>(found);  // read by assert() only
 
 	if (nextline != nullptr)
 	{

@@ -64,6 +64,14 @@
           value that is not a number, is followed by other characters,
           is out of range (or, in an alias file, negative) is now a fatal
           error; it was read as 0, truncated or clamped (KI-43)
+        * Fix: a second header line in a score matrix file (a line
+          starting with white space and listing symbols, after the first
+          one) was not detected: the columns were renumbered, rows then
+          needed more scores than listed (reported as "Problem parsing
+          score matrix file."), and a second header after the last row
+          was ignored. It is now a fatal error naming the line:
+          "Unexpected header line on line N of score matrix file F."
+          (KI-44)
         * A write error on the output (full disk, quota exceeded, broken
           pipe), on standard output or on the file of -o, ends with the
           message "Unable to write to output file (...)" and status 1, as
