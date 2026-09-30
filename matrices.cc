@@ -355,7 +355,7 @@ auto next_score(char const * & cursor) -> long
 // the column symbols of a matrix, as the header lines list them
 struct MatrixColumns
 {
-  std::array<char, LINE_MAX> order {{}};
+  std::array<char, line_buffer_size> order {{}};
   int symbols = 0;
 };
 
@@ -447,7 +447,7 @@ auto parse_matrix_line(char const * line, std::array<char, byte_values> const & 
 
 auto score_matrix_read_file(Parameters const & parameters, char const * matrix) -> void
 {
-  std::array<char, LINE_MAX> line {{}};
+  std::array<char, line_buffer_size> line {{}};
   MatrixColumns columns;
 
   auto * fp = fopen(matrix, "r");
@@ -460,7 +460,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
   auto const & map = symbol_map(parameters);
 
   long line_number = 0;
-  while(fgets(line.data(), LINE_MAX, fp) != nullptr)
+  while(fgets(line.data(), static_cast<int>(line.size()), fp) != nullptr)
     {
       line_number++;
       if (parse_matrix_line(line.data(), map, columns) == MatrixLine::second_header)
@@ -476,7 +476,7 @@ auto score_matrix_read_file(Parameters const & parameters, char const * matrix) 
 
 auto score_matrix_read_string(Parameters const & parameters, char const * matrix) -> void
 {
-  std::array<char, LINE_MAX> line {{}};
+  std::array<char, line_buffer_size> line {{}};
   MatrixColumns columns;
 
   char const * s = matrix;
@@ -501,7 +501,7 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 	linelen = strlen(s);
       }
 
-      assert(linelen < LINE_MAX);
+      assert(linelen < line.size());
       std::memcpy(line.data(), s, linelen);
       line[linelen] = 0;
 

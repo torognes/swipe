@@ -318,7 +318,7 @@ auto query_read() -> int
     query.dlen = 0;
   }
 
-  int size = LINE_MAX;
+  auto size = static_cast<int>(line_buffer_size);
   Buffer<char> query_sequence(static_cast<std::size_t>(size));
   query_sequence[0] = 0;
   long query_length = 0;
@@ -350,7 +350,7 @@ auto query_read() -> int
       {
 	if (query_length + 1 >= size)
 	{
-	  size += LINE_MAX;
+	  size += static_cast<int>(line_buffer_size);
 	  query_sequence.resize(static_cast<std::size_t>(size));
 	}
 	query_sequence[static_cast<std::size_t>(query_length++)] = symbol;

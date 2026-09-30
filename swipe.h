@@ -52,9 +52,9 @@
 
 #include "os_byteswap.h"  // bswap_32, bswap_64
 
-#ifndef LINE_MAX
-#define LINE_MAX 2048
-#endif
+// the size of the line buffers: a line of a score matrix, and the
+// first allocation (then the growth step) of a query sequence
+constexpr std::size_t line_buffer_size = 2048;
 
 // "SWIPE X.Y.Z": the program name and its version (defined in swipe.cc)
 extern char const * const swipe_name_and_version;
