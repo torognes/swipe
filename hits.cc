@@ -1337,9 +1337,19 @@ auto hits_defline_split(char const * defline,
   }
 }
 
+// the numbers of hits shown: descriptions (-v) and alignments (-b),
+// at most the hits found
+struct ShownHits
+{
+  long descriptions;
+  long alignments;
+};
+
+// the tabular output (-m 8, -m 9): with or without comment lines
+enum struct TabularComments : bool { without, with };
+
 auto hits_show_xml_paralign(Parameters const & parameters,
-			    long showalignments,
-			    long showhits,
+			    ShownHits const & shown,
 			    struct db_thread_s const * t) -> void
 {
   /* ParAlign XML */
@@ -1543,17 +1553,17 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, hit_list.obvious);
   fprint(out, "</obviousCount>\n");
   fprint(out, "\t\t\t\t<shownCount>");
-  fprint_integer(out, showhits);
+  fprint_integer(out, shown.descriptions);
   fprint(out, "</shownCount>\n");
   fprint(out, "\t\t\t</resultHits>\n");
   fprint(out, "\t\t\t<alignmentCount>");
-  fprint_integer(out, showalignments);
+  fprint_integer(out, shown.alignments);
   fprint(out, "</alignmentCount>\n");
   fprint(out, "\t\t</resultInformation>\n");
   
   fprint(out, "\t\t<shortVersionHits>\n");
   
-  for(long i=0; i<showhits; i++)
+  for(long i=0; i<shown.descriptions; i++)
   {
     auto const score = hit_entry(i).score;
     auto const e = expect_value_of(score);
@@ -1648,11 +1658,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 
   fprint(out, "\t\t</shortVersionHits>\n");
 
-  if (showalignments != 0)
+  if (shown.alignments != 0)
   {
     fprint(out, "\t\t<longVersionHits>\n");
     
-    for(long i=0; i<showalignments; i++)
+    for(long i=0; i<shown.alignments; i++)
     {
       
       std::array<char, anchor_size> anchor {{}};
@@ -1891,9 +1901,7 @@ auto show_description_xml(char const * const desc) -> void
 }
 
 auto hits_show_xml(Parameters const & parameters,
-		   long show_gis,
-		   long showalignments,
-		   long showhits,
+		   ShownHits const & shown,
 		   struct db_thread_s const * t) -> void
 {
   /* Simple XML */
@@ -1906,7 +1914,7 @@ auto hits_show_xml(Parameters const & parameters,
   fprint(out, "  </general>\n");
   fprint(out, "  <hits>\n");
   
-  for(long i=0; i<showhits; i++)
+  for(long i=0; i<shown.descriptions; i++)
   {
     auto const seqno = hit_entry(i).seqno;
     auto const score = hit_entry(i).score;
@@ -1927,7 +1935,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprint(out, "</query>\n");
     fprint(out, "      <name>");
     HeaderLayout layout;
-    layout.show_gis = show_gis;
+    layout.show_gis = parameters.show_gis;
     layout.escaping = Escaping::xml;
     db_showheader(t, make_view(hit_entry(i).header_address), layout);
     fprint(out, "</name>\n");
@@ -1938,7 +1946,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprint_integer(out, score);
     fprint(out, "</score>\n");
     
-    if (i < showalignments)
+    if (i < shown.alignments)
     {
 
         
@@ -1978,11 +1986,11 @@ auto hits_show_xml(Parameters const & parameters,
 }
 
 auto hits_show_tsv(Parameters const & parameters,
-		   long showalignments,
-		   long showcomments,
+		   ShownHits const & shown,
+		   TabularComments const comments,
 		   struct db_thread_s const * t) -> void
 {
-  if (showcomments != 0)
+  if (comments == TabularComments::with)
     {
       constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
       fprint(out, "# ");
@@ -2006,7 +2014,7 @@ auto hits_show_tsv(Parameters const & parameters,
       }
     }
 
-  for(long i=0; i<showalignments; i++)
+  for(long i=0; i<shown.alignments; i++)
   {
     show_description(query.description.c_str());
     fprint(out, '\t');
@@ -2049,9 +2057,7 @@ auto hits_show_tsv(Parameters const & parameters,
 }
 
 auto hits_show_plain(Parameters const & parameters,
-		     long show_gis,
-		     long showalignments,
-		     long showhits,
+		     ShownHits const & shown,
 		     struct db_thread_s const * t) -> void
 {
     if (hit_list.count == 0)
@@ -2070,12 +2076,12 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, "Sequences producing significant alignments:                         Score\n\n");
       }
 	  
-      for(long i=0; i<showhits; i++)
+      for(long i=0; i<shown.descriptions; i++)
       {
 	long const headerlen = description_width - frame_mark_width(parameters.symtype);
 
 	HeaderLayout layout;
-	layout.show_gis = show_gis;
+	layout.show_gis = parameters.show_gis;
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
@@ -2131,11 +2137,11 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, '\n');
       }
 
-      for(long i=0; i<showalignments; i++)
+      for(long i=0; i<shown.alignments; i++)
       {
 	fprint(out, "\n");
 	HeaderLayout layout;
-	layout.show_gis = show_gis;
+	layout.show_gis = parameters.show_gis;
 	layout.indent = alignment_header_indent;
 	layout.linelen = alignment_header_width;
 	layout.maxdeflines = LONG_MAX;
@@ -2301,48 +2307,32 @@ auto hits_show_end(OutputFormat view) -> void
 auto hits_show(Parameters const & parameters) -> void
 {
   OutputFormat const view = parameters.view;
-  long const show_gis = parameters.show_gis;
 
   // compute number of hits and alignments to actually show
 
-  long showalignments = 0;
-  long showhits = 0;
-
-  if (hit_list.count < hit_list.descriptions)
-  {
-    showhits = hit_list.count;
-  }
-  else
-  {
-    showhits = hit_list.descriptions;
-  }
-
-  if (hit_list.count < hit_list.alignments)
-  {
-    showalignments = hit_list.count;
-  }
-  else
-  {
-    showalignments = hit_list.alignments;
-  }
+  long const count = hit_list.count;
+  ShownHits const shown {std::min(count, hit_list.descriptions),
+                         std::min(count, hit_list.alignments)};
 
   auto * t = db_thread_create();
 
   if(view == OutputFormat::plain)
   {
-    hits_show_plain(parameters, show_gis, showalignments, showhits, t);
+    hits_show_plain(parameters, shown, t);
   }
   else if (view==OutputFormat::xml)
   {
-    hits_show_xml(parameters, show_gis, showalignments, showhits, t);
+    hits_show_xml(parameters, shown, t);
   }
   else if ((view==OutputFormat::tabular)||(view==OutputFormat::tabular_with_comments))
   {
-    hits_show_tsv(parameters, showalignments, static_cast<long>(view == OutputFormat::tabular_with_comments), t);
+    auto const comments = (view == OutputFormat::tabular_with_comments) ?
+      TabularComments::with : TabularComments::without;
+    hits_show_tsv(parameters, shown, comments, t);
   }
   else if (view==OutputFormat::paralign_xml)
   {
-    hits_show_xml_paralign(parameters, showalignments, showhits, t);
+    hits_show_xml_paralign(parameters, shown, t);
   }
   db_thread_destruct(t);
 }
