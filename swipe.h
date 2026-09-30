@@ -238,6 +238,13 @@ struct sequence
   char * seq;  // storage.data(), or nullptr
   long len;
   Buffer<char> storage;  // owns seq
+
+  // the residues, as a read-only view
+  auto view() const -> View<char>
+  {
+    assert(len >= 0);
+    return View<char>(seq, static_cast<std::size_t>(len));
+  }
 };
 
 // a nucleotide sequence has two strands, each translated in three
@@ -407,7 +414,7 @@ auto query_show() -> void;
 auto score_matrix_init(Parameters const & parameters) -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(char const * seq, long len) -> Buffer<char>;
+auto revcompl(View<char> sequence) -> Buffer<char>;
 // a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
 // untranslated_frame) of a nucleotide sequence
 struct StrandFrame

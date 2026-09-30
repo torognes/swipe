@@ -25,7 +25,7 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint, fprint_spaces
-#include <algorithm>  // std::min
+#include <algorithm>  // std::min, std::transform
 #include <array>
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -369,7 +369,7 @@ auto query_read() -> int
     if (searches_strand(query.strands, 1))
     {
       //      printf("Reverse complement.\n");
-      query.nt[1].storage = revcompl(query.nt[0].seq, query.nt[0].len);
+      query.nt[1].storage = revcompl(query.nt[0].view());
       query.nt[1].seq = query.nt[1].storage.data();
       query.nt[1].len = query.nt[0].len;
     }
@@ -401,15 +401,15 @@ auto query_read() -> int
   return 1;
 }
 
-auto revcompl(char const * seq, long len) -> Buffer<char>
+auto revcompl(View<char> const sequence) -> Buffer<char>
 {
-  Buffer<char> rc_buffer(static_cast<std::size_t>(len) + 1);
-  auto * rc = rc_buffer.data();
-  for (long i = 0; i < len; i++)
-  {
-    rc[i] = ntcompl[static_cast<std::size_t>(seq[len - 1 - i])];
-  }
-  rc[len] = 0;
+  // the complements in reverse order, then a NUL
+  Buffer<char> rc_buffer(sequence.size() + 1);
+  std::transform(sequence.rbegin(), sequence.rend(), rc_buffer.begin(),
+                 [](char const nucleotide) -> char {
+                   return ntcompl[static_cast<std::size_t>(nucleotide)];
+                 });
+  rc_buffer[sequence.size()] = 0;
   return rc_buffer;
 }
 
