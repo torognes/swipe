@@ -41,6 +41,7 @@
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
 #include <string>
+#include <tuple>  // std::make_tuple
 #include <utility>  // std::move
 #include <vector>
 
@@ -238,63 +239,17 @@ auto hit_entry(long const i) -> struct hits_entry &
 }
 
 
-auto hits_compare(void const * a, void const * b) -> int
+// the order of the hits for the alignment step: the hits to align
+// first, then by query strand and frame, sequence, database strand and
+// frame
+auto hits_less(long const lhs, long const rhs) -> bool
 {
-  auto const index_a = *static_cast<long const *>(a);
-  auto const index_b = *static_cast<long const *>(b);
-  struct hits_entry const * ap = &hit_entry(index_a);
-  struct hits_entry const * bp = &hit_entry(index_b);
-  
-  if ( static_cast<int>(index_a >= hit_list.alignments) < static_cast<int>(index_b >= hit_list.alignments) )
-  {
-    return -1;
-  }
-  if ( static_cast<int>(index_a >= hit_list.alignments) > static_cast<int>(index_b >= hit_list.alignments) )
-  {
-    return +1;
-  }
-  if (ap->qstrand < bp->qstrand)
-  {
-    return -1;
-  }
-  if (ap->qstrand > bp->qstrand)
-  {
-    return +1;
-  }
-  if (ap->qframe < bp->qframe)
-  {
-    return -1;
-  }
-  if (ap->qframe > bp->qframe)
-  {
-    return +1;
-  }
-  if (ap->seqno < bp->seqno)
-  {
-    return -1;
-  }
-  if (ap->seqno > bp->seqno)
-  {
-    return +1;
-  }
-  if (ap->dstrand < bp->dstrand)
-  {
-    return -1;
-  }
-  if (ap->dstrand > bp->dstrand)
-  {
-    return +1;
-  }
-  if (ap->dframe < bp->dframe)
-  {
-    return -1;
-  }
-  if (ap->dframe > bp->dframe)
-  {
-    return +1;
-  }
-
-  return 0;
+  auto const & a = hit_entry(lhs);
+  auto const & b = hit_entry(rhs);
+  bool const a_unaligned = lhs >= hit_list.alignments;
+  bool const b_unaligned = rhs >= hit_list.alignments;
+  return std::make_tuple(a_unaligned, a.qstrand, a.qframe, a.seqno, a.dstrand, a.dframe) <
+    std::make_tuple(b_unaligned, b.qstrand, b.qframe, b.seqno, b.dstrand, b.dframe);
 }
 
 }  // anonymous namespace
@@ -303,10 +258,7 @@ auto hits_sort() -> Buffer<long>
 {
   Buffer<long> hits_sorted(static_cast<std::size_t>(hit_list.count));
   std::iota(hits_sorted.begin(), hits_sorted.end(), 0L);
-  std::sort(hits_sorted.begin(), hits_sorted.end(),
-            [](long const lhs, long const rhs) -> bool {
-              return hits_compare(&lhs, &rhs) < 0;
-            });
+  std::sort(hits_sorted.begin(), hits_sorted.end(), hits_less);
   return hits_sorted;
 }
 
