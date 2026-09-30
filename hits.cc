@@ -1290,6 +1290,12 @@ auto xml_print(char const * const text,
   }
 }
 
+// ParAlign XML (-m 99): the buffer of an anchor ("query_hit_frame_strand...":
+// numbers and marks, far below the size), and the length of the short
+// name of a hit (the start of its title)
+constexpr std::size_t anchor_size = 200;
+constexpr std::size_t short_name_length = 35;
+
 auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, long query_index, long i) -> void
 {
   switch(symbol_type)
@@ -1599,7 +1605,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     auto const score = hit_entry(i).score;
     auto const e = expect_value_of(score);
 
-    std::array<char, 200> anchor {{}};
+    std::array<char, anchor_size> anchor {{}};
     make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
 
     long deflines = 0;
@@ -1647,7 +1653,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
-    xml_print(title, 35);
+    xml_print(title, short_name_length);
     fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
@@ -1696,7 +1702,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     for(long i=0; i<showalignments; i++)
     {
       
-      std::array<char, 200> anchor {{}};
+      std::array<char, anchor_size> anchor {{}};
       make_anchor(anchor.data(), anchor.size(), query.symtype, queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
