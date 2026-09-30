@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::min, std::max
+#include <algorithm>  // std::min, std::max, std::minmax_element
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -581,18 +581,12 @@ auto score_matrix_read(Parameters const & parameters) -> void
   // the highest and lowest scores start from -100 and 100 (so hi is at
   // least -100 and lo at most 100)
   constexpr long score_bounds_start = 100;
-  long hi = -score_bounds_start;
-  long lo = score_bounds_start;
-
-  for (std::size_t a = 0; a < score_matrix_width; a++)
-  {
-    for (std::size_t b = 0; b < score_matrix_width; b++)
-      {
-	long const sc = score_matrices.score_63[score_matrix_cell(a, b)];
-	lo = std::min(sc, lo);
-	hi = std::max(sc, hi);
-      }
-  }
+  static_assert(std::tuple_size<decltype(score_matrices.score_63)>::value == score_matrix_size,
+                "the whole score matrix");
+  auto const extremes = std::minmax_element(score_matrices.score_63.begin(),
+                                            score_matrices.score_63.end());
+  long const lo = std::min(*extremes.first, score_bounds_start);
+  long const hi = std::max(*extremes.second, -score_bounds_start);
 
   // the 7-bit and 16-bit search stages count 2^7 and 2^16 score values
   // (the 16-bit stage from a bias of -32768): a score from the range
@@ -625,6 +619,7 @@ auto score_matrix_read(Parameters const & parameters) -> void
       // 127], so a score of -128 already takes any alignment down to
       // zero, and with a score above 127 no 7-bit result is accepted
       // (SCORELIMIT_7 <= 0)
+      // C++17 refactoring: std::clamp
       long const sc_7 = std::max<long>(std::numeric_limits<signed char>::min(),
                                        std::min<long>(sc, std::numeric_limits<signed char>::max()));
       score_matrices.score_7.data() [score_matrix_cell(a, b)] = static_cast<char>(sc_7);
