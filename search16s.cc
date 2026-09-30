@@ -62,7 +62,7 @@ inline auto onestep16s(__m128i const H,
   F = _mm_max_epi16(cell, F);
 }
 
-inline auto donormal16s(volatile __m128i * Sm,
+inline auto donormal16s(__m128i * Sm,
                         __m128i * hep,
                         __m128i * const * qp,
                         __m128i const * Qm,
@@ -91,7 +91,7 @@ inline auto donormal16s(volatile __m128i * Sm,
   *Sm = S;  // save S
 }
 
-inline auto domasked16s(volatile __m128i * Sm,
+inline auto domasked16s(__m128i * Sm,
                         __m128i * hep,
                         __m128i * const * qp,
                         __m128i const * Qm,
@@ -234,7 +234,7 @@ auto search16s(WORD * * q_start,
 	       long * bestq,
 	       int qlen) -> void
 {
-  volatile __m128i S;
+  __m128i S;
   __m128i SL;
   __m128i Q;
   __m128i R;
@@ -381,7 +381,7 @@ auto search16s(WORD * * q_start,
 		  
 	  if (cand_id >= 0)
 	  {
-	    long const score = reinterpret_cast<WORD *>(const_cast<__m128i *>(&S))[c] ^ 0x8000;
+	    long const score = reinterpret_cast<WORD *>(&S)[c] ^ 0x8000;
 	    scores[cand_id] = score;
 	    bestpos[cand_id] = d_best[c] - d_begin[c];	    
 	    bestq[cand_id] = q_best[c];
