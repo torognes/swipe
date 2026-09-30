@@ -423,12 +423,16 @@ struct StrandFrame
   long frame;
 };
 
-// the genetic code of a translation: that of the query (-Q) or of the
-// database (-D)
-enum struct TranslationTable : bool { for_query, for_database };
+// the translation of one strand and frame of a nucleotide sequence
+// with a genetic code table (translation_tables.query or .database),
+// NUL-terminated, into prot (at least length / 3 + 1 bytes); returns
+// the protein length
+auto translate_codons(View<char> sequence, StrandFrame where,
+                      std::array<char, translation_table_size> const & table,
+                      char * prot) -> long;
 
-auto translate(View<char> sequence,
-               StrandFrame where, TranslationTable table,
+// the same for the query (-Q), into a buffer resized to fit
+auto translate(View<char> sequence, StrandFrame where,
                Buffer<char> & protein) -> long;
 
 struct asnparse_info;

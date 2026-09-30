@@ -1324,50 +1324,6 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   m->map_offset = offset;
 }
 
-namespace {
-
-auto db_translate(char const * dna, long dlen,
-		  StrandFrame const where,
-		  char * prot) -> void
-{
-  long const strand = where.strand;
-  long const frame = where.frame;
-  long pos = 0;
-  long ppos = 0;
-  long const plen = (dlen - frame) / 3;
-
-  if (strand == 0)
-  {
-    pos = frame;
-    while(ppos < plen)
-    {
-      long c = dna[pos++];
-      c <<= 4;
-      c |= dna[pos++];
-      c <<= 4;
-      c |= dna[pos++];
-      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
-    }
-  }
-  else
-  {
-    pos = dlen - 1 - frame;
-    while(ppos < plen)
-    {
-      long c = ntcompl[static_cast<std::size_t>(dna[pos--])];
-      c <<= 4;
-      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      c <<= 4;
-      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
-    }
-  }
-
-  prot[ppos] = 0;
-}
-
-}  // anonymous namespace
-
 auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 		    long * ntlenp, std::size_t c) -> View<char>
 {
@@ -1532,7 +1488,8 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
       }
       auto * const xx = xxbuffer.data();
       
-      db_translate(nt, nt_length, {strand, frame}, xx);
+      translate_codons(View<char>(nt, static_cast<std::size_t>(nt_length)), {strand, frame},
+                       translation_tables.database, xx);
 
       /* deallocate ntbuffer if big */
       

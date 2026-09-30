@@ -383,8 +383,7 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
-	    frame_sequence.len = translate(query.nt[0].view(), {s, f}, TranslationTable::for_query,
-					   frame_sequence.storage);
+	    frame_sequence.len = translate(query.nt[0].view(), {s, f}, frame_sequence.storage);
 	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
 	}
@@ -498,9 +497,10 @@ auto translate_init(long qtableno, long dtableno) -> void
   translation_tables.database = translate_createtable(dtableno);
 }
 
-auto translate(View<char> const sequence,
-	       StrandFrame const where, TranslationTable const table,
-	       Buffer<char> & protein) -> long
+auto translate_codons(View<char> const sequence,
+		      StrandFrame const where,
+		      std::array<char, translation_table_size> const & table,
+		      char * prot) -> long
 {
   auto const * const dna = sequence.data();
   auto const dlen = static_cast<long>(sequence.size());
@@ -508,22 +508,10 @@ auto translate(View<char> const sequence,
   long const frame = where.frame;
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
 
-  char const * ttable = nullptr;
-  if (table == TranslationTable::for_query)
-  {
-    ttable = translation_tables.query.data();
-  }
-  else
-  {
-    ttable = translation_tables.database.data();
-  }
-
   long pos = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
-  protein.resize(1 + static_cast<std::size_t>(plen));
-  auto * prot = protein.data();
 
   if (strand == 0)
   {
@@ -535,7 +523,7 @@ auto translate(View<char> const sequence,
       c |= dna[pos++];
       c <<= 4;
       c |= dna[pos++];
-      prot[ppos++] = ttable[c];
+      prot[ppos++] = table[static_cast<std::size_t>(c)];
     }
   }
   else
@@ -548,12 +536,21 @@ auto translate(View<char> const sequence,
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = ttable[c];
+      prot[ppos++] = table[static_cast<std::size_t>(c)];
     }
   }
 
   prot[ppos] = 0;
   return plen;
+}
+
+auto translate(View<char> const sequence, StrandFrame const where,
+	       Buffer<char> & protein) -> long
+{
+  long const plen = (static_cast<long>(sequence.size()) - where.frame) / 3;
+  assert(plen >= 0);
+  protein.resize(1 + static_cast<std::size_t>(plen));
+  return translate_codons(sequence, where, translation_tables.query, protein.data());
 }
 
 
