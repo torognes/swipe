@@ -39,6 +39,11 @@ constexpr char byte_0x80 = static_cast<char>(-128);
 // only used by the SSSE3 version (the score profile is shuffled)
 #define MATRIXWIDTH 32
 
+// profline(j) strides, in 16-byte vectors: a row of the 32 x 32 score
+// matrix is two vectors, a row of the profile one vector per CDEPTH
+constexpr std::ptrdiff_t matrix_row_vectors = 2;
+constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
+
 inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE * score_matrix,
 			      BYTE * dseq_byte) -> void
@@ -122,8 +127,8 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m7 = _mm_or_si128(d, u5);
 
 #define profline(j)					\
-  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j)));   \
-  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j))+1); \
+  t6  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j)));   \
+  t7  = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j))+1); \
   t8  = _mm_shuffle_epi8(t6, m0);			\
   t9  = _mm_shuffle_epi8(t7, m1);			\
   t10 = _mm_shuffle_epi8(t6, m2);			\
@@ -136,10 +141,10 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   t13 = _mm_or_si128(t10, t11);				\
   u12 = _mm_or_si128(u8,  u9);				\
   u13 = _mm_or_si128(u10, u11);				\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j)),   t12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t13);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, u12);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, u13)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j)),   t12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t13);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, u12);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, u13)
 
 #else
 
@@ -149,15 +154,15 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   m3 = _mm_load_si128(dseq+3);
 
 #define profline(j)					\
-  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(std::ptrdiff_t{2}*(j));	\
+  t0 = _mm_load_si128(reinterpret_cast<__m128i*>(score_matrix)+(matrix_row_vectors*(j));	\
   t1 = _mm_shuffle_epi8(t0, m0);			\
   t2 = _mm_shuffle_epi8(t0, m1);			\
   t3 = _mm_shuffle_epi8(t0, m2);			\
   t4 = _mm_shuffle_epi8(t0, m3);			\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+0, t1);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+1, t2);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+2, t3);	\
-  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(std::ptrdiff_t{4}*(j))+3, t4)
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+0, t1);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+1, t2);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+2, t3);	\
+  _mm_store_si128(reinterpret_cast<__m128i*>(dprofile)+(profile_row_vectors*(j))+3, t4)
 
 #endif
 
