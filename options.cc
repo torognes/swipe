@@ -269,7 +269,7 @@ auto parse_long(char const * const text, char const * const message) -> long
   assert(text != nullptr);
   char * end = nullptr;
   errno = 0;
-  auto const value = std::strtol(text, &end, 10);
+  auto const value = std::strtol(text, &end, decimal_base);
   if ((end == text) or (*end != '\0') or (errno == ERANGE))
   {
     fatal(message);

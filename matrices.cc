@@ -361,7 +361,7 @@ auto next_score(char const * & cursor) -> long
 {
   errno = 0;
   char * end = nullptr;
-  auto const score = std::strtol(cursor, & end, 10);
+  auto const score = std::strtol(cursor, & end, decimal_base);
   if ((end == cursor) or (errno == ERANGE) or
       ((*end != '\0') and (std::isspace(static_cast<unsigned char>(*end)) == 0)))
   {

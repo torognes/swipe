@@ -990,7 +990,7 @@ auto next_operation(char const * & cursor) -> AlignmentOperation
   operation.op = *cursor;
   cursor = std::next(cursor);
   char * end = nullptr;
-  operation.len = std::strtol(cursor, & end, 10);
+  operation.len = std::strtol(cursor, & end, decimal_base);
   cursor = end;
   return operation;
 }
@@ -1304,7 +1304,7 @@ auto hits_defline_split(char const * defline,
   {
     auto * const number = std::next(p, gi_prefix_length);
     char * end = nullptr;
-    auto const value = std::strtol(number, & end, 10);
+    auto const value = std::strtol(number, & end, decimal_base);
     if (end != number)
     {
       *gi = value;

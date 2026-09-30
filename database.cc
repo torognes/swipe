@@ -377,7 +377,7 @@ auto alias_number(char const * text, char const * key) -> std::int64_t
 {
   errno = 0;
   char * end = nullptr;
-  long long const value = std::strtoll(text, & end, 10);
+  long long const value = std::strtoll(text, & end, decimal_base);
   if ((end == text) or (errno == ERANGE) or (value < 0) or
       (end[std::strspn(end, " \t\r\n")] != '\0'))
   {
@@ -830,14 +830,14 @@ auto parse_taxid(std::string const & token,
   auto const is_valid = (not token.empty()) and
     (token.size() <= max_taxid_digits) and
     std::all_of(token.cbegin(), token.cend(), is_digit) and
-    (std::strtoul(token.c_str(), nullptr, 10) <= max_taxid);
+    (std::strtoul(token.c_str(), nullptr, decimal_base) <= max_taxid);
   if (not is_valid)
   {
     std::string const message = "Illegal taxid on line " +
       std::to_string(line_number) + " of taxid file " + filename + ".";
     fatal(message);
   }
-  return std::strtoul(token.c_str(), nullptr, 10);
+  return std::strtoul(token.c_str(), nullptr, decimal_base);
 }
 
 auto db_add_taxid(unsigned long const taxid) -> void

@@ -198,6 +198,9 @@ extern long compute7;
 // the tables indexed by a byte (an unsigned char)
 constexpr std::size_t byte_values = 256;
 
+// the base of the numbers read by strtol() and its siblings
+constexpr int decimal_base = 10;
+
 extern std::array<char, byte_values> const map_ncbi_nt16;
 extern std::array<char, byte_values> const map_ncbi_aa;
 extern std::array<char, byte_values> const map_sound;
