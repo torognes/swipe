@@ -26,6 +26,7 @@
 #include "swipe.h"
 #include "search_data.h"  // prepare_search, run_threads, align_threads
 #include "print_view.h"  // as_c_string, fprint
+#include <cpuid.h>  // __get_cpuid, bit_SSE2, bit_SSSE3
 #include <cassert>
 #include <cstddef>  // size_t
 #include <cstdio>  // std::fclose, std::ferror, std::fflush
@@ -80,32 +81,21 @@ auto xmalloc(size_t size) -> void *
 
 namespace {
 
-// the four registers set by the cpuid instruction
-struct CpuidRegisters
+auto detect_cpu_features() noexcept -> CpuFeatures
 {
+  // the feature bits of cpuid leaf 1 (bit_SSE2 in edx, bit_SSSE3 in
+  // ecx); __get_cpuid() returns 0, and no feature is reported, when the
+  // processor does not support that leaf
   unsigned int eax = 0;
   unsigned int ebx = 0;
   unsigned int ecx = 0;
   unsigned int edx = 0;
-};
-
-auto cpuid(unsigned int const leaf, unsigned int const subleaf) -> CpuidRegisters
-{
-  CpuidRegisters registers;
-  __asm__ __volatile__
-    ("cpuid" : "=a" (registers.eax), "=b" (registers.ebx),
-     "=c" (registers.ecx), "=d" (registers.edx) : "a" (leaf), "c" (subleaf));
-  return registers;
-}
-
-auto detect_cpu_features() -> CpuFeatures
-{
-  // the feature bits of cpuid leaf 1
-  constexpr unsigned int edx_sse2 = 26;
-  constexpr unsigned int ecx_ssse3 = 9;
-  auto const registers = cpuid(1, 0);
-  bool const sse2 = ((registers.edx >> edx_sse2) & 1U) != 0;
-  bool const ssse3 = ((registers.ecx >> ecx_ssse3) & 1U) != 0;
+  if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) == 0)
+  {
+    return {false, false};
+  }
+  bool const sse2 = (edx & bit_SSE2) != 0;
+  bool const ssse3 = (ecx & bit_SSSE3) != 0;
   return {sse2, ssse3};
 }
 
