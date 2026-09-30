@@ -525,7 +525,6 @@ auto translate(char const * dna, long dlen,
   }
 
   long pos = 0;
-  long c = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
@@ -537,7 +536,7 @@ auto translate(char const * dna, long dlen,
     pos = frame;
     while(ppos < plen)
     {
-      c = dna[pos++];
+      long c = dna[pos++];
       c <<= 4;
       c |= dna[pos++];
       c <<= 4;
@@ -550,7 +549,7 @@ auto translate(char const * dna, long dlen,
     pos = dlen - 1 - frame;
     while(ppos < plen)
     {
-      c = ntcompl[static_cast<std::size_t>(dna[pos--])];
+      long c = ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;

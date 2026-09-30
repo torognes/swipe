@@ -352,7 +352,6 @@ auto args_init(int argc, char * const * argv) -> Parameters
   }};
   
   int option_index = 0;
-  int c = 0;
 
   // gap penalties not given on the command line take the default
   // values of the score matrix or of the symbol type; a penalty of
@@ -362,7 +361,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
   
   while (true)
     {
-      c = getopt_long(argc, argv, short_options, long_options.data(), &option_index);
+      int const c = getopt_long(argc, argv, short_options, long_options.data(), &option_index);
       if (c == -1)
       {
 	break;
