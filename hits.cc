@@ -421,9 +421,6 @@ auto hits_init(Parameters const & parameters) -> void
 
   stats_available = 0;
 
-  std::int64_t m = 0;
-  std::int64_t n = 0;
-  int lenadj = 0;
   if (parameters.symtype == SymbolType::blastn)
   {
     if (stats_getparams_nt(parameters.matchscore,
@@ -447,8 +444,6 @@ auto hits_init(Parameters const & parameters) -> void
       lambda_d_log2 = lambda / log(2.0);
       logK_d_log2 = logK / log(2.0);
       
-      lenadj = 0;
-      
       long const qlen = query.nt[0].len;
 
       std::int64_t dlen = 0;
@@ -461,21 +456,16 @@ auto hits_init(Parameters const & parameters) -> void
 	dlen = symcount;
       }
 
-      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
-				 qlen, dlen, seqcount);
+      int const lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+					   qlen, dlen, seqcount);
     
       //      fprintf(out, "lenadj: %d\n", lenadj);
 
-      m = qlen - lenadj;
+      std::int64_t const m = qlen - lenadj;
 
-      if (parameters.effdbsize > 0)
-      {
-	n = parameters.effdbsize;
-      }
-      else
-      {
-	n = effective_db_length(dlen, seqcount, lenadj);
-      }
+      std::int64_t const n = (parameters.effdbsize > 0)
+	? parameters.effdbsize
+	: effective_db_length(dlen, seqcount, lenadj);
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -513,8 +503,6 @@ auto hits_init(Parameters const & parameters) -> void
       lambda_d_log2 = lambda / log(2.0);
       logK_d_log2 = logK / log(2.0);
       
-      lenadj = 0;
-      
       long qlen = query.aa[0].len;
       if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
       {
@@ -538,19 +526,14 @@ auto hits_init(Parameters const & parameters) -> void
 	}
       }
 
-      lenadj = length_adjustment(K, logK, alpha / lambda, beta,
-				 qlen, dlen, seqcount);
+      int const lenadj = length_adjustment(K, logK, alpha / lambda, beta,
+					   qlen, dlen, seqcount);
 
-      m = qlen - lenadj;
+      std::int64_t const m = qlen - lenadj;
 
-      if (parameters.effdbsize > 0)
-      {
-	n = parameters.effdbsize;
-      }
-      else
-      {
-	n = effective_db_length(dlen, seqcount, lenadj);
-      }
+      std::int64_t const n = (parameters.effdbsize > 0)
+	? parameters.effdbsize
+	: effective_db_length(dlen, seqcount, lenadj);
 
       Kmn = K * static_cast<double>(m) * static_cast<double>(n);
     }
@@ -1299,12 +1282,12 @@ auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, 
   }
 }
 
-auto hits_defline_split(char * defline, 
+auto hits_defline_split(char const * defline, 
 			long * gi,
-			char ** link, std::size_t * linklen, 
-			char ** rest) -> void
+			char const ** link, std::size_t * linklen, 
+			char const ** rest) -> void
 {
-  char * p = defline;
+  char const * p = defline;
 
   *gi = 0;  // no gi (KI-42: it kept the gi of the previous defline)
   *link = nullptr;
@@ -1331,7 +1314,7 @@ auto hits_defline_split(char * defline,
     p = std::next(p);
   }
 
-  auto * r = strchr(p, ' ');
+  auto const * const r = strchr(p, ' ');
   if (r != nullptr)
   {
     *linklen = static_cast<std::size_t>(r - p);
@@ -1571,12 +1554,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     long deflines = 0;
     std::vector<std::string> deflinetable;
     long gi = 0;
-    char * link = nullptr;
-    char * title = nullptr;
+    char const * link = nullptr;
+    char const * title = nullptr;
     std::size_t linklen = 0;
     db_parse_header(t, make_view(hit_entry(i).header_address),
 		    1, & deflines, & deflinetable);
-    hits_defline_split(&deflinetable[0][0], 
+    hits_defline_split(deflinetable[0].c_str(), 
 		       & gi,
 		       & link, & linklen,
 		       & title);
@@ -1673,8 +1656,8 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       long deflines = 0;
       std::vector<std::string> deflinetable;
       long gi = 0;
-      char * link = nullptr;
-      char * title = nullptr;
+      char const * link = nullptr;
+      char const * title = nullptr;
       std::size_t linklen = 0;
       db_parse_header(t, make_view(hit_entry(i).header_address),
 		      1, & deflines, & deflinetable);
@@ -1682,7 +1665,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       
       for (int d=0; d < deflines; d++)
       {
-	hits_defline_split(&deflinetable[static_cast<std::size_t>(d)][0], 
+	hits_defline_split(deflinetable[static_cast<std::size_t>(d)].c_str(), 
 			   & gi,
 			   & link, & linklen,
 			   & title);
@@ -2006,10 +1989,9 @@ auto hits_show_tsv(Parameters const & parameters,
 		   long showcomments,
 		   struct db_thread_s const * t) -> void
 {
-  constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
-  
   if (showcomments != 0)
     {
+      constexpr char const * ref = "Reference: T. Rognes (2011) Faster Smith-Waterman database searches with inter-sequence SIMD parallelisation, BMC Bioinformatics, 12:221.";
       fprint(out, "# ");
       fprint(out, as_c_string(swipe_name_and_version));
       fprint(out, " - ");
