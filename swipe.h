@@ -39,7 +39,6 @@
 #include <arpa/inet.h>
 #include <getopt.h>
 #include <cmath>
-#include <x86intrin.h>
 #include <array>
 #include <cassert>
 #include <chrono>
