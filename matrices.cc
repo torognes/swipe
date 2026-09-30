@@ -582,19 +582,13 @@ auto score_matrix_read_string(Parameters const & parameters, char const * matrix
 
 auto score_matrix_read(Parameters const & parameters) -> void
 {
-  int a = 0;
-  int b = 0;
-  long sc = 0;
-  long lo = 0;
-  long hi = 0; 
-  
   score_matrix_63_storage.fill(-1);
   
   if (parameters.symtype == SymbolType::blastn)
   {
-    for (a = 1; a < 16; a++)
+    for (int a = 1; a < 16; a++)
     {
-      for (b = 1; b < 16; b++)
+      for (int b = 1; b < 16; b++)
       {
 	score_matrix_63[(a << 5) + b] = ((a == b) ? parameters.matchscore : parameters.mismatchscore);
       }
@@ -641,14 +635,14 @@ auto score_matrix_read(Parameters const & parameters) -> void
     score_matrix_read_file(parameters, parameters.matrixname);
   }
 
-  hi = -100;
-  lo = 100;
+  long hi = -100;
+  long lo = 100;
 
-  for (a = 0; a < 32; a++)
+  for (int a = 0; a < 32; a++)
   {
-    for(b=0;b<32;b++)
+    for (int b = 0; b < 32; b++)
       {
-	sc = score_matrix_63[(a<<5) + b];
+	long const sc = score_matrix_63[(a<<5) + b];
 	lo = std::min(sc, lo);
 	hi = std::max(sc, hi);
       }
@@ -668,11 +662,11 @@ auto score_matrix_read(Parameters const & parameters) -> void
     SCORELIMIT_16 = 0;
   }
 
-  for (a = 0; a < 32; a++)
+  for (int a = 0; a < 32; a++)
   {
-    for(b=0;b<32;b++)
+    for (int b = 0; b < 32; b++)
     {
-      sc = score_matrix_63[(a<<5) + b];
+      long const sc = score_matrix_63[(a<<5) + b];
       
       // the 7-bit engine uses signed bytes: scores are clamped to
       // [-128, 127] (KI-12). This is exact: 7-bit scores are in [0,
