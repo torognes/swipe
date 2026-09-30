@@ -38,13 +38,20 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::mutex countmutex;
-std::mutex workmutex;
-long maxchunksize;
-std::size_t volnext;
-long seqnext;
-Buffer<long> volchunks;
-Buffer<long> volseqs;
+// the distribution of the database sequences among the search threads:
+// chunks of each volume, handed out by search_getwork() under the mutex
+struct SearchWork
+{
+  std::mutex mutex;
+  std::mutex count_mutex;  // for compute7 (swipe.cc)
+  long maxchunksize = 0;  // the largest chunk: the size of the lists
+  std::size_t volnext = 0;  // the next volume with chunks left
+  long seqnext = 0;  // the first sequence of the next chunk
+  Buffer<long> volchunks;  // the chunks left in each volume
+  Buffer<long> volseqs;  // the sequences left in each volume
+};
+
+SearchWork search_work;
 
 // the bytes of a symbol's row in the score profile of search7() and
 // search16(): 4 database residues x 16 bytes of lanes
@@ -111,7 +118,7 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
   // Buffer has no storage (a null data(), for an empty query)
   sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * hearray_row_bytes);
 
-  auto listsize = static_cast<std::size_t>(maxchunksize);
+  auto listsize = static_cast<std::size_t>(search_work.maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
   {
     listsize *= frame_count;  // the database frames
@@ -197,26 +204,26 @@ auto search_getwork(long * first, long * last) -> int
   int status = 0;
   auto const volcount = static_cast<std::size_t>(db_getvolumecount());
   
-  std::lock_guard<std::mutex> const lock(workmutex);
-  if (volnext < volcount)
+  std::lock_guard<std::mutex> const lock(search_work.mutex);
+  if (search_work.volnext < volcount)
   {
-    long const seqcount = volseqs[volnext];
-    long const chunks = volchunks[volnext];
+    long const seqcount = search_work.volseqs[search_work.volnext];
+    long const chunks = search_work.volchunks[search_work.volnext];
     long const chunksize = ((seqcount+chunks-1) / chunks);
 
-    * first = seqnext;
-    * last = seqnext + chunksize - 1;
-    seqnext += chunksize;
+    * first = search_work.seqnext;
+    * last = search_work.seqnext + chunksize - 1;
+    search_work.seqnext += chunksize;
     status = 1;
 
     //    fprintf(out, "Processing sequences %d to %d (%d sequences) in volume %ld.\n", *first, *last, *last - * first + 1, volnext);
 
-    volseqs[volnext] -= chunksize;
-    volchunks[volnext]--;
+    search_work.volseqs[search_work.volnext] -= chunksize;
+    search_work.volchunks[search_work.volnext]--;
 
-    while ((volnext < volcount) && (volchunks[volnext] == 0))
+    while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
     {
-      volnext++;
+      search_work.volnext++;
     }
   }
   return status;
@@ -304,7 +311,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
       if (sdp->in_count > 0)
       {
 	{
-	  std::lock_guard<std::mutex> const lock(countmutex);
+	  std::lock_guard<std::mutex> const lock(search_work.count_mutex);
 	  compute7 += static_cast<long>(sdp->in_count);
 	}
 	    
@@ -541,15 +548,15 @@ auto calc_chunks(long volcount,
 
 auto prepare_search(long par) -> void
 {
-  volnext = 0;
-  seqnext = 0;
+  search_work.volnext = 0;
+  search_work.seqnext = 0;
 
   auto const volcount = static_cast<std::size_t>(db_getvolumecount());
-  volseqs.resize(volcount);
-  volchunks.resize(volcount);
+  search_work.volseqs.resize(volcount);
+  search_work.volchunks.resize(volcount);
   for (std::size_t v = 0; v < volcount; v++)
   {
-    volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
+    search_work.volseqs[v] = db_getseqcount_volume(static_cast<long>(v));
   }
 
   long totalchunks = 0;
@@ -557,14 +564,14 @@ auto prepare_search(long par) -> void
   calc_chunks(static_cast<long>(volcount),
 	      par,
 	      static_cast<long>(channels_7),
-	      volseqs.data(),
-	      volchunks.data(),
+	      search_work.volseqs.data(),
+	      search_work.volchunks.data(),
 	      & totalchunks,
-	      & maxchunksize);
+	      & search_work.maxchunksize);
 
-  while ((volnext < volcount) && (volchunks[volnext] == 0))
+  while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
   {
-    volnext++;
+    search_work.volnext++;
   }
 }
 

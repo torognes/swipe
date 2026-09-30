@@ -36,20 +36,25 @@
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-std::mutex workmutex;
-long maxchunksize;
-
-long alignedhits;
-Buffer<long> hits_sorted;
-
-std::size_t align_volnext;
-
 // the alignment work is distributed in 7 bins: one per query strand
 // and frame (3 x 2), and one for the hits that are not aligned
 constexpr std::size_t unaligned_bin = frame_count;
 constexpr std::size_t align_bins = frame_count + 1;
-std::array<long, align_bins> align_volseqs {{}};
-std::array<long, align_bins> align_volchunks {{}};
+
+// the distribution of the hits among the alignment threads: chunks of
+// each bin, handed out by align_getwork() under the mutex
+struct AlignWork
+{
+  std::mutex mutex;
+  long maxchunksize = 0;  // the largest chunk: the size of the lists
+  long alignedhits = 0;  // the first hit of the next chunk
+  Buffer<long> hits_sorted;  // the hits, in alignment order
+  std::size_t volnext = 0;  // the next bin with chunks left
+  std::array<long, align_bins> volseqs {{}};  // the hits left in each bin
+  std::array<long, align_bins> volchunks {{}};  // the chunks left in each bin
+};
+
+AlignWork align_work;
 
 // the bytes of a symbol's row in the score profile of search16s(): 1
 // database residue x 16 bytes of lanes
@@ -117,7 +122,7 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
 
   sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
 
-  auto const listsize = static_cast<std::size_t>(maxchunksize);
+  auto const listsize = static_cast<std::size_t>(align_work.maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
@@ -204,7 +209,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
-	  long const hs = hits_sorted[static_cast<std::size_t>(hitno)];
+	  long const hs = align_work.hits_sorted[static_cast<std::size_t>(hitno)];
 	  long seqno = 0;
 	  long score = 0;
 	  long hqstrand = 0;
@@ -271,7 +276,7 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, long h
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(parameters, sdp->dbt, hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, sdp->dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
   }
 }
 
@@ -292,9 +297,9 @@ auto align_threads_init(Parameters const & parameters) -> void
 {
   auto const hits = hits_getcount();
 
-  hits_sorted = hits_sort();
+  align_work.hits_sorted = hits_sort();
 
-  align_volseqs.fill(0);
+  align_work.volseqs.fill(0);
 
   for(long i = 0; i<hits; i++)
   {
@@ -307,7 +312,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
     if (i >= parameters.alignments)
     {
-      align_volseqs[unaligned_bin]++;
+      align_work.volseqs[unaligned_bin]++;
     }
     else
     {
@@ -315,7 +320,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 		  & qstrand, & qframe,
 		  & dstrand, & dframe);
       
-      align_volseqs[frame_index(qstrand, qframe)]++;
+      align_work.volseqs[frame_index(qstrand, qframe)]++;
     }
   }
 
@@ -324,48 +329,48 @@ auto align_threads_init(Parameters const & parameters) -> void
   calc_chunks(static_cast<long>(align_bins),
 	      parameters.threads,
 	      static_cast<long>(channels_16),
-	      align_volseqs.data(),
-	      align_volchunks.data(),
+	      align_work.volseqs.data(),
+	      align_work.volchunks.data(),
 	      & totalchunks,
-	      & maxchunksize);
+	      & align_work.maxchunksize);
 
-  alignedhits = 0;
-  align_volnext = 0;
+  align_work.alignedhits = 0;
+  align_work.volnext = 0;
 
-  while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
+  while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
   {
-    align_volnext++;
+    align_work.volnext++;
   }
 }
 
 auto align_threads_done() -> void
 {
-  hits_sorted = Buffer<long>();
+  align_work.hits_sorted = Buffer<long>();
 }
 
 auto align_getwork(long * first, long * last) -> int
 {
   int status = 0;
 
-  std::lock_guard<std::mutex> const lock(workmutex);
-  if (align_volnext < align_bins)
+  std::lock_guard<std::mutex> const lock(align_work.mutex);
+  if (align_work.volnext < align_bins)
   {
-    long const seqcount = align_volseqs[align_volnext];
-    long const chunks = align_volchunks[align_volnext];
+    long const seqcount = align_work.volseqs[align_work.volnext];
+    long const chunks = align_work.volchunks[align_work.volnext];
     long const chunksize = ((seqcount+chunks-1) / chunks);
 
-    * first = alignedhits;
-    * last = alignedhits + chunksize - 1;
+    * first = align_work.alignedhits;
+    * last = align_work.alignedhits + chunksize - 1;
 
-    alignedhits += chunksize;
+    align_work.alignedhits += chunksize;
     status = 1;
 
-    align_volseqs[align_volnext] -= chunksize;
-    align_volchunks[align_volnext]--;
+    align_work.volseqs[align_work.volnext] -= chunksize;
+    align_work.volchunks[align_work.volnext]--;
 
-    while ((align_volnext < align_bins) && (align_volchunks[align_volnext] == 0))
+    while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
     {
-      align_volnext++;
+      align_work.volnext++;
     }
   }
   return status;
