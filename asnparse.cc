@@ -892,32 +892,39 @@ auto show_deflines(asnparse_info const & p, long deflines, std::vector<std::stri
   return deflines;
 }
 
-auto parse_blast_def_line_set_new(asnparse_info & p, std::vector<std::string> * deflinetable) -> long
+// a Blast-def-line-set: each defline that passes the taxid and
+// membership filters is handed to accept()
+template <typename Accept>
+auto parse_blast_def_line_set(asnparse_info & p, Accept accept) -> void
 {
   match_obj(p, ber::sequence);
-  long deflines = 0;
 
-  if (deflinetable != nullptr)
-  {
-    deflinetable->clear();
-  }
-    
   while (p.obj != ber::end_of_contents)
     {
       p.defline.clear();
       parse_blast_def_line(p);
       if ((p.f_checktaxid(static_cast<long>(p.taxid)) != 0) && ((p.memberships & p.memb) == p.memb))
       {
-	if (deflinetable != nullptr)
-	{
-	  deflinetable->emplace_back(p.defline);
-	}
-	deflines++;
+	accept(p.defline);
       }
     }
   
   match_obj(p, ber::end_of_contents);
+}
 
+auto parse_deflines(asnparse_info & p) -> std::vector<std::string>
+{
+  std::vector<std::string> deflinetable;
+  parse_blast_def_line_set(p, [&deflinetable](std::string const & defline) -> void
+                           { deflinetable.emplace_back(defline); });
+  return deflinetable;
+}
+
+auto count_deflines(asnparse_info & p) -> long
+{
+  long deflines = 0;
+  parse_blast_def_line_set(p, [&deflines](std::string const & /* defline */) -> void
+                           { ++deflines; });
   return deflines;
 }
 
@@ -961,9 +968,7 @@ auto parse_getdeflines(asnparse_info & p, View<char> const header, long memb, lo
 
   start_header(p, header);
 
-  std::vector<std::string> deflinetable;
-  parse_blast_def_line_set_new(p, & deflinetable);
-  return deflinetable;
+  return parse_deflines(p);
 }
 
 auto parse_header(asnparse_info & p, View<char> const header, long memb, 
@@ -982,10 +987,8 @@ auto parse_header(asnparse_info & p, View<char> const header, long memb,
 
   start_header(p, header);
 
-  std::vector<std::string> deflinetable;
-  auto const deflines = parse_blast_def_line_set_new(p, & deflinetable);
-  auto const deflines2 = show_deflines(p, deflines, deflinetable);
-  return deflines2;
+  auto deflinetable = parse_deflines(p);
+  return show_deflines(p, static_cast<long>(deflinetable.size()), deflinetable);
 }
 
 auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
@@ -997,5 +1000,5 @@ auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
 
   start_header(p, header);
 
-  return parse_blast_def_line_set_new(p, nullptr);
+  return count_deflines(p);
 }
