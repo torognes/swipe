@@ -24,7 +24,7 @@
 */
 
 #include "search_data.h"
-#include <algorithm>  // std::generate
+#include <algorithm>  // std::generate, std::min
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
@@ -254,18 +254,15 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   align_work.volseqs.fill(0);
 
-  for(long i = 0; i<hits; i++)
+  // the first hits (up to the number of alignments) are binned per
+  // query strand and frame, the others in the unaligned bin
+  auto const aligned = std::min(hits, parameters.alignments);
+  for (long i = 0; i < aligned; i++)
   {
-    if (i >= parameters.alignments)
-    {
-      align_work.volseqs[unaligned_bin]++;
-    }
-    else
-    {
-      auto const strands = hits_gethit(i).strands;
-      align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
-    }
+    auto const strands = hits_gethit(i).strands;
+    align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
   }
+  align_work.volseqs[unaligned_bin] += hits - aligned;
 
   align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
                                         align_work.volchunks.data(),
