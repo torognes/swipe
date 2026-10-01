@@ -1227,73 +1227,55 @@ namespace {
 
 // print at most max_length characters of text, escaped as XML (KI-27);
 // the text is truncated before it is escaped
-auto xml_print(char const * const text,
+auto xml_print(View<char> const text,
                std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
 {
-  for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
+  for (auto const symbol : text.first(std::min(max_length, text.size())))
   {
-    xml_putc(text[i]);
+    xml_putc(symbol);
   }
 }
 
-// ParAlign XML (-m 99): the buffer of an anchor ("query_hit_frame_strand...":
-// numbers and marks, far below the size), and the length of the short
-// name of a hit (the start of its title)
-constexpr std::size_t anchor_size = 200;
+// ParAlign XML (-m 99): the length of the short name of a hit (the
+// start of its title)
 constexpr std::size_t short_name_length = 35;
 
-auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, long query_index, long i) -> void
+// the anchor of a hit: "query_hit_frame_strand..." (numbers and marks)
+auto make_anchor(SymbolType symbol_type, long query_index, long i) -> std::string
 {
+  auto const & hit = hit_entry(i);
+  auto const sign = [](long const strand) -> char
+  {
+    return (strand != 0) ? '-' : '+';
+  };
+  auto const prefix = std::to_string(query_index) + "_" + std::to_string(hit.seqno);
+
   switch(symbol_type)
   {
   case SymbolType::blastn:
     // blastn: the strand of a hit is stored as its database strand
     // (KI-29)
-    snprintf(anchor, size, "%ld_%ld__%c__+",
-	     query_index,
-	     hit_entry(i).seqno,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "__" + sign(hit.dstrand) + "__+";
   case SymbolType::blastx:
-    snprintf(anchor, size, "%ld_%ld_%ld_%c__",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).qframe+1,
-	     (hit_entry(i).qstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "_" + std::to_string(hit.qframe + 1) + "_" + sign(hit.qstrand) + "__";
   case SymbolType::tblastn:
-    snprintf(anchor, size, "%ld_%ld___%ld_%c",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).dframe+1,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "___" + std::to_string(hit.dframe + 1) + "_" + sign(hit.dstrand);
   case SymbolType::tblastx:
-    snprintf(anchor, size, "%ld_%ld_%ld_%c_%ld_%c",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).qframe+1,
-	     (hit_entry(i).qstrand != 0) ? '-' : '+',
-	     hit_entry(i).dframe+1,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "_" + std::to_string(hit.qframe + 1) + "_" + sign(hit.qstrand)
+      + "_" + std::to_string(hit.dframe + 1) + "_" + sign(hit.dstrand);
   default:
-    snprintf(anchor, size, "%ld_%ld____",
-	     query_index,
-	     hit_entry(i).seqno);
-    break;
+    return prefix + "____";
   }
 }
 
 // the parts of a defline: its gi (0: none), the link (the identifier
-// before the first space: link_length characters, or nullptr), and the
-// rest (the title)
+// before the first space, empty when there is no space), and the rest
+// (the title)
 struct DeflineParts
 {
   long gi;
-  char const * link;
-  std::size_t link_length;
-  char const * rest;
+  View<char> link;
+  View<char> rest;
 };
 
 auto hits_defline_split(char const * defline) -> DeflineParts
@@ -1301,7 +1283,7 @@ auto hits_defline_split(char const * defline) -> DeflineParts
   char const * p = defline;
 
   // no gi (KI-42: it kept the gi of the previous defline)
-  DeflineParts parts {0, nullptr, 0, nullptr};
+  DeflineParts parts {0, View<char>{}, View<char>{}};
   
   // "gi|" and a number, as the header parser writes them (set_id(),
   // asnparse.cc)
@@ -1326,13 +1308,12 @@ auto hits_defline_split(char const * defline) -> DeflineParts
   auto const * const r = strchr(p, ' ');
   if (r != nullptr)
   {
-    parts.link_length = static_cast<std::size_t>(r - p);
-    parts.link = p;
-    parts.rest = std::next(r);
+    parts.link = View<char>{p, static_cast<std::size_t>(std::distance(p, r))};
+    parts.rest = as_c_string(std::next(r));
   }
   else
   {
-    parts.rest = p;
+    parts.rest = as_c_string(p);
   }
 
   return parts;
@@ -1376,13 +1357,13 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   
   fprint(out, "\t\t<queryInformation>\n");
   fprint(out, "\t\t\t<queryFilename>");
-  xml_print(parameters.queryname);
+  xml_print(as_c_string(parameters.queryname));
   fprint(out, "</queryFilename>\n");
   fprint(out, "\t\t\t<querySequencetype>");
   fprint(out, as_c_string(qseqtypedescr));
   fprint(out, "</querySequencetype>\n");
   fprint(out, "\t\t\t<queryDescription>");
-  xml_print(query.description.c_str());
+  xml_print(as_c_string(query.description));
   fprint(out, "</queryDescription>\n");
   fprint(out, "\t\t\t<queryLength>");
   fprint_integer(out, q.len);
@@ -1418,19 +1399,19 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   }
   fprint(out, "\t\t<databaseInformation>\n");
   fprint(out, "\t\t\t<databaseFilename>");
-  xml_print(parameters.databasename);
+  xml_print(as_c_string(parameters.databasename));
   fprint(out, "</databaseFilename>\n");
   fprint(out, "\t\t\t<databaseSequencetype>");
   fprint(out, as_c_string(dbseqtypedescr));
   fprint(out, "</databaseSequencetype>\n");
   fprint(out, "\t\t\t<databaseDescription>");
-  xml_print(db_gettitle());
+  xml_print(as_c_string(db_gettitle()));
   fprint(out, "</databaseDescription>\n");
   fprint(out, "\t\t\t<databaseVersion>");
   fprint_integer(out, db_getversion());
   fprint(out, "</databaseVersion>\n");
   fprint(out, "\t\t\t<databaseDate>");
-  xml_print(db_gettime());
+  xml_print(as_c_string(db_gettime()));
   fprint(out, "</databaseDate>\n");
   fprint(out, "\t\t\t<residueCount>");
   fprint_integer(out, db_getsymcount_masked());
@@ -1476,7 +1457,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   else
   {
     fprint(out, "\t\t\t<scoreMatrix>");
-    xml_print(parameters.matrixname);
+    xml_print(as_c_string(parameters.matrixname));
     fprint(out, "</scoreMatrix>\n");
   }
 
@@ -1567,15 +1548,14 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     auto const score = hit_entry(i).score;
     auto const e = expect_value_of(score);
 
-    std::array<char, anchor_size> anchor {{}};
-    make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
+    auto const anchor = make_anchor(query.symtype, run.queryno, i);
 
     auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
     auto const parts = hits_defline_split(deflinetable[0].c_str());
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
     fprint(out, "\t\t\t\t<shortVersionAnchor>");
-    fprint(out, as_c_string(anchor.data()));
+    fprint(out, make_view(anchor));
     fprint(out, "</shortVersionAnchor>\n");
     if (parts.gi != 0)
       {
@@ -1596,12 +1576,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
     fprint(out, as_c_string(ncbidb));
     fprint(out, "&amp;term=");
-    xml_print(parts.link, parts.link_length);
+    xml_print(parts.link);
     fprint(out, "&amp;doptcmdl=");
     fprint(out, as_c_string(ncbiopt));
     fprint(out, "</shortVersionLinkDestination>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkText>");
-    xml_print(parts.link, parts.link_length);
+    xml_print(parts.link);
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
@@ -1654,12 +1634,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     for(long i=0; i<shown.alignments; i++)
     {
       
-      std::array<char, anchor_size> anchor {{}};
-      make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
+      auto const anchor = make_anchor(query.symtype, run.queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");
-      fprint(out, as_c_string(anchor.data()));
+      fprint(out, make_view(anchor));
       fprint(out, "</longVersionAnchor>\n");
       
       auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
@@ -1689,12 +1668,12 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
 	fprint(out, as_c_string(ncbidb));
 	fprint(out, "&amp;term=");
-	xml_print(parts.link, parts.link_length);
+	xml_print(parts.link);
 	fprint(out, "&amp;doptcmdl=");
 	fprint(out, as_c_string(ncbiopt));
 	fprint(out, "</longVersionLinkDestination>\n");
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkText>");
-	xml_print(parts.link, parts.link_length);
+	xml_print(parts.link);
 	fprint(out, "</longVersionLinkText>\n");
 	fprint(out, "\t\t\t\t\t</longVersionLink>\n");
       

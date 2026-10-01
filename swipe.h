@@ -513,7 +513,7 @@ struct HeaderLayout
 };
 
 auto parse_header(asnparse_info & p, View<char> header, long memb, long (*f)(long),
-		  HeaderLayout const & layout) -> long;
+		  HeaderLayout const & layout) -> void;
 
 // the deflines of a header that pass the membership and taxid filters
 auto parse_getdeflines(asnparse_info & p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>;

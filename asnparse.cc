@@ -805,91 +805,93 @@ auto parse_blast_def_line(asnparse_info & p) -> void
   p.defline += p.title;
 }
 
-auto show_deflines(asnparse_info const & p, long deflines, std::vector<std::string> & deflinetable) -> long
+// the length of the ellipsis ("...") that ends a truncated defline
+constexpr unsigned long ellipsis_length = 3;
+
+auto show_deflines(asnparse_info const & p, std::vector<std::string> & deflinetable) -> void
 {
-  for(long x=0; x<deflines; x++)
+  auto const deflines = static_cast<long>(deflinetable.size());
+  for (long x = 0; x < std::min(deflines, p.maxdeflines); x++)
   {
-    if (x < p.maxdeflines)
+    auto & defline = deflinetable[static_cast<std::size_t>(x)];
+
+    unsigned long pos = 0;
+    // up to its first NUL, as strlen() read it (npos: no NUL)
+    unsigned long const length = std::min(defline.find('\0'), defline.size());
+    unsigned long show = length;
+    if ((p.maxlen != 0U) && (show > p.maxlen))
     {
-      char * defline = &deflinetable[static_cast<std::size_t>(x)][0];
+      show = p.maxlen;
+    }
 
-      unsigned long pos = 0;
-      unsigned long show = strlen(defline);
-      if ((p.maxlen != 0U) && (show > p.maxlen))
-      {
-	show = p.maxlen;
-      }
+    // a truncated defline ends with an ellipsis
+    if ((show < length) && (show >= ellipsis_length))
+    {
+      defline.replace(show - ellipsis_length, ellipsis_length, ellipsis_length, '.');
+    }
+    auto const text = make_view(defline).first(show);
 
-      if ((show < strlen(defline)) && (show >= 3))
-      {
-	strcpy(std::next(defline, static_cast<std::ptrdiff_t>(show - 3)), "...");
-      }
-
-      long line = 0;
-      while (pos < show)
-      {
-	long col = 0;
+    long line = 0;
+    while (pos < show)
+    {
+      long col = 0;
 	
-	if (p.maxdeflines > 1)
-	{
-	  // indentation
+      if (p.maxdeflines > 1)
+      {
+	// indentation
 
-	  if ((line != 0) and (col < 1 + p.indent))
+	if ((line != 0) and (col < 1 + p.indent))
+	{
+	  fprint_spaces(out, static_cast<std::size_t>(1 + p.indent - col));
+	  col = 1 + p.indent;
+	}
+	else
+	{
+	  fprint(out, (x != 0) ? ' ' : '>');
+	  col++;
+	}
+      }
+	
+      // defline
+
+      while((pos < show) && (col < p.linelen))
+      {
+	char const c = text[pos];
+	if ((p.text == DeflineText::identifier) && (c == ' '))
+	{
+	  pos = show;
+	}
+	else
+	{
+	  if (p.escaping == Escaping::xml)
 	  {
-	    fprint_spaces(out, static_cast<std::size_t>(1 + p.indent - col));
-	    col = 1 + p.indent;
+	    xml_putc(text[pos]);
 	  }
 	  else
 	  {
-	    fprint(out, (x != 0) ? ' ' : '>');
-	    col++;
+	    fprint(out, text[pos]);
 	  }
+	  pos++;
+	  col++;
 	}
-	
-	// defline
-
-	while((pos < show) && (col < p.linelen))
-	{
-	  char const c = defline[pos];
-	  if ((p.text == DeflineText::identifier) && (c == ' '))
-	  {
-	    pos = show;
-	  }
-	  else
-	  {
-	    if (p.escaping == Escaping::xml)
-	    {
-	      xml_putc(defline[pos]);
-	    }
-	    else
-	    {
-	      fprint(out, defline[pos]);
-	    }
-	    pos++;
-	    col++;
-	  }
-	}
-	
-	// padding
-
-	if ((p.linelen < LONG_MAX) and (col < p.linelen))
-	{
-	  fprint_spaces(out, static_cast<std::size_t>(p.linelen - col));
-	}
-
-	if (p.maxdeflines > 1)
-	{
-	  fprint(out, '\n');
-	}
-
-	line++;
       }
+	
+      // padding
+
+      if ((p.linelen < LONG_MAX) and (col < p.linelen))
+      {
+	fprint_spaces(out, static_cast<std::size_t>(p.linelen - col));
+      }
+
+      if (p.maxdeflines > 1)
+      {
+	fprint(out, '\n');
+      }
+
+      line++;
     }
     
   }
-
-  
-  return deflines;
 }
 
 // a Blast-def-line-set: each defline that passes the taxid and
@@ -972,7 +974,7 @@ auto parse_getdeflines(asnparse_info & p, View<char> const header, long memb, lo
 }
 
 auto parse_header(asnparse_info & p, View<char> const header, long memb, 
-		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
+		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> void
 {
   p.escaping = layout.escaping;
   p.show_gis = layout.show_gis;
@@ -988,7 +990,7 @@ auto parse_header(asnparse_info & p, View<char> const header, long memb,
   start_header(p, header);
 
   auto deflinetable = parse_deflines(p);
-  return show_deflines(p, static_cast<long>(deflinetable.size()), deflinetable);
+  show_deflines(p, deflinetable);
 }
 
 auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
