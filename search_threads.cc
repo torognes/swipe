@@ -371,9 +371,8 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
       if (data.in_count > 0)
       {
     
-	for (std::size_t i = 0; i < data.in_count; i++)
+	for (auto const seqnosf : make_view(data.in_list).first(data.in_count))
 	{
-	  long const seqnosf = data.in_list[i];
 	  long const seqno = seqnosf >> 3;
 	  long const dstrand = (seqnosf >> 2) & 1;
 	  long const dframe = seqnosf & 3;
