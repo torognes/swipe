@@ -542,7 +542,7 @@ auto parse_pdb_seq_id(asnparse_info & p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-// p->id = id
+// p.id = id
 auto set_id(asnparse_info & p, std::string const & id) -> void
 {
   p.id = id;
