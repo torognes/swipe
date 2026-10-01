@@ -622,12 +622,8 @@ search7
 	    long const seqnosf = seqnos[next_id];
 
 	    long ntlen = 0;
-	    long const strand = (seqnosf >> 2) & 1;
-	    long const frame = seqnosf & 3;
-	    long const seqno = seqnosf >> 3;
-
 	    View<char> const sequence =
-	      db_getsequence(dbt, seqno, {strand, frame}, &ntlen, c);
+	      db_getsequence(dbt, entry_seqno(seqnosf), entry_where(seqnosf), &ntlen, c);
 		      
 	    // printf("Seqno: %ld Address: %p\n", seqno, address);
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());

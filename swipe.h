@@ -424,6 +424,47 @@ struct StrandFrame
   long frame;
 };
 
+// a database sequence and the strand and frame to search, packed in
+// one entry of the sequence lists of the search and alignment threads
+// and of the kernels: seqno << 3 | strand << 2 | frame
+struct SequenceEntry
+{
+  long seqno;
+  StrandFrame where;
+};
+
+constexpr long entry_frame_bits = 2;  // frames 0 to 2
+constexpr long entry_strand_bits = 1;  // strands 0 and 1
+constexpr long entry_strand_shift = entry_frame_bits;
+constexpr long entry_seqno_shift = entry_frame_bits + entry_strand_bits;
+constexpr long entry_frame_mask = (1L << entry_frame_bits) - 1;
+constexpr long entry_strand_mask = (1L << entry_strand_bits) - 1;
+static_assert(entry_frame_mask >= static_cast<long>(frames_per_strand) - 1, "the frames fit");
+static_assert(entry_strand_mask >= static_cast<long>(strand_count) - 1, "the strands fit");
+
+constexpr auto pack_entry(SequenceEntry const & entry) -> long
+{
+  return (entry.seqno << entry_seqno_shift)
+    | (entry.where.strand << entry_strand_shift)
+    | entry.where.frame;
+}
+
+constexpr auto entry_seqno(long const entry) -> long
+{
+  return entry >> entry_seqno_shift;
+}
+
+constexpr auto entry_where(long const entry) -> StrandFrame
+{
+  return StrandFrame{(entry >> entry_strand_shift) & entry_strand_mask,
+                     entry & entry_frame_mask};
+}
+
+constexpr auto unpack_entry(long const entry) -> SequenceEntry
+{
+  return SequenceEntry{entry_seqno(entry), entry_where(entry)};
+}
+
 // the translation of one strand and frame of a nucleotide sequence
 // with a genetic code table (translation_tables.query or .database),
 // NUL-terminated, into prot (at least length / 3 + 1 bytes); returns

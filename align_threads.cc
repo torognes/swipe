@@ -176,8 +176,8 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
 	  {
 	    data.start_hits[data.start_count] = hs;
-	    data.start_list[data.start_count] = 
-	      (hit.seqno << 3) | (hit.strands.dstrand << 2) | hit.strands.dframe;
+	    data.start_list[data.start_count] =
+	      pack_entry({hit.seqno, {hit.strands.dstrand, hit.strands.dframe}});
 	    data.start_count++;
 	  }
 	}

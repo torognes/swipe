@@ -218,14 +218,13 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	{
 	  for(long dframe = data.dframe1; dframe <= data.dframe2; dframe++)
 	  {
-	    data.start_list[data.start_count++] =
-	      (seqno << 3) | (dstrand << 2) | dframe;
+	    data.start_list[data.start_count++] = pack_entry({seqno, {dstrand, dframe}});
 	  }
 	}
       }
       else
       {
-	data.start_list[data.start_count++] = seqno << 3;
+	data.start_list[data.start_count++] = pack_entry({seqno, {0, 0}});
       }
     }
   }
@@ -235,8 +234,8 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
     return;
   }
 
-  long const s1 = data.start_list[0] >> 3;
-  long const s2 = data.start_list[data.start_count-1] >> 3;
+  long const s1 = entry_seqno(data.start_list[0]);
+  long const s2 = entry_seqno(data.start_list[data.start_count-1]);
   
   // fprintf(out, "Mapping seqnos %ld to %ld\n", s1, s2);
 
@@ -304,12 +303,11 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
       
 	  if (score < score_matrices.limit_7)
 	  {
-	    long const seqno = seqnosf >> 3;
-	    long const dstrand = (seqnosf >> 2) & 1;
-	    long const dframe = seqnosf & 3;
+	    auto const entry = unpack_entry(seqnosf);
 
-	    hits_enter(seqno, score,
-		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
+	    hits_enter(entry.seqno, score,
+		       reported_strands(parameters.symtype,
+					{qstrand, qframe, entry.where.strand, entry.where.frame}));
 	  }
 	  else
 	  {
@@ -349,12 +347,11 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	  long const score = data.scores[i];
 	  if (score < score_matrices.limit_16)
 	  {
-	    long const seqno = seqnosf >> 3;
-	    long const dstrand = (seqnosf >> 2) & 1;
-	    long const dframe = seqnosf & 3;
+	    auto const entry = unpack_entry(seqnosf);
 
-	    hits_enter(seqno, score,
-		       reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
+	    hits_enter(entry.seqno, score,
+		       reported_strands(parameters.symtype,
+					{qstrand, qframe, entry.where.strand, entry.where.frame}));
 	  }
 	  else
 	  {
@@ -373,13 +370,10 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
     
 	for (auto const seqnosf : make_view(data.in_list).first(data.in_count))
 	{
-	  long const seqno = seqnosf >> 3;
-	  long const dstrand = (seqnosf >> 2) & 1;
-	  long const dframe = seqnosf & 3;
+	  auto const entry = unpack_entry(seqnosf);
       
 	  long ntlen = 0;
-	  View<char> const sequence = db_getsequence(*data.dbt, seqno, {dstrand, dframe},
-						     & ntlen, 0);
+	  auto const sequence = db_getsequence(*data.dbt, entry.seqno, entry.where, & ntlen, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
       
@@ -402,8 +396,9 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 			      parameters.gapopenextend,
 			      parameters.gapextend);
 
-	  hits_enter(seqno, score,
-		     reported_strands(parameters.symtype, {qstrand, qframe, dstrand, dframe}));
+	  hits_enter(entry.seqno, score,
+		     reported_strands(parameters.symtype,
+				      {qstrand, qframe, entry.where.strand, entry.where.frame}));
 	}
       }
   
