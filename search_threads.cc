@@ -148,7 +148,7 @@ auto search_init(Parameters const & parameters, search_data & data) -> void
 
 auto search_done(search_data & data) -> void
 {
-  db_thread_destruct(data.dbt);
+  data.dbt.reset();
 }
 
 auto search_getwork(long * first, long * last) -> int
@@ -274,7 +274,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 			reinterpret_cast<BYTE const *>(score_matrices.score_7t.data()),
 			data.dprofile.data(),
 			data.hearray.data(),
-			data.dbt,
+			*data.dbt,
 			static_cast<long>(data.in_count),
 			data.in_list.data(),
 			data.scores.data(),
@@ -288,7 +288,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 		  reinterpret_cast<BYTE const *>(score_matrices.score_7.data()),
 		  data.dprofile.data(),
 		  data.hearray.data(),
-		  data.dbt,
+		  *data.dbt,
 		  static_cast<long>(data.in_count),
 		  data.in_list.data(),
 		  data.scores.data(),
@@ -334,7 +334,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		 reinterpret_cast<WORD*>(data.dprofile.data()),
 		 reinterpret_cast<WORD*>(data.hearray.data()),
-		 data.dbt,
+		 *data.dbt,
 		 static_cast<long>(data.in_count),
 		 data.in_list.data(),
 		 data.scores.data(),

@@ -488,7 +488,7 @@ search7
 	BYTE const * score_matrix,
 	BYTE * dprofile,
 	BYTE * hearray,
-	struct db_thread_s * dbt,
+	db_thread_s & dbt,
 	long sequences,
 	long const * seqnos,
 	long * scores,
@@ -627,7 +627,7 @@ search7
 	    long const seqno = seqnosf >> 3;
 
 	    View<char> const sequence =
-	      db_getsequence(*dbt, seqno, {strand, frame}, &ntlen, c);
+	      db_getsequence(dbt, seqno, {strand, frame}, &ntlen, c);
 		      
 	    // printf("Seqno: %ld Address: %p\n", seqno, address);
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());

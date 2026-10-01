@@ -228,19 +228,19 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(parameters, data.dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, *data.dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
   }
 }
 
 auto align_done(search_data & data) -> void
 {
 
-  for (auto * db_thread : data.dbta)
+  for (auto & db_thread : data.dbta)
   {
-    db_thread_destruct(db_thread);
+    db_thread.reset();
   }
 
-  db_thread_destruct(data.dbt);
+  data.dbt.reset();
 }
 
 

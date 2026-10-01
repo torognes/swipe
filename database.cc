@@ -387,17 +387,17 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
 
 }  // anonymous namespace
 
-auto db_thread_create() -> db_thread_t *
+auto db_thread_create() -> DbThread
 {
-  auto * t = new db_thread_s();
-  t->parser = parser_create(db_main.show_taxid);
-  return t;
+  DbThread thread(new db_thread_s());
+  thread->parser = parser_create(db_main.show_taxid);
+  return thread;
 }
 
-auto db_thread_destruct(struct db_thread_s * t) -> void
+auto DbThreadDelete::operator()(db_thread_s * const thread) const noexcept -> void
 {
-  parser_destruct(t->parser);
-  delete t;
+  parser_destruct(thread->parser);
+  delete thread;
 }
 
 namespace {

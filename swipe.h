@@ -43,6 +43,7 @@
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <memory>  // std::unique_ptr
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
@@ -332,13 +333,24 @@ extern SearchRun run;
 [[noreturn]] auto fatal(char const * message) noexcept -> void;
 [[noreturn]] auto fatal(std::string const & message) noexcept -> void;
 
+// the state of a thread reading the database (database.cc: its maps of
+// the files, header parser and sequence buffers), owned by a DbThread
+struct db_thread_s;
+
+struct DbThreadDelete
+{
+  auto operator()(db_thread_s * thread) const noexcept -> void;
+};
+
+using DbThread = std::unique_ptr<db_thread_s, DbThreadDelete>;
+
 auto search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
 	     BYTE gap_extend_penalty,
 	     BYTE const * score_matrix,
 	     BYTE * dprofile,
 	     BYTE * hearray,
-	     struct db_thread_s * dbt,
+	     db_thread_s & dbt,
 	     long sequences,
 	     long const * seqnos,
 	     long * scores,
@@ -350,7 +362,7 @@ auto search7_ssse3(BYTE * * q_start,
 		   BYTE const * score_matrix,
 		   BYTE * dprofile,
 		   BYTE * hearray,
-		   struct db_thread_s * dbt,
+		   db_thread_s & dbt,
 		   long sequences,
 		   long const * seqnos,
 		   long * scores,
@@ -362,7 +374,7 @@ auto search16(WORD * * q_start,
 	      WORD * score_matrix,
 	      WORD * dprofile,
 	      WORD * hearray,
-	      struct db_thread_s * dbt,
+	      db_thread_s & dbt,
 	      long sequences,
 	      long const * seqnos,
 	      long * scores,
@@ -375,7 +387,7 @@ auto search16s(WORD * * q_start,
 	       WORD * score_matrix,
 	       WORD * dprofile,
 	       WORD * hearray,
-	       struct db_thread_s * const * dbta,
+	       DbThread const * dbta,
 	       long sequences,
 	       long const * seqnos,
 	       long * scores,
@@ -479,8 +491,7 @@ auto db_getversion() -> long;
 
 auto db_getvolume(long seqno) -> long;
 
-auto db_thread_create() -> struct db_thread_s *;
-auto db_thread_destruct(struct db_thread_s * t) -> void;
+auto db_thread_create() -> DbThread;
 
 auto db_check_taxid(long taxid) -> long;
 
@@ -554,7 +565,7 @@ struct HitStrands
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> Buffer<long>;
 auto hits_getcount() -> long;
-auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
+auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;
 auto hits_show_end(OutputFormat view) -> void;
 auto hits_show(Parameters const & parameters) -> void;
