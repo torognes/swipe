@@ -1286,14 +1286,13 @@ auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, 
 }
 
 // the parts of a defline: its gi (0: none), the link (the identifier
-// before the first space: link_length characters, or nullptr), and the
-// rest (the title)
+// before the first space, empty when there is no space), and the rest
+// (the title)
 struct DeflineParts
 {
   long gi;
-  char const * link;
-  std::size_t link_length;
-  char const * rest;
+  View<char> link;
+  View<char> rest;
 };
 
 auto hits_defline_split(char const * defline) -> DeflineParts
@@ -1301,7 +1300,7 @@ auto hits_defline_split(char const * defline) -> DeflineParts
   char const * p = defline;
 
   // no gi (KI-42: it kept the gi of the previous defline)
-  DeflineParts parts {0, nullptr, 0, nullptr};
+  DeflineParts parts {0, View<char>{}, View<char>{}};
   
   // "gi|" and a number, as the header parser writes them (set_id(),
   // asnparse.cc)
@@ -1326,13 +1325,12 @@ auto hits_defline_split(char const * defline) -> DeflineParts
   auto const * const r = strchr(p, ' ');
   if (r != nullptr)
   {
-    parts.link_length = static_cast<std::size_t>(r - p);
-    parts.link = p;
-    parts.rest = std::next(r);
+    parts.link = View<char>{p, static_cast<std::size_t>(std::distance(p, r))};
+    parts.rest = as_c_string(std::next(r));
   }
   else
   {
-    parts.rest = p;
+    parts.rest = as_c_string(p);
   }
 
   return parts;
@@ -1596,16 +1594,16 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
     fprint(out, as_c_string(ncbidb));
     fprint(out, "&amp;term=");
-    xml_print(View<char>{parts.link, parts.link_length});
+    xml_print(parts.link);
     fprint(out, "&amp;doptcmdl=");
     fprint(out, as_c_string(ncbiopt));
     fprint(out, "</shortVersionLinkDestination>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkText>");
-    xml_print(View<char>{parts.link, parts.link_length});
+    xml_print(parts.link);
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
-    xml_print(as_c_string(parts.rest), short_name_length);
+    xml_print(parts.rest, short_name_length);
     fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
@@ -1689,17 +1687,17 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
 	fprint(out, as_c_string(ncbidb));
 	fprint(out, "&amp;term=");
-	xml_print(View<char>{parts.link, parts.link_length});
+	xml_print(parts.link);
 	fprint(out, "&amp;doptcmdl=");
 	fprint(out, as_c_string(ncbiopt));
 	fprint(out, "</longVersionLinkDestination>\n");
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkText>");
-	xml_print(View<char>{parts.link, parts.link_length});
+	xml_print(parts.link);
 	fprint(out, "</longVersionLinkText>\n");
 	fprint(out, "\t\t\t\t\t</longVersionLink>\n");
       
 	fprint(out, "\t\t\t\t\t<longVersionName>");
-	xml_print(as_c_string(parts.rest));
+	xml_print(parts.rest);
 	fprint(out, "</longVersionName>\n");
       }
         
