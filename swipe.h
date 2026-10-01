@@ -470,7 +470,8 @@ struct HeaderLayout
 auto parse_header(apt p, View<char> header, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
-auto parse_getdeflines(apt p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflines, std::vector<std::string> * deflinetable) -> void;
+// the deflines of a header that pass the membership and taxid filters
+auto parse_getdeflines(apt p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>;
 
 auto parse_getdeflinecount(apt p, View<char> header,
                            long memb, long(*f_checktaxid)(long)) -> long;
@@ -498,8 +499,7 @@ auto db_thread_destruct(struct db_thread_s * t) -> void;
 auto db_check_taxid(long taxid) -> long;
 
 auto db_parse_header(struct db_thread_s const * t, View<char> header,
-		     long show_gis,
-		     long * deflines, std::vector<std::string> * deflinetable) -> void;
+                     long show_gis) -> std::vector<std::string>;
 
 auto db_showheader(struct db_thread_s const * t, View<char> header,
 		   HeaderLayout const & layout) -> void;

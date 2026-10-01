@@ -1574,14 +1574,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     std::array<char, anchor_size> anchor {{}};
     make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
 
-    long deflines = 0;
-    std::vector<std::string> deflinetable;
     long gi = 0;
     char const * link = nullptr;
     char const * title = nullptr;
     std::size_t linklen = 0;
-    db_parse_header(t, make_view(hit_entry(i).header_address),
-		    1, & deflines, & deflinetable);
+    auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
     hits_defline_split(deflinetable[0].c_str(), 
 		       & gi,
 		       & link, & linklen,
@@ -1676,17 +1673,13 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprint(out, as_c_string(anchor.data()));
       fprint(out, "</longVersionAnchor>\n");
       
-      long deflines = 0;
-      std::vector<std::string> deflinetable;
       long gi = 0;
       char const * link = nullptr;
       char const * title = nullptr;
       std::size_t linklen = 0;
-      db_parse_header(t, make_view(hit_entry(i).header_address),
-		      1, & deflines, & deflinetable);
+      auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
       fprint(out, "\t\t\t\t<linkContainer>\n");
       
-      assert(static_cast<std::size_t>(deflines) == deflinetable.size());
       for (auto const & defline : deflinetable)
       {
 	hits_defline_split(defline.c_str(), 
