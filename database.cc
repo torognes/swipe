@@ -269,14 +269,24 @@ public:
     return count_;
   }
 
+  // the volumes added (count_ of them), for range-for loops
+  auto begin() -> Volume *
+  {
+    return volumes_.data();
+  }
+
+  auto end() -> Volume *
+  {
+    return std::next(volumes_.data(), count_);
+  }
+
   // the volume of the database sequence seqno (a linear search), and s,
   // the number of the sequence in the volume
   auto find(long const seqno, long & s) -> Volume &
   {
     s = seqno;
-    for (long vol = 0; vol < count_; vol++)
+    for (auto & volume : *this)
     {
-      auto & volume = at(vol);
       if (s < volume.seqcount)
       {
         return volume;
@@ -295,9 +305,9 @@ public:
 
   auto close() -> void
   {
-    for (long vol = 0; vol < count_; vol++)
+    for (auto & volume : *this)
     {
-      at(vol).close();
+      volume.close();
     }
     count_ = 0;
   }
