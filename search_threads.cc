@@ -58,17 +58,17 @@ SearchWork search_work;
 // search16(): 4 database residues x 16 bytes of lanes
 constexpr std::ptrdiff_t profile_row_bytes = 64;
 
-auto search_init(Parameters const & parameters, struct search_data * sdp) -> void
+auto search_init(Parameters const & parameters, search_data & data) -> void
 {
-  sdp->dbt = db_thread_create();
-  sdp->dprofile.resize(profile_bytes);
-  long const hearraylen = query_tables_init(parameters, sdp, profile_row_bytes);
+  data.dbt = db_thread_create();
+  data.dprofile.resize(profile_bytes);
+  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes);
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
   // at least one row: the kernels memset() the array, and an empty
   // Buffer has no storage (a null data(), for an empty query)
-  sdp->hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * hearray_row_bytes);
+  data.hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) * hearray_row_bytes);
 
   auto listsize = static_cast<std::size_t>(search_work.maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
@@ -76,79 +76,79 @@ auto search_init(Parameters const & parameters, struct search_data * sdp) -> voi
     listsize *= frame_count;  // the database frames
   }
 
-  sdp->start_list.resize(listsize);
-  sdp->in_list.resize(listsize);
-  sdp->out_list.resize(listsize);
-  sdp->scores.resize(listsize);
-  sdp->bestpos.resize(listsize);
-  sdp->bestq.resize(listsize);
+  data.start_list.resize(listsize);
+  data.in_list.resize(listsize);
+  data.out_list.resize(listsize);
+  data.scores.resize(listsize);
+  data.bestpos.resize(listsize);
+  data.bestq.resize(listsize);
 
   if (parameters.symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 0;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
   else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 2;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 2;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
   else if (parameters.symtype == SymbolType::tblastn)
   {
-    sdp->qstrand1 = 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = 0;
-    sdp->qframe2 = 0;
+    data.qstrand1 = 0;
+    data.qframe1 = 0;
+    data.qstrand2 = 0;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 1;
-    sdp->dframe2 = 2;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 1;
+    data.dframe2 = 2;
   }
   else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 2;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 2;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 1;
-    sdp->dframe2 = 2;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 1;
+    data.dframe2 = 2;
   }
   else
   {
-    sdp->qstrand1 = 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = 0;
-    sdp->qframe2 = 0;
+    data.qstrand1 = 0;
+    data.qframe1 = 0;
+    data.qstrand2 = 0;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
 
 }
 
-auto search_done(struct search_data * sdp) -> void
+auto search_done(search_data & data) -> void
 {
-  db_thread_destruct(sdp->dbt);
+  db_thread_destruct(data.dbt);
 }
 
 auto search_getwork(long * first, long * last) -> int
@@ -190,7 +190,7 @@ auto reported_strands(SymbolType const symbol_type, HitStrands const & strands) 
   return strands;
 }
 
-auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> void
+auto search_chunk(Parameters const & parameters, search_data & data) -> void
 {
   // the 7-bit engine uses signed bytes: gap penalties are clamped to
   // 127 (KI-11). This is exact: 7-bit scores are in [0, 127], so a
@@ -200,71 +200,71 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
   auto const gapopenextend_7 = static_cast<BYTE>(std::min(parameters.gapopenextend, max_7));
   auto const gapextend_7 = static_cast<BYTE>(std::min(parameters.gapextend, max_7));
 
-  //  fprintf(out, "Searching seqnos %ld to %ld\n", sdp->seqfirst, sdp->seqlast);
+  //  fprintf(out, "Searching seqnos %ld to %ld\n", data.seqfirst, data.seqlast);
 
   if (parameters.taxidfilename != nullptr)
   {
-    db_mapheaders(sdp->dbt, sdp->seqfirst, sdp->seqlast);
+    db_mapheaders(data.dbt, data.seqfirst, data.seqlast);
   }
 
-  sdp->start_count = 0;
-  for(long seqno = sdp->seqfirst; seqno <= sdp->seqlast; seqno++)
+  data.start_count = 0;
+  for(long seqno = data.seqfirst; seqno <= data.seqlast; seqno++)
   {
-    if (db_check_inclusion(sdp->dbt, seqno) != 0)
+    if (db_check_inclusion(data.dbt, seqno) != 0)
     {
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
-	for (long dstrand = sdp->dstrand1; dstrand <= sdp->dstrand2; dstrand++)
+	for (long dstrand = data.dstrand1; dstrand <= data.dstrand2; dstrand++)
 	{
-	  for(long dframe = sdp->dframe1; dframe <= sdp->dframe2; dframe++)
+	  for(long dframe = data.dframe1; dframe <= data.dframe2; dframe++)
 	  {
-	    sdp->start_list[sdp->start_count++] =
+	    data.start_list[data.start_count++] =
 	      (seqno << 3) | (dstrand << 2) | dframe;
 	  }
 	}
       }
       else
       {
-	sdp->start_list[sdp->start_count++] = seqno << 3;
+	data.start_list[data.start_count++] = seqno << 3;
       }
     }
   }
 
-  if (sdp->start_count == 0)
+  if (data.start_count == 0)
   {
     return;
   }
 
-  long const s1 = sdp->start_list[0] >> 3;
-  long const s2 = sdp->start_list[sdp->start_count-1] >> 3;
+  long const s1 = data.start_list[0] >> 3;
+  long const s2 = data.start_list[data.start_count-1] >> 3;
   
   // fprintf(out, "Mapping seqnos %ld to %ld\n", s1, s2);
 
-  db_mapsequences(sdp->dbt, s1, s2);
+  db_mapsequences(data.dbt, s1, s2);
 
-  for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+  for (long qstrand = data.qstrand1; qstrand <= data.qstrand2; qstrand++)
   {
-    for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
+    for(long qframe = data.qframe1; qframe <= data.qframe2; qframe++)
     {
-      sdp->out_count = sdp->start_count;
-      std::copy_n(sdp->start_list.begin(), sdp->start_count, sdp->out_list.begin());
+      data.out_count = data.start_count;
+      std::copy_n(data.start_list.begin(), data.start_count, data.out_list.begin());
       
-      BYTE ** qtable = sdp->qtable[frame_index(qstrand, qframe)].data();
-      long const qlen = sdp->qlen[frame_index(qstrand, qframe)];
+      BYTE ** qtable = data.qtable[frame_index(qstrand, qframe)].data();
+      long const qlen = data.qlen[frame_index(qstrand, qframe)];
       
       /* 7-bit search */
 	  
-      std::swap(sdp->in_list, sdp->out_list);
-      sdp->in_count = sdp->out_count;
+      std::swap(data.in_list, data.out_list);
+      data.in_count = data.out_count;
 	  
-      if (sdp->in_count > 0)
+      if (data.in_count > 0)
       {
 	{
 	  std::lock_guard<std::mutex> const lock(search_work.count_mutex);
-	  run.compute7 += static_cast<long>(sdp->in_count);
+	  run.compute7 += static_cast<long>(data.in_count);
 	}
 	    
-	// fprintf(out, "Searching seqnos %ld to %ld\n", sdp->in_list[0], sdp->in_list[sdp->in_count-1]);
+	// fprintf(out, "Searching seqnos %ld to %ld\n", data.in_list[0], data.in_list[data.in_count-1]);
 
 	if (cpu_features.ssse3)
 	{
@@ -272,12 +272,12 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			gapopenextend_7,
 			gapextend_7,
 			reinterpret_cast<BYTE const *>(score_matrices.score_7t.data()),
-			sdp->dprofile.data(),
-			sdp->hearray.data(),
-			sdp->dbt,
-			static_cast<long>(sdp->in_count),
-			sdp->in_list.data(),
-			sdp->scores.data(),
+			data.dprofile.data(),
+			data.hearray.data(),
+			data.dbt,
+			static_cast<long>(data.in_count),
+			data.in_list.data(),
+			data.scores.data(),
 			qlen);
 	}
 	else
@@ -286,21 +286,21 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		  gapopenextend_7,
 		  gapextend_7,
 		  reinterpret_cast<BYTE const *>(score_matrices.score_7.data()),
-		  sdp->dprofile.data(),
-		  sdp->hearray.data(),
-		  sdp->dbt,
-		  static_cast<long>(sdp->in_count),
-		  sdp->in_list.data(),
-		  sdp->scores.data(),
+		  data.dprofile.data(),
+		  data.hearray.data(),
+		  data.dbt,
+		  static_cast<long>(data.in_count),
+		  data.in_list.data(),
+		  data.scores.data(),
 		  qlen);
 	}
 
-	sdp->out_count = 0;
+	data.out_count = 0;
     
-	for (std::size_t i = 0; i < sdp->in_count; i++)
+	for (std::size_t i = 0; i < data.in_count; i++)
 	{
-	  long const seqnosf = sdp->in_list[i];
-	  long const score = sdp->scores[i];
+	  long const seqnosf = data.in_list[i];
+	  long const score = data.scores[i];
       
 	  if (score < score_matrices.limit_7)
 	  {
@@ -313,17 +313,17 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  }
 	  else
 	  {
-	    sdp->out_list[sdp->out_count++] = seqnosf;
+	    data.out_list[data.out_count++] = seqnosf;
 	  }
 	}
       }
 
       /* 16-bit search */
 	  
-      std::swap(sdp->in_list, sdp->out_list);
-      sdp->in_count = sdp->out_count;
+      std::swap(data.in_list, data.out_list);
+      data.in_count = data.out_count;
   
-      if (sdp->in_count > 0)
+      if (data.in_count > 0)
       {
 	  
 	// the 16-bit penalties are only used when they fit (KI-13:
@@ -332,21 +332,21 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 		 static_cast<WORD>(parameters.gapopenextend),
 		 static_cast<WORD>(parameters.gapextend),
 		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-		 reinterpret_cast<WORD*>(sdp->dprofile.data()),
-		 reinterpret_cast<WORD*>(sdp->hearray.data()),
-		 sdp->dbt,
-		 static_cast<long>(sdp->in_count),
-		 sdp->in_list.data(),
-		 sdp->scores.data(),
-		 sdp->bestpos.data(),
+		 reinterpret_cast<WORD*>(data.dprofile.data()),
+		 reinterpret_cast<WORD*>(data.hearray.data()),
+		 data.dbt,
+		 static_cast<long>(data.in_count),
+		 data.in_list.data(),
+		 data.scores.data(),
+		 data.bestpos.data(),
 		 static_cast<int>(qlen));
     
-	sdp->out_count = 0;
+	data.out_count = 0;
     
-	for (std::size_t i = 0; i < sdp->in_count; i++)
+	for (std::size_t i = 0; i < data.in_count; i++)
 	{
-	  long const seqnosf = sdp->in_list[i];
-	  long const score = sdp->scores[i];
+	  long const seqnosf = data.in_list[i];
+	  long const score = data.scores[i];
 	  if (score < score_matrices.limit_16)
 	  {
 	    long const seqno = seqnosf >> 3;
@@ -358,28 +358,28 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 	  }
 	  else
 	  {
-	    sdp->out_list[sdp->out_count++] = seqnosf;
+	    data.out_list[data.out_count++] = seqnosf;
 	  }
 	}
       }
       
       /* 63-bit search */
 
-      std::swap(sdp->in_list, sdp->out_list);
-      sdp->in_count = sdp->out_count;
+      std::swap(data.in_list, data.out_list);
+      data.in_count = data.out_count;
   
-      if (sdp->in_count > 0)
+      if (data.in_count > 0)
       {
     
-	for (std::size_t i = 0; i < sdp->in_count; i++)
+	for (std::size_t i = 0; i < data.in_count; i++)
 	{
-	  long const seqnosf = sdp->in_list[i];
+	  long const seqnosf = data.in_list[i];
 	  long const seqno = seqnosf >> 3;
 	  long const dstrand = (seqnosf >> 2) & 1;
 	  long const dframe = seqnosf & 3;
       
 	  long ntlen = 0;
-	  View<char> const sequence = db_getsequence(sdp->dbt, seqno, {dstrand, dframe},
+	  View<char> const sequence = db_getsequence(data.dbt, seqno, {dstrand, dframe},
 						     & ntlen, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
@@ -398,7 +398,7 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 			      dend,
 			      q, 
 			      std::next(q, qlen),
-			      reinterpret_cast<long*>(sdp->hearray.data()),
+			      reinterpret_cast<long*>(data.hearray.data()),
 			      score_matrices.score_63.data(),
 			      parameters.gapopenextend,
 			      parameters.gapextend);
@@ -416,14 +416,14 @@ auto search_chunk(Parameters const & parameters, struct search_data * sdp) -> vo
 auto worker(Parameters const & parameters) -> void
 {
   struct search_data sd;
-  search_init(parameters, &sd);
+  search_init(parameters, sd);
 
   while (search_getwork(&sd.seqfirst, &sd.seqlast) != 0)
   {
-    search_chunk(parameters, &sd);
+    search_chunk(parameters, sd);
   }
 
-  search_done(&sd);
+  search_done(sd);
 }
 
 }  // anonymous namespace
@@ -492,14 +492,14 @@ auto calc_chunks(View<long> const volume_sequences,
 
 // the query tables of the strands or frames searched: for each query
 // residue, the row of the score profile (row_bytes apart) that
-// the kernels read; also the query lengths (sdp->qlen). Returns the
+// the kernels read; also the query lengths (data.qlen). Returns the
 // longest query length. Shared by search_init() and align_init(),
 // whose profiles have rows of 64 and 16 bytes.
 auto query_tables_init(Parameters const & parameters,
-		       struct search_data * sdp,
+		       search_data & data,
 		       std::ptrdiff_t const row_bytes) -> long
 {
-  auto * const dprofile = sdp->dprofile.data();
+  auto * const dprofile = data.dprofile.data();
   auto const fill_table = [dprofile, row_bytes](Buffer<BYTE *> & qtable,
 						 View<char> const residues) -> void
   {
@@ -520,8 +520,8 @@ auto query_tables_init(Parameters const & parameters,
       if (searches_strand(parameters.querystrands, s))
       {
 	long const qlen = query.nt[strand_index(s)].len;
-	sdp->qlen[frame_index(s, 0)] = qlen;
-	fill_table(sdp->qtable[frame_index(s, 0)], query.nt[strand_index(s)].view());
+	data.qlen[frame_index(s, 0)] = qlen;
+	fill_table(data.qtable[frame_index(s, 0)], query.nt[strand_index(s)].view());
 	hearraylen = qlen > hearraylen ? qlen : hearraylen;
       }
     }
@@ -529,8 +529,8 @@ auto query_tables_init(Parameters const & parameters,
   else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
   {
     long const qlen = query.aa[0].len;
-    sdp->qlen[0] = qlen;
-    fill_table(sdp->qtable[0], query.aa[0].view());
+    data.qlen[0] = qlen;
+    fill_table(data.qtable[0], query.aa[0].view());
     hearraylen = qlen > hearraylen ? qlen : hearraylen;
   }
   else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
@@ -542,8 +542,8 @@ auto query_tables_init(Parameters const & parameters,
 	for(long f=0; f<3; f++)
 	{
 	  long const qlen = query.aa[frame_index(s, f)].len;
-	  sdp->qlen[frame_index(s, f)] = qlen;
-	  fill_table(sdp->qtable[frame_index(s, f)], query.aa[frame_index(s, f)].view());
+	  data.qlen[frame_index(s, f)] = qlen;
+	  fill_table(data.qtable[frame_index(s, f)], query.aa[frame_index(s, f)].view());
 	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
 	}
       }

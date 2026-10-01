@@ -60,90 +60,90 @@ AlignWork align_work;
 // database residue x 16 bytes of lanes
 constexpr std::ptrdiff_t profile_row_bytes = 16;
 
-auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
+auto align_init(Parameters const & parameters, search_data & data) -> void
 {
-  sdp->dbt = db_thread_create();
+  data.dbt = db_thread_create();
 
-  std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
+  std::generate(std::begin(data.dbta), std::end(data.dbta), db_thread_create);
 
-  sdp->dprofile.resize(profile_bytes);
-  long const hearraylen = query_tables_init(parameters, sdp, profile_row_bytes);
+  data.dprofile.resize(profile_bytes);
+  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes);
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
+  data.hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
 
   auto const listsize = static_cast<std::size_t>(align_work.maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
   //    listsize *= 6;
 
-  sdp->start_list.resize(listsize);
-  sdp->start_hits.resize(listsize);
-  sdp->in_list.resize(listsize);
-  sdp->out_list.resize(listsize);
-  sdp->scores.resize(listsize);
-  sdp->bestpos.resize(listsize);
-  sdp->bestq.resize(listsize);
+  data.start_list.resize(listsize);
+  data.start_hits.resize(listsize);
+  data.in_list.resize(listsize);
+  data.out_list.resize(listsize);
+  data.scores.resize(listsize);
+  data.bestpos.resize(listsize);
+  data.bestq.resize(listsize);
 
   if (parameters.symtype == SymbolType::blastn)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 0;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
   else if (parameters.symtype == SymbolType::blastx)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 2;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 2;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
   else if (parameters.symtype == SymbolType::tblastn)
   {
-    sdp->qstrand1 = 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = 0;
-    sdp->qframe2 = 0;
+    data.qstrand1 = 0;
+    data.qframe1 = 0;
+    data.qstrand2 = 0;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 1;
-    sdp->dframe2 = 2;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 1;
+    data.dframe2 = 2;
   }
   else if (parameters.symtype == SymbolType::tblastx)
   {
-    sdp->qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
-    sdp->qframe2 = 2;
+    data.qstrand1 = parameters.querystrands == QueryStrands::minus ? 1 : 0;
+    data.qframe1 = 0;
+    data.qstrand2 = parameters.querystrands == QueryStrands::plus ? 0 : 1;
+    data.qframe2 = 2;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 1;
-    sdp->dframe2 = 2;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 1;
+    data.dframe2 = 2;
   }
   else
   {
-    sdp->qstrand1 = 0;
-    sdp->qframe1 = 0;
-    sdp->qstrand2 = 0;
-    sdp->qframe2 = 0;
+    data.qstrand1 = 0;
+    data.qframe1 = 0;
+    data.qstrand2 = 0;
+    data.qframe2 = 0;
 
-    sdp->dstrand1 = 0;
-    sdp->dframe1 = 0;
-    sdp->dstrand2 = 0;
-    sdp->dframe2 = 0;
+    data.dstrand1 = 0;
+    data.dframe1 = 0;
+    data.dstrand2 = 0;
+    data.dframe2 = 0;
   }
 }
 
@@ -154,18 +154,18 @@ struct HitChunk
   long last;
 };
 
-auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChunk const chunk) -> void
+auto align_chunk(Parameters const & parameters, search_data & data, HitChunk const chunk) -> void
 {
   long const hitfirst = chunk.first;
   long const hitlast = chunk.last;
   if (hitlast < parameters.alignments)
   {
 
-    for (long qstrand = sdp->qstrand1; qstrand <= sdp->qstrand2; qstrand++)
+    for (long qstrand = data.qstrand1; qstrand <= data.qstrand2; qstrand++)
     {
-      for(long qframe = sdp->qframe1; qframe <= sdp->qframe2; qframe++)
+      for(long qframe = data.qframe1; qframe <= data.qframe2; qframe++)
       {
-	sdp->start_count = 0;
+	data.start_count = 0;
 
 	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
 	{
@@ -174,20 +174,20 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChu
 
 	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
 	  {
-	    sdp->start_hits[sdp->start_count] = hs;
-	    sdp->start_list[sdp->start_count] = 
+	    data.start_hits[data.start_count] = hs;
+	    data.start_list[data.start_count] = 
 	      (hit.seqno << 3) | (hit.strands.dstrand << 2) | hit.strands.dframe;
-	    sdp->start_count++;
+	    data.start_count++;
 	  }
 	}
 
-	if (sdp->start_count != 0)
+	if (data.start_count != 0)
 	{
-	  //	  printf("Aligning %ld sequences.\n", sdp->start_count);
+	  //	  printf("Aligning %ld sequences.\n", data.start_count);
 
 
-	  BYTE ** qtable = sdp->qtable[frame_index(qstrand, qframe)].data();
-	  long const qlen = sdp->qlen[frame_index(qstrand, qframe)];
+	  BYTE ** qtable = data.qtable[frame_index(qstrand, qframe)].data();
+	  long const qlen = data.qlen[frame_index(qstrand, qframe)];
       
 	  /* 16-bit search, 8x1 db symbols, with alignment end */
 	  
@@ -197,26 +197,26 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChu
 		    static_cast<WORD>(parameters.gapopenextend),
 		    static_cast<WORD>(parameters.gapextend),
 		    reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-		    reinterpret_cast<WORD*>(sdp->dprofile.data()),
-		    reinterpret_cast<WORD*>(sdp->hearray.data()),
-		    sdp->dbta.data(),
-		    static_cast<long>(sdp->start_count),
-		    sdp->start_list.data(),
-		    sdp->scores.data(),
-		    sdp->bestpos.data(),
-		    sdp->bestq.data(),
+		    reinterpret_cast<WORD*>(data.dprofile.data()),
+		    reinterpret_cast<WORD*>(data.hearray.data()),
+		    data.dbta.data(),
+		    static_cast<long>(data.start_count),
+		    data.start_list.data(),
+		    data.scores.data(),
+		    data.bestpos.data(),
+		    data.bestq.data(),
 		    static_cast<int>(qlen));
 	
-	  for (std::size_t i = 0; i < sdp->start_count; i++)
+	  for (std::size_t i = 0; i < data.start_count; i++)
 	  {
-	    long const pos = sdp->bestpos[i];
-	    long const bestq = sdp->bestq[i];
+	    long const pos = data.bestpos[i];
+	    long const bestq = data.bestq[i];
 	  
 	    //	  fprintf(out, "seqno=%ld score=%ld bestpos=%ld\n", seqno, score, pos);
 	  
-	    long const hitno = sdp->start_hits[i];
+	    long const hitno = data.start_hits[i];
 
-	    if (sdp->scores[i] < score_matrices.limit_16)
+	    if (data.scores[i] < score_matrices.limit_16)
 	    {
 	      hits_enter_align_hint(hitno, bestq, pos);
 	    }
@@ -228,19 +228,19 @@ auto align_chunk(Parameters const & parameters, struct search_data * sdp, HitChu
 
   for (long hitno = hitfirst; hitno <= hitlast; hitno++)
   {
-    hits_align(parameters, sdp->dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, data.dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
   }
 }
 
-auto align_done(struct search_data * sdp) -> void
+auto align_done(search_data & data) -> void
 {
 
-  for (auto * db_thread : sdp->dbta)
+  for (auto * db_thread : data.dbta)
   {
     db_thread_destruct(db_thread);
   }
 
-  db_thread_destruct(sdp->dbt);
+  db_thread_destruct(data.dbt);
 }
 
 
@@ -309,16 +309,16 @@ auto align_getwork(long * first, long * last) -> int
 auto align_worker(Parameters const & parameters) -> void
 {
   search_data sd;
-  align_init(parameters, &sd);
+  align_init(parameters, sd);
 
   long i = 0;
   long j = 0;
   while (align_getwork(&i, &j) != 0)
   {
-    align_chunk(parameters, &sd, {i, j});
+    align_chunk(parameters, sd, {i, j});
   }
 
-  align_done(&sd);
+  align_done(sd);
 }
 
 }  // anonymous namespace

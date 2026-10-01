@@ -97,11 +97,11 @@ auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
 		 Chunking chunking) -> long;
 
-// the query tables (sdp->qtable) and lengths (sdp->qlen) of the strands
+// the query tables (data.qtable) and lengths (data.qlen) of the strands
 // or frames searched, for a profile with rows of row_bytes;
 // returns the longest query length
 auto query_tables_init(Parameters const & parameters,
-		       struct search_data * sdp,
+		       search_data & data,
 		       std::ptrdiff_t row_bytes) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads
