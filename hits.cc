@@ -26,7 +26,7 @@
 #include "swipe.h"
 #include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
-#include <algorithm>  // std::min, std::sort
+#include <algorithm>  // std::min, std::move_backward, std::sort
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -318,9 +318,13 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
 
   //  fprintf(out, "Inserting at place %d, moving %d.\n", place, move);
 
-  for (long j = move; j > 0; j--)
+  if (move > 0)
   {
-    hit_entry(place + j) = std::move(hit_entry(place + j - 1));
+    // entries place to place + move - 1 shift to place + 1 to place + move
+    assert(static_cast<std::size_t>(place + move) < hit_list.entries.size());
+    auto const first = std::next(hit_list.entries.begin(), place);
+    auto const last = std::next(first, move);
+    std::move_backward(first, last, std::next(last));
   }
 
   // fill new entry
@@ -1358,22 +1362,20 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint(out, "\t<paralignOutput>\n");
   
   char const * qseqtypedescr = nullptr;
-  struct sequence q;
+  bool const protein_query = (query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn) || (query.symtype == SymbolType::sound);
+  auto const & q = protein_query ? query.aa[0] : query.nt[0];
   if ((query.symtype == SymbolType::blastp) || (query.symtype == SymbolType::tblastn))
   {
     qseqtypedescr = "Amino Acid";
-    q = query.aa[0];
   }
   else if (query.symtype == SymbolType::sound)
   {
     /* sound queries are stored as amino acid queries (KI-30) */
     qseqtypedescr = "Sound";
-    q = query.aa[0];
   }
   else
   {
     qseqtypedescr = "Nucleotide";
-    q = query.nt[0];
   }
   
   fprint(out, "\t\t<queryInformation>\n");
@@ -1390,9 +1392,9 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   fprint_integer(out, q.len);
   fprint(out, "</queryLength>\n");
   fprint(out, "\t\t\t<querySequence>");
-  for (int i = 0; i < q.len; i++)
+  for (auto const residue : q.view())
   {
-    fprint(out, query.sym[static_cast<int>(q.seq[i])]);
+    fprint(out, query.sym[static_cast<int>(residue)]);
   }
   fprint(out, "</querySequence>\n");
   fprint(out, "\t\t</queryInformation>\n");
@@ -1684,9 +1686,10 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 		      1, & deflines, & deflinetable);
       fprint(out, "\t\t\t\t<linkContainer>\n");
       
-      for (int d=0; d < deflines; d++)
+      assert(static_cast<std::size_t>(deflines) == deflinetable.size());
+      for (auto const & defline : deflinetable)
       {
-	hits_defline_split(deflinetable[static_cast<std::size_t>(d)].c_str(), 
+	hits_defline_split(defline.c_str(), 
 			   & gi,
 			   & link, & linklen,
 			   & title);

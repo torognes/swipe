@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include <algorithm>  // std::max
+#include <initializer_list>  // std::max({...})
 #include <cassert>
 #include <cstddef>  // std::size_t
 
@@ -56,9 +57,7 @@ auto fullsw(char const * dseq,
           long e = *(hep+1);
           h += sp[static_cast<int>(*qp)];
 
-          h = std::max(e, h);
-          h = std::max(f, h);
-          h = std::max<long>(h, 0);
+          h = std::max({h, e, f, 0L});
           s = std::max(h, s);
 
           *hep = h;

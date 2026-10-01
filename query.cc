@@ -25,7 +25,7 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint, fprint_spaces
-#include <algorithm>  // std::min
+#include <algorithm>  // std::min, std::transform
 #include <array>
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -225,17 +225,9 @@ auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrand
     query.sym = sym_ncbi_nt16;
   }
 
-  for(long s=0; s<2; s++)
-  {
-    query.nt[strand_index(s)].seq = nullptr;
-    query.nt[strand_index(s)].len = 0;
-    
-    for(long f=0; f<3; f++)
-    {
-      query.aa[frame_index(s, f)].seq = nullptr;
-      query.aa[frame_index(s, f)].len = 0;
-    }
-  }
+  // no sequence: no storage, null pointers, zero lengths
+  query.nt.fill(sequence {nullptr, 0, Buffer<char>()});
+  query.aa.fill(sequence {nullptr, 0, Buffer<char>()});
 
   read_line(query.input, query.line);
 
@@ -255,19 +247,9 @@ auto query_free() -> void
   query.description.clear();
   query.dlen = 0;
 
-  for(long s=0; s<2; s++)
-  {
-    query.nt[strand_index(s)].storage = Buffer<char>();
-    query.nt[strand_index(s)].seq = nullptr;
-    query.nt[strand_index(s)].len = 0;
-    
-    for(long f=0; f<3; f++)
-    {
-      query.aa[frame_index(s, f)].storage = Buffer<char>();
-      query.aa[frame_index(s, f)].seq = nullptr;
-      query.aa[frame_index(s, f)].len = 0;
-    }
-  }
+  // no sequence: no storage, null pointers, zero lengths
+  query.nt.fill(sequence {nullptr, 0, Buffer<char>()});
+  query.aa.fill(sequence {nullptr, 0, Buffer<char>()});
 }
 
 }  // anonymous namespace
@@ -369,7 +351,7 @@ auto query_read() -> int
     if (searches_strand(query.strands, 1))
     {
       //      printf("Reverse complement.\n");
-      query.nt[1].storage = revcompl(query.nt[0].seq, query.nt[0].len);
+      query.nt[1].storage = revcompl(query.nt[0].view());
       query.nt[1].seq = query.nt[1].storage.data();
       query.nt[1].len = query.nt[0].len;
     }
@@ -383,8 +365,7 @@ auto query_read() -> int
 	  for(long f=0; f<3; f++)
 	  {
 	    struct sequence & frame_sequence = query.aa[frame_index(s, f)];
-	    translate(query.nt[0].seq, query.nt[0].len, {s, f}, TranslationTable::for_query,
-		      frame_sequence.storage, & frame_sequence.len);
+	    frame_sequence.len = translate(query.nt[0].view(), {s, f}, frame_sequence.storage);
 	    frame_sequence.seq = frame_sequence.storage.data();
 	  }
 	}
@@ -401,23 +382,30 @@ auto query_read() -> int
   return 1;
 }
 
-auto revcompl(char const * seq, long len) -> Buffer<char>
+auto reverse_complement(View<char> const sequence, char * const complement) -> void
 {
-  Buffer<char> rc_buffer(static_cast<std::size_t>(len) + 1);
-  auto * rc = rc_buffer.data();
-  for (long i = 0; i < len; i++)
-  {
-    rc[i] = ntcompl[static_cast<std::size_t>(seq[len - 1 - i])];
-  }
-  rc[len] = 0;
+  // the complements in reverse order, then a NUL
+  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement,
+                                    [](char const nucleotide) -> char {
+                                      return ntcompl[static_cast<std::size_t>(nucleotide)];
+                                    });
+  *end = 0;
+}
+
+auto revcompl(View<char> const sequence) -> Buffer<char>
+{
+  Buffer<char> rc_buffer(sequence.size() + 1);
+  reverse_complement(sequence, rc_buffer.data());
   return rc_buffer;
 }
 
 namespace {
 
-auto translate_createtable(long tableno, char * table) -> void
+auto translate_createtable(long const tableno) -> std::array<char, translation_table_size>
 {
   /* initialize translation table */
+
+  std::array<char, translation_table_size> table {{}};
 
   constexpr long bases = 4;  // the codons are numbered in base 4
   for (std::size_t a = 0; a < nucleotide_codes; a++)
@@ -485,40 +473,32 @@ auto translate_createtable(long tableno, char * table) -> void
     }
   }
 
+  return table;
 }
 
 }  // anonymous namespace
 
 auto translate_init(long qtableno, long dtableno) -> void
 {
-  translate_createtable(qtableno, translation_tables.query.data());
-  translate_createtable(dtableno, translation_tables.database.data());
+  translation_tables.query = translate_createtable(qtableno);
+  translation_tables.database = translate_createtable(dtableno);
 }
 
-auto translate(char const * dna, long dlen, 
-	       StrandFrame const where, TranslationTable const table,
-	       Buffer<char> & protein, long * plenp) -> void
+auto translate_codons(View<char> const sequence,
+		      StrandFrame const where,
+		      std::array<char, translation_table_size> const & table,
+		      char * prot) -> long
 {
+  auto const * const dna = sequence.data();
+  auto const dlen = static_cast<long>(sequence.size());
   long const strand = where.strand;
   long const frame = where.frame;
   //  printf("dlen=%ld, strand=%ld, frame=%ld\n", dlen, strand, frame);
-
-  char const * ttable = nullptr;
-  if (table == TranslationTable::for_query)
-  {
-    ttable = translation_tables.query.data();
-  }
-  else
-  {
-    ttable = translation_tables.database.data();
-  }
 
   long pos = 0;
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
-  protein.resize(1 + static_cast<std::size_t>(plen));
-  auto * prot = protein.data();
 
   if (strand == 0)
   {
@@ -530,7 +510,7 @@ auto translate(char const * dna, long dlen,
       c |= dna[pos++];
       c <<= 4;
       c |= dna[pos++];
-      prot[ppos++] = ttable[c];
+      prot[ppos++] = table[static_cast<std::size_t>(c)];
     }
   }
   else
@@ -543,12 +523,21 @@ auto translate(char const * dna, long dlen,
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = ttable[c];
+      prot[ppos++] = table[static_cast<std::size_t>(c)];
     }
   }
 
   prot[ppos] = 0;
-  *plenp = plen;
+  return plen;
+}
+
+auto translate(View<char> const sequence, StrandFrame const where,
+	       Buffer<char> & protein) -> long
+{
+  long const plen = (static_cast<long>(sequence.size()) - where.frame) / 3;
+  assert(plen >= 0);
+  protein.resize(1 + static_cast<std::size_t>(plen));
+  return translate_codons(sequence, where, translation_tables.query, protein.data());
 }
 
 

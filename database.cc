@@ -25,7 +25,7 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint
-#include <algorithm>  // std::all_of, std::find, std::max, std::min
+#include <algorithm>  // std::all_of, std::fill_n, std::find, std::max, std::min
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isdigit, std::isspace
@@ -1243,7 +1243,7 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   long s1 = 0;
   long s2 = 0;
   auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
+  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1289,7 +1289,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   long s1 = 0;
   long s2 = 0;
   auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto * const v2 = & db_main.volumes.find(lastseqno, s2);
+  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
   
   //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
   //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
@@ -1323,50 +1323,6 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   m->map_volume = v1;
   m->map_offset = offset;
 }
-
-namespace {
-
-auto db_translate(char const * dna, long dlen,
-		  StrandFrame const where,
-		  char * prot) -> void
-{
-  long const strand = where.strand;
-  long const frame = where.frame;
-  long pos = 0;
-  long ppos = 0;
-  long const plen = (dlen - frame) / 3;
-
-  if (strand == 0)
-  {
-    pos = frame;
-    while(ppos < plen)
-    {
-      long c = dna[pos++];
-      c <<= 4;
-      c |= dna[pos++];
-      c <<= 4;
-      c |= dna[pos++];
-      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
-    }
-  }
-  else
-  {
-    pos = dlen - 1 - frame;
-    while(ppos < plen)
-    {
-      long c = ntcompl[static_cast<std::size_t>(dna[pos--])];
-      c <<= 4;
-      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      c <<= 4;
-      c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = translation_tables.database[static_cast<std::size_t>(c)];
-    }
-  }
-
-  prot[ppos] = 0;
-}
-
-}  // anonymous namespace
 
 auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 		    long * ntlenp, std::size_t c) -> View<char>
@@ -1456,10 +1412,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	    corrupted();
 	  }
 
-	  for (unsigned long rr = 0; rr < r; rr++)
-	  {
-	    nt[o + rr] = static_cast<char>(n);
-	  }
+	  std::fill_n(std::next(nt, static_cast<std::ptrdiff_t>(o)), r, static_cast<char>(n));
 	}
       }
       else
@@ -1478,10 +1431,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	    corrupted();
 	  }
 
-	  for (unsigned int rr = 0; rr < r; rr++)
-	  {
-	    nt[o + rr] = static_cast<char>(n);
-	  }
+	  std::fill_n(std::next(nt, static_cast<std::ptrdiff_t>(o)), r, static_cast<char>(n));
 	}
       }
     }
@@ -1498,11 +1448,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	}
 	auto * const xx = xxbuffer.data();
 
-	for (long i = 0; i < nt_length; i++)
-	{
-	  xx[i] = ntcompl[static_cast<std::size_t>(nt[nt_length - 1 - i])];
-	}
-	xx[nt_length] = 0;
+	reverse_complement(View<char>(nt, static_cast<std::size_t>(nt_length)), xx);
 
 	/* deallocate ntbuffer if big */
 	if (ntbuffer.size() > large_buffer_size)
@@ -1532,7 +1478,8 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
       }
       auto * const xx = xxbuffer.data();
       
-      db_translate(nt, nt_length, {strand, frame}, xx);
+      translate_codons(View<char>(nt, static_cast<std::size_t>(nt_length)), {strand, frame},
+                       translation_tables.database, xx);
 
       /* deallocate ntbuffer if big */
       
@@ -1562,7 +1509,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
 {
   long s = 0;
-  auto * const v = & db_main.volumes.find(seqno, s);
+  auto const * const v = & db_main.volumes.find(seqno, s);
 
   long const offset1 = v->offset_entry(v->offset_xhr, s);
   long const offset2 = v->offset_entry(v->offset_xhr, s + 1);

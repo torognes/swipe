@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "print_view.h"  // fprint
+#include "print_view.h"  // fprint, fprint_spaces
 #include <algorithm>  // std::min
 #include <array>
 #include <cassert>
@@ -834,13 +834,10 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	{
 	  // indentation
 
-	  if (line != 0)
+	  if ((line != 0) and (col < 1 + p->indent))
 	  {
-	    while(col < 1 + p->indent)
-	    {
-	      fprint(out, ' ');
-	      col++;
-	    }
+	    fprint_spaces(out, static_cast<std::size_t>(1 + p->indent - col));
+	    col = 1 + p->indent;
 	  }
 	  else
 	  {
@@ -875,13 +872,9 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	
 	// padding
 
-	if (p->linelen < LONG_MAX)
+	if ((p->linelen < LONG_MAX) and (col < p->linelen))
 	{
-	  while(col < p->linelen)
-	  {
-	    fprint(out, ' ');
-	    col++;
-	  }
+	  fprint_spaces(out, static_cast<std::size_t>(p->linelen - col));
 	}
 
 	if (p->maxdeflines > 1)

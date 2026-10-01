@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include <algorithm>  // std::find_if
 #include <cmath>
 #include <cstddef>  // std::size_t
 
@@ -38,6 +39,17 @@ auto has_penalties(array_of_8 const & row, long const gopen, long const gextend)
   constexpr double tolerance = 0.1;
   return (fabs(value_of(row, MatrixColumn::gap_open) - static_cast<double>(gopen)) < tolerance) and
     (fabs(value_of(row, MatrixColumn::gap_extend) - static_cast<double>(gextend)) < tolerance);
+}
+
+// the first row of a statistics table with these gap penalties, or
+// nullptr
+auto find_penalties(View<array_of_8> const rows, long const gopen, long const gextend) -> array_of_8 const *
+{
+  auto const * const found = std::find_if(rows.begin(), rows.end(),
+                                          [gopen, gextend](array_of_8 const & row) -> bool {
+                                            return has_penalties(row, gopen, gextend);
+                                          });
+  return (found == rows.end()) ? nullptr : found;
 }
 
 }  // anonymous namespace
@@ -60,16 +72,14 @@ auto stats_getparams_nt(BlastnScores const scores, GapPenalties const gaps) -> S
     gextend = 0;
   }
 
-  for(std::size_t i = 0; i < bv.size(); i++)
+  auto const * const row = find_penalties(bv, gopen, gextend);
+  if (row != nullptr)
   {
-    if (has_penalties(bv[i], gopen, gextend))
-    {
-      return {true, {value_of(bv[i], BlastnColumn::lambda),
-                     value_of(bv[i], BlastnColumn::K),
-                     value_of(bv[i], BlastnColumn::H),
-                     value_of(bv[i], BlastnColumn::alpha),
-                     value_of(bv[i], BlastnColumn::beta)}};
-    }
+    return {true, {value_of(*row, BlastnColumn::lambda),
+                   value_of(*row, BlastnColumn::K),
+                   value_of(*row, BlastnColumn::H),
+                   value_of(*row, BlastnColumn::alpha),
+                   value_of(*row, BlastnColumn::beta)}};
   }
 
   return not_found;
@@ -86,18 +96,14 @@ auto stats_getparams(char const * matrix, GapPenalties const gaps) -> Statistics
     return not_found;
   }
 
-  for (std::size_t i = 0; i < mat.size(); i++)
+  auto const * const row = find_penalties(mat, gopen, gextend);
+  if (row != nullptr)
   {
-    if (has_penalties(mat[i], gopen, gextend))
-    {
-      //      printf("m=%s go=%ld ge=%ld: Chose index %ld: %-g %-g\n", matrix, gopen, gextend, i, mat[i][0], mat[i][1]);
-            
-      return {true, {value_of(mat[i], MatrixColumn::lambda),
-                     value_of(mat[i], MatrixColumn::K),
-                     value_of(mat[i], MatrixColumn::H),
-                     value_of(mat[i], MatrixColumn::alpha),
-                     value_of(mat[i], MatrixColumn::beta)}};
-    }
+    return {true, {value_of(*row, MatrixColumn::lambda),
+                   value_of(*row, MatrixColumn::K),
+                   value_of(*row, MatrixColumn::H),
+                   value_of(*row, MatrixColumn::alpha),
+                   value_of(*row, MatrixColumn::beta)}};
   }
 
   return not_found;

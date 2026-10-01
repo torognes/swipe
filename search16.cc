@@ -26,6 +26,8 @@
 #include "swipe.h"
 #include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_16, align_cells(), No_mask, Mask
+#include <algorithm>  // std::fill_n
+#include <cstddef>  // std::size_t
 
 constexpr std::size_t CHANNELS = channels_16;
 constexpr std::size_t CDEPTH = 4;
@@ -182,20 +184,14 @@ auto search16(WORD * * q_start,
   S = Z;
   SL = Z;
       
-  for(long a=0; a < qlen; a++)
-  {
-    hep[2*a] = Z;
-    hep[(2*a)+1] = Z;
-  }
+  // the H and E scores of each query residue
+  std::fill_n(hep, 2 * static_cast<std::size_t>(qlen), Z);
 
-  for (std::size_t c = 0; c < CHANNELS; c++)
-  {
-    d_begin[c] = &zero;
-    d_pos[c] = d_begin[c];
-    d_best[c] = d_begin[c];
-    d_end[c] = d_begin[c];
-    seq_id[c] = -1;
-  }
+  d_begin.fill(&zero);
+  d_pos.fill(&zero);
+  d_best.fill(&zero);
+  d_end.fill(&zero);
+  seq_id.fill(-1);
 
   int easy = 0;
 

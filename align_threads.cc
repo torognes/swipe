@@ -67,57 +67,8 @@ auto align_init(Parameters const & parameters, struct search_data * sdp) -> void
   std::generate(std::begin(sdp->dbta), std::end(sdp->dbta), db_thread_create);
 
   sdp->dprofile.resize(profile_bytes);
-  long hearraylen = 0;
+  long const hearraylen = query_tables_init(parameters, sdp, profile_row_bytes);
 
-  if (parameters.symtype == SymbolType::blastn)
-  {
-    for (long s = 0; s < 2; s++)
-    {
-      if (searches_strand(parameters.querystrands, s))
-      {
-	long const qlen = query.nt[strand_index(s)].len;
-	sdp->qlen[frame_index(s, 0)] = qlen;
-	sdp->qtable[frame_index(s, 0)].resize(static_cast<std::size_t>(qlen));
-	for (std::size_t i = 0; i < sdp->qtable[frame_index(s, 0)].size(); i++)
-	{
-	  sdp->qtable[frame_index(s, 0)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.nt[strand_index(s)].seq[i]);
-	}
-	hearraylen = qlen > hearraylen ? qlen : hearraylen;
-      }
-    }
-  }
-  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
-  {
-    long const qlen = query.aa[0].len;
-    sdp->qlen[0] = qlen;
-    sdp->qtable[0].resize(static_cast<std::size_t>(qlen));
-    for (std::size_t i = 0; i < sdp->qtable[0].size(); i++)
-    {
-      sdp->qtable[0][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[0].seq[i]);
-    }
-    hearraylen = qlen > hearraylen ? qlen : hearraylen;
-  }
-  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
-  {
-    for (long s = 0; s < 2; s++)
-    {
-      if (searches_strand(parameters.querystrands, s))
-      {
-	for(long f=0; f<3; f++)
-	{
-	  long const qlen = query.aa[frame_index(s, f)].len;
-	  sdp->qlen[frame_index(s, f)] = qlen;
-	  sdp->qtable[frame_index(s, f)].resize(static_cast<std::size_t>(qlen));
-	  for (std::size_t i = 0; i < sdp->qtable[frame_index(s, f)].size(); i++)
-	  {
-	    sdp->qtable[frame_index(s, f)][i] = std::next(sdp->dprofile.data(), profile_row_bytes * query.aa[frame_index(s, f)].seq[i]);
-	  }
-	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
-	}
-      }
-    }
-  }
-  
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
   sdp->hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);

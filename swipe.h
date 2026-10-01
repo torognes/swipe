@@ -238,6 +238,13 @@ struct sequence
   char * seq;  // storage.data(), or nullptr
   long len;
   Buffer<char> storage;  // owns seq
+
+  // the residues, as a read-only view
+  auto view() const -> View<char>
+  {
+    assert(len >= 0);
+    return View<char>(seq, static_cast<std::size_t>(len));
+  }
 };
 
 // a nucleotide sequence has two strands, each translated in three
@@ -407,7 +414,10 @@ auto query_show() -> void;
 auto score_matrix_init(Parameters const & parameters) -> void;
 
 auto translate_init(long qtableno, long dtableno) -> void;
-auto revcompl(char const * seq, long len) -> Buffer<char>;
+// the reverse complement of a nucleotide sequence, NUL-terminated, into
+// complement (at least sequence.size() + 1 bytes)
+auto reverse_complement(View<char> sequence, char * complement) -> void;
+auto revcompl(View<char> sequence) -> Buffer<char>;
 // a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
 // untranslated_frame) of a nucleotide sequence
 struct StrandFrame
@@ -416,13 +426,17 @@ struct StrandFrame
   long frame;
 };
 
-// the genetic code of a translation: that of the query (-Q) or of the
-// database (-D)
-enum struct TranslationTable : bool { for_query, for_database };
+// the translation of one strand and frame of a nucleotide sequence
+// with a genetic code table (translation_tables.query or .database),
+// NUL-terminated, into prot (at least length / 3 + 1 bytes); returns
+// the protein length
+auto translate_codons(View<char> sequence, StrandFrame where,
+                      std::array<char, translation_table_size> const & table,
+                      char * prot) -> long;
 
-auto translate(char const * dna, long dlen,
-               StrandFrame where, TranslationTable table,
-               Buffer<char> & protein, long * plenp) -> void;
+// the same for the query (-Q), into a buffer resized to fit
+auto translate(View<char> sequence, StrandFrame where,
+               Buffer<char> & protein) -> long;
 
 struct asnparse_info;
 using apt = asnparse_info *;

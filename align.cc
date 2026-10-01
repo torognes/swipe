@@ -24,7 +24,9 @@
 */
 
 #include "swipe.h"
-#include <algorithm>  // std::max
+#include <algorithm>  // std::fill_n, std::max
+#include <cassert>
+#include <initializer_list>  // std::max({...})
 #include <cstddef>  // std::size_t
 #include <string>  // std::string, std::to_string
 #include <utility>  // std::move
@@ -61,11 +63,9 @@ auto region_begin(char const * a_seq,
 		  long * HH,
 		  long * EE) -> Cell
 {
-  for (long j = end.b; j >= 0; j--)
-    {
-      HH[j] = -1;
-      EE[j] = -1;
-    }
+  assert(end.b >= 0);
+  std::fill_n(HH, end.b + 1, -1L);
+  std::fill_n(EE, end.b + 1, -1L);
 
   long Cost = 0;
 
@@ -89,8 +89,7 @@ auto region_begin(char const * a_seq,
 
 	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 
-	  h = std::max(f, h);
-	  h = std::max(EE[j], h);
+	  h = std::max({h, f, EE[j]});
 
 
 	  p = HH[j];
@@ -141,11 +140,8 @@ auto region(char const * a_seq,
   else
   {
 
-    for (long j = 0; j < N; j++)
-    {
-      HH[j] = 0;
-      EE[j] = - q;
-    }
+    std::fill_n(HH, N, 0L);
+    std::fill_n(EE, N, - q);
     
     for (long i = 0; i < M; i++)
     {
@@ -159,9 +155,7 @@ auto region(char const * a_seq,
 	
 	h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
 	
-	h = std::max<long>(h, 0);
-	h = std::max(f, h);
-	h = std::max(EE[j], h);
+	h = std::max({h, 0L, f, EE[j]});
 	
 	p = HH[j];
 	
@@ -380,8 +374,7 @@ auto diff(struct aligner_info * aip,
 
 	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[static_cast<int>(a_seq[a_pos+i-1])];
 
-	      h = std::max(f, h);
-	      h = std::max(EE[j], h);
+	      h = std::max({h, f, EE[j]});
 	      p = HH[j];
 	      HH[j] = h;
 	    }
@@ -421,8 +414,7 @@ auto diff(struct aligner_info * aip,
 
 	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[static_cast<int>(a_seq[a_pos+M-i])];
 
-	      h = std::max(f, h);
-	      h = std::max(YY[j], h);
+	      h = std::max({h, f, YY[j]});
 	      p = XX[j];
 	      XX[j] = h;
 	    }
