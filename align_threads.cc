@@ -158,6 +158,8 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 {
   long const hitfirst = chunk.first;
   long const hitlast = chunk.last;
+  auto const chunk_hits = make_view(align_work.hits_sorted)
+    .subspan(static_cast<std::size_t>(hitfirst), static_cast<std::size_t>(hitlast - hitfirst + 1));
   if (hitlast < parameters.alignments)
   {
 
@@ -167,9 +169,8 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
       {
 	data.start_count = 0;
 
-	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
+	for (auto const hs : chunk_hits)
 	{
-	  long const hs = align_work.hits_sorted[static_cast<std::size_t>(hitno)];
 	  auto const hit = hits_gethit(hs);
 
 	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
@@ -226,9 +227,9 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
     }
   }
 
-  for (long hitno = hitfirst; hitno <= hitlast; hitno++)
+  for (auto const hitno : chunk_hits)
   {
-    hits_align(parameters, *data.dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, *data.dbt, hitno);
   }
 }
 
