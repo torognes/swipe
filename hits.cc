@@ -631,18 +631,8 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   {
     h->dseq.assign(sequence.begin(), sequence.end());
     
-    char * qseq = nullptr;
-    long qlen = 0;
-    if (parameters.symtype == SymbolType::blastn)
-    {
-      qseq = query.nt[0].seq;
-      qlen = query.nt[0].len;
-    }
-    else
-    {
-      qseq = query.aa[frame_index(h->qstrand, h->qframe)].seq;
-      qlen = query.aa[frame_index(h->qstrand, h->qframe)].len;
-    }
+    auto const & query_sequence = (parameters.symtype == SymbolType::blastn) ?
+      query.nt[0] : query.aa[frame_index(h->qstrand, h->qframe)];
 
     // give hint of alignment end
 
@@ -659,19 +649,17 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
       h->align_d_end = 0;
     }
 
-    align(qseq,
-	  h->dseq.data(),
-	  qlen,
-	  h->dlen,
-	  score_matrices.score_63.data(),
-	  parameters.gapopen,
-	  parameters.gapextend,
-	  & h->align_q_start,
-	  & h->align_d_start,
-	  & h->align_q_end,
-	  & h->align_d_end,
-	  h->alignment,
-	  & h->score_align);
+    auto const region = align(query_sequence.view(),
+			      make_view(h->dseq),
+			      score_matrices.score_63.data(),
+			      {parameters.gapopen, parameters.gapextend},
+			      {0, 0, h->align_q_end, h->align_d_end, h->score_align},
+			      h->alignment);
+    h->align_q_start = region.a_begin;
+    h->align_d_start = region.b_begin;
+    h->align_q_end = region.a_end;
+    h->align_d_end = region.b_end;
+    h->score_align = region.score;
   }
 }
 

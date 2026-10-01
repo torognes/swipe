@@ -392,20 +392,6 @@ auto fullsw(char const * dseq,
 	    long gap_open_extend,
 	    long gap_extend_penalty) -> long;
 
-auto align(char * a_seq,
-	   char * b_seq,
-	   long M,
-	   long N,
-	   long * scorematrix,
-	   long q,
-	   long r,
-	   long * a_begin,
-	   long * b_begin,
-	   long * a_end,
-	   long * b_end,
-	   std::string & alignment,
-	   long * s) -> void;
-
 auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;
 auto query_exit() -> void;
 auto query_read() -> int;
@@ -593,6 +579,27 @@ struct GapPenalties
   long open;
   long extend;
 };
+
+// the cells where a local alignment begins and ends (a: in the query,
+// b: in the database sequence) and its score; as a hint to align(), a
+// non-zero score with the end cell (the beginning is then ignored)
+struct AlignmentRegion
+{
+  long a_begin;
+  long b_begin;
+  long a_end;
+  long b_end;
+  long score;
+};
+
+// the optimal local alignment of the two sequences (align.cc), as a
+// string of operations (e.g. M12D1M5) in alignment, and its region
+auto align(View<char> query_sequence,
+           View<char> database_sequence,
+           long const * scorematrix,
+           GapPenalties gaps,
+           AlignmentRegion const & hint,
+           std::string & alignment) -> AlignmentRegion;
 
 // the scores of a nucleotide match and mismatch (blastn)
 struct BlastnScores
