@@ -43,6 +43,7 @@
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <memory>  // std::unique_ptr
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
@@ -332,13 +333,24 @@ extern SearchRun run;
 [[noreturn]] auto fatal(char const * message) noexcept -> void;
 [[noreturn]] auto fatal(std::string const & message) noexcept -> void;
 
+// the state of a thread reading the database (database.cc: its maps of
+// the files, header parser and sequence buffers), owned by a DbThread
+struct db_thread_s;
+
+struct DbThreadDelete
+{
+  auto operator()(db_thread_s * thread) const noexcept -> void;
+};
+
+using DbThread = std::unique_ptr<db_thread_s, DbThreadDelete>;
+
 auto search7(BYTE * * q_start,
 	     BYTE gap_open_penalty,
 	     BYTE gap_extend_penalty,
 	     BYTE const * score_matrix,
 	     BYTE * dprofile,
 	     BYTE * hearray,
-	     struct db_thread_s * dbt,
+	     db_thread_s & dbt,
 	     long sequences,
 	     long const * seqnos,
 	     long * scores,
@@ -350,7 +362,7 @@ auto search7_ssse3(BYTE * * q_start,
 		   BYTE const * score_matrix,
 		   BYTE * dprofile,
 		   BYTE * hearray,
-		   struct db_thread_s * dbt,
+		   db_thread_s & dbt,
 		   long sequences,
 		   long const * seqnos,
 		   long * scores,
@@ -362,7 +374,7 @@ auto search16(WORD * * q_start,
 	      WORD * score_matrix,
 	      WORD * dprofile,
 	      WORD * hearray,
-	      struct db_thread_s * dbt,
+	      db_thread_s & dbt,
 	      long sequences,
 	      long const * seqnos,
 	      long * scores,
@@ -375,7 +387,7 @@ auto search16s(WORD * * q_start,
 	       WORD * score_matrix,
 	       WORD * dprofile,
 	       WORD * hearray,
-	       struct db_thread_s * const * dbta,
+	       DbThread const * dbta,
 	       long sequences,
 	       long const * seqnos,
 	       long * scores,
@@ -391,20 +403,6 @@ auto fullsw(char const * dseq,
 	    long const * score_matrix,
 	    long gap_open_extend,
 	    long gap_extend_penalty) -> long;
-
-auto align(char * a_seq,
-	   char * b_seq,
-	   long M,
-	   long N,
-	   long * scorematrix,
-	   long q,
-	   long r,
-	   long * a_begin,
-	   long * b_begin,
-	   long * a_end,
-	   long * b_end,
-	   std::string & alignment,
-	   long * s) -> void;
 
 auto query_init(char const * query_filename, SymbolType symbol_type, QueryStrands strands) -> void;
 auto query_exit() -> void;
@@ -441,8 +439,15 @@ auto translate(View<char> sequence, StrandFrame where,
 struct asnparse_info;
 using apt = asnparse_info *;
 
-auto parser_create(long show_taxid) -> apt;
-auto parser_destruct(apt p) -> void;
+// a header parser (asnparse.cc), owned by a Parser
+struct ParserDelete
+{
+  auto operator()(asnparse_info * parser) const noexcept -> void;
+};
+
+using Parser = std::unique_ptr<asnparse_info, ParserDelete>;
+
+auto parser_create(long show_taxid) -> Parser;
 
 // XML outputs: the five special characters are escaped (KI-27)
 enum struct Escaping : int { none, xml };
@@ -493,24 +498,23 @@ auto db_getversion() -> long;
 
 auto db_getvolume(long seqno) -> long;
 
-auto db_thread_create() -> struct db_thread_s *;
-auto db_thread_destruct(struct db_thread_s * t) -> void;
+auto db_thread_create() -> DbThread;
 
 auto db_check_taxid(long taxid) -> long;
 
-auto db_parse_header(struct db_thread_s const * t, View<char> header,
+auto db_parse_header(db_thread_s const & t, View<char> header,
                      long show_gis) -> std::vector<std::string>;
 
-auto db_showheader(struct db_thread_s const * t, View<char> header,
+auto db_showheader(db_thread_s const & t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
-auto db_show_fasta(struct db_thread_s * t, long seqno,
+auto db_show_fasta(db_thread_s & t, long seqno,
 		   StrandFrame where, long split) -> void;
 
-auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
+auto db_check_inclusion(db_thread_s & t, long seqno) -> long;
 
-auto db_mapsequences(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
-auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
+auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void;
+auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void;
 
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
@@ -550,10 +554,10 @@ extern ScoreMatrices score_matrices;
 
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
-auto db_getsequence(struct db_thread_s * t, long seqno, StrandFrame where,
+auto db_getsequence(db_thread_s & t, long seqno, StrandFrame where,
 		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
-auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
+auto db_getheader(db_thread_s const & t, long seqno) -> View<char>;
 
 auto hits_init(Parameters const & parameters) -> void;
 // strands and frames of a hit: query and database sequence
@@ -568,7 +572,7 @@ struct HitStrands
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> Buffer<long>;
 auto hits_getcount() -> long;
-auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void;
+auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;
 auto hits_show_end(OutputFormat view) -> void;
 auto hits_show(Parameters const & parameters) -> void;
@@ -593,6 +597,27 @@ struct GapPenalties
   long open;
   long extend;
 };
+
+// the cells where a local alignment begins and ends (a: in the query,
+// b: in the database sequence) and its score; as a hint to align(), a
+// non-zero score with the end cell (the beginning is then ignored)
+struct AlignmentRegion
+{
+  long a_begin;
+  long b_begin;
+  long a_end;
+  long b_end;
+  long score;
+};
+
+// the optimal local alignment of the two sequences (align.cc), as a
+// string of operations (e.g. M12D1M5) in alignment, and its region
+auto align(View<char> query_sequence,
+           View<char> database_sequence,
+           long const * scorematrix,
+           GapPenalties gaps,
+           AlignmentRegion const & hint,
+           std::string & alignment) -> AlignmentRegion;
 
 // the scores of a nucleotide match and mismatch (blastn)
 struct BlastnScores

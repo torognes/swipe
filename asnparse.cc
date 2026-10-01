@@ -923,17 +923,17 @@ auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable
 
 }  // anonymous namespace
 
-auto parser_create(long const show_taxid) -> apt
+auto parser_create(long const show_taxid) -> Parser
 {
   // default-initialized (not zero-filled), as the former xmalloc()
-  auto * p = new asnparse_info;
+  Parser p(new asnparse_info);
   p->show_taxid = show_taxid;
   return p;
 }
 
-auto parser_destruct(apt p) -> void
+auto ParserDelete::operator()(asnparse_info * const parser) const noexcept -> void
 {
-  delete p;
+  delete parser;
 }
 
 auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>

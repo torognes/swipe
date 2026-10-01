@@ -488,7 +488,7 @@ search7
 	BYTE const * score_matrix,
 	BYTE * dprofile,
 	BYTE * hearray,
-	struct db_thread_s * dbt,
+	db_thread_s & dbt,
 	long sequences,
 	long const * seqnos,
 	long * scores,

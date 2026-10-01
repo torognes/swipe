@@ -148,7 +148,7 @@ auto search_init(Parameters const & parameters, search_data & data) -> void
 
 auto search_done(search_data & data) -> void
 {
-  db_thread_destruct(data.dbt);
+  data.dbt.reset();
 }
 
 auto search_getwork(long * first, long * last) -> int
@@ -204,13 +204,13 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 
   if (parameters.taxidfilename != nullptr)
   {
-    db_mapheaders(data.dbt, data.seqfirst, data.seqlast);
+    db_mapheaders(*data.dbt, data.seqfirst, data.seqlast);
   }
 
   data.start_count = 0;
   for(long seqno = data.seqfirst; seqno <= data.seqlast; seqno++)
   {
-    if (db_check_inclusion(data.dbt, seqno) != 0)
+    if (db_check_inclusion(*data.dbt, seqno) != 0)
     {
       if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
       {
@@ -240,7 +240,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
   
   // fprintf(out, "Mapping seqnos %ld to %ld\n", s1, s2);
 
-  db_mapsequences(data.dbt, s1, s2);
+  db_mapsequences(*data.dbt, s1, s2);
 
   for (long qstrand = data.qstrand1; qstrand <= data.qstrand2; qstrand++)
   {
@@ -274,7 +274,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 			reinterpret_cast<BYTE const *>(score_matrices.score_7t.data()),
 			data.dprofile.data(),
 			data.hearray.data(),
-			data.dbt,
+			*data.dbt,
 			static_cast<long>(data.in_count),
 			data.in_list.data(),
 			data.scores.data(),
@@ -288,7 +288,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 		  reinterpret_cast<BYTE const *>(score_matrices.score_7.data()),
 		  data.dprofile.data(),
 		  data.hearray.data(),
-		  data.dbt,
+		  *data.dbt,
 		  static_cast<long>(data.in_count),
 		  data.in_list.data(),
 		  data.scores.data(),
@@ -334,7 +334,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
 		 reinterpret_cast<WORD*>(data.dprofile.data()),
 		 reinterpret_cast<WORD*>(data.hearray.data()),
-		 data.dbt,
+		 *data.dbt,
 		 static_cast<long>(data.in_count),
 		 data.in_list.data(),
 		 data.scores.data(),
@@ -379,7 +379,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	  long const dframe = seqnosf & 3;
       
 	  long ntlen = 0;
-	  View<char> const sequence = db_getsequence(data.dbt, seqno, {dstrand, dframe},
+	  View<char> const sequence = db_getsequence(*data.dbt, seqno, {dstrand, dframe},
 						     & ntlen, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();

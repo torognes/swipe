@@ -44,8 +44,8 @@ constexpr std::size_t profile_bytes = std::size_t{32} * 64;
 
 struct search_data
 {
-  struct db_thread_s * dbt;
-  std::array<struct db_thread_s *, 8> dbta;
+  DbThread dbt;
+  std::array<DbThread, 8> dbta;
 
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;

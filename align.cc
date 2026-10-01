@@ -227,13 +227,13 @@ auto match(aligner_info & info) -> void
 }
 
 auto diff(aligner_info & info,
-	  char * a_seq,
-	  char * b_seq,
+	  char const * a_seq,
+	  char const * b_seq,
 	  long M,
 	  long N,
 	  long a_pos,
 	  long b_pos,
-	  long * scorematrix,
+	  long const * scorematrix,
 	  long q,
 	  long r,
 	  long tb,
@@ -470,24 +470,22 @@ auto diff(aligner_info & info,
 
 }  // anonymous namespace
 
-auto align(char * a_seq,
-	   char * b_seq,
-	   long M,
-	   long N,
-	   long * scorematrix,
-	   long q,
-	   long r,
-	   long * a_begin,
-	   long * b_begin,
-	   long * a_end,
-	   long * b_end,
-	   std::string & alignment,
-	   long * s) -> void
+auto align(View<char> const query_sequence,
+	   View<char> const database_sequence,
+	   long const * scorematrix,
+	   GapPenalties const gaps,
+	   AlignmentRegion const & hint,
+	   std::string & alignment) -> AlignmentRegion
 {
   aligner_info ai {0, 0, std::string()};
 
-  long score = *s;
-
+  auto const * const a_seq = query_sequence.data();
+  auto const * const b_seq = database_sequence.data();
+  auto const M = static_cast<long>(query_sequence.size());
+  auto const N = static_cast<long>(database_sequence.size());
+  long const q = gaps.open;
+  long const r = gaps.extend;
+  AlignmentRegion result = hint;
 
   region(a_seq,
 	 b_seq,
@@ -496,19 +494,19 @@ auto align(char * a_seq,
 	 scorematrix,
 	 q,
 	 r,
-	 a_begin,
-	 b_begin,
-	 a_end,
-	 b_end,
-	 & score);
+	 & result.a_begin,
+	 & result.b_begin,
+	 & result.a_end,
+	 & result.b_end,
+	 & result.score);
   
   diff(ai,
        a_seq,
        b_seq,
-       *a_end - *a_begin + 1,
-       *b_end - *b_begin + 1,
-       *a_begin, 
-       *b_begin, 
+       result.a_end - result.a_begin + 1,
+       result.b_end - result.b_begin + 1,
+       result.a_begin, 
+       result.b_begin, 
        scorematrix,
        q,
        r,
@@ -518,5 +516,5 @@ auto align(char * a_seq,
   push(ai);
 
   alignment = std::move(ai.alignment);
-  *s = score;
+  return result;
 }

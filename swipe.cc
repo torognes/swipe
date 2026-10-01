@@ -250,13 +250,12 @@ auto main(int argc, char**argv) -> int
 
   if(parameters.dump != 0)
   {
-    auto * t = db_thread_create();
+    auto const t = db_thread_create();
     long const seqcount = db_getseqcount();
     for (long i = 0; i < seqcount; i++)
     {
-      db_show_fasta(t, i, {0, 0}, parameters.dump - 1);
+      db_show_fasta(*t, i, {0, 0}, parameters.dump - 1);
     }
-    db_thread_destruct(t);
   }
   else
   {

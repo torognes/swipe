@@ -269,14 +269,24 @@ public:
     return count_;
   }
 
+  // the volumes added (count_ of them), for range-for loops
+  auto begin() -> Volume *
+  {
+    return volumes_.data();
+  }
+
+  auto end() -> Volume *
+  {
+    return std::next(volumes_.data(), count_);
+  }
+
   // the volume of the database sequence seqno (a linear search), and s,
   // the number of the sequence in the volume
   auto find(long const seqno, long & s) -> Volume &
   {
     s = seqno;
-    for (long vol = 0; vol < count_; vol++)
+    for (auto & volume : *this)
     {
-      auto & volume = at(vol);
       if (s < volume.seqcount)
       {
         return volume;
@@ -295,9 +305,9 @@ public:
 
   auto close() -> void
   {
-    for (long vol = 0; vol < count_; vol++)
+    for (auto & volume : *this)
     {
-      at(vol).close();
+      volume.close();
     }
     count_ = 0;
   }
@@ -358,7 +368,7 @@ struct db_thread_s
   // const db thread)
   mutable db_map_s map_seq;
   mutable db_map_s map_hdr;
-  apt parser;
+  Parser parser;
   // per channel (c) of db_getsequence(): the decompressed nucleotide
   // sequence, and its reverse complement or translation
   std::array<Buffer<char>, max_channels> ntbuffer;
@@ -387,17 +397,16 @@ auto db_print_seq_map(char const * address, long length, char const * map) -> vo
 
 }  // anonymous namespace
 
-auto db_thread_create() -> db_thread_t *
+auto db_thread_create() -> DbThread
 {
-  auto * t = new db_thread_s();
-  t->parser = parser_create(db_main.show_taxid);
-  return t;
+  DbThread thread(new db_thread_s());
+  thread->parser = parser_create(db_main.show_taxid);
+  return thread;
 }
 
-auto db_thread_destruct(struct db_thread_s * t) -> void
+auto DbThreadDelete::operator()(db_thread_s * const thread) const noexcept -> void
 {
-  parser_destruct(t->parser);
-  delete t;
+  delete thread;  // and its parser
 }
 
 namespace {
@@ -1230,13 +1239,13 @@ auto db_gettime() -> char const *
   return db_main.time.c_str();
 }
 
-auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> void
+auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void
 {
   //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
 
   // unmap if some map exist
   
-  mapp m = &t->map_seq;
+  mapp m = &t.map_seq;
 
   m->region.reset();
 
@@ -1278,11 +1287,11 @@ auto db_mapsequences(db_thread_t const * t, long firstseqno, long lastseqno) -> 
   m->map_offset = offset;
 }
 
-auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> void
+auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void
 {
   // unmap if some map exist
   
-  mapp m = &t->map_hdr;
+  mapp m = &t.map_hdr;
 
   m->region.reset();
 
@@ -1324,7 +1333,7 @@ auto db_mapheaders(db_thread_t const * t, long firstseqno, long lastseqno) -> vo
   m->map_offset = offset;
 }
 
-auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
+auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 		    long * ntlenp, std::size_t c) -> View<char>
 {
   long const strand = where.strand;
@@ -1337,7 +1346,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
   long const offset1 = v->offset_entry(v->offset_xsq, s);
   long const offset2 = v->offset_entry(v->offset_xsq, s + 1);
   long const length = offset2 - offset1;
-  auto * address = std::next(t->map_seq.region.data(), offset1 - t->map_seq.map_offset);
+  auto * address = std::next(t.map_seq.region.data(), offset1 - t.map_seq.map_offset);
 
   if ((db_main.symtype==SymbolType::blastn)||(db_main.symtype==SymbolType::tblastn)||(db_main.symtype==SymbolType::tblastx))
   {
@@ -1351,13 +1360,13 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
     unsigned char const last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
     long const nt_length = (4 * (aoff - 1)) + (last & 3);
   
-    auto & ntbuffer = t->ntbuffer[static_cast<std::size_t>(c)];
-    auto & xxbuffer = t->xxbuffer[static_cast<std::size_t>(c)];
+    auto & ntbuffer = t.ntbuffer[static_cast<std::size_t>(c)];
+    auto & xxbuffer = t.xxbuffer[static_cast<std::size_t>(c)];
     if (ntbuffer.size() < static_cast<std::size_t>(nt_length + 1))
     {
       ntbuffer.resize(static_cast<std::size_t>(nt_length + 1));
       //      printf("Reallocating large buffer (%ld) for channel %d\n", 
-      //	     t->ntbuffersize[c], c);
+      //	     t.ntbuffersize[c], c);
     }
     auto * const nt = ntbuffer.data();
 
@@ -1454,7 +1463,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
 	if (ntbuffer.size() > large_buffer_size)
 	{
 	  //	printf("Deallocating large buffer (%ld) for channel %d\n", 
-	  //	       t->ntbuffersize[c], c);
+	  //	       t.ntbuffersize[c], c);
 	  ntbuffer = Buffer<char>();
 	}
 
@@ -1486,7 +1495,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
       if (ntbuffer.size() > large_buffer_size)
       {
 	//	printf("Deallocating large buffer (%ld) for channel %d\n", 
-	//	       t->ntbuffersize[c], c);
+	//	       t.ntbuffersize[c], c);
 	ntbuffer = Buffer<char>();
       }
       
@@ -1506,7 +1515,7 @@ auto db_getsequence(db_thread_t * t, long seqno, StrandFrame const where,
   }
 }
 
-auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
+auto db_getheader(db_thread_s const & t, long seqno) -> View<char>
 {
   long s = 0;
   auto const * const v = & db_main.volumes.find(seqno, s);
@@ -1514,27 +1523,27 @@ auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
   long const offset1 = v->offset_entry(v->offset_xhr, s);
   long const offset2 = v->offset_entry(v->offset_xhr, s + 1);
   assert(offset2 >= offset1);
-  return View<char>{std::next(t->map_hdr.region.data(), offset1 - t->map_hdr.map_offset),
+  return View<char>{std::next(t.map_hdr.region.data(), offset1 - t.map_hdr.map_offset),
 		    static_cast<std::size_t>(offset2 - offset1)};
 }
 
-auto db_parse_header(db_thread_t const * t, View<char> const header,
+auto db_parse_header(db_thread_s const & t, View<char> const header,
 		     long const show_gis) -> std::vector<std::string>
 {
-  return parse_getdeflines(t->parser, header,
+  return parse_getdeflines(t.parser.get(), header,
 			   db_main.memb_bit, & db_check_taxid, show_gis);
 }
 
-auto db_showheader(struct db_thread_s const * t, View<char> const header,
+auto db_showheader(db_thread_s const & t, View<char> const header,
 		   HeaderLayout const & layout) -> void
 {
-  parse_header(t->parser, header,
+  parse_header(t.parser.get(), header,
 	       db_main.memb_bit, db_check_taxid, layout);
 }
 
 namespace {
 
-auto db_print_seq(db_thread_t * t, long seqno, StrandFrame const where) -> void
+auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 {
   long const strand = where.strand;
   long frame = where.frame;
@@ -1564,14 +1573,14 @@ auto db_print_seq(db_thread_t * t, long seqno, StrandFrame const where) -> void
   }
 }
 
-auto db_check_taxid_seqno(db_thread_t * t, long seqno) -> long
+auto db_check_taxid_seqno(db_thread_s & t, long seqno) -> long
 {
-  return parse_getdeflinecount(t->parser, db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(t.parser.get(), db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace
 
-auto db_check_inclusion(db_thread_t * t, long seqno) -> long
+auto db_check_inclusion(db_thread_s & t, long seqno) -> long
 {
   if ((db_main.memb_bit != 0) && (db_check_msk(seqno) == 0))
   {
@@ -1586,7 +1595,7 @@ auto db_check_inclusion(db_thread_t * t, long seqno) -> long
   return 1;
 }
 
-auto db_show_fasta(db_thread_t * t, long seqno, StrandFrame const where, long split) -> void
+auto db_show_fasta(db_thread_s & t, long seqno, StrandFrame const where, long split) -> void
 {
   long const strand = where.strand;
   long const frame = where.frame;

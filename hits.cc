@@ -607,7 +607,7 @@ auto hits_exit() -> void
   hit_list.entries = Buffer<hits_entry>();
 }
 
-auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -> void
+auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void
 {
   long ntlen = 0;
 
@@ -631,18 +631,8 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
   {
     h->dseq.assign(sequence.begin(), sequence.end());
     
-    char * qseq = nullptr;
-    long qlen = 0;
-    if (parameters.symtype == SymbolType::blastn)
-    {
-      qseq = query.nt[0].seq;
-      qlen = query.nt[0].len;
-    }
-    else
-    {
-      qseq = query.aa[frame_index(h->qstrand, h->qframe)].seq;
-      qlen = query.aa[frame_index(h->qstrand, h->qframe)].len;
-    }
+    auto const & query_sequence = (parameters.symtype == SymbolType::blastn) ?
+      query.nt[0] : query.aa[frame_index(h->qstrand, h->qframe)];
 
     // give hint of alignment end
 
@@ -659,19 +649,17 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
       h->align_d_end = 0;
     }
 
-    align(qseq,
-	  h->dseq.data(),
-	  qlen,
-	  h->dlen,
-	  score_matrices.score_63.data(),
-	  parameters.gapopen,
-	  parameters.gapextend,
-	  & h->align_q_start,
-	  & h->align_d_start,
-	  & h->align_q_end,
-	  & h->align_d_end,
-	  h->alignment,
-	  & h->score_align);
+    auto const region = align(query_sequence.view(),
+			      make_view(h->dseq),
+			      score_matrices.score_63.data(),
+			      {parameters.gapopen, parameters.gapextend},
+			      {0, 0, h->align_q_end, h->align_d_end, h->score_align},
+			      h->alignment);
+    h->align_q_start = region.a_begin;
+    h->align_d_start = region.b_begin;
+    h->align_q_end = region.a_end;
+    h->align_d_end = region.b_end;
+    h->score_align = region.score;
   }
 }
 
@@ -1363,7 +1351,7 @@ enum struct TabularComments : bool { without, with };
 
 auto hits_show_xml_paralign(Parameters const & parameters,
 			    ShownHits const & shown,
-			    struct db_thread_s const * t) -> void
+			    db_thread_s const & t) -> void
 {
   /* ParAlign XML */
   
@@ -1893,7 +1881,7 @@ auto show_description_xml(char const * const desc) -> void
 
 auto hits_show_xml(Parameters const & parameters,
 		   ShownHits const & shown,
-		   struct db_thread_s const * t) -> void
+		   db_thread_s const & t) -> void
 {
   /* Simple XML */
   
@@ -1979,7 +1967,7 @@ auto hits_show_xml(Parameters const & parameters,
 auto hits_show_tsv(Parameters const & parameters,
 		   ShownHits const & shown,
 		   TabularComments const comments,
-		   struct db_thread_s const * t) -> void
+		   db_thread_s const & t) -> void
 {
   if (comments == TabularComments::with)
     {
@@ -2049,7 +2037,7 @@ auto hits_show_tsv(Parameters const & parameters,
 
 auto hits_show_plain(Parameters const & parameters,
 		     ShownHits const & shown,
-		     struct db_thread_s const * t) -> void
+		     db_thread_s const & t) -> void
 {
     if (hit_list.count == 0)
     {
@@ -2306,26 +2294,25 @@ auto hits_show(Parameters const & parameters) -> void
   ShownHits const shown {std::min(count, hit_list.descriptions),
                          std::min(count, hit_list.alignments)};
 
-  auto * t = db_thread_create();
+  auto const t = db_thread_create();
 
   if(view == OutputFormat::plain)
   {
-    hits_show_plain(parameters, shown, t);
+    hits_show_plain(parameters, shown, *t);
   }
   else if (view==OutputFormat::xml)
   {
-    hits_show_xml(parameters, shown, t);
+    hits_show_xml(parameters, shown, *t);
   }
   else if ((view==OutputFormat::tabular)||(view==OutputFormat::tabular_with_comments))
   {
     auto const comments = (view == OutputFormat::tabular_with_comments) ?
       TabularComments::with : TabularComments::without;
-    hits_show_tsv(parameters, shown, comments, t);
+    hits_show_tsv(parameters, shown, comments, *t);
   }
   else if (view==OutputFormat::paralign_xml)
   {
-    hits_show_xml_paralign(parameters, shown, t);
+    hits_show_xml_paralign(parameters, shown, *t);
   }
-  db_thread_destruct(t);
 }
 
