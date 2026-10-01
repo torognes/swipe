@@ -1171,6 +1171,7 @@ auto hits_show_expect(double expect_value) -> void
   }
   else if (expect_value < three_digit_exponent_below)
   {
+    // C++17 refactoring: replace the printf() formats of this function with std::to_chars
     snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
     fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
@@ -1856,10 +1857,7 @@ auto show_description(std::string const & description) -> void
 // (KI-27)
 auto show_description_xml(std::string const & description) -> void
 {
-  for (auto const symbol : query_id(description))
-  {
-    xml_putc(symbol);
-  }
+  xml_print(query_id(description));
 }
 
 auto hits_show_xml(Parameters const & parameters,

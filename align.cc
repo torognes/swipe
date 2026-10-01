@@ -50,19 +50,31 @@ struct Cell
   long b;
 };
 
+// the two sequences, the score matrix and the gap penalties of an
+// alignment: what region_begin() and the recursion of diff() do not
+// change
+struct AlignmentInput
+{
+  char const * a_seq;
+  char const * b_seq;
+  long const * scorematrix;
+  GapPenalties gaps;
+};
+
 // Reverse pass of region(): from the end cell of the best local
 // alignment, whose score is known, find the cell where it begins. HH
 // and EE are work arrays of at least end.b + 1 elements.
-auto region_begin(char const * a_seq,
-		  char const * b_seq,
-		  long const * scorematrix,
-		  long const q,
-		  long const r,
+auto region_begin(AlignmentInput const & input,
 		  Cell const end,
 		  long const score,
 		  long * HH,
 		  long * EE) -> Cell
 {
+  auto const * const a_seq = input.a_seq;
+  auto const * const b_seq = input.b_seq;
+  auto const * const scorematrix = input.scorematrix;
+  long const q = input.gaps.open;
+  long const r = input.gaps.extend;
   assert(end.b >= 0);
   std::fill_n(HH, end.b + 1, -1L);
   std::fill_n(EE, end.b + 1, -1L);
@@ -177,7 +189,7 @@ auto region(View<char> const a_sequence,
 
   // Reverse pass
 
-  auto const begin = region_begin(a_seq, b_seq, scorematrix, q, r,
+  auto const begin = region_begin({a_seq, b_seq, scorematrix, gaps},
                                   {a_end, b_end}, score, HH, EE);
   return {begin.a, begin.b, a_end, b_end, score};
 }
@@ -228,19 +240,41 @@ auto match(aligner_info & info) -> void
   newop(info, 'M', 1);
 }
 
-auto diff(aligner_info & info,
-	  char const * a_seq,
-	  char const * b_seq,
-	  long M,
-	  long N,
-	  long a_pos,
-	  long b_pos,
-	  long const * scorematrix,
-	  long q,
-	  long r,
-	  long tb,
-	  long te) -> void
+// a block of the alignment matrix: M residues of a from a_pos, N
+// residues of b from b_pos
+struct DiffBlock
 {
+  long a_pos;
+  long b_pos;
+  long M;
+  long N;
+};
+
+// the gap open penalties at the left (tb) and right (te) ends of a
+// block: 0 when a gap is already open there, q otherwise
+struct EndGaps
+{
+  long tb;
+  long te;
+};
+
+auto diff(aligner_info & info,
+	  AlignmentInput const & input,
+	  DiffBlock const & block,
+	  EndGaps const ends) -> void
+{
+  auto const * const a_seq = input.a_seq;
+  auto const * const b_seq = input.b_seq;
+  auto const * const scorematrix = input.scorematrix;
+  long const q = input.gaps.open;
+  long const r = input.gaps.extend;
+  long const a_pos = block.a_pos;
+  long const b_pos = block.b_pos;
+  long const M = block.M;
+  long const N = block.N;
+  long const tb = ends.tb;
+  long const te = ends.te;
+
   if (N == 0)
     {
       if (M > 0)
@@ -454,18 +488,14 @@ auto diff(aligner_info & info,
 
       if (P == 0)
 	{
-	  diff(info, a_seq, b_seq, I, J, a_pos, b_pos,
-	       scorematrix, q, r, tb, q);
-	  diff(info, a_seq, b_seq, M-I, N-J, a_pos+I, b_pos+J, 
-	       scorematrix, q, r, q, te);
+	  diff(info, input, {a_pos, b_pos, I, J}, {tb, q});
+	  diff(info, input, {a_pos+I, b_pos+J, M-I, N-J}, {q, te});
 	}
       else if (P == 1)
 	{
-	  diff(info, a_seq, b_seq, I-1, J, a_pos, b_pos,
-	       scorematrix, q, r, tb, 0);
+	  diff(info, input, {a_pos, b_pos, I-1, J}, {tb, 0});
 	  delete_a(info, 2);
-	  diff(info, a_seq, b_seq, M-I-1, N-J, a_pos+I+1, b_pos+J,
-	       scorematrix, q, r, 0, te);
+	  diff(info, input, {a_pos+I+1, b_pos+J, M-I-1, N-J}, {0, te});
 	}
     }
 }
@@ -481,24 +511,13 @@ auto align(View<char> const query_sequence,
 {
   aligner_info ai {0, 0, std::string()};
 
-  auto const * const a_seq = query_sequence.data();
-  auto const * const b_seq = database_sequence.data();
-  long const q = gaps.open;
-  long const r = gaps.extend;
   auto const result = region(query_sequence, database_sequence, scorematrix, gaps, hint);
 
   diff(ai,
-       a_seq,
-       b_seq,
-       result.a_end - result.a_begin + 1,
-       result.b_end - result.b_begin + 1,
-       result.a_begin, 
-       result.b_begin, 
-       scorematrix,
-       q,
-       r,
-       q,
-       q);
+       {query_sequence.data(), database_sequence.data(), scorematrix, gaps},
+       {result.a_begin, result.b_begin,
+        result.a_end - result.a_begin + 1, result.b_end - result.b_begin + 1},
+       {gaps.open, gaps.open});
 
   push(ai);
 

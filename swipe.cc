@@ -99,33 +99,33 @@ auto detect_cpu_features() noexcept -> CpuFeatures
   return {sse2, ssse3};
 }
 
-auto clock_start(struct time_info * tip) -> void
+auto clock_start(time_info & timing) -> void
 {
-  static_cast<void>(time(& tip->t1));  /* time(2)   */
-  tip->clock1 = std::chrono::steady_clock::now();
+  static_cast<void>(time(& timing.t1));  /* time(2)   */
+  timing.clock1 = std::chrono::steady_clock::now();
 }
 
-auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
+auto clock_stop(Parameters const & parameters, time_info & timing) -> void
 {
   struct tm tms;
   constexpr char const * timeformat = "%a, %e %b %Y %T UTC";
 
-  tip->clock2 = std::chrono::steady_clock::now();
-  static_cast<void>(time(& tip->t2));
+  timing.clock2 = std::chrono::steady_clock::now();
+  static_cast<void>(time(& timing.t2));
 
   // strftime() returns 0 when the buffer is too small (its contents
   // are then undefined): the buffers hold the longest date
-  gmtime_r(&tip->t1, & tms);
-  auto const start_length = strftime(tip->starttime.data(), tip->starttime.size(), timeformat, & tms);
+  gmtime_r(&timing.t1, & tms);
+  auto const start_length = strftime(timing.starttime.data(), timing.starttime.size(), timeformat, & tms);
   assert(start_length != 0);
   static_cast<void>(start_length);
   
-  gmtime_r(&tip->t2, & tms);
-  auto const end_length = strftime(tip->endtime.data(), tip->endtime.size(), timeformat, & tms);
+  gmtime_r(&timing.t2, & tms);
+  auto const end_length = strftime(timing.endtime.data(), timing.endtime.size(), timeformat, & tms);
   assert(end_length != 0);
   static_cast<void>(end_length);
 
-  tip->elapsed = std::chrono::duration<double>(tip->clock2 - tip->clock1).count();
+  timing.elapsed = std::chrono::duration<double>(timing.clock2 - timing.clock1).count();
   
   double speed = (static_cast<double>(db_getsymcount_masked()));
 
@@ -165,20 +165,20 @@ auto clock_stop(Parameters const & parameters, struct time_info * tip) -> void
     }
   }
   /* the speed is unknown when no time elapsed (KI-33) */
-  tip->speed = (tip->elapsed > 0.0) ? speed / tip->elapsed : 0.0;
+  timing.speed = (timing.elapsed > 0.0) ? speed / timing.elapsed : 0.0;
   
   if (parameters.view == OutputFormat::plain)
   {
     fprint(out, "Search started:    ");
-    fprint(out, as_c_string(tip->starttime.data()));
+    fprint(out, as_c_string(timing.starttime.data()));
     fprint(out, '\n');
     fprint(out, "Search completed:  ");
-    fprint(out, as_c_string(tip->endtime.data()));
+    fprint(out, as_c_string(timing.endtime.data()));
     fprint(out, '\n');
-    fprintf(out, "Elapsed:           %.2fs\n", tip->elapsed);
-    if (tip->elapsed > 0.0)
+    fprintf(out, "Elapsed:           %.2fs\n", timing.elapsed);
+    if (timing.elapsed > 0.0)
     {
-      fprintf(out, "Speed:             %.3f GCUPS\n", gcups(tip->speed));
+      fprintf(out, "Speed:             %.3f GCUPS\n", gcups(timing.speed));
     }
     else
     {
@@ -207,7 +207,7 @@ auto work(Parameters const & parameters) -> void
     static_cast<void>(fflush(out));  // a write error is reported at the end (main())
   }
 
-  clock_start(&run.ti);
+  clock_start(run.ti);
   
   run_threads(parameters);
  
@@ -216,7 +216,7 @@ auto work(Parameters const & parameters) -> void
     fprint(out, "...............................................done\n\n");
   }
  
-  clock_stop(parameters, &run.ti);
+  clock_stop(parameters, run.ti);
 
   //  if (view == 0)
   //    clock_start(&ti);
