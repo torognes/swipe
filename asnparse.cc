@@ -808,7 +808,7 @@ auto parse_blast_def_line(asnparse_info & p) -> void
 // the length of the ellipsis ("...") that ends a truncated defline
 constexpr unsigned long ellipsis_length = 3;
 
-auto show_deflines(asnparse_info const & p, std::vector<std::string> & deflinetable) -> long
+auto show_deflines(asnparse_info const & p, std::vector<std::string> & deflinetable) -> void
 {
   auto const deflines = static_cast<long>(deflinetable.size());
   for (long x = 0; x < std::min(deflines, p.maxdeflines); x++)
@@ -892,9 +892,6 @@ auto show_deflines(asnparse_info const & p, std::vector<std::string> & deflineta
     }
     
   }
-
-  
-  return deflines;
 }
 
 // a Blast-def-line-set: each defline that passes the taxid and
@@ -977,7 +974,7 @@ auto parse_getdeflines(asnparse_info & p, View<char> const header, long memb, lo
 }
 
 auto parse_header(asnparse_info & p, View<char> const header, long memb, 
-		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
+		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> void
 {
   p.escaping = layout.escaping;
   p.show_gis = layout.show_gis;
@@ -993,7 +990,7 @@ auto parse_header(asnparse_info & p, View<char> const header, long memb,
   start_header(p, header);
 
   auto deflinetable = parse_deflines(p);
-  return show_deflines(p, deflinetable);
+  show_deflines(p, deflinetable);
 }
 
 auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
