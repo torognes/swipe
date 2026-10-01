@@ -24,7 +24,7 @@
 */
 
 #include "search_data.h"
-#include <algorithm>  // std::generate
+#include <algorithm>  // std::generate, std::min
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
@@ -158,6 +158,8 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 {
   long const hitfirst = chunk.first;
   long const hitlast = chunk.last;
+  auto const chunk_hits = make_view(align_work.hits_sorted)
+    .subspan(static_cast<std::size_t>(hitfirst), static_cast<std::size_t>(hitlast - hitfirst + 1));
   if (hitlast < parameters.alignments)
   {
 
@@ -167,16 +169,15 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
       {
 	data.start_count = 0;
 
-	for(long hitno = hitfirst; hitno <= hitlast; hitno++)
+	for (auto const hs : chunk_hits)
 	{
-	  long const hs = align_work.hits_sorted[static_cast<std::size_t>(hitno)];
 	  auto const hit = hits_gethit(hs);
 
 	  if ((qstrand == hit.strands.qstrand) && (qframe == hit.strands.qframe))
 	  {
 	    data.start_hits[data.start_count] = hs;
-	    data.start_list[data.start_count] = 
-	      (hit.seqno << 3) | (hit.strands.dstrand << 2) | hit.strands.dframe;
+	    data.start_list[data.start_count] =
+	      pack_entry({hit.seqno, {hit.strands.dstrand, hit.strands.dframe}});
 	    data.start_count++;
 	  }
 	}
@@ -226,9 +227,9 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
     }
   }
 
-  for (long hitno = hitfirst; hitno <= hitlast; hitno++)
+  for (auto const hitno : chunk_hits)
   {
-    hits_align(parameters, *data.dbt, align_work.hits_sorted[static_cast<std::size_t>(hitno)]);
+    hits_align(parameters, *data.dbt, hitno);
   }
 }
 
@@ -253,18 +254,15 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   align_work.volseqs.fill(0);
 
-  for(long i = 0; i<hits; i++)
+  // the first hits (up to the number of alignments) are binned per
+  // query strand and frame, the others in the unaligned bin
+  auto const aligned = std::min(hits, parameters.alignments);
+  for (long i = 0; i < aligned; i++)
   {
-    if (i >= parameters.alignments)
-    {
-      align_work.volseqs[unaligned_bin]++;
-    }
-    else
-    {
-      auto const strands = hits_gethit(i).strands;
-      align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
-    }
+    auto const strands = hits_gethit(i).strands;
+    align_work.volseqs[frame_index(strands.qstrand, strands.qframe)]++;
   }
+  align_work.volseqs[unaligned_bin] += hits - aligned;
 
   align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
                                         align_work.volchunks.data(),

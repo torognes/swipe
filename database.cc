@@ -32,7 +32,7 @@
 #include <cerrno>  // errno, ERANGE
 #include <climits>  // CHAR_BIT
 #include <cstddef>  // std::ptrdiff_t, std::size_t
-#include <cstdint>  // std::int64_t, std::uint64_t, std::uintptr_t
+#include <cstdint>  // std::int64_t, std::uint64_t
 #include <cstdlib>  // std::strtoll, std::strtoul
 #include <cstring>  // std::memcpy, std::strspn
 #include <iterator>  // std::distance, std::next
@@ -378,20 +378,19 @@ using db_thread_t = db_thread_s;
 
 namespace {
 
-auto db_print_seq_map(char const * address, long length, char const * map) -> void
+auto db_print_seq_map(View<char> const sequence, char const * map) -> void
 {
-  long const linelength = 80;
-  long i = 0;
-  while (i<length)
+  constexpr std::size_t linelength = 80;
+  auto remaining = sequence;
+  while (not remaining.empty())
   {
-    long end = i + linelength;
-    end = std::min(length, end);
-    while(i<end)
+    auto const line = remaining.first(std::min(linelength, remaining.size()));
+    for (auto const symbol : line)
     {
-      fprint(out, map[static_cast<int>(address[i])]);
-      i++;
+      fprint(out, map[static_cast<int>(symbol)]);
     }
     fprint(out, '\n');
+    remaining = remaining.drop(line.size());
   }
 }
 
@@ -609,7 +608,17 @@ auto db_read_alias(SymbolType symbol_type, char const * basename) -> std::unique
 // residue count, padding to 4 bytes after the date
 constexpr long uint32_bytes = sizeof(std::uint32_t);
 constexpr long uint64_bytes = sizeof(std::uint64_t);
-constexpr std::uintptr_t field_alignment = 4;
+constexpr long field_alignment = 4;
+
+// the padding bytes that follow a field ending at offset, up to the
+// next multiple of alignment
+constexpr auto padding_after(long const offset, long const alignment) -> long
+{
+  return (alignment - (offset % alignment)) % alignment;
+}
+static_assert(padding_after(field_alignment, field_alignment) == 0, "aligned already");
+static_assert(padding_after(field_alignment + 1, field_alignment) == field_alignment - 1,
+              "up to the next multiple");
 
 // the BLAST database versions read by swipe
 constexpr long db_version_4 = 4;
@@ -706,7 +715,8 @@ auto Volume::open(SymbolType symbol_type, char const * basename) -> void
   /* the index file must hold its header and its offset tables, and
      the offsets must stay within the header and sequence files: a
      truncated or corrupted file was read beyond its end (KI-23) */
-  auto const * const xin_end = std::next(xin_map.data(), xin_map.size());
+  auto const * const xin_begin = xin_map.data();
+  auto const * const xin_end = std::next(xin_begin, xin_map.size());
   auto const check_xin_room = [&](char const * const position, long const size) -> void
   {
     if ((size < 0) or (std::distance(position, xin_end) < size))
@@ -715,7 +725,7 @@ auto Volume::open(SymbolType symbol_type, char const * basename) -> void
     }
   };
 
-  auto const * p = xin_map.data();
+  auto const * p = xin_begin;
   // the next 32-bit field, the cursor moved past it
   auto const next_uint32 = [&p]() -> UINT32
   {
@@ -757,10 +767,7 @@ auto Volume::open(SymbolType symbol_type, char const * basename) -> void
   check_xin_room(p, datelen);
   time.assign(p, std::find(p, std::next(p, datelen), '\0'));
   p = std::next(p, datelen);
-  while ((reinterpret_cast<std::uintptr_t>(p) & (field_alignment - 1)) != 0)
-  {
-    p = std::next(p);
-  }
+  p = std::next(p, padding_after(std::distance(xin_begin, p), field_alignment));
   // sequence count, residue count, longest sequence
   check_xin_room(p, uint32_bytes + uint64_bytes + uint32_bytes);
   seqcount = next_uint32();
@@ -1557,19 +1564,18 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
   }
 
   auto const sequence = db_getsequence(t, seqno, {strand, frame}, & ntlen, 0);
-  auto const length = static_cast<long>(sequence.size());
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
-    db_print_seq_map(sequence.data(), length, sym_ncbi_aa);
+    db_print_seq_map(sequence, sym_ncbi_aa);
   }
   else if ((db_main.symtype == SymbolType::blastn) || (db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx))
   {
-    db_print_seq_map(sequence.data(), length, sym_ncbi_nt16u);
+    db_print_seq_map(sequence, sym_ncbi_nt16u);
   }
   else
   {
-    db_print_seq_map(sequence.data(), length, sym_sound);
+    db_print_seq_map(sequence, sym_sound);
   }
 }
 
