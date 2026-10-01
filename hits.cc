@@ -613,16 +613,16 @@ auto hits_align(Parameters const & parameters, struct db_thread_s * t, long i) -
 
   struct hits_entry * h = &hit_entry(i);
 
-  db_mapheaders(t, h->seqno, h->seqno);
+  db_mapheaders(*t, h->seqno, h->seqno);
 
-  auto const header = db_getheader(t, h->seqno);
+  auto const header = db_getheader(*t, h->seqno);
   h->header_address.assign(header.begin(), header.end());
 
   // the sequence length is needed for every hit shown (-m 7 <len>,
   // KI-37), the sequence itself only for hits with an alignment
-  db_mapsequences(t, h->seqno, h->seqno);
+  db_mapsequences(*t, h->seqno, h->seqno);
 
-  View<char> const sequence = db_getsequence(t, h->seqno, {h->dstrand, h->dframe},
+  View<char> const sequence = db_getsequence(*t, h->seqno, {h->dstrand, h->dframe},
 					     & ntlen, 0);
   h->dlen = static_cast<long>(sequence.size());
   h->dlennt = ntlen;
@@ -1570,7 +1570,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     std::array<char, anchor_size> anchor {{}};
     make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
 
-    auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
+    auto const deflinetable = db_parse_header(*t, make_view(hit_entry(i).header_address), 1);
     auto const parts = hits_defline_split(deflinetable[0].c_str());
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
@@ -1662,7 +1662,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprint(out, as_c_string(anchor.data()));
       fprint(out, "</longVersionAnchor>\n");
       
-      auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
+      auto const deflinetable = db_parse_header(*t, make_view(hit_entry(i).header_address), 1);
       fprint(out, "\t\t\t\t<linkContainer>\n");
       
       for (auto const & defline : deflinetable)
@@ -1916,7 +1916,7 @@ auto hits_show_xml(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = parameters.show_gis;
     layout.escaping = Escaping::xml;
-    db_showheader(t, make_view(hit_entry(i).header_address), layout);
+    db_showheader(*t, make_view(hit_entry(i).header_address), layout);
     fprint(out, "</name>\n");
     fprint(out, "      <len>");
     fprint_integer(out, dlen);
@@ -2000,7 +2000,7 @@ auto hits_show_tsv(Parameters const & parameters,
     HeaderLayout layout;
     layout.show_gis = 1;
     layout.text = DeflineText::identifier;
-    db_showheader(t, make_view(hit_entry(i).header_address), layout);
+    db_showheader(*t, make_view(hit_entry(i).header_address), layout);
     
     
     auto const hit = aligned_hit(parameters, i);
@@ -2064,7 +2064,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.show_gis = parameters.show_gis;
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
-	db_showheader(t, 
+	db_showheader(*t, 
 		      make_view(hit.header_address), layout);
 
 	auto const score = hit.score;
@@ -2125,7 +2125,7 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.indent = alignment_header_indent;
 	layout.linelen = alignment_header_width;
 	layout.maxdeflines = LONG_MAX;
-	db_showheader(t, make_view(hit_entry(i).header_address), layout);
+	db_showheader(*t, make_view(hit_entry(i).header_address), layout);
 	if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
 	{
 	  fprint(out, "          Length = ");

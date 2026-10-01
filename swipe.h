@@ -484,19 +484,19 @@ auto db_thread_destruct(struct db_thread_s * t) -> void;
 
 auto db_check_taxid(long taxid) -> long;
 
-auto db_parse_header(struct db_thread_s const * t, View<char> header,
+auto db_parse_header(db_thread_s const & t, View<char> header,
                      long show_gis) -> std::vector<std::string>;
 
-auto db_showheader(struct db_thread_s const * t, View<char> header,
+auto db_showheader(db_thread_s const & t, View<char> header,
 		   HeaderLayout const & layout) -> void;
 
-auto db_show_fasta(struct db_thread_s * t, long seqno,
+auto db_show_fasta(db_thread_s & t, long seqno,
 		   StrandFrame where, long split) -> void;
 
-auto db_check_inclusion(struct db_thread_s * t, long seqno) -> long;
+auto db_check_inclusion(db_thread_s & t, long seqno) -> long;
 
-auto db_mapsequences(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
-auto db_mapheaders(struct db_thread_s const * t, long firstseqno, long lastseqno) -> void;
+auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void;
+auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void;
 
 // frame value asking db_getsequence() for the nucleotide sequence of
 // a translated database (symtypes 3 and 4), without translation
@@ -536,10 +536,10 @@ extern ScoreMatrices score_matrices;
 
 // the residues of a sequence (GitHub #27: without the separator that
 // follows it); ntlenp receives its length in nucleotides
-auto db_getsequence(struct db_thread_s * t, long seqno, StrandFrame where,
+auto db_getsequence(db_thread_s & t, long seqno, StrandFrame where,
 		    long * ntlenp, std::size_t c) -> View<char>;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
-auto db_getheader(struct db_thread_s const * t, long seqno) -> View<char>;
+auto db_getheader(db_thread_s const & t, long seqno) -> View<char>;
 
 auto hits_init(Parameters const & parameters) -> void;
 // strands and frames of a hit: query and database sequence
