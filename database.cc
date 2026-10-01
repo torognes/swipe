@@ -1519,14 +1519,14 @@ auto db_getheader(db_thread_s const & t, long seqno) -> View<char>
 auto db_parse_header(db_thread_s const & t, View<char> const header,
 		     long const show_gis) -> std::vector<std::string>
 {
-  return parse_getdeflines(t.parser.get(), header,
+  return parse_getdeflines(*t.parser, header,
 			   db_main.memb_bit, & db_check_taxid, show_gis);
 }
 
 auto db_showheader(db_thread_s const & t, View<char> const header,
 		   HeaderLayout const & layout) -> void
 {
-  parse_header(t.parser.get(), header,
+  parse_header(*t.parser, header,
 	       db_main.memb_bit, db_check_taxid, layout);
 }
 
@@ -1563,7 +1563,7 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 
 auto db_check_taxid_seqno(db_thread_s & t, long seqno) -> long
 {
-  return parse_getdeflinecount(t.parser.get(), db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(*t.parser, db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace
