@@ -50,19 +50,31 @@ struct Cell
   long b;
 };
 
+// the two sequences, the score matrix and the gap penalties of an
+// alignment: what region_begin() and the recursion of diff() do not
+// change
+struct AlignmentInput
+{
+  char const * a_seq;
+  char const * b_seq;
+  long const * scorematrix;
+  GapPenalties gaps;
+};
+
 // Reverse pass of region(): from the end cell of the best local
 // alignment, whose score is known, find the cell where it begins. HH
 // and EE are work arrays of at least end.b + 1 elements.
-auto region_begin(char const * a_seq,
-		  char const * b_seq,
-		  long const * scorematrix,
-		  long const q,
-		  long const r,
+auto region_begin(AlignmentInput const & input,
 		  Cell const end,
 		  long const score,
 		  long * HH,
 		  long * EE) -> Cell
 {
+  auto const * const a_seq = input.a_seq;
+  auto const * const b_seq = input.b_seq;
+  auto const * const scorematrix = input.scorematrix;
+  long const q = input.gaps.open;
+  long const r = input.gaps.extend;
   assert(end.b >= 0);
   std::fill_n(HH, end.b + 1, -1L);
   std::fill_n(EE, end.b + 1, -1L);
@@ -177,7 +189,7 @@ auto region(View<char> const a_sequence,
 
   // Reverse pass
 
-  auto const begin = region_begin(a_seq, b_seq, scorematrix, q, r,
+  auto const begin = region_begin({a_seq, b_seq, scorematrix, gaps},
                                   {a_end, b_end}, score, HH, EE);
   return {begin.a, begin.b, a_end, b_end, score};
 }
@@ -228,16 +240,6 @@ auto match(aligner_info & info) -> void
   newop(info, 'M', 1);
 }
 
-// what the recursion of diff() does not change: the two sequences,
-// the score matrix and the gap penalties
-struct DiffInput
-{
-  char const * a_seq;
-  char const * b_seq;
-  long const * scorematrix;
-  GapPenalties gaps;
-};
-
 // a block of the alignment matrix: M residues of a from a_pos, N
 // residues of b from b_pos
 struct DiffBlock
@@ -257,7 +259,7 @@ struct EndGaps
 };
 
 auto diff(aligner_info & info,
-	  DiffInput const & input,
+	  AlignmentInput const & input,
 	  DiffBlock const & block,
 	  EndGaps const ends) -> void
 {
