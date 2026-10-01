@@ -141,44 +141,44 @@ constexpr auto tag(Field const field) -> unsigned char
   return static_cast<unsigned char>(ber::context_tag_0 + static_cast<unsigned char>(field));
 }
 
-auto nextch(apt p) -> void
+auto nextch(asnparse_info & p) -> void
 {
-  if (p->header_p < p->header_end)
+  if (p.header_p < p.header_end)
   {
-    p->ch = *p->header_p;
-    p->header_p = std::next(p->header_p);
+    p.ch = *p.header_p;
+    p.header_p = std::next(p.header_p);
   }
   else
   {
-    p->ch = 0;
+    p.ch = 0;
   }
 }
 
-auto nextobj(apt p) -> void
+auto nextobj(asnparse_info & p) -> void
 {
-  p->obj = p->ch;
+  p.obj = p.ch;
   nextch(p);
-  p->len = p->ch;
+  p.len = p.ch;
   nextch(p);
 }
 
-auto match_obj(apt p, unsigned short x) -> void
+auto match_obj(asnparse_info & p, unsigned short x) -> void
 {
 
-  if (p->obj != x)
+  if (p.obj != x)
     {
-      fprintf(stderr, "Unexpected object %2x, expected %2x.\n", p->obj, x);
+      fprintf(stderr, "Unexpected object %2x, expected %2x.\n", p.obj, x);
       fatal("Error parsing binary ASN.1 in database sequence definition.");
     }
   nextobj(p);
 }
 
-auto parse_integer(apt p) -> void
+auto parse_integer(asnparse_info & p) -> void
 {
 
-  p->parsed_integer = 0;
+  p.parsed_integer = 0;
 
-  unsigned long const length = p->len;
+  unsigned long const length = p.len;
 
   //  match_obj(0x02);
 
@@ -187,38 +187,38 @@ auto parse_integer(apt p) -> void
       for(unsigned long i = 0; i < length; i++)
       {
 	//	printf("%02x ", ch);
-	p->parsed_integer = (p->parsed_integer << CHAR_BIT) | p->ch;
+	p.parsed_integer = (p.parsed_integer << CHAR_BIT) | p.ch;
 	nextch(p);
       }
     }
   else
     {
-      fprintf(stderr, "Illegal length of integer object (%02x).\n", p->len);
+      fprintf(stderr, "Illegal length of integer object (%02x).\n", p.len);
       fatal("Error parsing binary ASN.1 in database sequence definition.");
     }
   nextobj(p);
 }
 
-auto parse_visiblestring(apt p) -> void
+auto parse_visiblestring(asnparse_info & p) -> void
 {
 
-  unsigned long length = p->len;
+  unsigned long length = p.len;
 
   // the long form: the length is in the next 1 to 4 bytes (a length
   // byte of exactly long_form, the indefinite form, is not decoded:
   // strings are always written with a definite length)
-  if (p->len > ber::long_form)
+  if (p.len > ber::long_form)
     {
-      auto const length_bytes = static_cast<unsigned char>(p->len - ber::long_form);
+      auto const length_bytes = static_cast<unsigned char>(p.len - ber::long_form);
       if (length_bytes > ber::max_length_bytes)
 	{
-	  fprintf(stderr, "Error: illegal string length (%02x).\n", p->len);
+	  fprintf(stderr, "Error: illegal string length (%02x).\n", p.len);
 	  fatal("Error parsing binary ASN.1 in database sequence definition.");
 	}
       length = 0;
       for (unsigned char i = 0; i < length_bytes; i++)
 	{
-	  length = (length << CHAR_BIT) | p->ch;
+	  length = (length << CHAR_BIT) | p.ch;
 	  nextch(p);
 	}
     }
@@ -228,7 +228,7 @@ auto parse_visiblestring(apt p) -> void
   // the string must end within the header: the current byte and the
   // bytes after it (KI-45: zeros were read past the end, and a length
   // of gigabytes exhausted the memory)
-  auto const available = static_cast<unsigned long>(std::distance(p->header_p, p->header_end)) + 1;
+  auto const available = static_cast<unsigned long>(std::distance(p.header_p, p.header_end)) + 1;
   if (length > available)
     {
       fprint(stderr, "Error: string longer than the header (");
@@ -239,14 +239,14 @@ auto parse_visiblestring(apt p) -> void
 
   // the current byte, then the length - 1 bytes after it, all within
   // the header: one copy instead of a nextch() per byte
-  p->parsed_string.clear();
+  p.parsed_string.clear();
   if (length > 0)
     {
       auto const rest = static_cast<std::ptrdiff_t>(length - 1);
-      p->parsed_string += static_cast<char>(p->ch);
-      p->parsed_string.append(reinterpret_cast<char const *>(p->header_p),
+      p.parsed_string += static_cast<char>(p.ch);
+      p.parsed_string.append(reinterpret_cast<char const *>(p.header_p),
                               static_cast<std::size_t>(rest));
-      p->header_p = std::next(p->header_p, rest);
+      p.header_p = std::next(p.header_p, rest);
       nextch(p);  // the byte after the string
     }
 
@@ -256,23 +256,23 @@ auto parse_visiblestring(apt p) -> void
   nextobj(p);
 }
 
-auto parse_object_id(apt p) -> void
+auto parse_object_id(asnparse_info & p) -> void
 {
-  p->gnl_id_integer = 0;
-  p->gnl_id_string.clear();
+  p.gnl_id_integer = 0;
+  p.gnl_id_string.clear();
 
-  switch(p->obj)
+  switch(p.obj)
   {
   case tag(ObjectId::id):
     match_obj(p, tag(ObjectId::id));
     parse_integer(p);
-    p->gnl_id_integer = p->parsed_integer;
+    p.gnl_id_integer = p.parsed_integer;
     match_obj(p, ber::end_of_contents);
     break;
   case tag(ObjectId::str):
     match_obj(p, tag(ObjectId::str));
     parse_visiblestring(p);
-    assign_up_to_nul(p->gnl_id_string, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.gnl_id_string, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   default:
@@ -280,15 +280,15 @@ auto parse_object_id(apt p) -> void
   }
 }
 
-auto parse_dbtag(apt p) -> void
+auto parse_dbtag(asnparse_info & p) -> void
 {
-  p->gnl_db.clear();
+  p.gnl_db.clear();
 
   match_obj(p, ber::sequence);
 
   match_obj(p, tag(Dbtag::db));
   parse_visiblestring(p);
-  assign_up_to_nul(p->gnl_db, p->parsed_string);  // up to a NUL, as strcpy()
+  assign_up_to_nul(p.gnl_db, p.parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
   match_obj(p, tag(Dbtag::tag));
@@ -298,37 +298,37 @@ auto parse_dbtag(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_id_pat(apt p) -> void
+auto parse_id_pat(asnparse_info & p) -> void
 {
-  p->pat_country.clear();
-  p->pat_id.clear();
+  p.pat_country.clear();
+  p.pat_id.clear();
 
   match_obj(p, ber::sequence);
 
   /* Country */
   match_obj(p, tag(IdPat::country));
   parse_visiblestring(p);
-  assign_up_to_nul(p->pat_country, p->parsed_string);  // up to a NUL, as strcpy()
+  assign_up_to_nul(p.pat_country, p.parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
   /* id */
   match_obj(p, tag(IdPat::id));
-  switch(p->obj)
+  switch(p.obj)
   {
   case tag(IdPatId::number):
     match_obj(p, tag(IdPatId::number));
     /* granted patent number */
-    p->pat_granted = 1;
+    p.pat_granted = 1;
     parse_visiblestring(p);
-    assign_up_to_nul(p->pat_id, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.pat_id, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   case tag(IdPatId::app_number):
     match_obj(p, tag(IdPatId::app_number));
     /* patent application number */
-    p->pat_granted = 0;
+    p.pat_granted = 0;
     parse_visiblestring(p);
-    assign_up_to_nul(p->pat_id, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.pat_id, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
     break;
   default:
@@ -336,7 +336,7 @@ auto parse_id_pat(apt p) -> void
   }
   match_obj(p, ber::end_of_contents);
 
-  if(p->obj == tag(IdPat::doc_type))
+  if(p.obj == tag(IdPat::doc_type))
   {
     /* doc type */
     match_obj(p, tag(IdPat::doc_type));
@@ -347,14 +347,14 @@ auto parse_id_pat(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_patent_seq_id(apt p) -> void
+auto parse_patent_seq_id(asnparse_info & p) -> void
 {
   match_obj(p, ber::sequence);
 
   /* sequence number in patent */
   match_obj(p, tag(PatentSeqId::seqid));
   parse_integer(p);
-  p->pat_sequence = p->parsed_integer;
+  p.pat_sequence = p.parsed_integer;
   match_obj(p, ber::end_of_contents);
 
   /* citation */
@@ -365,46 +365,46 @@ auto parse_patent_seq_id(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_textseq_id(apt p) -> void
+auto parse_textseq_id(asnparse_info & p) -> void
 {
-  p->name.clear();
-  p->accession.clear();
-  p->release.clear();
-  p->version = 0;
+  p.name.clear();
+  p.accession.clear();
+  p.release.clear();
+  p.version = 0;
 
-  match_obj(p, p->obj);
-  if (p->obj == tag(TextseqId::name))
+  match_obj(p, p.obj);
+  if (p.obj == tag(TextseqId::name))
   {
     match_obj(p, tag(TextseqId::name));
     parse_visiblestring(p);
-    assign_up_to_nul(p->name, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.name, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == tag(TextseqId::accession))
+  if (p.obj == tag(TextseqId::accession))
   {
     match_obj(p, tag(TextseqId::accession));
     parse_visiblestring(p);
-    assign_up_to_nul(p->accession, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.accession, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == tag(TextseqId::release))
+  if (p.obj == tag(TextseqId::release))
   {
     match_obj(p, tag(TextseqId::release));
     parse_visiblestring(p);
-    assign_up_to_nul(p->release, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.release, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
-  if (p->obj == tag(TextseqId::version))
+  if (p.obj == tag(TextseqId::version))
   {
     match_obj(p, tag(TextseqId::version));
     parse_integer(p);
-    p->version = p->parsed_integer;
+    p.version = p.parsed_integer;
     match_obj(p, ber::end_of_contents);
   }
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_gi_import_id(apt p) -> void
+auto parse_gi_import_id(asnparse_info & p) -> void
 {
   match_obj(p, ber::sequence);
 
@@ -412,14 +412,14 @@ auto parse_gi_import_id(apt p) -> void
   parse_integer(p);
   match_obj(p, ber::end_of_contents);
 
-  if (p->obj == tag(GiimportId::db))
+  if (p.obj == tag(GiimportId::db))
   {
     match_obj(p, tag(GiimportId::db));
     parse_visiblestring(p);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(GiimportId::release))
+  if (p.obj == tag(GiimportId::release))
   {
     match_obj(p, tag(GiimportId::release));
     parse_visiblestring(p);
@@ -429,7 +429,7 @@ auto parse_gi_import_id(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_date_std(apt p) -> void
+auto parse_date_std(asnparse_info & p) -> void
 {
   match_obj(p, ber::sequence);
 
@@ -437,28 +437,28 @@ auto parse_date_std(apt p) -> void
   parse_integer(p); // year
   match_obj(p, ber::end_of_contents);
 
-  if (p->obj == tag(DateStd::month))
+  if (p.obj == tag(DateStd::month))
   {
     match_obj(p, tag(DateStd::month));
     parse_integer(p);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(DateStd::day))
+  if (p.obj == tag(DateStd::day))
   {
     match_obj(p, tag(DateStd::day));
     parse_integer(p);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(DateStd::season))
+  if (p.obj == tag(DateStd::season))
   {
     match_obj(p, tag(DateStd::season));
     parse_visiblestring(p);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(DateStd::hour))
+  if (p.obj == tag(DateStd::hour))
   {
     // the hour [4] (KI-41: it was matched with the tag of the minute)
     match_obj(p, tag(DateStd::hour));
@@ -466,14 +466,14 @@ auto parse_date_std(apt p) -> void
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(DateStd::minute))
+  if (p.obj == tag(DateStd::minute))
   {
     match_obj(p, tag(DateStd::minute));
     parse_integer(p);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(DateStd::second))
+  if (p.obj == tag(DateStd::second))
   {
     match_obj(p, tag(DateStd::second));
     parse_integer(p);
@@ -483,9 +483,9 @@ auto parse_date_std(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_date(apt p) -> void
+auto parse_date(asnparse_info & p) -> void
 {
-  unsigned char const object = p->obj;
+  unsigned char const object = p.obj;
   match_obj(p, object);
   switch(object)
   {
@@ -501,28 +501,28 @@ auto parse_date(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_pdb_seq_id(apt p) -> void
+auto parse_pdb_seq_id(asnparse_info & p) -> void
 {
-  p->pdb_molid.clear();
-  p->pdb_chain = ' ';  // the default chain of a PDB-seq-id (32)
-  p->pdb_chain_id.clear();
+  p.pdb_molid.clear();
+  p.pdb_chain = ' ';  // the default chain of a PDB-seq-id (32)
+  p.pdb_chain_id.clear();
 
   match_obj(p, ber::sequence);
 
   match_obj(p, tag(PdbSeqId::mol));
   parse_visiblestring(p);
-  assign_up_to_nul(p->pdb_molid, p->parsed_string);  // up to a NUL, as strcpy()
+  assign_up_to_nul(p.pdb_molid, p.parsed_string);  // up to a NUL, as strcpy()
   match_obj(p, ber::end_of_contents);
 
-  if (p->obj == tag(PdbSeqId::chain))
+  if (p.obj == tag(PdbSeqId::chain))
   {
     match_obj(p, tag(PdbSeqId::chain));
     parse_integer(p); // default = 32 = @
-    p->pdb_chain = static_cast<long>(p->parsed_integer);
+    p.pdb_chain = static_cast<long>(p.parsed_integer);
     match_obj(p, ber::end_of_contents);
   }
 
-  if (p->obj == tag(PdbSeqId::rel))
+  if (p.obj == tag(PdbSeqId::rel))
   {
     match_obj(p, tag(PdbSeqId::rel));
     parse_date(p);
@@ -531,54 +531,54 @@ auto parse_pdb_seq_id(apt p) -> void
 
   // chain-id [3] (VisibleString, optional): chain names of any length
   // and case, written by current versions of makeblastdb (KI-22)
-  if (p->obj == tag(PdbSeqId::chain_id))
+  if (p.obj == tag(PdbSeqId::chain_id))
   {
     match_obj(p, tag(PdbSeqId::chain_id));
     parse_visiblestring(p);
-    assign_up_to_nul(p->pdb_chain_id, p->parsed_string);  // up to a NUL, as strcpy()
+    assign_up_to_nul(p.pdb_chain_id, p.parsed_string);  // up to a NUL, as strcpy()
     match_obj(p, ber::end_of_contents);
   }
 
   match_obj(p, ber::end_of_contents);
 }
 
-// p->id = id
-auto set_id(apt p, std::string const & id) -> void
+// p.id = id
+auto set_id(asnparse_info & p, std::string const & id) -> void
 {
-  p->id = id;
+  p.id = id;
 }
 
-auto show_seq_id(apt p, char const * dbi) -> void
+auto show_seq_id(asnparse_info & p, char const * dbi) -> void
 {
   char const * db = dbi;
-  if ((strcmp(db, "sp") == 0) && (p->release == "unreviewed"))
+  if ((strcmp(db, "sp") == 0) && (p.release == "unreviewed"))
   {
     db = "tr";
   }
-  if (p->version != 0U)
+  if (p.version != 0U)
   {
-    set_id(p, std::string(db) + "|" + p->accession + "." +
-           std::to_string(p->version) + "|" + p->name);
+    set_id(p, std::string(db) + "|" + p.accession + "." +
+           std::to_string(p.version) + "|" + p.name);
   }
   else
   {
-    set_id(p, std::string(db) + "|" + p->accession + "|" + p->name);
+    set_id(p, std::string(db) + "|" + p.accession + "|" + p.name);
   }
 }
 
-auto show_id_int(apt p, char const * db) -> void
+auto show_id_int(asnparse_info & p, char const * db) -> void
 {
-  set_id(p, std::string(db) + "|" + std::to_string(p->parsed_integer));
+  set_id(p, std::string(db) + "|" + std::to_string(p.parsed_integer));
 }
 
-auto show_pat(apt p) -> void
+auto show_pat(asnparse_info & p) -> void
 {
-  set_id(p, std::string((p->pat_granted != 0U) ? "pat" : "pgp") + "|" +
-         p->pat_country + "|" + p->pat_id + "|" +
-         std::to_string(p->pat_sequence));
+  set_id(p, std::string((p.pat_granted != 0U) ? "pat" : "pgp") + "|" +
+         p.pat_country + "|" + p.pat_id + "|" +
+         std::to_string(p.pat_sequence));
 }
 
-auto parse_seq_id(apt p) -> void
+auto parse_seq_id(asnparse_info & p) -> void
 {
   /* http://www.ncbi.nlm.nih.gov/books/NBK7183/?rendertype=table&id=ch_demo.T5 */
 
@@ -586,12 +586,12 @@ auto parse_seq_id(apt p) -> void
       "lcl", "bbs", "bbm", "gim", "gb", "emb", "pir", "sp", "pat", "ref",
       "gnl", "gi", "dbj", "prf", "pdb", "tpg", "tpe", "tpd", "gpp", "nat", }};
 
-  p->id.clear();
-  p->name.clear();
-  p->accession.clear();
-  p->version = 0;
+  p.id.clear();
+  p.name.clear();
+  p.accession.clear();
+  p.version = 0;
 
-  unsigned char const object = p->obj;
+  unsigned char const object = p.obj;
   match_obj(p, object);
   
   char const * db = "";
@@ -626,13 +626,13 @@ auto parse_seq_id(apt p) -> void
 
   case tag(SeqId::local):
     parse_object_id(p);
-    if (not p->gnl_id_string.empty())
+    if (not p.gnl_id_string.empty())
     {
-      set_id(p, std::string(db) + "|" + p->gnl_id_string);
+      set_id(p, std::string(db) + "|" + p.gnl_id_string);
     }
     else
     {
-      set_id(p, std::string(db) + "|" + std::to_string(p->gnl_id_integer));
+      set_id(p, std::string(db) + "|" + std::to_string(p.gnl_id_integer));
     }
     break;
 
@@ -648,20 +648,20 @@ auto parse_seq_id(apt p) -> void
 
   case tag(SeqId::general):
     parse_dbtag(p);
-    if (not p->gnl_id_string.empty())
+    if (not p.gnl_id_string.empty())
     {
-      set_id(p, std::string(db) + "|" + p->gnl_db + "|" + p->gnl_id_string);
+      set_id(p, std::string(db) + "|" + p.gnl_db + "|" + p.gnl_id_string);
     }
     else
     {
-      set_id(p, std::string(db) + "|" + p->gnl_db + "|" +
-             std::to_string(p->gnl_id_integer));
+      set_id(p, std::string(db) + "|" + p.gnl_db + "|" +
+             std::to_string(p.gnl_id_integer));
     }
     break;
 
   case tag(SeqId::gi):
     parse_integer(p);
-    if (p->show_gis != 0)
+    if (p.show_gis != 0)
     {
       show_id_int(p, db);
     }
@@ -669,19 +669,19 @@ auto parse_seq_id(apt p) -> void
 
   case tag(SeqId::pdb):
     parse_pdb_seq_id(p);
-    if (not p->pdb_chain_id.empty())
+    if (not p.pdb_chain_id.empty())
     {
       // the chain name is shown as is, as done by BLAST+ (KI-22)
-      set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + p->pdb_chain_id);
+      set_id(p, std::string(db) + "|" + p.pdb_molid + "|" + p.pdb_chain_id);
       break;
     }
     {
       // a lowercase chain letter is shown as two uppercase letters
       // (e.g. chain 'a' -> "AA")
-      auto const chain = (p->pdb_chain > '_') ?
-        std::string(2, static_cast<char>(p->pdb_chain - ('a' - 'A'))) :
-        std::string(1, static_cast<char>(p->pdb_chain));
-      set_id(p, std::string(db) + "|" + p->pdb_molid + "|" + chain);
+      auto const chain = (p.pdb_chain > '_') ?
+        std::string(2, static_cast<char>(p.pdb_chain - ('a' - 'A'))) :
+        std::string(1, static_cast<char>(p.pdb_chain));
+      set_id(p, std::string(db) + "|" + p.pdb_molid + "|" + chain);
     }
     break;
 
@@ -692,84 +692,84 @@ auto parse_seq_id(apt p) -> void
   match_obj(p, ber::end_of_contents);
 }
 
-auto parse_blast_def_line(apt p) -> void
+auto parse_blast_def_line(asnparse_info & p) -> void
 {
   match_obj(p, ber::sequence);
 
-  if (p->obj == ber::end_of_contents)
+  if (p.obj == ber::end_of_contents)
   {
     fatal("Missing defline.");
   }
 
   std::string seqids;
 
-  p->defline.clear();
-  p->title = "unnamed protein product";
-  p->taxid = 0;
-  p->memberships = 0;
-  p->links = 0;
+  p.defline.clear();
+  p.title = "unnamed protein product";
+  p.taxid = 0;
+  p.memberships = 0;
+  p.links = 0;
 
-  if (p->obj == tag(BlastDefLine::title))
+  if (p.obj == tag(BlastDefLine::title))
     {
       match_obj(p, tag(BlastDefLine::title));
       parse_visiblestring(p);
-      assign_up_to_nul(p->title, p->parsed_string);  // up to a NUL, as strcpy()
+      assign_up_to_nul(p.title, p.parsed_string);  // up to a NUL, as strcpy()
       match_obj(p, ber::end_of_contents);
     }
 
-  if (p->obj == tag(BlastDefLine::seqid))
+  if (p.obj == tag(BlastDefLine::seqid))
     {
       match_obj(p, tag(BlastDefLine::seqid));
       match_obj(p, ber::sequence);
-      while(p->obj != ber::end_of_contents)
+      while(p.obj != ber::end_of_contents)
       {
 	parse_seq_id(p);
 	if (not seqids.empty())
 	{
 	  seqids += "|";
 	}
-	seqids += p->id;
+	seqids += p.id;
       }
       match_obj(p, ber::end_of_contents);
       match_obj(p, ber::end_of_contents);
     }
 
-  if (p->obj == tag(BlastDefLine::taxid))
+  if (p.obj == tag(BlastDefLine::taxid))
     {
       match_obj(p, tag(BlastDefLine::taxid));
       parse_integer(p);
-      p->taxid = p->parsed_integer;
+      p.taxid = p.parsed_integer;
       match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == tag(BlastDefLine::memberships))
+  if (p.obj == tag(BlastDefLine::memberships))
     {
       match_obj(p, tag(BlastDefLine::memberships));
       match_obj(p, ber::sequence);
-      while(p->obj != ber::end_of_contents)
+      while(p.obj != ber::end_of_contents)
       {
 	parse_integer(p);
-	p->memberships = p->parsed_integer;
+	p.memberships = p.parsed_integer;
       }
       match_obj(p, ber::end_of_contents);
       match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == tag(BlastDefLine::links))
+  if (p.obj == tag(BlastDefLine::links))
     {
       match_obj(p, tag(BlastDefLine::links));
       match_obj(p, ber::sequence);
-      while(p->obj != ber::end_of_contents)
+      while(p.obj != ber::end_of_contents)
       {
 	parse_integer(p);
-	p->links = p->parsed_integer;
+	p.links = p.parsed_integer;
       }
       match_obj(p, ber::end_of_contents);
       match_obj(p, ber::end_of_contents);
     }
-  if (p->obj == tag(BlastDefLine::other_info))
+  if (p.obj == tag(BlastDefLine::other_info))
     {
       match_obj(p, tag(BlastDefLine::other_info));
       match_obj(p, ber::sequence);
-      while (p->obj != ber::end_of_contents)
+      while (p.obj != ber::end_of_contents)
       {
 	parse_integer(p);
       }
@@ -779,45 +779,45 @@ auto parse_blast_def_line(apt p) -> void
 
   match_obj(p, ber::end_of_contents);
   
-  p->defline += seqids;
+  p.defline += seqids;
   
-  if (p->show_taxid != 0)
+  if (p.show_taxid != 0)
     {
-      if (p->taxid != 0U)
+      if (p.taxid != 0U)
 	{
-	  p->defline += "|taxid|" + std::to_string(p->taxid);
+	  p.defline += "|taxid|" + std::to_string(p.taxid);
 	}
-      if (p->links != 0U)
+      if (p.links != 0U)
 	{
-	  p->defline += "|link|" + std::to_string(p->links);
+	  p.defline += "|link|" + std::to_string(p.links);
 	}
-      if (p->memberships != 0U)
+      if (p.memberships != 0U)
 	{
-	  p->defline += "|memb|" + std::to_string(p->memberships);
+	  p.defline += "|memb|" + std::to_string(p.memberships);
 	}
     }
 
-    if ((not p->defline.empty()) && (not p->title.empty()))
+    if ((not p.defline.empty()) && (not p.title.empty()))
     {
-      p->defline += " ";
+      p.defline += " ";
     }
 
-  p->defline += p->title;
+  p.defline += p.title;
 }
 
-auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable) -> long
+auto show_deflines(asnparse_info const & p, long deflines, std::vector<std::string> & deflinetable) -> long
 {
   for(long x=0; x<deflines; x++)
   {
-    if (x < p->maxdeflines)
+    if (x < p.maxdeflines)
     {
       char * defline = &deflinetable[static_cast<std::size_t>(x)][0];
 
       unsigned long pos = 0;
       unsigned long show = strlen(defline);
-      if ((p->maxlen != 0U) && (show > p->maxlen))
+      if ((p.maxlen != 0U) && (show > p.maxlen))
       {
-	show = p->maxlen;
+	show = p.maxlen;
       }
 
       if ((show < strlen(defline)) && (show >= 3))
@@ -830,14 +830,14 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
       {
 	long col = 0;
 	
-	if (p->maxdeflines > 1)
+	if (p.maxdeflines > 1)
 	{
 	  // indentation
 
-	  if ((line != 0) and (col < 1 + p->indent))
+	  if ((line != 0) and (col < 1 + p.indent))
 	  {
-	    fprint_spaces(out, static_cast<std::size_t>(1 + p->indent - col));
-	    col = 1 + p->indent;
+	    fprint_spaces(out, static_cast<std::size_t>(1 + p.indent - col));
+	    col = 1 + p.indent;
 	  }
 	  else
 	  {
@@ -848,16 +848,16 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	
 	// defline
 
-	while((pos < show) && (col < p->linelen))
+	while((pos < show) && (col < p.linelen))
 	{
 	  char const c = defline[pos];
-	  if ((p->text == DeflineText::identifier) && (c == ' '))
+	  if ((p.text == DeflineText::identifier) && (c == ' '))
 	  {
 	    pos = show;
 	  }
 	  else
 	  {
-	    if (p->escaping == Escaping::xml)
+	    if (p.escaping == Escaping::xml)
 	    {
 	      xml_putc(defline[pos]);
 	    }
@@ -872,12 +872,12 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
 	
 	// padding
 
-	if ((p->linelen < LONG_MAX) and (col < p->linelen))
+	if ((p.linelen < LONG_MAX) and (col < p.linelen))
 	{
-	  fprint_spaces(out, static_cast<std::size_t>(p->linelen - col));
+	  fprint_spaces(out, static_cast<std::size_t>(p.linelen - col));
 	}
 
-	if (p->maxdeflines > 1)
+	if (p.maxdeflines > 1)
 	{
 	  fprint(out, '\n');
 	}
@@ -892,33 +892,52 @@ auto show_deflines(apt p, long deflines, std::vector<std::string> & deflinetable
   return deflines;
 }
 
-auto parse_blast_def_line_set_new(apt p, std::vector<std::string> * deflinetable) -> long
+// a Blast-def-line-set: each defline that passes the taxid and
+// membership filters is handed to accept()
+template <typename Accept>
+auto parse_blast_def_line_set(asnparse_info & p, Accept accept) -> void
 {
   match_obj(p, ber::sequence);
-  long deflines = 0;
 
-  if (deflinetable != nullptr)
-  {
-    deflinetable->clear();
-  }
-    
-  while (p->obj != ber::end_of_contents)
+  while (p.obj != ber::end_of_contents)
     {
-      p->defline.clear();
+      p.defline.clear();
       parse_blast_def_line(p);
-      if ((p->f_checktaxid(static_cast<long>(p->taxid)) != 0) && ((p->memberships & p->memb) == p->memb))
+      if ((p.f_checktaxid(static_cast<long>(p.taxid)) != 0) && ((p.memberships & p.memb) == p.memb))
       {
-	if (deflinetable != nullptr)
-	{
-	  deflinetable->emplace_back(p->defline);
-	}
-	deflines++;
+	accept(p.defline);
       }
     }
   
   match_obj(p, ber::end_of_contents);
+}
 
+auto parse_deflines(asnparse_info & p) -> std::vector<std::string>
+{
+  std::vector<std::string> deflinetable;
+  parse_blast_def_line_set(p, [&deflinetable](std::string const & defline) -> void
+                           { deflinetable.emplace_back(defline); });
+  return deflinetable;
+}
+
+auto count_deflines(asnparse_info & p) -> long
+{
+  long deflines = 0;
+  parse_blast_def_line_set(p, [&deflines](std::string const & /* defline */) -> void
+                           { ++deflines; });
   return deflines;
+}
+
+// the parser at the first object of a header (inline: called for
+// every database sequence by parse_getdeflinecount() with -x)
+inline auto start_header(asnparse_info & p, View<char> const header) -> void
+{
+  p.header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p.header_end = reinterpret_cast<unsigned char const *>(header.end());
+  p.parsed_string.clear();
+  p.parsed_integer = 0;
+  nextch(p);
+  nextobj(p);
 }
 
 }  // anonymous namespace
@@ -936,69 +955,50 @@ auto ParserDelete::operator()(asnparse_info * const parser) const noexcept -> vo
   delete parser;
 }
 
-auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>
+auto parse_getdeflines(asnparse_info & p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>
 {
-  p->show_gis = show_gis;
-  p->indent = 0;
-  p->maxlen = 0;
-  p->memb = static_cast<unsigned long>(memb);
-  p->f_checktaxid = f_checktaxid;
-  p->linelen = LONG_MAX;
-  p->maxdeflines = LONG_MAX;
-  p->text = DeflineText::full;
+  p.show_gis = show_gis;
+  p.indent = 0;
+  p.maxlen = 0;
+  p.memb = static_cast<unsigned long>(memb);
+  p.f_checktaxid = f_checktaxid;
+  p.linelen = LONG_MAX;
+  p.maxdeflines = LONG_MAX;
+  p.text = DeflineText::full;
 
-  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p->parsed_string.clear();
-  p->parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
-  std::vector<std::string> deflinetable;
-  parse_blast_def_line_set_new(p, & deflinetable);
-  return deflinetable;
+  return parse_deflines(p);
 }
 
-auto parse_header(apt p, View<char> const header, long memb, 
+auto parse_header(asnparse_info & p, View<char> const header, long memb, 
 		  long (*f_checktaxid)(long), HeaderLayout const & layout) -> long
 {
-  p->escaping = layout.escaping;
-  p->show_gis = layout.show_gis;
-  p->indent = layout.indent;
+  p.escaping = layout.escaping;
+  p.show_gis = layout.show_gis;
+  p.indent = layout.indent;
   assert(layout.maxlen >= 0);
-  p->maxlen = static_cast<unsigned long>(layout.maxlen);
-  p->memb = static_cast<unsigned long>(memb);
-  p->f_checktaxid = f_checktaxid;
-  p->linelen = layout.linelen;
-  p->maxdeflines = layout.maxdeflines;
-  p->text = layout.text;
+  p.maxlen = static_cast<unsigned long>(layout.maxlen);
+  p.memb = static_cast<unsigned long>(memb);
+  p.f_checktaxid = f_checktaxid;
+  p.linelen = layout.linelen;
+  p.maxdeflines = layout.maxdeflines;
+  p.text = layout.text;
 
-  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p->parsed_string.clear();
-  p->parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
-  std::vector<std::string> deflinetable;
-  auto const deflines = parse_blast_def_line_set_new(p, & deflinetable);
-  auto const deflines2 = show_deflines(p, deflines, deflinetable);
-  return deflines2;
+  auto deflinetable = parse_deflines(p);
+  return show_deflines(p, static_cast<long>(deflinetable.size()), deflinetable);
 }
 
-auto parse_getdeflinecount(apt p, View<char> const header,
+auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
 			   long memb, long(*f_checktaxid)(long)) -> long
 {
-  p->show_gis = 0;
-  p->memb = static_cast<unsigned long>(memb);
-  p->f_checktaxid = f_checktaxid;
+  p.show_gis = 0;
+  p.memb = static_cast<unsigned long>(memb);
+  p.f_checktaxid = f_checktaxid;
 
-  p->header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p->header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p->parsed_string.clear();
-  p->parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
-  return parse_blast_def_line_set_new(p, nullptr);
+  return count_deflines(p);
 }

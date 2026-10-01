@@ -478,7 +478,6 @@ auto translate(View<char> sequence, StrandFrame where,
                Buffer<char> & protein) -> long;
 
 struct asnparse_info;
-using apt = asnparse_info *;
 
 // a header parser (asnparse.cc), owned by a Parser
 struct ParserDelete
@@ -513,13 +512,13 @@ struct HeaderLayout
   Escaping escaping = Escaping::none;
 };
 
-auto parse_header(apt p, View<char> header, long memb, long (*f)(long),
+auto parse_header(asnparse_info & p, View<char> header, long memb, long (*f)(long),
 		  HeaderLayout const & layout) -> long;
 
 // the deflines of a header that pass the membership and taxid filters
-auto parse_getdeflines(apt p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>;
+auto parse_getdeflines(asnparse_info & p, View<char> header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>;
 
-auto parse_getdeflinecount(apt p, View<char> header,
+auto parse_getdeflinecount(asnparse_info & p, View<char> header,
                            long memb, long(*f_checktaxid)(long)) -> long;
 
 auto db_open(Parameters const & parameters) -> void;

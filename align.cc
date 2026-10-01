@@ -110,20 +110,24 @@ auto region_begin(char const * a_seq,
   fatal("Internal error in align function.");
 }
 
-auto region(char const * a_seq,
-	    char const * b_seq,
-	    long M,
-	    long N,
+// the region of the best local alignment of a_sequence and
+// b_sequence; with a non-zero hint.score, its end cell is that of the
+// hint, and only the reverse pass is run
+auto region(View<char> const a_sequence,
+	    View<char> const b_sequence,
 	    long const * scorematrix,
-	    long q,
-	    long r,
-	    long * a_begin,
-	    long * b_begin,
-	    long * a_end,
-	    long * b_end,
-	    long * s) -> void
+	    GapPenalties const gaps,
+	    AlignmentRegion const & hint) -> AlignmentRegion
 {
-  
+  auto const * const a_seq = a_sequence.data();
+  auto const * const b_seq = b_sequence.data();
+  auto const M = static_cast<long>(a_sequence.size());
+  auto const N = static_cast<long>(b_sequence.size());
+  long const q = gaps.open;
+  long const r = gaps.extend;
+  long a_end = hint.a_end;
+  long b_end = hint.b_end;
+
   Buffer<long> hh_buffer(static_cast<std::size_t>(N));
   Buffer<long> ee_buffer(static_cast<std::size_t>(N));
   long * HH = hh_buffer.data();
@@ -133,9 +137,9 @@ auto region(char const * a_seq,
 
   // Forward pass
 
-  if ((*s) != 0)
+  if (hint.score != 0)
   {
-    score = *s;
+    score = hint.score;
   }
   else
   {
@@ -164,8 +168,8 @@ auto region(char const * a_seq,
 	if (h > score)
 	{
 	  score = h;
-	  *a_end = i;
-	  *b_end = j;
+	  a_end = i;
+	  b_end = j;
 	}
       }
     }
@@ -174,10 +178,8 @@ auto region(char const * a_seq,
   // Reverse pass
 
   auto const begin = region_begin(a_seq, b_seq, scorematrix, q, r,
-                                  {*a_end, *b_end}, score, HH, EE);
-  *a_begin = begin.a;
-  *b_begin = begin.b;
-  *s = score;
+                                  {a_end, b_end}, score, HH, EE);
+  return {begin.a, begin.b, a_end, b_end, score};
 }
 
 struct aligner_info
@@ -481,25 +483,10 @@ auto align(View<char> const query_sequence,
 
   auto const * const a_seq = query_sequence.data();
   auto const * const b_seq = database_sequence.data();
-  auto const M = static_cast<long>(query_sequence.size());
-  auto const N = static_cast<long>(database_sequence.size());
   long const q = gaps.open;
   long const r = gaps.extend;
-  AlignmentRegion result = hint;
+  auto const result = region(query_sequence, database_sequence, scorematrix, gaps, hint);
 
-  region(a_seq,
-	 b_seq,
-	 M,
-	 N,
-	 scorematrix,
-	 q,
-	 r,
-	 & result.a_begin,
-	 & result.b_begin,
-	 & result.a_end,
-	 & result.b_end,
-	 & result.score);
-  
   diff(ai,
        a_seq,
        b_seq,

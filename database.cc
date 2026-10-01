@@ -325,23 +325,23 @@ struct Database
 
   std::string path;  // directory of the database, with its final /
 
-  SymbolType symtype;
-  long version;
+  SymbolType symtype = static_cast<SymbolType>(-1);  // not set yet: db_open() sets it
+  long version = 0;
   std::string title;
   std::string time;
 
-  std::int64_t seqcount;
-  long longest;
-  std::int64_t symcount;
+  std::int64_t seqcount = 0;
+  long longest = 0;
+  std::int64_t symcount = 0;
 
-  std::int64_t masked_seqcount;
-  std::int64_t masked_symcount;
-  long memb_bit;
+  std::int64_t masked_seqcount = 0;
+  std::int64_t masked_symcount = 0;
+  long memb_bit = 0;
 
-  FILE * taxid_file;
+  FILE * taxid_file = nullptr;
   Buffer<unsigned char> taxid_bitmap;  // one bit per taxid (-x); empty: no filter
 
-  long show_taxid;  // -H: taxids and memberships in the deflines
+  long show_taxid = 0;  // -H: taxids and memberships in the deflines
 };
 using db_main_t = Database;
 
@@ -442,23 +442,6 @@ auto Volume::reset() -> void
   
   xin_map.reset();
   msk_map.reset();
-}
-
-
-auto db_init(db_main_t * v) -> void
-{
-  v->symtype = static_cast<SymbolType>(-1);  // not set yet: db_open() sets it
-  v->version = 0;
-  v->title.clear();
-  v->time.clear();
-
-  v->seqcount = 0;
-  v->longest = 0;
-  v->symcount = 0;
-
-  v->taxid_bitmap.clear();
-  v->taxid_file = nullptr;
-  v->show_taxid = 0;
 }
 
 
@@ -1035,7 +1018,6 @@ auto db_open(Parameters const & parameters) -> void
   char const * const taxidfilename = parameters.taxidfilename;
   std::unique_ptr<al_info_t> ai;
 
-  db_init(& db_main);
   db_main.show_taxid = parameters.show_taxid;
 
   db_main.symtype  = symbol_type;
@@ -1537,14 +1519,14 @@ auto db_getheader(db_thread_s const & t, long seqno) -> View<char>
 auto db_parse_header(db_thread_s const & t, View<char> const header,
 		     long const show_gis) -> std::vector<std::string>
 {
-  return parse_getdeflines(t.parser.get(), header,
+  return parse_getdeflines(*t.parser, header,
 			   db_main.memb_bit, & db_check_taxid, show_gis);
 }
 
 auto db_showheader(db_thread_s const & t, View<char> const header,
 		   HeaderLayout const & layout) -> void
 {
-  parse_header(t.parser.get(), header,
+  parse_header(*t.parser, header,
 	       db_main.memb_bit, db_check_taxid, layout);
 }
 
@@ -1581,7 +1563,7 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 
 auto db_check_taxid_seqno(db_thread_s & t, long seqno) -> long
 {
-  return parse_getdeflinecount(t.parser.get(), db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(*t.parser, db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace
