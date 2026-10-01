@@ -378,20 +378,19 @@ using db_thread_t = db_thread_s;
 
 namespace {
 
-auto db_print_seq_map(char const * address, long length, char const * map) -> void
+auto db_print_seq_map(View<char> const sequence, char const * map) -> void
 {
-  long const linelength = 80;
-  long i = 0;
-  while (i<length)
+  constexpr std::size_t linelength = 80;
+  auto remaining = sequence;
+  while (not remaining.empty())
   {
-    long end = i + linelength;
-    end = std::min(length, end);
-    while(i<end)
+    auto const line = remaining.first(std::min(linelength, remaining.size()));
+    for (auto const symbol : line)
     {
-      fprint(out, map[static_cast<int>(address[i])]);
-      i++;
+      fprint(out, map[static_cast<int>(symbol)]);
     }
     fprint(out, '\n');
+    remaining = remaining.drop(line.size());
   }
 }
 
@@ -1557,19 +1556,18 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
   }
 
   auto const sequence = db_getsequence(t, seqno, {strand, frame}, & ntlen, 0);
-  auto const length = static_cast<long>(sequence.size());
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
-    db_print_seq_map(sequence.data(), length, sym_ncbi_aa);
+    db_print_seq_map(sequence, sym_ncbi_aa);
   }
   else if ((db_main.symtype == SymbolType::blastn) || (db_main.symtype == SymbolType::tblastn) || (db_main.symtype == SymbolType::tblastx))
   {
-    db_print_seq_map(sequence.data(), length, sym_ncbi_nt16u);
+    db_print_seq_map(sequence, sym_ncbi_nt16u);
   }
   else
   {
-    db_print_seq_map(sequence.data(), length, sym_sound);
+    db_print_seq_map(sequence, sym_sound);
   }
 }
 
