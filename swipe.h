@@ -439,8 +439,15 @@ auto translate(View<char> sequence, StrandFrame where,
 struct asnparse_info;
 using apt = asnparse_info *;
 
-auto parser_create(long show_taxid) -> apt;
-auto parser_destruct(apt p) -> void;
+// a header parser (asnparse.cc), owned by a Parser
+struct ParserDelete
+{
+  auto operator()(asnparse_info * parser) const noexcept -> void;
+};
+
+using Parser = std::unique_ptr<asnparse_info, ParserDelete>;
+
+auto parser_create(long show_taxid) -> Parser;
 
 // XML outputs: the five special characters are escaped (KI-27)
 enum struct Escaping : int { none, xml };

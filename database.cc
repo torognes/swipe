@@ -358,7 +358,7 @@ struct db_thread_s
   // const db thread)
   mutable db_map_s map_seq;
   mutable db_map_s map_hdr;
-  apt parser;
+  Parser parser;
   // per channel (c) of db_getsequence(): the decompressed nucleotide
   // sequence, and its reverse complement or translation
   std::array<Buffer<char>, max_channels> ntbuffer;
@@ -396,8 +396,7 @@ auto db_thread_create() -> DbThread
 
 auto DbThreadDelete::operator()(db_thread_s * const thread) const noexcept -> void
 {
-  parser_destruct(thread->parser);
-  delete thread;
+  delete thread;  // and its parser
 }
 
 namespace {
@@ -1521,14 +1520,14 @@ auto db_getheader(db_thread_s const & t, long seqno) -> View<char>
 auto db_parse_header(db_thread_s const & t, View<char> const header,
 		     long const show_gis) -> std::vector<std::string>
 {
-  return parse_getdeflines(t.parser, header,
+  return parse_getdeflines(t.parser.get(), header,
 			   db_main.memb_bit, & db_check_taxid, show_gis);
 }
 
 auto db_showheader(db_thread_s const & t, View<char> const header,
 		   HeaderLayout const & layout) -> void
 {
-  parse_header(t.parser, header,
+  parse_header(t.parser.get(), header,
 	       db_main.memb_bit, db_check_taxid, layout);
 }
 
@@ -1566,7 +1565,7 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 
 auto db_check_taxid_seqno(db_thread_s & t, long seqno) -> long
 {
-  return parse_getdeflinecount(t.parser, db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
+  return parse_getdeflinecount(t.parser.get(), db_getheader(t, seqno), db_main.memb_bit, & db_check_taxid);
 }
 
 }  // anonymous namespace
