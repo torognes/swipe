@@ -1236,52 +1236,35 @@ auto xml_print(View<char> const text,
   }
 }
 
-// ParAlign XML (-m 99): the buffer of an anchor ("query_hit_frame_strand...":
-// numbers and marks, far below the size), and the length of the short
-// name of a hit (the start of its title)
-constexpr std::size_t anchor_size = 200;
+// ParAlign XML (-m 99): the length of the short name of a hit (the
+// start of its title)
 constexpr std::size_t short_name_length = 35;
 
-auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, long query_index, long i) -> void
+// the anchor of a hit: "query_hit_frame_strand..." (numbers and marks)
+auto make_anchor(SymbolType symbol_type, long query_index, long i) -> std::string
 {
+  auto const & hit = hit_entry(i);
+  auto const sign = [](long const strand) -> char
+  {
+    return (strand != 0) ? '-' : '+';
+  };
+  auto const prefix = std::to_string(query_index) + "_" + std::to_string(hit.seqno);
+
   switch(symbol_type)
   {
   case SymbolType::blastn:
     // blastn: the strand of a hit is stored as its database strand
     // (KI-29)
-    snprintf(anchor, size, "%ld_%ld__%c__+",
-	     query_index,
-	     hit_entry(i).seqno,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "__" + sign(hit.dstrand) + "__+";
   case SymbolType::blastx:
-    snprintf(anchor, size, "%ld_%ld_%ld_%c__",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).qframe+1,
-	     (hit_entry(i).qstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "_" + std::to_string(hit.qframe + 1) + "_" + sign(hit.qstrand) + "__";
   case SymbolType::tblastn:
-    snprintf(anchor, size, "%ld_%ld___%ld_%c",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).dframe+1,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "___" + std::to_string(hit.dframe + 1) + "_" + sign(hit.dstrand);
   case SymbolType::tblastx:
-    snprintf(anchor, size, "%ld_%ld_%ld_%c_%ld_%c",
-	     query_index,
-	     hit_entry(i).seqno,
-	     hit_entry(i).qframe+1,
-	     (hit_entry(i).qstrand != 0) ? '-' : '+',
-	     hit_entry(i).dframe+1,
-	     (hit_entry(i).dstrand != 0) ? '-' : '+');
-    break;
+    return prefix + "_" + std::to_string(hit.qframe + 1) + "_" + sign(hit.qstrand)
+      + "_" + std::to_string(hit.dframe + 1) + "_" + sign(hit.dstrand);
   default:
-    snprintf(anchor, size, "%ld_%ld____",
-	     query_index,
-	     hit_entry(i).seqno);
-    break;
+    return prefix + "____";
   }
 }
 
@@ -1565,15 +1548,14 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     auto const score = hit_entry(i).score;
     auto const e = expect_value_of(score);
 
-    std::array<char, anchor_size> anchor {{}};
-    make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
+    auto const anchor = make_anchor(query.symtype, run.queryno, i);
 
     auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
     auto const parts = hits_defline_split(deflinetable[0].c_str());
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
     fprint(out, "\t\t\t\t<shortVersionAnchor>");
-    fprint(out, as_c_string(anchor.data()));
+    fprint(out, make_view(anchor));
     fprint(out, "</shortVersionAnchor>\n");
     if (parts.gi != 0)
       {
@@ -1652,12 +1634,11 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     for(long i=0; i<shown.alignments; i++)
     {
       
-      std::array<char, anchor_size> anchor {{}};
-      make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
+      auto const anchor = make_anchor(query.symtype, run.queryno, i);
       
       fprint(out, "\t\t\t<longVersionHit>\n");
       fprint(out, "\t\t\t\t<longVersionAnchor>");
-      fprint(out, as_c_string(anchor.data()));
+      fprint(out, make_view(anchor));
       fprint(out, "</longVersionAnchor>\n");
       
       auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
