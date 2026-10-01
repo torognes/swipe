@@ -1227,12 +1227,12 @@ namespace {
 
 // print at most max_length characters of text, escaped as XML (KI-27);
 // the text is truncated before it is escaped
-auto xml_print(char const * const text,
+auto xml_print(View<char> const text,
                std::size_t const max_length = std::numeric_limits<std::size_t>::max()) noexcept -> void
 {
-  for (std::size_t i = 0; (i < max_length) and (text[i] != '\0'); ++i)
+  for (auto const symbol : text.first(std::min(max_length, text.size())))
   {
-    xml_putc(text[i]);
+    xml_putc(symbol);
   }
 }
 
@@ -1376,13 +1376,13 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   
   fprint(out, "\t\t<queryInformation>\n");
   fprint(out, "\t\t\t<queryFilename>");
-  xml_print(parameters.queryname);
+  xml_print(as_c_string(parameters.queryname));
   fprint(out, "</queryFilename>\n");
   fprint(out, "\t\t\t<querySequencetype>");
   fprint(out, as_c_string(qseqtypedescr));
   fprint(out, "</querySequencetype>\n");
   fprint(out, "\t\t\t<queryDescription>");
-  xml_print(query.description.c_str());
+  xml_print(as_c_string(query.description));
   fprint(out, "</queryDescription>\n");
   fprint(out, "\t\t\t<queryLength>");
   fprint_integer(out, q.len);
@@ -1418,19 +1418,19 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   }
   fprint(out, "\t\t<databaseInformation>\n");
   fprint(out, "\t\t\t<databaseFilename>");
-  xml_print(parameters.databasename);
+  xml_print(as_c_string(parameters.databasename));
   fprint(out, "</databaseFilename>\n");
   fprint(out, "\t\t\t<databaseSequencetype>");
   fprint(out, as_c_string(dbseqtypedescr));
   fprint(out, "</databaseSequencetype>\n");
   fprint(out, "\t\t\t<databaseDescription>");
-  xml_print(db_gettitle());
+  xml_print(as_c_string(db_gettitle()));
   fprint(out, "</databaseDescription>\n");
   fprint(out, "\t\t\t<databaseVersion>");
   fprint_integer(out, db_getversion());
   fprint(out, "</databaseVersion>\n");
   fprint(out, "\t\t\t<databaseDate>");
-  xml_print(db_gettime());
+  xml_print(as_c_string(db_gettime()));
   fprint(out, "</databaseDate>\n");
   fprint(out, "\t\t\t<residueCount>");
   fprint_integer(out, db_getsymcount_masked());
@@ -1476,7 +1476,7 @@ auto hits_show_xml_paralign(Parameters const & parameters,
   else
   {
     fprint(out, "\t\t\t<scoreMatrix>");
-    xml_print(parameters.matrixname);
+    xml_print(as_c_string(parameters.matrixname));
     fprint(out, "</scoreMatrix>\n");
   }
 
@@ -1596,16 +1596,16 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
     fprint(out, as_c_string(ncbidb));
     fprint(out, "&amp;term=");
-    xml_print(parts.link, parts.link_length);
+    xml_print(View<char>{parts.link, parts.link_length});
     fprint(out, "&amp;doptcmdl=");
     fprint(out, as_c_string(ncbiopt));
     fprint(out, "</shortVersionLinkDestination>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkText>");
-    xml_print(parts.link, parts.link_length);
+    xml_print(View<char>{parts.link, parts.link_length});
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
-    xml_print(parts.rest, short_name_length);
+    xml_print(as_c_string(parts.rest), short_name_length);
     fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
@@ -1689,17 +1689,17 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
 	fprint(out, as_c_string(ncbidb));
 	fprint(out, "&amp;term=");
-	xml_print(parts.link, parts.link_length);
+	xml_print(View<char>{parts.link, parts.link_length});
 	fprint(out, "&amp;doptcmdl=");
 	fprint(out, as_c_string(ncbiopt));
 	fprint(out, "</longVersionLinkDestination>\n");
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkText>");
-	xml_print(parts.link, parts.link_length);
+	xml_print(View<char>{parts.link, parts.link_length});
 	fprint(out, "</longVersionLinkText>\n");
 	fprint(out, "\t\t\t\t\t</longVersionLink>\n");
       
 	fprint(out, "\t\t\t\t\t<longVersionName>");
-	xml_print(parts.rest);
+	xml_print(as_c_string(parts.rest));
 	fprint(out, "</longVersionName>\n");
       }
         
