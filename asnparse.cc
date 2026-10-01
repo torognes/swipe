@@ -921,6 +921,18 @@ auto parse_blast_def_line_set_new(asnparse_info & p, std::vector<std::string> * 
   return deflines;
 }
 
+// the parser at the first object of a header (inline: called for
+// every database sequence by parse_getdeflinecount() with -x)
+inline auto start_header(asnparse_info & p, View<char> const header) -> void
+{
+  p.header_p = reinterpret_cast<unsigned char const *>(header.begin());
+  p.header_end = reinterpret_cast<unsigned char const *>(header.end());
+  p.parsed_string.clear();
+  p.parsed_integer = 0;
+  nextch(p);
+  nextobj(p);
+}
+
 }  // anonymous namespace
 
 auto parser_create(long const show_taxid) -> Parser
@@ -947,12 +959,7 @@ auto parse_getdeflines(asnparse_info & p, View<char> const header, long memb, lo
   p.maxdeflines = LONG_MAX;
   p.text = DeflineText::full;
 
-  p.header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p.header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p.parsed_string.clear();
-  p.parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
   std::vector<std::string> deflinetable;
   parse_blast_def_line_set_new(p, & deflinetable);
@@ -973,12 +980,7 @@ auto parse_header(asnparse_info & p, View<char> const header, long memb,
   p.maxdeflines = layout.maxdeflines;
   p.text = layout.text;
 
-  p.header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p.header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p.parsed_string.clear();
-  p.parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
   std::vector<std::string> deflinetable;
   auto const deflines = parse_blast_def_line_set_new(p, & deflinetable);
@@ -993,12 +995,7 @@ auto parse_getdeflinecount(asnparse_info & p, View<char> const header,
   p.memb = static_cast<unsigned long>(memb);
   p.f_checktaxid = f_checktaxid;
 
-  p.header_p = reinterpret_cast<unsigned char const *>(header.begin());
-  p.header_end = reinterpret_cast<unsigned char const *>(header.end());
-  p.parsed_string.clear();
-  p.parsed_integer = 0;
-  nextch(p);
-  nextobj(p);
+  start_header(p, header);
 
   return parse_blast_def_line_set_new(p, nullptr);
 }
