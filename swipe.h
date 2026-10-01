@@ -472,7 +472,7 @@ constexpr auto unpack_entry(long const entry) -> SequenceEntry
 // the protein length
 auto translate_codons(View<char> sequence, StrandFrame where,
                       std::array<char, translation_table_size> const & table,
-                      char * prot) -> long;
+                      Span<char> prot) -> long;
 
 // the same for the query (-Q), into a buffer resized to fit
 auto translate(View<char> sequence, StrandFrame where,
