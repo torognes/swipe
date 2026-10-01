@@ -26,7 +26,7 @@
 #include "swipe.h"
 #include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
-#include <algorithm>  // std::min, std::move_backward, std::sort
+#include <algorithm>  // std::find_if, std::min, std::move_backward, std::sort
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -36,7 +36,7 @@
 #include <cstdlib>  // std::strtol
 #include <cstring>  // std::strncmp
 #include <initializer_list>
-#include <iterator>  // std::next
+#include <iterator>  // std::distance, std::next
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
@@ -1860,22 +1860,26 @@ auto ends_query_id(char const symbol) -> bool
     (std::isspace(static_cast<unsigned char>(symbol)) != 0);
 }
 
-auto show_description(char const *desc) -> void
+// the query id: the description up to its first whitespace character
+auto query_id(std::string const & description) -> View<char>
 {
-  for (char const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
-  {
-    fprint(out, *dptr);
-  }
+  auto const end = std::find_if(description.begin(), description.end(), ends_query_id);
+  return make_view(description).first(static_cast<std::size_t>(std::distance(description.begin(), end)));
+}
+
+auto show_description(std::string const & description) -> void
+{
+  fprint(out, query_id(description));
 }
 
 // query id (the description up to its first whitespace character),
 // escaped as XML
 // (KI-27)
-auto show_description_xml(char const * const desc) -> void
+auto show_description_xml(std::string const & description) -> void
 {
-  for (auto const * dptr = desc; not ends_query_id(*dptr); dptr = std::next(dptr))
+  for (auto const symbol : query_id(description))
   {
-    xml_putc(*dptr);
+    xml_putc(symbol);
   }
 }
 
@@ -1910,7 +1914,7 @@ auto hits_show_xml(Parameters const & parameters,
     fprint_integer(out, seqno);
     fprint(out, "</track>\n");
     fprint(out, "      <query>");
-    show_description_xml(query.description.c_str());
+    show_description_xml(query.description);
     fprint(out, "</query>\n");
     fprint(out, "      <name>");
     HeaderLayout layout;
@@ -1995,7 +1999,7 @@ auto hits_show_tsv(Parameters const & parameters,
 
   for(long i=0; i<shown.alignments; i++)
   {
-    show_description(query.description.c_str());
+    show_description(query.description);
     fprint(out, '\t');
     HeaderLayout layout;
     layout.show_gis = 1;
