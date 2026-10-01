@@ -1856,10 +1856,7 @@ auto show_description(std::string const & description) -> void
 // (KI-27)
 auto show_description_xml(std::string const & description) -> void
 {
-  for (auto const symbol : query_id(description))
-  {
-    xml_putc(symbol);
-  }
+  xml_print(query_id(description));
 }
 
 auto hits_show_xml(Parameters const & parameters,
