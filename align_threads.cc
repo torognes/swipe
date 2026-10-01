@@ -273,10 +273,7 @@ auto align_threads_init(Parameters const & parameters) -> void
   align_work.alignedhits = 0;
   align_work.volnext = 0;
 
-  while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
-  {
-    align_work.volnext++;
-  }
+  align_work.volnext = next_bin_with_chunks(make_view(align_work.volchunks), align_work.volnext);
 }
 
 auto align_threads_done() -> void
@@ -304,10 +301,7 @@ auto align_getwork(long * first, long * last) -> int
     align_work.volseqs[align_work.volnext] -= chunksize;
     align_work.volchunks[align_work.volnext]--;
 
-    while ((align_work.volnext < align_bins) && (align_work.volchunks[align_work.volnext] == 0))
-    {
-      align_work.volnext++;
-    }
+    align_work.volnext = next_bin_with_chunks(make_view(align_work.volchunks), align_work.volnext);
   }
   return status;
 }

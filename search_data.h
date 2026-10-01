@@ -32,8 +32,11 @@
 
 #include "swipe.h"
 #include "fatal_allocator.h"  // Buffer
+#include <algorithm>  // std::find_if
 #include <array>
+#include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <iterator>  // std::distance, std::next
 
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
 // database residues x 16 bytes of lanes)
@@ -68,6 +71,18 @@ struct search_data
   long qstrand1, qstrand2, qframe1, qframe2;
   long dstrand1, dstrand2, dframe1, dframe2;
 };
+
+// the first bin (volume, or bin of hits) from 'first' on with chunks
+// left, or chunks.size() when none is left; first is at most
+// chunks.size()
+inline auto next_bin_with_chunks(View<long> const chunks, std::size_t const first) -> std::size_t
+{
+  assert(first <= chunks.size());
+  auto const found = std::find_if(std::next(chunks.begin(), static_cast<std::ptrdiff_t>(first)),
+                                  chunks.end(),
+                                  [](long const count) -> bool { return count != 0; });
+  return static_cast<std::size_t>(std::distance(chunks.begin(), found));
+}
 
 // the threads that share the work, and the channels of their kernel
 struct Chunking

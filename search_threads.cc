@@ -173,10 +173,7 @@ auto search_getwork(long * first, long * last) -> int
     search_work.volseqs[search_work.volnext] -= chunksize;
     search_work.volchunks[search_work.volnext]--;
 
-    while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
-    {
-      search_work.volnext++;
-    }
+    search_work.volnext = next_bin_with_chunks(make_view(search_work.volchunks).first(volcount), search_work.volnext);
   }
   return status;
 }
@@ -574,10 +571,7 @@ auto prepare_search(long par) -> void
                                          search_work.volchunks.data(),
                                          {par, static_cast<long>(channels_7)});
 
-  while ((search_work.volnext < volcount) && (search_work.volchunks[search_work.volnext] == 0))
-  {
-    search_work.volnext++;
-  }
+  search_work.volnext = next_bin_with_chunks(make_view(search_work.volchunks).first(volcount), search_work.volnext);
 }
 
 auto run_threads(Parameters const & parameters) -> void
