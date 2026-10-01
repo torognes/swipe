@@ -382,10 +382,11 @@ auto query_read() -> int
   return 1;
 }
 
-auto reverse_complement(View<char> const sequence, char * const complement) -> void
+auto reverse_complement(View<char> const sequence, Span<char> const complement) -> void
 {
+  assert(complement.size() > sequence.size());  // room for the NUL
   // the complements in reverse order, then a NUL
-  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement,
+  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement.begin(),
                                     [](char const nucleotide) -> char {
                                       return ntcompl[static_cast<std::size_t>(nucleotide)];
                                     });
@@ -395,7 +396,7 @@ auto reverse_complement(View<char> const sequence, char * const complement) -> v
 auto revcompl(View<char> const sequence) -> Buffer<char>
 {
   Buffer<char> rc_buffer(sequence.size() + 1);
-  reverse_complement(sequence, rc_buffer.data());
+  reverse_complement(sequence, make_span(rc_buffer));
   return rc_buffer;
 }
 
