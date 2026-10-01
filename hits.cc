@@ -2080,7 +2080,8 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, "Sequences producing significant alignments:                         Score\n\n");
       }
 	  
-      for(long i=0; i<shown.descriptions; i++)
+      assert(shown.descriptions <= hit_list.count);
+      for (auto const & hit : make_view(hit_list.entries).first(static_cast<std::size_t>(shown.descriptions)))
       {
 	long const headerlen = description_width - frame_mark_width(parameters.symtype);
 
@@ -2089,35 +2090,35 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
-		      make_view(hit_entry(i).header_address), layout);
+		      make_view(hit.header_address), layout);
 
-	auto const score = hit_entry(i).score;
+	auto const score = hit.score;
 
 	if (parameters.symtype == SymbolType::blastn)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
 	}
 	else if (parameters.symtype == SymbolType::blastx)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).qframe+1);
+	  fprint(out, (hit.qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.qframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastn)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).dframe+1);
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.dframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastx)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).qframe + 1);
+	  fprint(out, (hit.qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.qframe + 1);
 	  fprint(out, '/');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).dframe + 1);
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.dframe + 1);
 	}
 
 	if (statistics.available != 0)
