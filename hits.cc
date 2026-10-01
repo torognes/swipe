@@ -1171,6 +1171,7 @@ auto hits_show_expect(double expect_value) -> void
   }
   else if (expect_value < three_digit_exponent_below)
   {
+    // C++17 refactoring: replace the printf() formats of this function with std::to_chars
     snprintf(temp.data(), temp.size(), "%-6.0e", expect_value);
     fprint(out, as_c_string(std::next(temp.data())));  // without the first character
   }
