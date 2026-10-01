@@ -32,8 +32,11 @@
 
 #include "swipe.h"
 #include "fatal_allocator.h"  // Buffer
+#include <algorithm>  // std::find_if
 #include <array>
+#include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <iterator>  // std::distance, std::next
 
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
 // database residues x 16 bytes of lanes)
@@ -69,6 +72,18 @@ struct search_data
   long dstrand1, dstrand2, dframe1, dframe2;
 };
 
+// the first bin (volume, or bin of hits) from 'first' on with chunks
+// left, or chunks.size() when none is left; first is at most
+// chunks.size()
+inline auto next_bin_with_chunks(View<long> const chunks, std::size_t const first) -> std::size_t
+{
+  assert(first <= chunks.size());
+  auto const found = std::find_if(std::next(chunks.begin(), static_cast<std::ptrdiff_t>(first)),
+                                  chunks.end(),
+                                  [](long const count) -> bool { return count != 0; });
+  return static_cast<std::size_t>(std::distance(chunks.begin(), found));
+}
+
 // the threads that share the work, and the channels of their kernel
 struct Chunking
 {
@@ -82,11 +97,11 @@ auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
 		 Chunking chunking) -> long;
 
-// the query tables (sdp->qtable) and lengths (sdp->qlen) of the strands
+// the query tables (data.qtable) and lengths (data.qlen) of the strands
 // or frames searched, for a profile with rows of row_bytes;
 // returns the longest query length
 auto query_tables_init(Parameters const & parameters,
-		       struct search_data * sdp,
+		       search_data & data,
 		       std::ptrdiff_t row_bytes) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads

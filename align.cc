@@ -187,53 +187,46 @@ struct aligner_info
   std::string alignment;
 };
 
-auto init(struct aligner_info * aip) -> void
+auto push(aligner_info & info) -> void
 {
-  aip->op = 0;
-  aip->count = 0;
-  aip->alignment.clear();
-}
-
-auto push(struct aligner_info * aip) -> void
-{
-  if (aip->count > 0)
+  if (info.count > 0)
   {
     // the operation and its length, as "%c%ld" (e.g. M12)
-    aip->alignment += aip->op;
-    aip->alignment += std::to_string(aip->count);
+    info.alignment += info.op;
+    info.alignment += std::to_string(info.count);
   }
 }
 
-auto newop(struct aligner_info * aip, char op, long len) -> void
+auto newop(aligner_info & info, char op, long len) -> void
 {
-  if (aip->op == op)
+  if (info.op == op)
   {
-    aip->count += len;
+    info.count += len;
   }
   else
   {
-    push(aip);
-    aip->op = op;
-    aip->count = len;
+    push(info);
+    info.op = op;
+    info.count = len;
   }
 }
 
-auto delete_a(struct aligner_info * aip, long len) -> void
+auto delete_a(aligner_info & info, long len) -> void
 {
-  newop(aip, 'D', len);
+  newop(info, 'D', len);
 }
 
-auto insert_b(struct aligner_info * aip, long len) -> void
+auto insert_b(aligner_info & info, long len) -> void
 {
-  newop(aip, 'I', len);
+  newop(info, 'I', len);
 }
 
-auto match(struct aligner_info * aip) -> void
+auto match(aligner_info & info) -> void
 {
-  newop(aip, 'M', 1);
+  newop(info, 'M', 1);
 }
 
-auto diff(struct aligner_info * aip,
+auto diff(aligner_info & info,
 	  char * a_seq,
 	  char * b_seq,
 	  long M,
@@ -250,12 +243,12 @@ auto diff(struct aligner_info * aip,
     {
       if (M > 0)
       {
-	delete_a(aip, M);
+	delete_a(info, M);
       }
     }
   else if (M == 0)
     {
-      insert_b(aip, N);
+      insert_b(info, N);
     }
   else if (M == 1)
     {
@@ -314,24 +307,24 @@ auto diff(struct aligner_info * aip,
 
       if (J == -1)
 	{
-	  delete_a(aip, 1);
-	  insert_b(aip, N);
+	  delete_a(info, 1);
+	  insert_b(info, N);
 	}
       else if (J == N)
 	{
-	  insert_b(aip, N);
-	  delete_a(aip, 1);
+	  insert_b(info, N);
+	  delete_a(info, 1);
 	}
       else
 	{
 	  if (J > 0)
 	  {
-	    insert_b(aip, J);
+	    insert_b(info, J);
 	  }
-	  match(aip);
+	  match(info);
 	  if (J < N - 1)
 	  {
-	    insert_b(aip, N - 1 - J);
+	    insert_b(info, N - 1 - J);
 	  }
 	}
     }
@@ -459,17 +452,17 @@ auto diff(struct aligner_info * aip,
 
       if (P == 0)
 	{
-	  diff(aip, a_seq, b_seq, I, J, a_pos, b_pos,
+	  diff(info, a_seq, b_seq, I, J, a_pos, b_pos,
 	       scorematrix, q, r, tb, q);
-	  diff(aip, a_seq, b_seq, M-I, N-J, a_pos+I, b_pos+J, 
+	  diff(info, a_seq, b_seq, M-I, N-J, a_pos+I, b_pos+J, 
 	       scorematrix, q, r, q, te);
 	}
       else if (P == 1)
 	{
-	  diff(aip, a_seq, b_seq, I-1, J, a_pos, b_pos,
+	  diff(info, a_seq, b_seq, I-1, J, a_pos, b_pos,
 	       scorematrix, q, r, tb, 0);
-	  delete_a(aip, 2);
-	  diff(aip, a_seq, b_seq, M-I-1, N-J, a_pos+I+1, b_pos+J,
+	  delete_a(info, 2);
+	  diff(info, a_seq, b_seq, M-I-1, N-J, a_pos+I+1, b_pos+J,
 	       scorematrix, q, r, 0, te);
 	}
     }
@@ -491,11 +484,10 @@ auto align(char * a_seq,
 	   std::string & alignment,
 	   long * s) -> void
 {
-  struct aligner_info ai;
+  aligner_info ai {0, 0, std::string()};
 
   long score = *s;
 
-  init(&ai);
 
   region(a_seq,
 	 b_seq,
@@ -510,7 +502,7 @@ auto align(char * a_seq,
 	 b_end,
 	 & score);
   
-  diff(& ai,
+  diff(ai,
        a_seq,
        b_seq,
        *a_end - *a_begin + 1,
@@ -523,7 +515,7 @@ auto align(char * a_seq,
        q,
        q);
 
-  push(& ai);
+  push(ai);
 
   alignment = std::move(ai.alignment);
   *s = score;

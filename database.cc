@@ -1519,12 +1519,10 @@ auto db_getheader(db_thread_t const * t, long seqno) -> View<char>
 }
 
 auto db_parse_header(db_thread_t const * t, View<char> const header,
-		     long show_gis, 
-		     long * deflines, std::vector<std::string> * deflinetable) -> void
+		     long const show_gis) -> std::vector<std::string>
 {
-  parse_getdeflines(t->parser, header,
-		    db_main.memb_bit, & db_check_taxid, show_gis,
-		    deflines, deflinetable);
+  return parse_getdeflines(t->parser, header,
+			   db_main.memb_bit, & db_check_taxid, show_gis);
 }
 
 auto db_showheader(struct db_thread_s const * t, View<char> const header,
@@ -1605,11 +1603,8 @@ auto db_show_fasta(db_thread_t * t, long seqno, StrandFrame const where, long sp
 
   auto const header = db_getheader(t, seqno);
 
-  long deflines = 0;
-  std::vector<std::string> deflinetable;
-
-  db_parse_header(t, header, 1,
-		  & deflines, & deflinetable);
+  auto const deflinetable = db_parse_header(t, header, 1);
+  auto const deflines = static_cast<long>(deflinetable.size());
   
   if (deflines != 0)
   {

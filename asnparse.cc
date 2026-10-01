@@ -936,7 +936,7 @@ auto parser_destruct(apt p) -> void
   delete p;
 }
 
-auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis, long * deflinesp, std::vector<std::string> * deflinetablep) -> void
+auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_checktaxid)(long), long show_gis) -> std::vector<std::string>
 {
   p->show_gis = show_gis;
   p->indent = 0;
@@ -954,9 +954,9 @@ auto parse_getdeflines(apt p, View<char> const header, long memb, long (*f_check
   nextch(p);
   nextobj(p);
 
-  auto const deflines = parse_blast_def_line_set_new(p, deflinetablep);
-
-  *deflinesp = deflines;
+  std::vector<std::string> deflinetable;
+  parse_blast_def_line_set_new(p, & deflinetable);
+  return deflinetable;
 }
 
 auto parse_header(apt p, View<char> const header, long memb, 

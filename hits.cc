@@ -1297,17 +1297,23 @@ auto make_anchor(char * anchor, std::size_t const size, SymbolType symbol_type, 
   }
 }
 
-auto hits_defline_split(char const * defline, 
-			long * gi,
-			char const ** link, std::size_t * linklen, 
-			char const ** rest) -> void
+// the parts of a defline: its gi (0: none), the link (the identifier
+// before the first space: link_length characters, or nullptr), and the
+// rest (the title)
+struct DeflineParts
+{
+  long gi;
+  char const * link;
+  std::size_t link_length;
+  char const * rest;
+};
+
+auto hits_defline_split(char const * defline) -> DeflineParts
 {
   char const * p = defline;
 
-  *gi = 0;  // no gi (KI-42: it kept the gi of the previous defline)
-  *link = nullptr;
-  *linklen = 0;
-  *rest = nullptr;
+  // no gi (KI-42: it kept the gi of the previous defline)
+  DeflineParts parts {0, nullptr, 0, nullptr};
   
   // "gi|" and a number, as the header parser writes them (set_id(),
   // asnparse.cc)
@@ -1319,7 +1325,7 @@ auto hits_defline_split(char const * defline,
     auto const value = std::strtol(number, & end, decimal_base);
     if (end != number)
     {
-      *gi = value;
+      parts.gi = value;
       p = end;
     }
   }
@@ -1332,14 +1338,16 @@ auto hits_defline_split(char const * defline,
   auto const * const r = strchr(p, ' ');
   if (r != nullptr)
   {
-    *linklen = static_cast<std::size_t>(r - p);
-    *link = p;
-    *rest = std::next(r);
+    parts.link_length = static_cast<std::size_t>(r - p);
+    parts.link = p;
+    parts.rest = std::next(r);
   }
   else
   {
-    * rest = p;
+    parts.rest = p;
   }
+
+  return parts;
 }
 
 // the numbers of hits shown: descriptions (-v) and alignments (-b),
@@ -1574,35 +1582,25 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     std::array<char, anchor_size> anchor {{}};
     make_anchor(anchor.data(), anchor.size(), query.symtype, run.queryno, i);
 
-    long deflines = 0;
-    std::vector<std::string> deflinetable;
-    long gi = 0;
-    char const * link = nullptr;
-    char const * title = nullptr;
-    std::size_t linklen = 0;
-    db_parse_header(t, make_view(hit_entry(i).header_address),
-		    1, & deflines, & deflinetable);
-    hits_defline_split(deflinetable[0].c_str(), 
-		       & gi,
-		       & link, & linklen,
-		       & title);
+    auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
+    auto const parts = hits_defline_split(deflinetable[0].c_str());
 
     fprint(out, "\t\t\t<shortVersionHit>\n");
     fprint(out, "\t\t\t\t<shortVersionAnchor>");
     fprint(out, as_c_string(anchor.data()));
     fprint(out, "</shortVersionAnchor>\n");
-    if (gi != 0)
+    if (parts.gi != 0)
       {
     fprint(out, "\t\t\t\t<shortVersionLink>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=");
     fprint(out, as_c_string(ncbidb));
     fprint(out, "&amp;list_uids=");
-    fprint_integer(out, gi);
+    fprint_integer(out, parts.gi);
     fprint(out, "&amp;dopt=");
     fprint(out, as_c_string(ncbiopt));
     fprint(out, "</shortVersionLinkDestination>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkText>gi|");
-    fprint_integer(out, gi);
+    fprint_integer(out, parts.gi);
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
       }
@@ -1610,16 +1608,16 @@ auto hits_show_xml_paralign(Parameters const & parameters,
     fprint(out, "\t\t\t\t\t<shortVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
     fprint(out, as_c_string(ncbidb));
     fprint(out, "&amp;term=");
-    xml_print(link, linklen);
+    xml_print(parts.link, parts.link_length);
     fprint(out, "&amp;doptcmdl=");
     fprint(out, as_c_string(ncbiopt));
     fprint(out, "</shortVersionLinkDestination>\n");
     fprint(out, "\t\t\t\t\t<shortVersionLinkText>");
-    xml_print(link, linklen);
+    xml_print(parts.link, parts.link_length);
     fprint(out, "</shortVersionLinkText>\n");
     fprint(out, "\t\t\t\t</shortVersionLink>\n");
     fprint(out, "\t\t\t\t<shortVersionName>");
-    xml_print(title, short_name_length);
+    xml_print(parts.rest, short_name_length);
     fprint(out, "</shortVersionName>\n");
     if (parameters.symtype == SymbolType::blastn)
     {
@@ -1676,36 +1674,25 @@ auto hits_show_xml_paralign(Parameters const & parameters,
       fprint(out, as_c_string(anchor.data()));
       fprint(out, "</longVersionAnchor>\n");
       
-      long deflines = 0;
-      std::vector<std::string> deflinetable;
-      long gi = 0;
-      char const * link = nullptr;
-      char const * title = nullptr;
-      std::size_t linklen = 0;
-      db_parse_header(t, make_view(hit_entry(i).header_address),
-		      1, & deflines, & deflinetable);
+      auto const deflinetable = db_parse_header(t, make_view(hit_entry(i).header_address), 1);
       fprint(out, "\t\t\t\t<linkContainer>\n");
       
-      assert(static_cast<std::size_t>(deflines) == deflinetable.size());
       for (auto const & defline : deflinetable)
       {
-	hits_defline_split(defline.c_str(), 
-			   & gi,
-			   & link, & linklen,
-			   & title);
+	auto const parts = hits_defline_split(defline.c_str());
   
-        if (gi != 0)
+        if (parts.gi != 0)
 	{
           fprint(out, "\t\t\t\t\t<longVersionLink>\n");
 	  fprint(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&amp;db=");
 	  fprint(out, as_c_string(ncbidb));
 	  fprint(out, "&amp;list_uids=");
-	  fprint_integer(out, gi);
+	  fprint_integer(out, parts.gi);
 	  fprint(out, "&amp;dopt=");
 	  fprint(out, as_c_string(ncbiopt));
 	  fprint(out, "</longVersionLinkDestination>\n");
 	  fprint(out, "\t\t\t\t\t\t<longVersionLinkText>gi|");
-	  fprint_integer(out, gi);
+	  fprint_integer(out, parts.gi);
 	  fprint(out, "</longVersionLinkText>\n");
 	  fprint(out, "\t\t\t\t\t</longVersionLink>\n");
 	}
@@ -1714,17 +1701,17 @@ auto hits_show_xml_paralign(Parameters const & parameters,
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkDestination>http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Search&amp;db=");
 	fprint(out, as_c_string(ncbidb));
 	fprint(out, "&amp;term=");
-	xml_print(link, linklen);
+	xml_print(parts.link, parts.link_length);
 	fprint(out, "&amp;doptcmdl=");
 	fprint(out, as_c_string(ncbiopt));
 	fprint(out, "</longVersionLinkDestination>\n");
 	fprint(out, "\t\t\t\t\t\t<longVersionLinkText>");
-	xml_print(link, linklen);
+	xml_print(parts.link, parts.link_length);
 	fprint(out, "</longVersionLinkText>\n");
 	fprint(out, "\t\t\t\t\t</longVersionLink>\n");
       
 	fprint(out, "\t\t\t\t\t<longVersionName>");
-	xml_print(title);
+	xml_print(parts.rest);
 	fprint(out, "</longVersionName>\n");
       }
         
@@ -2080,7 +2067,8 @@ auto hits_show_plain(Parameters const & parameters,
 	fprint(out, "Sequences producing significant alignments:                         Score\n\n");
       }
 	  
-      for(long i=0; i<shown.descriptions; i++)
+      assert(shown.descriptions <= hit_list.count);
+      for (auto const & hit : make_view(hit_list.entries).first(static_cast<std::size_t>(shown.descriptions)))
       {
 	long const headerlen = description_width - frame_mark_width(parameters.symtype);
 
@@ -2089,35 +2077,35 @@ auto hits_show_plain(Parameters const & parameters,
 	layout.maxlen = headerlen;
 	layout.linelen = headerlen;
 	db_showheader(t, 
-		      make_view(hit_entry(i).header_address), layout);
+		      make_view(hit.header_address), layout);
 
-	auto const score = hit_entry(i).score;
+	auto const score = hit.score;
 
 	if (parameters.symtype == SymbolType::blastn)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
 	}
 	else if (parameters.symtype == SymbolType::blastx)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).qframe+1);
+	  fprint(out, (hit.qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.qframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastn)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).dframe+1);
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.dframe+1);
 	}
 	else if (parameters.symtype == SymbolType::tblastx)
 	{
 	  fprint(out, ' ');
-	  fprint(out, (hit_entry(i).qstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).qframe + 1);
+	  fprint(out, (hit.qstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.qframe + 1);
 	  fprint(out, '/');
-	  fprint(out, (hit_entry(i).dstrand != 0) ? '-' : '+');
-	  fprint_integer(out, hit_entry(i).dframe + 1);
+	  fprint(out, (hit.dstrand != 0) ? '-' : '+');
+	  fprint_integer(out, hit.dframe + 1);
 	}
 
 	if (statistics.available != 0)
