@@ -304,6 +304,82 @@ inline auto v256_broadcast_128(__m128i const * const source) -> __m256i
   return _mm256_broadcastsi128_si256(_mm_load_si128(source));
 }
 
+
+// 16 lanes of 16 bits (the 16-bit kernels)
+
+inline auto v_adds_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_adds_epi16(lhs, rhs);
+}
+
+inline auto v_subs_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_subs_epi16(lhs, rhs);
+}
+
+inline auto v_max_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_max_epi16(lhs, rhs);
+}
+
+// all 16 lanes of 16 bits set to value
+inline auto v256_dup_i16(short const value) -> __m256i
+{
+  return _mm256_set1_epi16(value);
+}
+
+// the interleaves work within each half (as two 128-bit unpacks)
+inline auto v_merge_lo_16(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpacklo_epi16(lhs, rhs);
+}
+
+inline auto v_merge_hi_16(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpackhi_epi16(lhs, rhs);
+}
+
+inline auto v_merge_lo_32(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpacklo_epi32(lhs, rhs);
+}
+
+inline auto v_merge_hi_32(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpackhi_epi32(lhs, rhs);
+}
+
+inline auto v_merge_lo_64(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpacklo_epi64(lhs, rhs);
+}
+
+inline auto v_merge_hi_64(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_unpackhi_epi64(lhs, rhs);
+}
+
+// the 16 bytes at low (aligned) in the low half, those at high
+// (aligned) in the high half (vinserti128)
+inline auto v256_load_halves(__m128i const * const low, __m128i const * const high) -> __m256i
+{
+  return _mm256_inserti128_si256(_mm256_castsi128_si256(_mm_load_si128(low)),
+                                 _mm_load_si128(high), 1);
+}
+
+// lanewise comparisons of 16-bit signed lanes, packed into a byte
+// mask: two bits per lane, bits 2i and 2i + 1 for lane i (32 bits:
+// unsigned, the last lane sets the sign bit)
+inline auto v_mask_gt_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+{
+  return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpgt_epi16(lhs, rhs)));
+}
+
+inline auto v_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+{
+  return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpeq_epi16(lhs, rhs)));
+}
+
 // table lookup (vpshufb), within each half: lane i of the result is
 // the lane (indices[i] & 0x0f) of the SAME half of table, or zero when
 // bit 7 of indices[i] is set. A 16-entry table must be in both halves
