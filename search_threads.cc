@@ -349,18 +349,38 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	  
 	// the 16-bit penalties are only used when they fit (KI-13:
 	// otherwise no 16-bit result is accepted)
-	search16(reinterpret_cast<WORD**>(qtable),
-		 static_cast<WORD>(parameters.gapopenextend),
-		 static_cast<WORD>(parameters.gapextend),
-		 reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-		 reinterpret_cast<WORD*>(data.dprofile.data()),
-		 reinterpret_cast<WORD*>(data.hearray.data()),
-		 *data.dbt,
-		 static_cast<long>(data.in_count),
-		 data.in_list.data(),
-		 data.scores.data(),
-		 data.bestpos.data(),
-		 static_cast<int>(qlen));
+	if (cpu_features.avx2)
+	{
+	  // the profile rows of 4 x 16 words: the 128 bytes of the
+	  // 7-bit AVX2 tables
+	  search16_avx2(reinterpret_cast<WORD**>(data.qtable_avx2[frame_index(qstrand, qframe)].data()),
+			static_cast<WORD>(parameters.gapopenextend),
+			static_cast<WORD>(parameters.gapextend),
+			reinterpret_cast<WORD*>(score_matrices.score_16.data()),
+			reinterpret_cast<WORD*>(data.dprofile.data()),
+			reinterpret_cast<WORD*>(data.hearray.data()),
+			*data.dbt,
+			static_cast<long>(data.in_count),
+			data.in_list.data(),
+			data.scores.data(),
+			data.bestpos.data(),
+			static_cast<int>(qlen));
+	}
+	else
+	{
+	  search16(reinterpret_cast<WORD**>(qtable),
+		   static_cast<WORD>(parameters.gapopenextend),
+		   static_cast<WORD>(parameters.gapextend),
+		   reinterpret_cast<WORD*>(score_matrices.score_16.data()),
+		   reinterpret_cast<WORD*>(data.dprofile.data()),
+		   reinterpret_cast<WORD*>(data.hearray.data()),
+		   *data.dbt,
+		   static_cast<long>(data.in_count),
+		   data.in_list.data(),
+		   data.scores.data(),
+		   data.bestpos.data(),
+		   static_cast<int>(qlen));
+	}
     
 	data.out_count = 0;
     

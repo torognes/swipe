@@ -71,6 +71,15 @@ struct Ops_7_avx2 {
   static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i8(lhs, rhs); }
   static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_u8(lhs, rhs); }
 };
+
+// 16 lanes of 16-bit scores (AVX2): the operations of Ops_16
+struct Ops_16_avx2 {
+  using Vector = __m256i;
+  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i16(v_adds_i16(lhs, rhs), rhs); }
+  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i16(lhs, rhs); }
+  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i16(lhs, rhs); }
+  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_i16(lhs, rhs); }
+};
 #endif
 
 
@@ -174,6 +183,41 @@ inline auto align_cells(typename Ops::Vector & S,
     H1 = N1;
     H2 = N2;
     H3 = N3;
+  }
+
+  S = score;  // save S
+}
+
+
+// One pass over the query for a block of database residues (the
+// former donormal and domasked kernels, selected by Masking)
+// [moved from search16s.cc (align_cells16s), generic over Ops: one
+// database residue per channel, for search16s() and its AVX2 version]
+template <typename Ops, typename Masking>
+inline auto align_cells_single(typename Ops::Vector & S,
+                               typename Ops::Vector * hep,
+                               typename Ops::Vector * const * qp,
+                               typename Ops::Vector const Q,
+                               typename Ops::Vector const R,
+                               long ql,
+                               typename Ops::Vector const Z,
+                               Masking const & masking) -> void
+{
+  using Vector = typename Ops::Vector;
+  auto score = apply_mask<Ops>(S, masking);  // mask
+  auto H0 = Z;
+  auto F0 = H0;
+
+  for (long qi = 0; qi < ql; ++qi)
+  {
+    Vector const * const x = qp[qi];  // load x from qp[qi]
+    auto const N0 = apply_mask<Ops>(hep[2 * qi], masking);  // load N0, mask
+    auto E = apply_mask<Ops>(hep[(2 * qi) + 1], masking);  // load E, mask
+
+    onestep<Ops>(H0, hep[2 * qi], F0, x[0], E, score, Q, R);
+
+    hep[(2 * qi) + 1] = E;  // save E
+    H0 = N0;
   }
 
   S = score;  // save S

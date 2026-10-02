@@ -48,7 +48,7 @@ constexpr std::size_t profile_bytes_avx2 = std::size_t{32} * 128;
 struct search_data
 {
   DbThread dbt;
-  std::array<DbThread, 8> dbta;
+  std::array<DbThread, channels_16_avx2> dbta;  // one per channel of search16s
 
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;

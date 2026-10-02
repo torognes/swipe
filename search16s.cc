@@ -39,37 +39,6 @@ constexpr short word_0x8000 = static_cast<short>(-32768);
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
-// One pass over the query for a block of database residues (the
-// former donormal and domasked kernels, selected by Masking)
-template <typename Masking>
-inline auto align_cells16s(__m128i & S,
-                           __m128i * hep,
-                           __m128i * const * qp,
-                           __m128i const Q,
-                           __m128i const R,
-                           long ql,
-                           __m128i const Z,
-                           Masking const & masking) -> void
-{
-  auto score = apply_mask<Ops_16>(S, masking);  // mask
-  auto H0 = Z;
-  auto F0 = H0;
-
-  for (long qi = 0; qi < ql; ++qi)
-  {
-    __m128i const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = apply_mask<Ops_16>(hep[2 * qi], masking);  // load N0, mask
-    auto E = apply_mask<Ops_16>(hep[(2 * qi) + 1], masking);  // load E, mask
-
-    onestep<Ops_16>(H0, hep[2 * qi], F0, x[0], E, score, Q, R);
-
-    hep[(2 * qi) + 1] = E;  // save E
-    H0 = N0;
-  }
-
-  S = score;  // save S
-}
-
 inline auto dprofile_fill16s(WORD * dprofile_word,
 			     WORD * score_matrix_word,
 			     BYTE const * dseq) -> void
@@ -253,7 +222,7 @@ auto search16s(WORD * * q_start,
 	
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
-      align_cells16s(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells_single<Ops_16>(S, hep, qp, Q, R, qlen, Z, No_mask{});
       
       /* save column address if new highscore */
 
@@ -386,7 +355,7 @@ auto search16s(WORD * * q_start,
 
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
-      align_cells16s(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16>{M});
+      align_cells_single<Ops_16>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16>{M});
 
       /* save column address if new highscore */
 
