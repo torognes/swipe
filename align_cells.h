@@ -66,19 +66,19 @@ struct Ops_16 {
 // 32 lanes of 7-bit scores (AVX2): the operations of Ops_7
 struct Ops_7_avx2 {
   using Vector = __m256i;
-  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
-  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
-  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i8(lhs, rhs); }
-  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_u8(lhs, rhs); }
+  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i8(lhs, rhs); }
+  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i8(lhs, rhs); }
+  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_subs_i8(lhs, rhs); }
+  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_max_u8(lhs, rhs); }
 };
 
 // 16 lanes of 16-bit scores (AVX2): the operations of Ops_16
 struct Ops_16_avx2 {
   using Vector = __m256i;
-  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i16(v_adds_i16(lhs, rhs), rhs); }
-  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i16(lhs, rhs); }
-  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i16(lhs, rhs); }
-  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_i16(lhs, rhs); }
+  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i16(v256_adds_i16(lhs, rhs), rhs); }
+  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i16(lhs, rhs); }
+  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_subs_i16(lhs, rhs); }
+  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_max_i16(lhs, rhs); }
 };
 #endif
 
