@@ -594,9 +594,12 @@ struct ScoreMatrices
 extern ScoreMatrices score_matrices;
 
 // the residues of a sequence (GitHub #27: without the separator that
-// follows it); ntlenp receives its length in nucleotides
+// follows it)
 auto db_getsequence(db_thread_s & t, long seqno, StrandFrame where,
-		    long * ntlenp, std::size_t c) -> View<char>;
+		    std::size_t c) -> View<char>;
+// the length in nucleotides of a sequence of a nucleotide database
+// (blastn, tblastn, tblastx), mapped by db_mapsequences()
+auto db_getsequence_ntlength(db_thread_s const & t, long seqno) -> long;
 // the header of a sequence, as stored: binary ASN.1 (a Blast-def-line-set)
 auto db_getheader(db_thread_s const & t, long seqno) -> View<char>;
 

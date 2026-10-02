@@ -607,8 +607,6 @@ auto hits_exit() -> void
 
 auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void
 {
-  long ntlen = 0;
-
   struct hits_entry * h = &hit_entry(i);
 
   db_mapheaders(t, h->seqno, h->seqno);
@@ -620,10 +618,13 @@ auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void
   // KI-37), the sequence itself only for hits with an alignment
   db_mapsequences(t, h->seqno, h->seqno);
 
-  View<char> const sequence = db_getsequence(t, h->seqno, {h->dstrand, h->dframe},
-					     & ntlen, 0);
+  View<char> const sequence = db_getsequence(t, h->seqno, {h->dstrand, h->dframe}, 0);
   h->dlen = static_cast<long>(sequence.size());
-  h->dlennt = ntlen;
+  // the nucleotide length of a translated database sequence (0 for
+  // the other search types, as before)
+  bool const translated = (parameters.symtype == SymbolType::tblastn) or
+    (parameters.symtype == SymbolType::tblastx);
+  h->dlennt = translated ? db_getsequence_ntlength(t, h->seqno) : 0;
 
   if (i < hit_list.alignments)
   {

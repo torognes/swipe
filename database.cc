@@ -357,10 +357,6 @@ struct db_map_s
 
 }  // anonymous namespace
 
-using db_map_t = db_map_s;
-
-using mapp = db_map_t *;
-
 struct db_thread_s
 {
   // the windows over the sequence and header files: a cache, remapped
@@ -1228,15 +1224,19 @@ auto db_gettime() -> char const *
   return db_main.time.c_str();
 }
 
-auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void
-{
-  //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
+namespace {
 
+// the two files of a volume that a thread maps windows of
+enum struct MappedFile : unsigned char { sequences, headers };
+
+// map into m the window of a sequence or header file that holds the
+// sequences firstseqno to lastseqno (in one volume)
+auto map_region(db_map_s & m, MappedFile const file,
+                long const firstseqno, long const lastseqno) -> void
+{
   // unmap if some map exist
   
-  mapp m = &t.map_seq;
-
-  m->region.reset();
+  m.region.reset();
 
   long s1 = 0;
   long s2 = 0;
@@ -1253,77 +1253,72 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
 
   // find new map area
   
-  long const offset1 = v1->offset_entry(v1->offset_xsq, s1);
-  long const offset2 = v1->offset_entry(v1->offset_xsq, s2 + 1);
+  auto const table = (file == MappedFile::sequences) ? v1->offset_xsq : v1->offset_xhr;
+  long const offset1 = v1->offset_entry(table, s1);
+  long const offset2 = v1->offset_entry(table, s2 + 1);
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
   
   // map it
   
-  auto const mapped = m->region.map(v1->fd_xsq.descriptor(), offset, length);
+  auto const & fd = (file == MappedFile::sequences) ? v1->fd_xsq : v1->fd_xhr;
+  auto const mapped = m.region.map(fd.descriptor(), offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
   if (not mapped)
   {
-    fatal("Unable to memory map sequence file.");
+    fatal((file == MappedFile::sequences) ? "Unable to memory map sequence file."
+                                          : "Unable to memory map header file.");
   }
 
   // update
   
-  m->map_volume = v1;
-  m->map_offset = offset;
+  m.map_volume = v1;
+  m.map_offset = offset;
+}
+
+}  // anonymous namespace
+
+auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void
+{
+  //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
+
+  map_region(t.map_seq, MappedFile::sequences, firstseqno, lastseqno);
 }
 
 auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void
 {
-  // unmap if some map exist
-  
-  mapp m = &t.map_hdr;
+  map_region(t.map_hdr, MappedFile::headers, firstseqno, lastseqno);
+}
 
-  m->region.reset();
+namespace {
 
-  long s1 = 0;
-  long s2 = 0;
-  auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
-  
-  //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
-  //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
+// the length in nucleotides of a packed nucleotide sequence (four
+// nucleotides per byte): the last of its aoff bytes holds the count
+// of nucleotides in that byte, in its two low bits
+auto packed_nt_length(char const * const address, long const aoff) -> long
+{
+  unsigned char const last = (reinterpret_cast<unsigned char const *>(address))[aoff-1];
+  return (4 * (aoff - 1)) + (last & 3);
+}
 
-  if (v1 != v2)
-  {
-    fatal("Cannot map across database volumes.");
-  }
+}  // anonymous namespace
 
-  // find new map area
-  
-  long const offset1 = v1->offset_entry(v1->offset_xhr, s1);
-  long const offset2 = v1->offset_entry(v1->offset_xhr, s2 + 1);
-  long const pagesize = getpagesize();
-  long const offset = offset1 - (offset1 % pagesize);
-  long const length = offset2 - offset;
-  
-  // map it
-  
-  auto const mapped = m->region.map(v1->fd_xhr.descriptor(), offset, length);
-  
-  // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
+auto db_getsequence_ntlength(db_thread_s const & t, long const seqno) -> long
+{
+  long s = 0;
+  auto const & v = db_main.volumes.find(seqno, s);
 
-  if (not mapped)
-  {
-    fatal("Unable to memory map sequence file.");
-  }
-
-  // update
-  
-  m->map_volume = v1;
-  m->map_offset = offset;
+  long const offset1 = v.offset_entry(v.offset_xsq, s);
+  long const offset3 = v.offset_entry(v.offset_amb, s);
+  auto const * const address = std::next(t.map_seq.region.data(), offset1 - t.map_seq.map_offset);
+  return packed_nt_length(address, offset3 - offset1);
 }
 
 auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
-		    long * ntlenp, std::size_t c) -> View<char>
+		    std::size_t c) -> View<char>
 {
   long const strand = where.strand;
   long const frame = where.frame;
@@ -1346,8 +1341,7 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 
     long const amb_bytes = length - aoff;
 
-    unsigned char const last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
-    long const nt_length = (4 * (aoff - 1)) + (last & 3);
+    long const nt_length = packed_nt_length(address, aoff);
   
     auto & ntbuffer = t.ntbuffer[static_cast<std::size_t>(c)];
     auto & xxbuffer = t.xxbuffer[static_cast<std::size_t>(c)];
@@ -1488,7 +1482,6 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 	ntbuffer = Buffer<char>();
       }
       
-      *ntlenp = nt_length;
       return View<char>{xx, static_cast<std::size_t>(plen)};
     }
     else
@@ -1536,7 +1529,6 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 {
   long const strand = where.strand;
   long frame = where.frame;
-  long ntlen = 0;
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)
@@ -1545,7 +1537,7 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
     frame = untranslated_frame;
   }
 
-  auto const sequence = db_getsequence(t, seqno, {strand, frame}, & ntlen, 0);
+  auto const sequence = db_getsequence(t, seqno, {strand, frame}, 0);
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
