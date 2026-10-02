@@ -62,6 +62,18 @@ struct Ops_16 {
 };
 
 
+#ifdef __AVX2__
+// 32 lanes of 7-bit scores (AVX2): the operations of Ops_7
+struct Ops_7_avx2 {
+  using Vector = __m256i;
+  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
+  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
+  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i8(lhs, rhs); }
+  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_u8(lhs, rhs); }
+};
+#endif
+
+
 // The masking of a kernel pass, selected by the type of its last
 // argument (as swarm's src/utils/mask_vectors.hpp): No_mask when every
 // channel continues its database sequence, Mask when some channels

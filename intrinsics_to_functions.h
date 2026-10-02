@@ -38,6 +38,9 @@
 #ifdef __SSSE3__
 #include <tmmintrin.h>  // SSSE3
 #endif
+#ifdef __AVX2__
+#include <immintrin.h>  // AVX2
+#endif
 
 
 // 16 lanes of 8 bits
@@ -232,5 +235,83 @@ inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> int
 {
   return _mm_movemask_epi8(_mm_cmpeq_epi16(lhs, rhs));
 }
+
+
+#ifdef __AVX2__
+// 32 lanes of 8 bits (AVX2, __m256i): the same operations, overloaded
+// on the vector type, for the kernels compiled with -mavx2 (the
+// names that only differ by their return type get a v256_ prefix).
+// Most AVX2 operations act on each 128-bit half separately; that only
+// matters for the shuffle and the byte shift (see below).
+
+inline auto v_adds_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_adds_epi8(lhs, rhs);
+}
+
+inline auto v_subs_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_subs_epi8(lhs, rhs);
+}
+
+inline auto v_max_u8(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_max_epu8(lhs, rhs);
+}
+
+// aligned load and store (32-byte boundary)
+inline auto v_load(__m256i const * const ptr) -> __m256i
+{
+  return _mm256_load_si256(ptr);
+}
+
+inline auto v_store(__m256i * const ptr, __m256i const vector) -> void
+{
+  _mm256_store_si256(ptr, vector);
+}
+
+inline auto v_and(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_and_si256(lhs, rhs);
+}
+
+inline auto v_or(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_or_si256(lhs, rhs);
+}
+
+inline auto v_xor(__m256i const lhs, __m256i const rhs) -> __m256i
+{
+  return _mm256_xor_si256(lhs, rhs);
+}
+
+// all 32 lanes of 8 bits set to value
+inline auto v256_dup_i8(char const value) -> __m256i
+{
+  return _mm256_set1_epi8(value);
+}
+
+template <int count>
+inline auto v_shift_left_i16(__m256i const vector) -> __m256i
+{
+  return _mm256_slli_epi16(vector, count);
+}
+
+// the 16 bytes at source (aligned), in both halves of the vector
+// (vbroadcasti128)
+inline auto v256_broadcast_128(__m128i const * const source) -> __m256i
+{
+  return _mm256_broadcastsi128_si256(_mm_load_si128(source));
+}
+
+// table lookup (vpshufb), within each half: lane i of the result is
+// the lane (indices[i] & 0x0f) of the SAME half of table, or zero when
+// bit 7 of indices[i] is set. A 16-entry table must be in both halves
+// (v256_broadcast_128())
+inline auto v_shuffle_8(__m256i const table, __m256i const indices) -> __m256i
+{
+  return _mm256_shuffle_epi8(table, indices);
+}
+#endif
 
 #endif  // SWIPE_INTRINSICS_TO_FUNCTIONS_H
