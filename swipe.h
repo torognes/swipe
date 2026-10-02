@@ -47,6 +47,7 @@
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
+#include "span.h"  // Span
 #include "view.h"  // View
 
 
@@ -414,7 +415,7 @@ auto score_matrix_init(Parameters const & parameters) -> void;
 auto translate_init(long qtableno, long dtableno) -> void;
 // the reverse complement of a nucleotide sequence, NUL-terminated, into
 // complement (at least sequence.size() + 1 bytes)
-auto reverse_complement(View<char> sequence, char * complement) -> void;
+auto reverse_complement(View<char> sequence, Span<char> complement) -> void;
 auto revcompl(View<char> sequence) -> Buffer<char>;
 // a strand (0: plus, 1: minus) and a reading frame (0 to 2, or
 // untranslated_frame) of a nucleotide sequence
@@ -471,7 +472,7 @@ constexpr auto unpack_entry(long const entry) -> SequenceEntry
 // the protein length
 auto translate_codons(View<char> sequence, StrandFrame where,
                       std::array<char, translation_table_size> const & table,
-                      char * prot) -> long;
+                      Span<char> prot) -> long;
 
 // the same for the query (-Q), into a buffer resized to fit
 auto translate(View<char> sequence, StrandFrame where,

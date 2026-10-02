@@ -1446,7 +1446,7 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 	}
 	auto * const xx = xxbuffer.data();
 
-	reverse_complement(View<char>(nt, static_cast<std::size_t>(nt_length)), xx);
+	reverse_complement(View<char>(nt, static_cast<std::size_t>(nt_length)), make_span(xxbuffer));
 
 	/* deallocate ntbuffer if big */
 	if (ntbuffer.size() > large_buffer_size)
@@ -1477,7 +1477,7 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
       auto * const xx = xxbuffer.data();
       
       translate_codons(View<char>(nt, static_cast<std::size_t>(nt_length)), {strand, frame},
-                       translation_tables.database, xx);
+                       translation_tables.database, make_span(xxbuffer));
 
       /* deallocate ntbuffer if big */
       

@@ -382,10 +382,11 @@ auto query_read() -> int
   return 1;
 }
 
-auto reverse_complement(View<char> const sequence, char * const complement) -> void
+auto reverse_complement(View<char> const sequence, Span<char> const complement) -> void
 {
+  assert(complement.size() > sequence.size());  // room for the NUL
   // the complements in reverse order, then a NUL
-  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement,
+  auto * const end = std::transform(sequence.rbegin(), sequence.rend(), complement.begin(),
                                     [](char const nucleotide) -> char {
                                       return ntcompl[static_cast<std::size_t>(nucleotide)];
                                     });
@@ -395,7 +396,7 @@ auto reverse_complement(View<char> const sequence, char * const complement) -> v
 auto revcompl(View<char> const sequence) -> Buffer<char>
 {
   Buffer<char> rc_buffer(sequence.size() + 1);
-  reverse_complement(sequence, rc_buffer.data());
+  reverse_complement(sequence, make_span(rc_buffer));
   return rc_buffer;
 }
 
@@ -487,7 +488,7 @@ auto translate_init(long qtableno, long dtableno) -> void
 auto translate_codons(View<char> const sequence,
 		      StrandFrame const where,
 		      std::array<char, translation_table_size> const & table,
-		      char * prot) -> long
+		      Span<char> const prot) -> long
 {
   auto const * const dna = sequence.data();
   auto const dlen = static_cast<long>(sequence.size());
@@ -499,6 +500,7 @@ auto translate_codons(View<char> const sequence,
   long ppos = 0;
   long const plen = (dlen - frame) / 3;
   assert(plen >= 0);
+  assert(prot.size() > static_cast<std::size_t>(plen));  // room for the NUL
 
   if (strand == 0)
   {
@@ -510,7 +512,7 @@ auto translate_codons(View<char> const sequence,
       c |= dna[pos++];
       c <<= 4;
       c |= dna[pos++];
-      prot[ppos++] = table[static_cast<std::size_t>(c)];
+      prot[static_cast<std::size_t>(ppos++)] = table[static_cast<std::size_t>(c)];
     }
   }
   else
@@ -523,11 +525,11 @@ auto translate_codons(View<char> const sequence,
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
       c <<= 4;
       c |= ntcompl[static_cast<std::size_t>(dna[pos--])];
-      prot[ppos++] = table[static_cast<std::size_t>(c)];
+      prot[static_cast<std::size_t>(ppos++)] = table[static_cast<std::size_t>(c)];
     }
   }
 
-  prot[ppos] = 0;
+  prot[static_cast<std::size_t>(ppos)] = 0;
   return plen;
 }
 
@@ -537,7 +539,7 @@ auto translate(View<char> const sequence, StrandFrame const where,
   long const plen = (static_cast<long>(sequence.size()) - where.frame) / 3;
   assert(plen >= 0);
   protein.resize(1 + static_cast<std::size_t>(plen));
-  return translate_codons(sequence, where, translation_tables.query, protein.data());
+  return translate_codons(sequence, where, translation_tables.query, make_span(protein));
 }
 
 

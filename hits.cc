@@ -591,13 +591,11 @@ auto hits_init(Parameters const & parameters) -> void
 
 auto hits_empty() -> void
 {
-  for (long i=0; i<hit_list.count; i++)
+  for (auto & hit : make_span(hit_list.entries).first(static_cast<std::size_t>(hit_list.count)))
   {
-    struct hits_entry * h = &hit_entry(i);
-
-    h->header_address = Buffer<char>();
-    h->dseq = Buffer<char>();
-    h->alignment = std::string();
+    hit.header_address = Buffer<char>();
+    hit.dseq = Buffer<char>();
+    hit.alignment = std::string();
   }
 }
 
