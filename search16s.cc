@@ -334,14 +334,13 @@ auto search16s(WORD * * q_start,
 	  {
 	    seq_id[c] = next_id;
 	    long const seqnosf = seqnos[next_id];
-	    long ntlen = 0;
 
 	    long const seqno = entry_seqno(seqnosf);
 
 	    db_mapsequences(*dbta[static_cast<std::size_t>(c)], seqno, seqno);
 
 	    View<char> const sequence =
-	      db_getsequence(*dbta[static_cast<std::size_t>(c)], seqno, entry_where(seqnosf), & ntlen, c);
+	      db_getsequence(*dbta[static_cast<std::size_t>(c)], seqno, entry_where(seqnosf), c);
 		      
 	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
 	    d_pos[c] = d_begin[c];

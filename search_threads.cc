@@ -372,8 +372,7 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	{
 	  auto const entry = unpack_entry(seqnosf);
       
-	  long ntlen = 0;
-	  auto const sequence = db_getsequence(*data.dbt, entry.seqno, entry.where, & ntlen, 0);
+	  auto const sequence = db_getsequence(*data.dbt, entry.seqno, entry.where, 0);
 	  auto const * dbegin = sequence.begin();
 	  auto const * dend = sequence.end();
       

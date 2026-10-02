@@ -1322,8 +1322,32 @@ auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> vo
   m->map_offset = offset;
 }
 
+namespace {
+
+// the length in nucleotides of a packed nucleotide sequence (four
+// nucleotides per byte): the last of its aoff bytes holds the count
+// of nucleotides in that byte, in its two low bits
+auto packed_nt_length(char const * const address, long const aoff) -> long
+{
+  unsigned char const last = (reinterpret_cast<unsigned char const *>(address))[aoff-1];
+  return (4 * (aoff - 1)) + (last & 3);
+}
+
+}  // anonymous namespace
+
+auto db_getsequence_ntlength(db_thread_s const & t, long const seqno) -> long
+{
+  long s = 0;
+  auto const & v = db_main.volumes.find(seqno, s);
+
+  long const offset1 = v.offset_entry(v.offset_xsq, s);
+  long const offset3 = v.offset_entry(v.offset_amb, s);
+  auto const * const address = std::next(t.map_seq.region.data(), offset1 - t.map_seq.map_offset);
+  return packed_nt_length(address, offset3 - offset1);
+}
+
 auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
-		    long * ntlenp, std::size_t c) -> View<char>
+		    std::size_t c) -> View<char>
 {
   long const strand = where.strand;
   long const frame = where.frame;
@@ -1346,8 +1370,7 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 
     long const amb_bytes = length - aoff;
 
-    unsigned char const last = (reinterpret_cast<unsigned char*>(address))[aoff-1];
-    long const nt_length = (4 * (aoff - 1)) + (last & 3);
+    long const nt_length = packed_nt_length(address, aoff);
   
     auto & ntbuffer = t.ntbuffer[static_cast<std::size_t>(c)];
     auto & xxbuffer = t.xxbuffer[static_cast<std::size_t>(c)];
@@ -1488,7 +1511,6 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
 	ntbuffer = Buffer<char>();
       }
       
-      *ntlenp = nt_length;
       return View<char>{xx, static_cast<std::size_t>(plen)};
     }
     else
@@ -1536,7 +1558,6 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
 {
   long const strand = where.strand;
   long frame = where.frame;
-  long ntlen = 0;
 
   // databases of translated searches are dumped as nucleotides,
   // not translated (KI-24)
@@ -1545,7 +1566,7 @@ auto db_print_seq(db_thread_s & t, long seqno, StrandFrame const where) -> void
     frame = untranslated_frame;
   }
 
-  auto const sequence = db_getsequence(t, seqno, {strand, frame}, & ntlen, 0);
+  auto const sequence = db_getsequence(t, seqno, {strand, frame}, 0);
 
   if ((db_main.symtype == SymbolType::blastp) || (db_main.symtype == SymbolType::blastx))
   {
