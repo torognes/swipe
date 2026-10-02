@@ -1224,14 +1224,18 @@ auto db_gettime() -> char const *
   return db_main.time.c_str();
 }
 
-auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void
-{
-  //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
+namespace {
 
+// the two files of a volume that a thread maps windows of
+enum struct MappedFile : unsigned char { sequences, headers };
+
+// map into m the window of a sequence or header file that holds the
+// sequences firstseqno to lastseqno (in one volume)
+auto map_region(db_map_s & m, MappedFile const file,
+                long const firstseqno, long const lastseqno) -> void
+{
   // unmap if some map exist
   
-  auto & m = t.map_seq;
-
   m.region.reset();
 
   long s1 = 0;
@@ -1249,15 +1253,17 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
 
   // find new map area
   
-  long const offset1 = v1->offset_entry(v1->offset_xsq, s1);
-  long const offset2 = v1->offset_entry(v1->offset_xsq, s2 + 1);
+  auto const table = (file == MappedFile::sequences) ? v1->offset_xsq : v1->offset_xhr;
+  long const offset1 = v1->offset_entry(table, s1);
+  long const offset2 = v1->offset_entry(table, s2 + 1);
   long const pagesize = getpagesize();
   long const offset = offset1 - (offset1 % pagesize);
   long const length = offset2 - offset;
   
   // map it
   
-  auto const mapped = m.region.map(v1->fd_xsq.descriptor(), offset, length);
+  auto const & fd = (file == MappedFile::sequences) ? v1->fd_xsq : v1->fd_xhr;
+  auto const mapped = m.region.map(fd.descriptor(), offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1272,50 +1278,18 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
   m.map_offset = offset;
 }
 
+}  // anonymous namespace
+
+auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> void
+{
+  //  printf("db_mapsequence called with seqnos %ld-%ld.\n", firstseqno, lastseqno);
+
+  map_region(t.map_seq, MappedFile::sequences, firstseqno, lastseqno);
+}
+
 auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void
 {
-  // unmap if some map exist
-  
-  auto & m = t.map_hdr;
-
-  m.region.reset();
-
-  long s1 = 0;
-  long s2 = 0;
-  auto * const v1 = & db_main.volumes.find(firstseqno, s1);
-  auto const * const v2 = & db_main.volumes.find(lastseqno, s2);
-  
-  //  printf("first seqno: %ld -> vol %p, seq %ld\n", firstseqno, v1, s1);
-  //  printf("last seqno: %ld -> vol %p, seq %ld\n", lastseqno, v2, s2);
-
-  if (v1 != v2)
-  {
-    fatal("Cannot map across database volumes.");
-  }
-
-  // find new map area
-  
-  long const offset1 = v1->offset_entry(v1->offset_xhr, s1);
-  long const offset2 = v1->offset_entry(v1->offset_xhr, s2 + 1);
-  long const pagesize = getpagesize();
-  long const offset = offset1 - (offset1 % pagesize);
-  long const length = offset2 - offset;
-  
-  // map it
-  
-  auto const mapped = m.region.map(v1->fd_xhr.descriptor(), offset, length);
-  
-  // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
-
-  if (not mapped)
-  {
-    fatal("Unable to memory map sequence file.");
-  }
-
-  // update
-  
-  m.map_volume = v1;
-  m.map_offset = offset;
+  map_region(t.map_hdr, MappedFile::headers, firstseqno, lastseqno);
 }
 
 namespace {
