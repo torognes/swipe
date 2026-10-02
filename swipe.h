@@ -409,6 +409,33 @@ auto search16s(WORD * * q_start,
 	       long * bestq,
 	       int qlen) -> void;
 
+auto search16_avx2(WORD * * q_start,
+		   WORD gap_open_penalty,
+		   WORD gap_extend_penalty,
+		   WORD * score_matrix,
+		   WORD * dprofile,
+		   WORD * hearray,
+		   db_thread_s & dbt,
+		   long sequences,
+		   long const * seqnos,
+		   long * scores,
+		   long * bestpos,
+		   int qlen) -> void;
+
+auto search16s_avx2(WORD * * q_start,
+		    WORD gap_open_penalty,
+		    WORD gap_extend_penalty,
+		    WORD * score_matrix,
+		    WORD * dprofile,
+		    WORD * hearray,
+		    DbThread const * dbta,
+		    long sequences,
+		    long const * seqnos,
+		    long * scores,
+		    long * bestpos,
+		    long * bestq,
+		    int qlen) -> void;
+
 auto fullsw(char const * dseq,
 	    char const * dend,
 	    char const * qseq,
@@ -579,9 +606,11 @@ constexpr long untranslated_frame = -1;
 constexpr std::size_t channels_7 = 16;
 constexpr std::size_t channels_7_avx2 = 32;
 constexpr std::size_t channels_16 = 8;
+constexpr std::size_t channels_16_avx2 = 16;
 constexpr std::size_t max_channels = channels_7_avx2;
 static_assert(channels_7 <= max_channels, "a buffer per channel");
 static_assert(channels_16 <= max_channels, "a buffer per channel");
+static_assert(channels_16_avx2 <= max_channels, "a buffer per channel");
 
 // the SIMD vectors of the kernels (SSE, __m128i) are 16 bytes, and
 // the buffers they load from and store to are aligned on them

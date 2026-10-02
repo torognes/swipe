@@ -59,6 +59,8 @@ AlignWork align_work;
 // the bytes of a symbol's row in the score profile of search16s(): 1
 // database residue x 16 bytes of lanes
 constexpr std::ptrdiff_t profile_row_bytes = 16;
+// search16s_avx2(): 1 database residue x 32 bytes of lanes
+constexpr std::ptrdiff_t profile_row_bytes_avx2 = 32;
 
 auto align_init(Parameters const & parameters, search_data & data) -> void
 {
@@ -67,11 +69,14 @@ auto align_init(Parameters const & parameters, search_data & data) -> void
   std::generate(std::begin(data.dbta), std::end(data.dbta), db_thread_create);
 
   data.dprofile.resize(profile_bytes);
-  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes, data.qtable);
+  long const hearraylen = cpu_features.avx2 ?
+    query_tables_init(parameters, data, profile_row_bytes_avx2, data.qtable_avx2) :
+    query_tables_init(parameters, data, profile_row_bytes, data.qtable);
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
-  data.hearray.resize(static_cast<std::size_t>(hearraylen) * hearray_row_bytes);
+  data.hearray.resize(static_cast<std::size_t>(hearraylen) *
+                      (cpu_features.avx2 ? hearray_row_bytes_avx2 : hearray_row_bytes));
 
   auto const listsize = static_cast<std::size_t>(align_work.maxchunksize);
   //  if ((symtype == 3) || (symtype == 4))
@@ -194,19 +199,38 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 	  
 	  // the 16-bit penalties are only used when they fit (KI-13:
 	  // otherwise no 16-bit result is accepted)
-	  search16s(reinterpret_cast<WORD**>(qtable),
-		    static_cast<WORD>(parameters.gapopenextend),
-		    static_cast<WORD>(parameters.gapextend),
-		    reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-		    reinterpret_cast<WORD*>(data.dprofile.data()),
-		    reinterpret_cast<WORD*>(data.hearray.data()),
-		    data.dbta.data(),
-		    static_cast<long>(data.start_count),
-		    data.start_list.data(),
-		    data.scores.data(),
-		    data.bestpos.data(),
-		    data.bestq.data(),
-		    static_cast<int>(qlen));
+	  if (cpu_features.avx2)
+	  {
+	    search16s_avx2(reinterpret_cast<WORD**>(data.qtable_avx2[frame_index(qstrand, qframe)].data()),
+			   static_cast<WORD>(parameters.gapopenextend),
+			   static_cast<WORD>(parameters.gapextend),
+			   reinterpret_cast<WORD*>(score_matrices.score_16.data()),
+			   reinterpret_cast<WORD*>(data.dprofile.data()),
+			   reinterpret_cast<WORD*>(data.hearray.data()),
+			   data.dbta.data(),
+			   static_cast<long>(data.start_count),
+			   data.start_list.data(),
+			   data.scores.data(),
+			   data.bestpos.data(),
+			   data.bestq.data(),
+			   static_cast<int>(qlen));
+	  }
+	  else
+	  {
+	    search16s(reinterpret_cast<WORD**>(qtable),
+		      static_cast<WORD>(parameters.gapopenextend),
+		      static_cast<WORD>(parameters.gapextend),
+		      reinterpret_cast<WORD*>(score_matrices.score_16.data()),
+		      reinterpret_cast<WORD*>(data.dprofile.data()),
+		      reinterpret_cast<WORD*>(data.hearray.data()),
+		      data.dbta.data(),
+		      static_cast<long>(data.start_count),
+		      data.start_list.data(),
+		      data.scores.data(),
+		      data.bestpos.data(),
+		      data.bestq.data(),
+		      static_cast<int>(qlen));
+	  }
 	
 	  for (std::size_t i = 0; i < data.start_count; i++)
 	  {
@@ -266,7 +290,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
                                         align_work.volchunks.data(),
-                                        {parameters.threads, static_cast<long>(channels_16)});
+                                        {parameters.threads, static_cast<long>(cpu_features.avx2 ? channels_16_avx2 : channels_16)});
 
   align_work.alignedhits = 0;
   align_work.volnext = 0;
