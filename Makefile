@@ -84,8 +84,12 @@ ifeq ($(or $(RELEASE),$(DEBUG),$(PROFILE),$(COVERAGE)),)
 endif
 
 ifdef RELEASE
-  # "make" or "make RELEASE=1": distributed binaries, benchmarks
-  OPTIMIZATION=-O3 -DNDEBUG
+  # "make" or "make RELEASE=1": distributed binaries, benchmarks.
+  # Reproducible: the debugging information names the source files
+  # relative to the build directory, so that two builds of the same
+  # sources in different directories are byte-identical
+  # (.github/scripts/reproducible.sh)
+  OPTIMIZATION=-O3 -DNDEBUG -fdebug-prefix-map=$(CURDIR)=.
 else ifdef DEBUG
   # "make DEBUG=1": sanitizers and extended warnings (current GCC or
   # clang)

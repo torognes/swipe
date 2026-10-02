@@ -59,6 +59,28 @@ jobs:
         bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
 
 
+  reproducible:
+    # two builds of the same commit, in two directories, are
+    # byte-identical: the release recipe of release.yml (static) and
+    # clang
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    name: reproducible builds
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: GCC, static (release assets)
+      timeout-minutes: 10
+      run: bash .github/scripts/reproducible.sh RELEASE=1 LDFLAGS=-static
+
+    - name: clang
+      timeout-minutes: 10
+      run: bash .github/scripts/reproducible.sh RELEASE=1 CXX=clang++
+
+
   docs-and-install:
     # the manual page renders without warning, the completions parse,
     # and "make install" puts the four files where they belong

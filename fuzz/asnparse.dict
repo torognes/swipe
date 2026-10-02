@@ -1,0 +1,37 @@
+# libFuzzer dictionary of the ASN.1 header parser (asnparse.cc): the
+# BER tokens that makeblastdb writes in a Blast-def-line-set
+
+# SEQUENCE and context tags [0] to [19], constructed, indefinite length
+sequence="\x30\x80"
+end_of_contents="\x00\x00"
+tag_0="\xa0\x80"
+tag_1="\xa1\x80"
+tag_2="\xa2\x80"
+tag_3="\xa3\x80"
+tag_4="\xa4\x80"
+tag_5="\xa5\x80"
+tag_6="\xa6\x80"
+tag_7="\xa7\x80"
+tag_8="\xa8\x80"
+tag_9="\xa9\x80"
+tag_10="\xaa\x80"
+tag_11="\xab\x80"
+tag_12="\xac\x80"
+tag_13="\xad\x80"
+tag_14="\xae\x80"
+tag_15="\xaf\x80"
+tag_16="\xb0\x80"
+tag_17="\xb1\x80"
+tag_18="\xb2\x80"
+tag_19="\xb3\x80"
+
+# INTEGER of 1 to 4 bytes, VisibleString of short and long-form length
+integer_1="\x02\x01"
+integer_2="\x02\x02"
+integer_4="\x02\x04"
+integer_5="\x02\x05"
+string_short="\x1a\x04"
+string_long_1="\x1a\x81"
+string_long_2="\x1a\x82"
+string_long_4="\x1a\x84"
+string_long_5="\x1a\x85"
