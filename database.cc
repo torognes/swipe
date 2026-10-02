@@ -357,10 +357,6 @@ struct db_map_s
 
 }  // anonymous namespace
 
-using db_map_t = db_map_s;
-
-using mapp = db_map_t *;
-
 struct db_thread_s
 {
   // the windows over the sequence and header files: a cache, remapped
@@ -1234,9 +1230,9 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
 
   // unmap if some map exist
   
-  mapp m = &t.map_seq;
+  auto & m = t.map_seq;
 
-  m->region.reset();
+  m.region.reset();
 
   long s1 = 0;
   long s2 = 0;
@@ -1261,7 +1257,7 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
   
   // map it
   
-  auto const mapped = m->region.map(v1->fd_xsq.descriptor(), offset, length);
+  auto const mapped = m.region.map(v1->fd_xsq.descriptor(), offset, length);
   
   //  fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1272,17 +1268,17 @@ auto db_mapsequences(db_thread_s const & t, long firstseqno, long lastseqno) -> 
 
   // update
   
-  m->map_volume = v1;
-  m->map_offset = offset;
+  m.map_volume = v1;
+  m.map_offset = offset;
 }
 
 auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> void
 {
   // unmap if some map exist
   
-  mapp m = &t.map_hdr;
+  auto & m = t.map_hdr;
 
-  m->region.reset();
+  m.region.reset();
 
   long s1 = 0;
   long s2 = 0;
@@ -1307,7 +1303,7 @@ auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> vo
   
   // map it
   
-  auto const mapped = m->region.map(v1->fd_xhr.descriptor(), offset, length);
+  auto const mapped = m.region.map(v1->fd_xhr.descriptor(), offset, length);
   
   // fprintf(stderr, "offset: %ld, length: %ld\n", offset, length);
 
@@ -1318,8 +1314,8 @@ auto db_mapheaders(db_thread_s const & t, long firstseqno, long lastseqno) -> vo
 
   // update
   
-  m->map_volume = v1;
-  m->map_offset = offset;
+  m.map_volume = v1;
+  m.map_offset = offset;
 }
 
 namespace {
