@@ -1269,7 +1269,8 @@ auto map_region(db_map_s & m, MappedFile const file,
 
   if (not mapped)
   {
-    fatal("Unable to memory map sequence file.");
+    fatal((file == MappedFile::sequences) ? "Unable to memory map sequence file."
+                                          : "Unable to memory map header file.");
   }
 
   // update
