@@ -44,6 +44,10 @@ jobs:
         # swipe -h exits with status 0 since 2.2.0 (KI-2)
         ./swipe -h 2>&1 | head -n 1
 
+    - name: AVX2 code only in the AVX2 kernels
+      timeout-minutes: 5
+      run: bash .github/scripts/avx2_isolation.sh
+
     - name: Install NCBI BLAST+ (makeblastdb)
       timeout-minutes: 10
       run: |
@@ -147,6 +151,10 @@ jobs:
         docker run --rm -v "${PWD}":/src -w /src gcc:${{ matrix.gcc }} \
             bash -c 'g++ --version && make clean && make -j "$(nproc)" RELEASE=1 WERROR=1'
         ./swipe -h 2>&1 | head -n 1
+
+    - name: AVX2 code only in the AVX2 kernels
+      timeout-minutes: 5
+      run: bash .github/scripts/avx2_isolation.sh
 
     - name: Install NCBI BLAST+ (makeblastdb)
       timeout-minutes: 10
