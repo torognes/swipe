@@ -238,49 +238,54 @@ inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> int
 
 
 #ifdef __AVX2__
-// 32 lanes of 8 bits (AVX2, __m256i): the same operations, overloaded
-// on the vector type, for the kernels compiled with -mavx2 (the
-// names that only differ by their return type get a v256_ prefix).
+// 32 lanes of 8 bits (AVX2, __m256i): the same operations, for the
+// kernels compiled with -mavx2, named v256_ rather than overloaded on
+// the vector type: GCC 4.8 and 4.9 mangle __m128i and __m256i alike
+// (before -fabi-version=6), so that two overloads conflict ("conflicts
+// with a previous declaration"); for the same reason, an AVX2 file
+// must not instantiate a template (std::next, ...) with both types.
+// Check without a legacy compiler: g++ -std=c++11 -fabi-version=2
+// -mavx2 -O0 -c (-O0: the inline functions are emitted).
 // Most AVX2 operations act on each 128-bit half separately; that only
 // matters for the shuffle and the byte shift (see below).
 
-inline auto v_adds_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_adds_i8(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_adds_epi8(lhs, rhs);
 }
 
-inline auto v_subs_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_subs_i8(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_subs_epi8(lhs, rhs);
 }
 
-inline auto v_max_u8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_max_u8(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_max_epu8(lhs, rhs);
 }
 
 // aligned load and store (32-byte boundary)
-inline auto v_load(__m256i const * const ptr) -> __m256i
+inline auto v256_load(__m256i const * const ptr) -> __m256i
 {
   return _mm256_load_si256(ptr);
 }
 
-inline auto v_store(__m256i * const ptr, __m256i const vector) -> void
+inline auto v256_store(__m256i * const ptr, __m256i const vector) -> void
 {
   _mm256_store_si256(ptr, vector);
 }
 
-inline auto v_and(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_and(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_and_si256(lhs, rhs);
 }
 
-inline auto v_or(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_or(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_or_si256(lhs, rhs);
 }
 
-inline auto v_xor(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_xor(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_xor_si256(lhs, rhs);
 }
@@ -292,7 +297,7 @@ inline auto v256_dup_i8(char const value) -> __m256i
 }
 
 template <int count>
-inline auto v_shift_left_i16(__m256i const vector) -> __m256i
+inline auto v256_shift_left_i16(__m256i const vector) -> __m256i
 {
   return _mm256_slli_epi16(vector, count);
 }
@@ -307,17 +312,17 @@ inline auto v256_broadcast_128(__m128i const * const source) -> __m256i
 
 // 16 lanes of 16 bits (the 16-bit kernels)
 
-inline auto v_adds_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_adds_i16(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_adds_epi16(lhs, rhs);
 }
 
-inline auto v_subs_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_subs_i16(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_subs_epi16(lhs, rhs);
 }
 
-inline auto v_max_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_max_i16(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_max_epi16(lhs, rhs);
 }
@@ -329,32 +334,32 @@ inline auto v256_dup_i16(short const value) -> __m256i
 }
 
 // the interleaves work within each half (as two 128-bit unpacks)
-inline auto v_merge_lo_16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_16(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpacklo_epi16(lhs, rhs);
 }
 
-inline auto v_merge_hi_16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_16(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpackhi_epi16(lhs, rhs);
 }
 
-inline auto v_merge_lo_32(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_32(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpacklo_epi32(lhs, rhs);
 }
 
-inline auto v_merge_hi_32(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_32(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpackhi_epi32(lhs, rhs);
 }
 
-inline auto v_merge_lo_64(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_64(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpacklo_epi64(lhs, rhs);
 }
 
-inline auto v_merge_hi_64(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_64(__m256i const lhs, __m256i const rhs) -> __m256i
 {
   return _mm256_unpackhi_epi64(lhs, rhs);
 }
@@ -370,12 +375,12 @@ inline auto v256_load_halves(__m128i const * const low, __m128i const * const hi
 // lanewise comparisons of 16-bit signed lanes, packed into a byte
 // mask: two bits per lane, bits 2i and 2i + 1 for lane i (32 bits:
 // unsigned, the last lane sets the sign bit)
-inline auto v_mask_gt_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+inline auto v256_mask_gt_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpgt_epi16(lhs, rhs)));
 }
 
-inline auto v_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+inline auto v256_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpeq_epi16(lhs, rhs)));
 }
@@ -384,7 +389,7 @@ inline auto v_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
 // the lane (indices[i] & 0x0f) of the SAME half of table, or zero when
 // bit 7 of indices[i] is set. A 16-entry table must be in both halves
 // (v256_broadcast_128())
-inline auto v_shuffle_8(__m256i const table, __m256i const indices) -> __m256i
+inline auto v256_shuffle_8(__m256i const table, __m256i const indices) -> __m256i
 {
   return _mm256_shuffle_epi8(table, indices);
 }

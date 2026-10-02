@@ -29,7 +29,7 @@
 // algorithms as search16() and search16s(), twice as many channels.
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, ...
+#include "intrinsics_to_functions.h"  // v256_load, v256_store, v_merge_*, ...
 #include "align_cells.h"  // Ops_16_avx2, align_cells(), align_cells_single()
 #include <algorithm>  // std::fill_n
 #include <array>
@@ -94,37 +94,37 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       auto const in6 = v256_load_halves(row(6), row(half + 6));
       auto const in7 = v256_load_halves(row(7), row(half + 7));
 
-      auto const a0 = v_merge_lo_16(in0, in1);
-      auto const a1 = v_merge_hi_16(in0, in1);
-      auto const a2 = v_merge_lo_16(in2, in3);
-      auto const a3 = v_merge_hi_16(in2, in3);
-      auto const a4 = v_merge_lo_16(in4, in5);
-      auto const a5 = v_merge_hi_16(in4, in5);
-      auto const a6 = v_merge_lo_16(in6, in7);
-      auto const a7 = v_merge_hi_16(in6, in7);
+      auto const a0 = v256_merge_lo_16(in0, in1);
+      auto const a1 = v256_merge_hi_16(in0, in1);
+      auto const a2 = v256_merge_lo_16(in2, in3);
+      auto const a3 = v256_merge_hi_16(in2, in3);
+      auto const a4 = v256_merge_lo_16(in4, in5);
+      auto const a5 = v256_merge_hi_16(in4, in5);
+      auto const a6 = v256_merge_lo_16(in6, in7);
+      auto const a7 = v256_merge_hi_16(in6, in7);
 
-      auto const b0 = v_merge_lo_32(a0, a2);
-      auto const b1 = v_merge_hi_32(a0, a2);
-      auto const b2 = v_merge_lo_32(a4, a6);
-      auto const b3 = v_merge_hi_32(a4, a6);
-      auto const b4 = v_merge_lo_32(a1, a3);
-      auto const b5 = v_merge_hi_32(a1, a3);
-      auto const b6 = v_merge_lo_32(a5, a7);
-      auto const b7 = v_merge_hi_32(a5, a7);
+      auto const b0 = v256_merge_lo_32(a0, a2);
+      auto const b1 = v256_merge_hi_32(a0, a2);
+      auto const b2 = v256_merge_lo_32(a4, a6);
+      auto const b3 = v256_merge_hi_32(a4, a6);
+      auto const b4 = v256_merge_lo_32(a1, a3);
+      auto const b5 = v256_merge_hi_32(a1, a3);
+      auto const b6 = v256_merge_lo_32(a5, a7);
+      auto const b7 = v256_merge_hi_32(a5, a7);
 
       // profile vector of query symbol s, database position j
       auto const store = [&](std::size_t const s, __m256i const vector) -> void
       {
-        v_store(std::next(profile, static_cast<std::ptrdiff_t>((depth * s) + j)), vector);
+        v256_store(std::next(profile, static_cast<std::ptrdiff_t>((depth * s) + j)), vector);
       };
-      store(i + 0, v_merge_lo_64(b0, b2));
-      store(i + 1, v_merge_hi_64(b0, b2));
-      store(i + 2, v_merge_lo_64(b1, b3));
-      store(i + 3, v_merge_hi_64(b1, b3));
-      store(i + 4, v_merge_lo_64(b4, b6));
-      store(i + 5, v_merge_hi_64(b4, b6));
-      store(i + 6, v_merge_lo_64(b5, b7));
-      store(i + 7, v_merge_hi_64(b5, b7));
+      store(i + 0, v256_merge_lo_64(b0, b2));
+      store(i + 1, v256_merge_hi_64(b0, b2));
+      store(i + 2, v256_merge_lo_64(b1, b3));
+      store(i + 3, v256_merge_hi_64(b1, b3));
+      store(i + 4, v256_merge_lo_64(b4, b6));
+      store(i + 5, v256_merge_hi_64(b4, b6));
+      store(i + 6, v256_merge_lo_64(b5, b7));
+      store(i + 7, v256_merge_hi_64(b5, b7));
     }
   }
 }
@@ -136,7 +136,7 @@ struct LaneScores
 
   explicit LaneScores(__m256i const scores)
   {
-    v_store(reinterpret_cast<__m256i *>(lanes.data()), scores);
+    v256_store(reinterpret_cast<__m256i *>(lanes.data()), scores);
   }
 };
 
@@ -147,7 +147,7 @@ struct RestartLanes
 
   auto vector() const -> __m256i
   {
-    return v_load(reinterpret_cast<__m256i const *>(lanes.data()));
+    return v256_load(reinterpret_cast<__m256i const *>(lanes.data()));
   }
 };
 
@@ -251,7 +251,7 @@ auto search16_avx2(WORD * * q_start,
 
       dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
       align_cells<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, No_mask{});
-      save_best_positions(v_mask_gt_i16(S, SL));
+      save_best_positions(v256_mask_gt_i16(S, SL));
       SL = S;
       continue;
     }
@@ -320,9 +320,9 @@ auto search16_avx2(WORD * * q_start,
     dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
     align_cells<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16_avx2>{M});
 
-    SL = v_adds_i16(SL, M);
-    SL = v_adds_i16(SL, M);
-    save_best_positions(v_mask_gt_i16(S, SL));
+    SL = v256_adds_i16(SL, M);
+    SL = v256_adds_i16(SL, M);
+    save_best_positions(v256_mask_gt_i16(S, SL));
     SL = S;
   }
 }
@@ -410,7 +410,7 @@ auto search16s_avx2(WORD * * q_start,
     }
     for (long i = qlen - 1; i >= 0; i--)
     {
-      auto const m2 = mask & v_mask_eq_i16(hep[2 * i], S);
+      auto const m2 = mask & v256_mask_eq_i16(hep[2 * i], S);
       if (m2 == 0)
       {
         continue;
@@ -442,7 +442,7 @@ auto search16s_avx2(WORD * * q_start,
 
       dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
       align_cells_single<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, No_mask{});
-      save_best_positions(v_mask_gt_i16(S, SL));
+      save_best_positions(v256_mask_gt_i16(S, SL));
       SL = S;
       continue;
     }
@@ -513,9 +513,9 @@ auto search16s_avx2(WORD * * q_start,
     dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
     align_cells_single<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16_avx2>{M});
 
-    SL = v_adds_i16(SL, M);
-    SL = v_adds_i16(SL, M);
-    save_best_positions(v_mask_gt_i16(S, SL));
+    SL = v256_adds_i16(SL, M);
+    SL = v256_adds_i16(SL, M);
+    save_best_positions(v256_mask_gt_i16(S, SL));
     SL = S;
   }
 }
