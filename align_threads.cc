@@ -67,7 +67,7 @@ auto align_init(Parameters const & parameters, search_data & data) -> void
   std::generate(std::begin(data.dbta), std::end(data.dbta), db_thread_create);
 
   data.dprofile.resize(profile_bytes);
-  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes);
+  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes, data.qtable);
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 

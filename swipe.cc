@@ -63,7 +63,7 @@ FILE * out = stdout;  // default output: stdout (--out FILE)
 
 auto xmalloc(size_t size) -> void *
 {
-  size_t const alignment = vector_bytes;  // the SIMD buffers are Buffers
+  size_t const alignment = vector_bytes_avx2;  // the SIMD buffers are Buffers
   void * t = nullptr;
   if (posix_memalign(&t, alignment, size) != 0)
   {
@@ -92,11 +92,20 @@ auto detect_cpu_features() noexcept -> CpuFeatures
   unsigned int edx = 0;
   if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) == 0)
   {
-    return {false, false};
+    return {false, false, false};
   }
   bool const sse2 = (edx & bit_SSE2) != 0;
   bool const ssse3 = (ecx & bit_SSSE3) != 0;
-  return {sse2, ssse3};
+  // AVX2: the processor (cpuid leaf 7) and the operating system (the
+  // 256-bit registers saved on context switches, XCR0): GCC and clang
+  // check both (sketch: check that GCC 4.8's libgcc does the XCR0 part)
+  __builtin_cpu_init();
+#ifdef SWIPE_NO_AVX2
+  bool const avx2 = false;
+#else
+  bool const avx2 = __builtin_cpu_supports("avx2") != 0;
+#endif
+  return {sse2, ssse3, avx2};
 }
 
 auto clock_start(time_info & timing) -> void

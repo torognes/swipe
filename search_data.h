@@ -41,6 +41,9 @@
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
 // database residues x 16 bytes of lanes)
 constexpr std::size_t profile_bytes = std::size_t{32} * 64;
+// the profile of the AVX2 kernel: 32 symbols x 128 bytes (4 database
+// residues x 32 bytes of lanes)
+constexpr std::size_t profile_bytes_avx2 = std::size_t{32} * 128;
 
 struct search_data
 {
@@ -50,6 +53,7 @@ struct search_data
   Buffer<BYTE> dprofile;  // profile_bytes
   Buffer<BYTE> hearray;
   std::array<Buffer<BYTE *>, frame_count> qtable;  // empty: tables not allocated
+  std::array<Buffer<BYTE *>, frame_count> qtable_avx2;  // rows of profile_bytes_avx2
 
   Buffer<long> scores;
   Buffer<long> bestpos;
@@ -97,12 +101,13 @@ auto calc_chunks(View<long> volume_sequences,
 		 long * volume_chunks,
 		 Chunking chunking) -> long;
 
-// the query tables (data.qtable) and lengths (data.qlen) of the strands
-// or frames searched, for a profile with rows of row_bytes;
-// returns the longest query length
+// the query tables (qtables: data.qtable or data.qtable_avx2) and
+// lengths (data.qlen) of the strands or frames searched, for a profile
+// with rows of row_bytes; returns the longest query length
 auto query_tables_init(Parameters const & parameters,
 		       search_data & data,
-		       std::ptrdiff_t row_bytes) -> long;
+		       std::ptrdiff_t row_bytes,
+		       std::array<Buffer<BYTE *>, frame_count> & qtables) -> long;
 
 // search_threads.cc: the search of a query by parameters.threads threads
 auto prepare_search(long par) -> void;

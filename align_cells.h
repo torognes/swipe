@@ -39,6 +39,7 @@
 
 // 16 lanes of 7-bit scores: signed saturated arithmetic, unsigned maxima
 struct Ops_7 {
+  using Vector = __m128i;
   // the zero score is 0x80, and scores are at most 0xff: as signed
   // bytes, at most -1, so that one saturated addition of a -128 lane
   // resets the score to zero
@@ -50,6 +51,7 @@ struct Ops_7 {
 
 // 8 lanes of 16-bit scores: signed saturated arithmetic, signed maxima
 struct Ops_16 {
+  using Vector = __m128i;
   // the zero score is 0x8000 (-32768), and scores span the whole signed
   // range: two saturated additions of a -32768 lane reset any score to
   // zero
@@ -60,6 +62,18 @@ struct Ops_16 {
 };
 
 
+#ifdef __AVX2__
+// 32 lanes of 7-bit scores (AVX2): the operations of Ops_7
+struct Ops_7_avx2 {
+  using Vector = __m256i;
+  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
+  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v_adds_i8(lhs, rhs); }
+  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v_subs_i8(lhs, rhs); }
+  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v_max_u8(lhs, rhs); }
+};
+#endif
+
+
 // The masking of a kernel pass, selected by the type of its last
 // argument (as swarm's src/utils/mask_vectors.hpp): No_mask when every
 // channel continues its database sequence, Mask when some channels
@@ -68,18 +82,21 @@ struct Ops_16 {
 // returns its argument: the regular kernel contains no masking code.
 struct No_mask {};
 
+// (the vector type comes from Ops: a vector type such as __m128i
+// cannot be a template argument, its attributes would be dropped)
+template <typename Ops>
 struct Mask {
-  __m128i lanes;
+  typename Ops::Vector lanes;
 };
 
 template <typename Ops>
-inline auto apply_mask(__m128i const vector, No_mask const & /*masking*/) -> __m128i
+inline auto apply_mask(typename Ops::Vector const vector, No_mask const & /*masking*/) -> typename Ops::Vector
 {
   return vector;
 }
 
 template <typename Ops>
-inline auto apply_mask(__m128i const vector, Mask const & masking) -> __m128i
+inline auto apply_mask(typename Ops::Vector const vector, Mask<Ops> const & masking) -> typename Ops::Vector
 {
   return Ops::mask(vector, masking.lanes);
 }
@@ -92,14 +109,14 @@ inline auto apply_mask(__m128i const vector, Mask const & masking) -> __m128i
 // of this cell (the diagonal of the next column), F and E are the
 // vertical and horizontal gap scores, S is the running maximum
 template <typename Ops>
-inline auto onestep(__m128i const H,
-                    __m128i & N,
-                    __m128i & F,
-                    __m128i const V,
-                    __m128i & E,
-                    __m128i & S,
-                    __m128i const Q,
-                    __m128i const R) -> void
+inline auto onestep(typename Ops::Vector const H,
+                    typename Ops::Vector & N,
+                    typename Ops::Vector & F,
+                    typename Ops::Vector const V,
+                    typename Ops::Vector & E,
+                    typename Ops::Vector & S,
+                    typename Ops::Vector const Q,
+                    typename Ops::Vector const R) -> void
 {
   auto cell = Ops::add(H, V);
   cell = Ops::max(cell, F);
@@ -118,15 +135,16 @@ inline auto onestep(__m128i const H,
 // channel (the former donormal and domasked kernels of search7.cc and
 // search16.cc, selected by Masking)
 template <typename Ops, typename Masking>
-inline auto align_cells(__m128i & S,
-                        __m128i * hep,
-                        __m128i * const * qp,
-                        __m128i const Q,
-                        __m128i const R,
+inline auto align_cells(typename Ops::Vector & S,
+                        typename Ops::Vector * hep,
+                        typename Ops::Vector * const * qp,
+                        typename Ops::Vector const Q,
+                        typename Ops::Vector const R,
                         long ql,
-                        __m128i const Z,
+                        typename Ops::Vector const Z,
                         Masking const & masking) -> void
 {
+  using Vector = typename Ops::Vector;
   auto score = apply_mask<Ops>(S, masking);  // mask
   auto H0 = Z;
   auto H1 = H0;
@@ -136,13 +154,13 @@ inline auto align_cells(__m128i & S,
   auto F1 = H0;
   auto F2 = H0;
   auto F3 = H0;
-  __m128i N1;
-  __m128i N2;
-  __m128i N3;
+  Vector N1;
+  Vector N2;
+  Vector N3;
 
   for (long qi = 0; qi < ql; ++qi)
   {
-    __m128i const * const x = qp[qi];  // load x from qp[qi]
+    Vector const * const x = qp[qi];  // load x from qp[qi]
     auto const N0 = apply_mask<Ops>(hep[2 * qi], masking);  // load N0, mask
     auto E = apply_mask<Ops>(hep[(2 * qi) + 1], masking);  // load E, mask
 

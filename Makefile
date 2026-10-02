@@ -165,7 +165,7 @@ distclean : clean
 
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o blastkar_partial.o hits.o query.o \
-	search63.o search16.o search16s.o search7.o search7_ssse3.o
+	search63.o search16.o search16s.o search7.o search7_ssse3.o search7_avx2.o
 
 # Header dependencies are generated alongside each object (*.d
 # files), so that editing any header rebuilds the right objects.
@@ -189,3 +189,6 @@ swipe : swipe.o $(OBJS)
 
 search7_ssse3.o : search7.cc $(DEPS)
 	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
+
+search7_avx2.o : search7_avx2.cc $(DEPS)
+	$(CXX) -mavx2 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ search7_avx2.cc

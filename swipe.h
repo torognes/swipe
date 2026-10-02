@@ -182,6 +182,7 @@ struct CpuFeatures
 {
   bool sse2;
   bool ssse3;
+  bool avx2;
 };
 extern CpuFeatures const cpu_features;
 
@@ -368,6 +369,18 @@ auto search7_ssse3(BYTE * * q_start,
 		   long const * seqnos,
 		   long * scores,
 		   long qlen) -> void;
+
+auto search7_avx2(BYTE * * q_start,
+		  BYTE gap_open_penalty,
+		  BYTE gap_extend_penalty,
+		  BYTE const * score_matrix,
+		  BYTE * dprofile,
+		  BYTE * hearray,
+		  db_thread_s & dbt,
+		  long sequences,
+		  long const * seqnos,
+		  long * scores,
+		  long qlen) -> void;
 
 auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
@@ -564,17 +577,24 @@ constexpr long untranslated_frame = -1;
 // 16 bytes in the 7-bit kernel, 8 words in the 16-bit kernels; c, the
 // channel of db_getsequence(), is below max_channels
 constexpr std::size_t channels_7 = 16;
+constexpr std::size_t channels_7_avx2 = 32;
 constexpr std::size_t channels_16 = 8;
-constexpr std::size_t max_channels = channels_7;
+constexpr std::size_t max_channels = channels_7_avx2;
+static_assert(channels_7 <= max_channels, "a buffer per channel");
 static_assert(channels_16 <= max_channels, "a buffer per channel");
 
 // the SIMD vectors of the kernels (SSE, __m128i) are 16 bytes, and
 // the buffers they load from and store to are aligned on them
 constexpr std::size_t vector_bytes = 16;
 
+// the AVX2 vectors (__m256i) are 32 bytes: the buffers allocated by
+// xmalloc() are aligned on the widest vector
+constexpr std::size_t vector_bytes_avx2 = 32;
+
 // the H/E array of the kernels: per query position, H and E, one
 // vector each
 constexpr std::size_t hearray_row_bytes = 2 * vector_bytes;
+constexpr std::size_t hearray_row_bytes_avx2 = 2 * vector_bytes_avx2;
 
 // the score matrices of the search (matrices.cc): 32 x 32, aligned for
 // the SIMD kernels, in the four score widths of the search stages, and
