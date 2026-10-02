@@ -331,7 +331,7 @@ auto search16(WORD * * q_start,
 
       dprofile_fill16(dprofile, score_matrix, dseq);
       	  
-      align_cells<Ops_16>(S, hep, qp, Q, R, qlen, Z, Mask{M});
+      align_cells<Ops_16>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16>{M});
 
       /* save column address if new highscore */
       
