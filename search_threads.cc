@@ -515,7 +515,7 @@ auto query_tables_init(Parameters const & parameters,
 	long const qlen = query.nt[strand_index(s)].len;
 	data.qlen[frame_index(s, 0)] = qlen;
 	fill_table(data.qtable[frame_index(s, 0)], query.nt[strand_index(s)].view());
-	hearraylen = qlen > hearraylen ? qlen : hearraylen;
+	hearraylen = std::max(hearraylen, qlen);
       }
     }
   }
@@ -524,7 +524,7 @@ auto query_tables_init(Parameters const & parameters,
     long const qlen = query.aa[0].len;
     data.qlen[0] = qlen;
     fill_table(data.qtable[0], query.aa[0].view());
-    hearraylen = qlen > hearraylen ? qlen : hearraylen;
+    hearraylen = std::max(hearraylen, qlen);
   }
   else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
   {
@@ -537,7 +537,7 @@ auto query_tables_init(Parameters const & parameters,
 	  long const qlen = query.aa[frame_index(s, f)].len;
 	  data.qlen[frame_index(s, f)] = qlen;
 	  fill_table(data.qtable[frame_index(s, f)], query.aa[frame_index(s, f)].view());
-	  hearraylen = qlen > hearraylen ? qlen : hearraylen;
+	  hearraylen = std::max(hearraylen, qlen);
 	}
       }
     }

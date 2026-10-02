@@ -26,7 +26,7 @@
 #include "swipe.h"
 #include "decimal_digits.h"  // decimal::Buffer, decimal::to_decimal
 #include "print_view.h"  // as_c_string, fprint, fprint_integer, fprint_spaces
-#include <algorithm>  // std::find_if, std::min, std::move_backward, std::sort
+#include <algorithm>  // std::find_if, std::min, std::move_backward, std::sort, std::transform
 #include <array>
 #include <cassert>
 #include <cctype>  // std::isspace
@@ -36,7 +36,7 @@
 #include <cstdlib>  // std::strtol
 #include <cstring>  // std::strncmp
 #include <initializer_list>
-#include <iterator>  // std::distance, std::next
+#include <iterator>  // std::back_inserter, std::distance, std::next
 #include <limits>
 #include <mutex>  // std::mutex, std::lock_guard
 #include <numeric>  // std::iota
@@ -1032,6 +1032,18 @@ auto whole_align(AlignedHit const & hit) -> WholeAlignment
   
   long q_pos = hit.q_align_start;
   long d_pos = hit.d_align_start;
+
+  // the symbols of len residues of a sequence from pos, appended to a line
+  auto const append_symbols = [&hit](std::string & line, char const * const sequence,
+                                     long const pos, long const len) -> void
+  {
+    auto const residues = View<char>{std::next(sequence, pos), static_cast<std::size_t>(len)};
+    std::transform(residues.begin(), residues.end(), std::back_inserter(line),
+                   [&hit](char const residue) -> char
+                   {
+                     return hit.sym[static_cast<int>(residue)];
+                   });
+  };
   
   p = hit.alignment;
 
@@ -1044,25 +1056,19 @@ auto whole_align(AlignedHit const & hit) -> WholeAlignment
     counts.aligned += len;
     if (op == 'D')
     {
-      for(long j=0; j<len; j++)
-      {
-	char const qs = hit.q_seq[q_pos++];
-	qline += hit.sym[static_cast<int>(qs)];
-	aline += ' ';
-	dline += '-';
-      }
+      append_symbols(qline, hit.q_seq, q_pos, len);
+      aline.append(static_cast<std::size_t>(len), ' ');
+      dline.append(static_cast<std::size_t>(len), '-');
+      q_pos += len;
       counts.gaps += 1;
       counts.indels += len;
     }
     else if (op == 'I')
     {
-      for(long j=0; j<len; j++)
-      {
-	char const ds = hit.d_seq[d_pos++];
-	qline += '-';
-	aline += ' ';
-	dline += hit.sym[static_cast<int>(ds)];
-      }
+      qline.append(static_cast<std::size_t>(len), '-');
+      aline.append(static_cast<std::size_t>(len), ' ');
+      append_symbols(dline, hit.d_seq, d_pos, len);
+      d_pos += len;
       counts.gaps += 1;
       counts.indels += len;
     }
