@@ -27,7 +27,6 @@
 #include "fatal_allocator.h"  // Buffer
 #include "view.h"  // View
 #include <algorithm>  // std::fill_n, std::max
-#include <array>
 #include <cassert>
 #include <initializer_list>  // std::max({...})
 #include <cstddef>  // std::size_t
@@ -61,18 +60,18 @@ struct AlignmentInput
 {
   View<char> a_seq;
   View<char> b_seq;
-  ScoreMatrix63 const & scorematrix;
+  View<long> scorematrix;
   GapPenalties gaps;
-
-  // the score of query position a against database position b
-  auto score(long const a, long const b) const -> long
-  {
-    assert((a >= 0) and (b >= 0));
-    auto const query_symbol = static_cast<unsigned char>(a_seq[static_cast<std::size_t>(a)]);
-    auto const database_symbol = static_cast<unsigned char>(b_seq[static_cast<std::size_t>(b)]);
-    return scorematrix[score_matrix_cell(database_symbol, query_symbol)];
-  }
 };
+
+// the score of query position a against database position b
+auto substitution_score(AlignmentInput const & input, long const a, long const b) -> long
+{
+  assert((a >= 0) and (b >= 0));
+  auto const query_symbol = static_cast<unsigned char>(input.a_seq[static_cast<std::size_t>(a)]);
+  auto const database_symbol = static_cast<unsigned char>(input.b_seq[static_cast<std::size_t>(b)]);
+  return input.scorematrix[score_matrix_cell(database_symbol, query_symbol)];
+}
 
 // a work array of the alignment (HH, EE, XX, YY): one score per
 // position of the database sequence, indexed as the positions are
@@ -140,7 +139,7 @@ auto region_begin(AlignmentInput const & input,
 	  f = std::max(f, h - q) - r;
 	  EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	  h = p + input.score(i, j);
+	  h = p + substitution_score(input, i, j);
 
 	  h = std::max({h, f, EE[j]});
 
@@ -203,7 +202,7 @@ auto region(AlignmentInput const & input,
 	f = std::max(f, h - q) - r;
 	EE[j] = std::max(EE[j], HH[j] - q) - r;
 	
-	h = p + input.score(i, j);
+	h = p + substitution_score(input, i, j);
 	
 	h = std::max({h, 0L, f, EE[j]});
 	
@@ -362,7 +361,7 @@ auto diff(aligner_info & info,
 	  // -A--
 	  // BBBB
 
-	  long Score = input.score(a_pos, b_pos + j) - (r * (N-1));
+	  long Score = substitution_score(input, a_pos, b_pos + j) - (r * (N-1));
 
 	  if (j > 0)
 	  {
@@ -438,7 +437,7 @@ auto diff(aligner_info & info,
 	      f = std::max(f, h - q) - r;
 	      EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	      h = p + input.score(a_pos + i - 1, b_pos + j - 1);
+	      h = p + substitution_score(input, a_pos + i - 1, b_pos + j - 1);
 
 	      h = std::max({h, f, EE[j]});
 	      p = HH[j];
@@ -476,7 +475,7 @@ auto diff(aligner_info & info,
 	      f = std::max(f, h - q) - r;
 	      YY[j] = std::max(YY[j], XX[j] - q) - r;
 
-	      h = p + input.score(a_pos + M - i, b_pos + N - j);
+	      h = p + substitution_score(input, a_pos + M - i, b_pos + N - j);
 
 	      h = std::max({h, f, YY[j]});
 	      p = XX[j];
@@ -545,7 +544,7 @@ auto align(View<char> const query_sequence,
 	   std::string & alignment) -> AlignmentRegion
 {
   aligner_info ai {Operation::none, 0, std::string()};
-  AlignmentInput const input {query_sequence, database_sequence, scorematrix, gaps};
+  AlignmentInput const input {query_sequence, database_sequence, make_view(scorematrix), gaps};
 
   auto const result = region(input, hint);
 

@@ -31,6 +31,7 @@
 #include "swipe.h"
 #include "intrinsics_to_functions.h"  // v256_load, v256_store, v_merge_*, ...
 #include "align_cells.h"  // Ops_16_avx2, align_cells(), align_cells_single()
+#include "view.h"  // View
 #include <algorithm>  // std::fill_n
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -49,7 +50,10 @@ static_assert(CHANNELS * sizeof(WORD) == sizeof(__m256i), "one word lane per cha
 
 // the word 0x8000 (-32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
-constexpr WORD lane_restart = 0x8000;
+// the zero score of a 16-bit lane (the scores are stored with a bias
+// of 0x8000), which is also the lane value that resets a score to zero
+// (Ops_16_avx2::mask(), align_cells.h)
+constexpr WORD zero_score = 0x8000;
 
 // The score profile of a block of depth x CHANNELS database residues:
 // for each of the 32 query symbols, depth vectors (one per database
@@ -71,7 +75,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 
   for (std::size_t j = 0; j < depth; j++)
   {
-    std::array<std::ptrdiff_t, CHANNELS> d;
+    std::array<std::ptrdiff_t, CHANNELS> d {{}};
     for (std::size_t c = 0; c < CHANNELS; c++)
     {
       d[c] = static_cast<std::ptrdiff_t>(dseq[(j * CHANNELS) + c] * row_words);
@@ -175,17 +179,17 @@ auto search16_avx2(WORD * * q_start,
 {
   constexpr std::size_t CDEPTH = 4;
   auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto ** const qp = reinterpret_cast<__m256i**>(q_start);
-  std::array<BYTE const *, CHANNELS> d_begin;
-  std::array<BYTE const *, CHANNELS> d_pos;
-  std::array<BYTE const *, CHANNELS> d_best;
-  std::array<BYTE const *, CHANNELS> d_end;
+  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  std::array<BYTE const *, CHANNELS> d_begin {{}};
+  std::array<BYTE const *, CHANNELS> d_pos {{}};
+  std::array<BYTE const *, CHANNELS> d_best {{}};
+  std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, aligned for the loads
   alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
-  std::array<long, CHANNELS> seq_id;
+  std::array<long, CHANNELS> seq_id {{}};
   long next_id = 0;
   long done = 0;
 
@@ -272,12 +276,12 @@ auto search16_avx2(WORD * * q_start,
         continue;
       }
 
-      restart.lanes[c] = lane_restart;
+      restart.lanes[c] = zero_score;
 
       long const cand_id = seq_id[c];
       if (cand_id >= 0)
       {
-        long const score = lane_scores.lanes[c] ^ 0x8000;
+        long const score = lane_scores.lanes[c] ^ zero_score;
         scores[cand_id] = score;
         bestpos[cand_id] = d_best[c] - d_begin[c];
         done++;
@@ -344,18 +348,18 @@ auto search16s_avx2(WORD * * q_start,
 {
   constexpr std::size_t CDEPTH = 1;
   auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto ** const qp = reinterpret_cast<__m256i**>(q_start);
-  std::array<BYTE const *, CHANNELS> d_begin;
-  std::array<BYTE const *, CHANNELS> d_pos;
-  std::array<BYTE const *, CHANNELS> d_end;
-  std::array<BYTE const *, CHANNELS> d_best;
-  std::array<long, CHANNELS> q_best;
+  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  std::array<BYTE const *, CHANNELS> d_begin {{}};
+  std::array<BYTE const *, CHANNELS> d_pos {{}};
+  std::array<BYTE const *, CHANNELS> d_end {{}};
+  std::array<BYTE const *, CHANNELS> d_best {{}};
+  std::array<long, CHANNELS> q_best {{}};
 
   // the database residues of the channels, aligned for the loads
   alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
-  std::array<long, CHANNELS> seq_id;
+  std::array<long, CHANNELS> seq_id {{}};
   long next_id = 0;
   long done = 0;
 
@@ -463,12 +467,12 @@ auto search16s_avx2(WORD * * q_start,
         continue;
       }
 
-      restart.lanes[c] = lane_restart;
+      restart.lanes[c] = zero_score;
 
       long const cand_id = seq_id[c];
       if (cand_id >= 0)
       {
-        long const score = lane_scores.lanes[c] ^ 0x8000;
+        long const score = lane_scores.lanes[c] ^ zero_score;
         scores[cand_id] = score;
         bestpos[cand_id] = d_best[c] - d_begin[c];
         bestq[cand_id] = q_best[c];

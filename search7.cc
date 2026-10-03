@@ -40,6 +40,11 @@ constexpr std::size_t CDEPTH = 4;
 // fit in a signed char, -128 has the same bits)
 constexpr char byte_0x80 = static_cast<char>(-128);
 
+// the zero score of a 7-bit lane (the scores are stored with a bias of
+// 0x80), which is also the lane value that resets a score to zero
+// (Ops_7::mask(), align_cells.h)
+constexpr BYTE zero_score = 0x80;
+
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
 
@@ -131,6 +136,11 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 // offsets: a row is 32 bytes)
 using ChannelRows = std::array<std::ptrdiff_t, CHANNELS>;
 
+// the score matrix rows are transposed by groups of 8 columns (8 bytes
+// per channel); a row is two vectors of 16 columns
+constexpr std::ptrdiff_t group_columns = 8;
+constexpr auto vector_columns = static_cast<std::ptrdiff_t>(sizeof(__m128i));
+
 // The 8 columns (query symbols) from 'column' of the score matrix rows
 // of the 16 channels (8 x 16 bytes), transposed into the 8 profile
 // vectors of these query symbols, database position j: four rounds of
@@ -150,7 +160,7 @@ inline auto dprofile_fill7_columns(__m128i * const profile,
   // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
   auto const odd_row = [&](std::size_t const c) -> __m128i
   {
-    return (column % 16 == 0) ? v_load(row(c)) : v_load_64(row(c));
+    return (column % vector_columns == 0) ? v_load(row(c)) : v_load_64(row(c));
   };
   auto const pair = [&](std::size_t const c) -> __m128i
   {
@@ -203,7 +213,7 @@ inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE const * score_matrix,
 			   BYTE const * dseq) -> void
 {
-  static_assert(score_matrix_width == 32, "four groups of 8 columns");
+  static_assert(score_matrix_width == 4 * group_columns, "four groups of 8 columns");
   auto * const profile = reinterpret_cast<__m128i *>(dprofile);
   
   // 4 x 16 db symbols
@@ -218,9 +228,9 @@ inline auto dprofile_fill7(BYTE * dprofile,
     }
 
     dprofile_fill7_columns<0>(profile, score_matrix, rows, j);
-    dprofile_fill7_columns<8>(profile, score_matrix, rows, j);
-    dprofile_fill7_columns<16>(profile, score_matrix, rows, j);
-    dprofile_fill7_columns<24>(profile, score_matrix, rows, j);
+    dprofile_fill7_columns<group_columns>(profile, score_matrix, rows, j);
+    dprofile_fill7_columns<2 * group_columns>(profile, score_matrix, rows, j);
+    dprofile_fill7_columns<3 * group_columns>(profile, score_matrix, rows, j);
   }
 
 }
@@ -248,7 +258,7 @@ search7
 	long qlen)
 {
   auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  auto * const * const qp = reinterpret_cast<__m128i**>(q_start);
+  auto const * const * const qp = reinterpret_cast<__m128i const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
   
@@ -264,7 +274,7 @@ search7
   long next_id = 0;
   long done = 0;
   
-  std::memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
+  std::memset(hearray, zero_score, static_cast<std::size_t>(qlen) * hearray_row_bytes);
 
   auto const Z = v_dup_i8(byte_0x80);
   GapVectors<Ops_7> const gaps {v_dup_i8(static_cast<char>(gap_open_penalty)),
@@ -344,14 +354,14 @@ search7
       // sequence in channel c ended
       // change of sequence
 
-      restart[c] = 0x80;
+      restart[c] = zero_score;
 
       long const cand_id = seq_id[c];
 		  
       if (cand_id >= 0)
       {
         // save score
-        scores[cand_id] = lane_scores[c] - 0x80;
+        scores[cand_id] = lane_scores[c] - zero_score;
         done++;
       }
 

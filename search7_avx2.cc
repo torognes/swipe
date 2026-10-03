@@ -31,6 +31,7 @@
 #include "swipe.h"
 #include "intrinsics_to_functions.h"  // v256_load, v256_store, v256_shuffle_8, ...
 #include "align_cells.h"  // Ops_7_avx2, align_cells(), No_mask, Mask
+#include "view.h"  // View
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <cstring>  // std::memset
@@ -50,6 +51,11 @@ static_assert(CHANNELS == sizeof(__m256i), "one byte lane per channel");
 
 // the byte 0x80 (-128 has the same bits)
 constexpr char byte_0x80 = static_cast<char>(-128);
+
+// the zero score of a 7-bit lane (the scores are stored with a bias of
+// 0x80), which is also the lane value that resets a score to zero
+// (Ops_7::mask(), align_cells.h)
+constexpr BYTE zero_score = 0x80;
 
 // the shuffle indices of the database symbols of one position:
 // symbols 0 to 15 select the low table (bit 7 set for 16 to 31: zero),
@@ -132,9 +138,9 @@ auto search7_avx2(BYTE * * q_start,
                   long qlen) -> void
 {
   auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto ** const qp = reinterpret_cast<__m256i**>(q_start);
-  std::array<BYTE const *, CHANNELS> d_begin;
-  std::array<BYTE const *, CHANNELS> d_end;
+  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  std::array<BYTE const *, CHANNELS> d_begin {{}};
+  std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, aligned for the loads
   alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
@@ -144,11 +150,11 @@ auto search7_avx2(BYTE * * q_start,
   alignas(__m256i) std::array<BYTE, CHANNELS> lane_scores {{}};
   BYTE const zero = 0;
 
-  std::array<long, CHANNELS> seq_id;
+  std::array<long, CHANNELS> seq_id {{}};
   long next_id = 0;
   long done = 0;
 
-  std::memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes_avx2);
+  std::memset(hearray, zero_score, static_cast<std::size_t>(qlen) * hearray_row_bytes_avx2);
 
   auto const Z = v256_dup_i8(byte_0x80);
   auto const Q = v256_dup_i8(static_cast<char>(gap_open_penalty));
@@ -221,13 +227,13 @@ auto search7_avx2(BYTE * * q_start,
       }
 
       // sequence in channel c ended: change of sequence
-      restart[c] = 0x80;
+      restart[c] = zero_score;
 
       long const cand_id = seq_id[c];
       if (cand_id >= 0)
       {
         // save score
-        scores[cand_id] = lane_scores[c] - 0x80;
+        scores[cand_id] = lane_scores[c] - zero_score;
         done++;
       }
 

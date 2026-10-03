@@ -39,7 +39,10 @@ constexpr std::size_t CDEPTH = 1;
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
-constexpr WORD lane_restart = 0x8000;
+// the zero score of a 16-bit lane (the scores are stored with a bias
+// of 0x8000), which is also the lane value that resets a score to zero
+// (Ops_16::mask(), align_cells.h)
+constexpr WORD zero_score = 0x8000;
 
 auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
@@ -56,7 +59,7 @@ auto search16s(WORD * * q_start,
 	       int qlen) -> void
 {
   auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  auto * const * const qp = reinterpret_cast<__m128i**>(q_start);
+  auto const * const * const qp = reinterpret_cast<__m128i const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_pos {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
@@ -176,12 +179,12 @@ auto search16s(WORD * * q_start,
         continue;
       }
 
-      restart.lanes[c] = lane_restart;
+      restart.lanes[c] = zero_score;
 
       long const cand_id = seq_id[c];
       if (cand_id >= 0)
       {
-        long const score = lane_scores.lanes[c] ^ 0x8000;
+        long const score = lane_scores.lanes[c] ^ zero_score;
         scores[cand_id] = score;
         bestpos[cand_id] = d_best[c] - d_begin[c];
         bestq[cand_id] = q_best[c];
