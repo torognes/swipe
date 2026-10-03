@@ -27,7 +27,9 @@
 #include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include <array>
+#include "view.h"  // View
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <cstring>  // std::memset
 #include <iterator>  // std::next
 
 constexpr std::size_t CHANNELS = channels_7;
@@ -494,188 +496,156 @@ search7
 	long * scores,
 	long qlen)
 {
-  __m128i S;
-  __m128i Q;
-  __m128i R;
-  __m128i T;
-  __m128i M;
-  __m128i Z;
-  __m128i T0;
   auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
-  std::array<BYTE const *, CHANNELS> d_begin;
-  std::array<BYTE const *, CHANNELS> d_end;
+  auto * const * const qp = reinterpret_cast<__m128i**>(q_start);
+  std::array<BYTE const *, CHANNELS> d_begin {{}};
+  std::array<BYTE const *, CHANNELS> d_end {{}};
   
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
-  
-  auto * dseq = dseqalloc.data();
+  alignas(__m128i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  // the lanes of the channels that start a new sequence (0x80), and
+  // the scores, read lane by lane
+  alignas(__m128i) std::array<BYTE, CHANNELS> restart {{}};
+  alignas(__m128i) std::array<BYTE, CHANNELS> lane_scores {{}};
   BYTE const zero = 0;
 
-  std::array<long, CHANNELS> seq_id;
+  std::array<long, CHANNELS> seq_id {{}};
   long next_id = 0;
-  unsigned done = 0;
+  long done = 0;
   
-  memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
+  std::memset(hearray, 0x80, static_cast<std::size_t>(qlen) * hearray_row_bytes);
 
-  Z  = v_dup_i8(byte_0x80);
-  T0 = v_first_lane_i8(byte_0x80);
-  Q  = v_dup_i8(static_cast<char>(gap_open_penalty));
-  R  = v_dup_i8(static_cast<char>(gap_extend_penalty));
+  auto const Z = v_dup_i8(byte_0x80);
+  GapVectors<Ops_7> const gaps {v_dup_i8(static_cast<char>(gap_open_penalty)),
+                                v_dup_i8(static_cast<char>(gap_extend_penalty))};
 
-  S = Z;
+  auto S = Z;
 
-  for (std::size_t c = 0; c < CHANNELS; c++)
+  d_begin.fill(&zero);
+  d_end.fill(&zero);
+  seq_id.fill(-1);
+
+  // the next CDEPTH residues of channel c (zeros after its end);
+  // false when the channel reached the end of its sequence
+  auto const fill_channel = [&](std::size_t const c) -> bool
   {
-    d_begin[c] = &zero;
-    d_end[c] = d_begin[c];
-    seq_id[c] = -1;
-  }
+    for (std::size_t j = 0; j < CDEPTH; j++)
+    {
+      if (d_begin[c] < d_end[c])
+      {
+        dseq[(CHANNELS * j) + c] = *d_begin[c];
+        d_begin[c] = std::next(d_begin[c]);
+      }
+      else
+      {
+        dseq[(CHANNELS * j) + c] = 0;
+      }
+    }
+    return d_begin[c] != d_end[c];
+  };
 
-  int easy = 0;
+  bool easy = false;
 
   while(true)
   {
-    if (easy != 0)
+    if (easy)
     {
       // fill all channels
 
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
-	for (std::size_t j = 0; j < CDEPTH; j++)
-	{
-	  if (d_begin[c] < d_end[c])
-	  {
-	    dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
-	  }
-	  else
-	  {
-	    dseq[(CHANNELS * j) + c] = 0;
-	  }
-	}
-	if (d_begin[c] == d_end[c])
-	{
-	  easy = 0;
-	}
+        if (not fill_channel(c))
+        {
+          easy = false;
+        }
       }
 
 #ifdef SWIPE_SSSE3
-      dprofile_shuffle7(dprofile, score_matrix, dseq);
+      dprofile_shuffle7(dprofile, score_matrix, dseq.data());
 #else
-      dprofile_fill7(dprofile, score_matrix, dseq);
+      dprofile_fill7(dprofile, score_matrix, dseq.data());
 #endif
 
-      align_cells<Ops_7>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
+      align_cells<Ops_7>(S, hep, qp, gaps, qlen, Z, No_mask{});
+      continue;
     }
-    else
+
+    // One or more sequences ended in the previous block 
+    // We have to switch over to a new sequence
+
+    easy = true;
+    restart.fill(0);
+    v_store(reinterpret_cast<__m128i *>(lane_scores.data()), S);
+
+    for (std::size_t c = 0; c < CHANNELS; c++)
     {
-      // One or more sequences ended in the previous block 
-      // We have to switch over to a new sequence
-
-      easy = 1;
-
-      M = v_zero();
-      T = T0;
-      for (std::size_t c = 0; c < CHANNELS; c++)
+      if (d_begin[c] < d_end[c])
       {
-	if (d_begin[c] < d_end[c])
-	{
-	  // this channel has more sequence
+        // this channel has more sequence
 
-	  for (std::size_t j = 0; j < CDEPTH; j++)
-	  {
-	    if (d_begin[c] < d_end[c])
-	    {
-	      dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
-	    }
-	    else
-	    {
-	      dseq[(CHANNELS * j) + c] = 0;
-	    }
-	  }
-	  if (d_begin[c] == d_end[c])
-	  {
-	    easy = 0;
-	  }
-	}
-	else
-	{
-	  // sequence in channel c ended
-	  // change of sequence
+        if (not fill_channel(c))
+        {
+          easy = false;
+        }
+        continue;
+      }
 
-	  M = v_xor(M, T);
+      // sequence in channel c ended
+      // change of sequence
 
-	  long const cand_id = seq_id[c];
+      restart[c] = 0x80;
+
+      long const cand_id = seq_id[c];
 		  
-	  if (cand_id >= 0)
-	  {
-	    // save score
-	    long const score = (reinterpret_cast<BYTE*>(&S))[c] - 0x80;
-	    scores[cand_id] = score;
-	    done++;
-	  }
-
-	  if (next_id < sequences)
-	  {
-	    // get next sequence
-	    seq_id[c] = next_id;
-	    long const seqnosf = seqnos[next_id];
-
-	    View<char> const sequence =
-	      db_getsequence(dbt, entry_seqno(seqnosf), entry_where(seqnosf), c);
-		      
-	    // printf("Seqno: %ld Address: %p\n", seqno, address);
-	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
-	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
-	    next_id++;
-		      
-	    // fill channel
-	    for (std::size_t j = 0; j < CDEPTH; j++)
-	    {
-	      if (d_begin[c] < d_end[c])
-	      {
-		dseq[(CHANNELS*j)+c] = *(d_begin[c]++);
-	      }
-	      else
-	      {
-		dseq[(CHANNELS * j) + c] = 0;
-	      }
-	    }
-	    if (d_begin[c] == d_end[c])
-	    {
-	      easy = 0;
-	    }
-	  }
-	  else
-	  {
-	    // no more sequences, empty channel
-	    seq_id[c] = -1;
-	    d_begin[c] = &zero;
-	    d_end[c] = d_begin[c];
-	    for (std::size_t j = 0; j < CDEPTH; j++)
-	    {
-	      dseq[(CHANNELS * j) + c] = 0;
-	    }
-	  }
-
-
-	}
-
-	T = v_shift_bytes_left<1>(T);
-      }
-
-      if (done == sequences)
+      if (cand_id >= 0)
       {
-	break;
+        // save score
+        scores[cand_id] = lane_scores[c] - 0x80;
+        done++;
       }
+
+      if (next_id < sequences)
+      {
+        // get next sequence
+        seq_id[c] = next_id;
+        long const seqnosf = seqnos[next_id];
+
+        View<char> const sequence =
+          db_getsequence(dbt, entry_seqno(seqnosf), entry_where(seqnosf), c);
+		      
+        // printf("Seqno: %ld Address: %p\n", seqno, address);
+        d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
+        d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
+        next_id++;
+		      
+        // fill channel
+        if (not fill_channel(c))
+        {
+          easy = false;
+        }
+      }
+      else
+      {
+        // no more sequences, empty channel
+        seq_id[c] = -1;
+        d_begin[c] = &zero;
+        d_end[c] = d_begin[c];
+        static_cast<void>(fill_channel(c));
+      }
+    }
+
+    if (done == sequences)
+    {
+      break;
+    }
 
 #ifdef SWIPE_SSSE3
-      dprofile_shuffle7(dprofile, score_matrix, dseq);
+    dprofile_shuffle7(dprofile, score_matrix, dseq.data());
 #else
-      dprofile_fill7(dprofile, score_matrix, dseq);
+    dprofile_fill7(dprofile, score_matrix, dseq.data());
 #endif
-	  
-      align_cells<Ops_7>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_7>{M});
-    }
+
+    auto const M = v_load(reinterpret_cast<__m128i const *>(restart.data()));
+    align_cells<Ops_7>(S, hep, qp, gaps, qlen, Z, Mask<Ops_7>{M});
   }
 }
