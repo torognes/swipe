@@ -250,7 +250,7 @@ auto search16_avx2(WORD * * q_start,
       }
 
       dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
-      align_cells<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells<Ops_16_avx2>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
       save_best_positions(v256_mask_gt_i16(S, SL));
       SL = S;
       continue;
@@ -318,7 +318,7 @@ auto search16_avx2(WORD * * q_start,
 
     auto const M = restart.vector();
     dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
-    align_cells<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16_avx2>{M});
+    align_cells<Ops_16_avx2>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_16_avx2>{M});
 
     SL = v256_adds_i16(SL, M);
     SL = v256_adds_i16(SL, M);
@@ -441,7 +441,7 @@ auto search16s_avx2(WORD * * q_start,
       }
 
       dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
-      align_cells_single<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells_single<Ops_16_avx2>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
       save_best_positions(v256_mask_gt_i16(S, SL));
       SL = S;
       continue;
@@ -511,7 +511,7 @@ auto search16s_avx2(WORD * * q_start,
 
     auto const M = restart.vector();
     dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
-    align_cells_single<Ops_16_avx2>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16_avx2>{M});
+    align_cells_single<Ops_16_avx2>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_16_avx2>{M});
 
     SL = v256_adds_i16(SL, M);
     SL = v256_adds_i16(SL, M);

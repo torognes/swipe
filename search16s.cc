@@ -222,7 +222,7 @@ auto search16s(WORD * * q_start,
 	
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
-      align_cells_single<Ops_16>(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells_single<Ops_16>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
       
       /* save column address if new highscore */
 
@@ -355,7 +355,7 @@ auto search16s(WORD * * q_start,
 
       dprofile_fill16s(dprofile, score_matrix, dseq);
       	  
-      align_cells_single<Ops_16>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_16>{M});
+      align_cells_single<Ops_16>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_16>{M});
 
       /* save column address if new highscore */
 

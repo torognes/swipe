@@ -35,6 +35,7 @@
 
 #include "intrinsics_to_functions.h"
 #include <emmintrin.h>  // __m128i
+#include <iterator>  // std::next
 
 
 // 16 lanes of 7-bit scores: signed saturated arithmetic, unsigned maxima
@@ -113,28 +114,38 @@ inline auto apply_mask(typename Ops::Vector const vector, Mask<Ops> const & mask
 
 // C++26 refactoring: std::simd, with std::add_sat and std::sub_sat
 
+// The gap penalties of a kernel, in every lane: gap open (with the
+// first extension) and gap extension
+template <typename Ops>
+struct GapVectors {
+  typename Ops::Vector open;
+  typename Ops::Vector extend;
+};
+
 // One cell of a block (the ONESTEP macro of the former inline
 // assembly): H is the score of the diagonal cell, N receives the score
 // of this cell (the diagonal of the next column), F and E are the
 // vertical and horizontal gap scores, S is the running maximum
+// [V holds the substitution scores; the value and reference
+// parameters alternate, so that no two adjacent ones can be swapped
+// by mistake]
 template <typename Ops>
-inline auto onestep(typename Ops::Vector const H,
+inline auto onestep(typename Ops::Vector & S,
+                    typename Ops::Vector const H,
                     typename Ops::Vector & N,
-                    typename Ops::Vector & F,
                     typename Ops::Vector const V,
-                    typename Ops::Vector & E,
-                    typename Ops::Vector & S,
-                    typename Ops::Vector const Q,
-                    typename Ops::Vector const R) -> void
+                    typename Ops::Vector & F,
+                    GapVectors<Ops> const gaps,
+                    typename Ops::Vector & E) -> void
 {
   auto cell = Ops::add(H, V);
   cell = Ops::max(cell, F);
   cell = Ops::max(cell, E);
   S = Ops::max(cell, S);
-  F = Ops::sub(F, R);
-  E = Ops::sub(E, R);
+  F = Ops::sub(F, gaps.extend);
+  E = Ops::sub(E, gaps.extend);
   N = cell;
-  cell = Ops::sub(cell, Q);
+  cell = Ops::sub(cell, gaps.open);
   E = Ops::max(cell, E);
   F = Ops::max(cell, F);
 }
@@ -145,11 +156,10 @@ inline auto onestep(typename Ops::Vector const H,
 // search16.cc, selected by Masking)
 template <typename Ops, typename Masking>
 inline auto align_cells(typename Ops::Vector & S,
-                        typename Ops::Vector * hep,
-                        typename Ops::Vector * const * qp,
-                        typename Ops::Vector const Q,
-                        typename Ops::Vector const R,
-                        long ql,
+                        typename Ops::Vector * const hep,
+                        typename Ops::Vector * const * const qp,
+                        GapVectors<Ops> const gaps,
+                        long const ql,
                         typename Ops::Vector const Z,
                         Masking const & masking) -> void
 {
@@ -169,16 +179,18 @@ inline auto align_cells(typename Ops::Vector & S,
 
   for (long qi = 0; qi < ql; ++qi)
   {
-    Vector const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = apply_mask<Ops>(hep[2 * qi], masking);  // load N0, mask
-    auto E = apply_mask<Ops>(hep[(2 * qi) + 1], masking);  // load E, mask
+    Vector const * const x = *std::next(qp, qi);  // load x from qp[qi]
+    auto * const h_cell = std::next(hep, 2 * qi);
+    auto * const e_cell = std::next(h_cell);
+    auto const N0 = apply_mask<Ops>(*h_cell, masking);  // load N0, mask
+    auto E = apply_mask<Ops>(*e_cell, masking);  // load E, mask
 
-    onestep<Ops>(H0, N1, F0, x[0], E, score, Q, R);
-    onestep<Ops>(H1, N2, F1, x[1], E, score, Q, R);
-    onestep<Ops>(H2, N3, F2, x[2], E, score, Q, R);
-    onestep<Ops>(H3, hep[2 * qi], F3, x[3], E, score, Q, R);
+    onestep<Ops>(score, H0, N1, *x, F0, gaps, E);
+    onestep<Ops>(score, H1, N2, *std::next(x, 1), F1, gaps, E);
+    onestep<Ops>(score, H2, N3, *std::next(x, 2), F2, gaps, E);
+    onestep<Ops>(score, H3, *h_cell, *std::next(x, 3), F3, gaps, E);
 
-    hep[(2 * qi) + 1] = E;  // save E
+    *e_cell = E;  // save E
     H0 = N0;
     H1 = N1;
     H2 = N2;
@@ -195,11 +207,10 @@ inline auto align_cells(typename Ops::Vector & S,
 // database residue per channel, for search16s() and its AVX2 version]
 template <typename Ops, typename Masking>
 inline auto align_cells_single(typename Ops::Vector & S,
-                               typename Ops::Vector * hep,
-                               typename Ops::Vector * const * qp,
-                               typename Ops::Vector const Q,
-                               typename Ops::Vector const R,
-                               long ql,
+                               typename Ops::Vector * const hep,
+                               typename Ops::Vector * const * const qp,
+                               GapVectors<Ops> const gaps,
+                               long const ql,
                                typename Ops::Vector const Z,
                                Masking const & masking) -> void
 {
@@ -210,13 +221,15 @@ inline auto align_cells_single(typename Ops::Vector & S,
 
   for (long qi = 0; qi < ql; ++qi)
   {
-    Vector const * const x = qp[qi];  // load x from qp[qi]
-    auto const N0 = apply_mask<Ops>(hep[2 * qi], masking);  // load N0, mask
-    auto E = apply_mask<Ops>(hep[(2 * qi) + 1], masking);  // load E, mask
+    Vector const * const x = *std::next(qp, qi);  // load x from qp[qi]
+    auto * const h_cell = std::next(hep, 2 * qi);
+    auto * const e_cell = std::next(h_cell);
+    auto const N0 = apply_mask<Ops>(*h_cell, masking);  // load N0, mask
+    auto E = apply_mask<Ops>(*e_cell, masking);  // load E, mask
 
-    onestep<Ops>(H0, hep[2 * qi], F0, x[0], E, score, Q, R);
+    onestep<Ops>(score, H0, *h_cell, *x, F0, gaps, E);
 
-    hep[(2 * qi) + 1] = E;  // save E
+    *e_cell = E;  // save E
     H0 = N0;
   }
 

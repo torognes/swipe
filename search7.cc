@@ -565,7 +565,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 
-      align_cells<Ops_7>(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells<Ops_7>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
     }
     else
     {
@@ -675,7 +675,7 @@ search7
       dprofile_fill7(dprofile, score_matrix, dseq);
 #endif
 	  
-      align_cells<Ops_7>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_7>{M});
+      align_cells<Ops_7>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_7>{M});
     }
   }
 }

@@ -198,7 +198,7 @@ auto search7_avx2(BYTE * * q_start,
       }
 
       dprofile_shuffle7(dprofile, score_matrix, dseq.data());
-      align_cells<Ops_7_avx2>(S, hep, qp, Q, R, qlen, Z, No_mask{});
+      align_cells<Ops_7_avx2>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
       continue;
     }
 
@@ -263,6 +263,6 @@ auto search7_avx2(BYTE * * q_start,
 
     dprofile_shuffle7(dprofile, score_matrix, dseq.data());
     auto const mask = v256_load(reinterpret_cast<__m256i const *>(restart.data()));
-    align_cells<Ops_7_avx2>(S, hep, qp, Q, R, qlen, Z, Mask<Ops_7_avx2>{mask});
+    align_cells<Ops_7_avx2>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_7_avx2>{mask});
   }
 }
