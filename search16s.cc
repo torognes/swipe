@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
+#include "search16_shared.h"  // dprofile_fill16(), LaneScores16, RestartLanes16
 #include "align_cells.h"  // Ops_16, onestep(), No_mask, Mask
 #include "view.h"  // View
 #include <algorithm>  // std::fill_n
@@ -32,142 +33,13 @@
 #include <cstddef>  // std::size_t
 #include <iterator>  // std::next, std::prev
 
-constexpr std::size_t CHANNELS = channels_16;
+constexpr std::size_t CHANNELS = channels_16_sse;
 constexpr std::size_t CDEPTH = 1;
 
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
 constexpr WORD lane_restart = 0x8000;
-
-// anonymous namespace: limit visibility and usage to this translation unit
-namespace {
-
-inline auto dprofile_fill16s(WORD * dprofile_word,
-			     WORD * score_matrix_word,
-			     BYTE const * dseq) -> void
-{
-  __m128i xmm0;
-  __m128i xmm1;
-  __m128i xmm2;
-  __m128i xmm3;
-  __m128i xmm4;
-  __m128i xmm5;
-  __m128i xmm6;
-  __m128i xmm7;
-  __m128i xmm8;
-  __m128i xmm9;
-  __m128i xmm10;
-  __m128i xmm11;
-  __m128i xmm12;
-  __m128i xmm13;
-  __m128i xmm14;
-  __m128i xmm15;
-  __m128i xmm16;
-  __m128i xmm17;
-  __m128i xmm18;
-  __m128i xmm19;
-  __m128i xmm20;
-  __m128i xmm21;
-  __m128i xmm22;
-  __m128i xmm23;
-  __m128i xmm24;
-  __m128i xmm25;
-  __m128i xmm26;
-  __m128i xmm27;
-  __m128i xmm28;
-  __m128i xmm29;
-  __m128i xmm30;
-  __m128i xmm31;
-  
-  for (std::size_t j = 0; j < CDEPTH; j++)
-  {
-    std::array<int, CHANNELS> d;
-    for (std::size_t z = 0; z < CHANNELS; z++)
-    {
-      d[z] = dseq[(j * CHANNELS) + z] << 5;
-    }
-
-    //      for(int i=0; i<24; i += 8)
-    for(std::size_t i=0; i<32; i += 8)
-    {
-      xmm0  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[0] + i));
-      xmm1  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[1] + i));
-      xmm2  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[2] + i));
-      xmm3  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[3] + i));
-      xmm4  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[4] + i));
-      xmm5  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[5] + i));
-      xmm6  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[6] + i));
-      xmm7  = v_load(reinterpret_cast<__m128i*>(score_matrix_word + d[7] + i));
-      
-      xmm8  = v_merge_lo_16(xmm0,  xmm1);
-      xmm9  = v_merge_hi_16(xmm0,  xmm1);
-      xmm10 = v_merge_lo_16(xmm2,  xmm3);
-      xmm11 = v_merge_hi_16(xmm2,  xmm3);
-      xmm12 = v_merge_lo_16(xmm4,  xmm5);
-      xmm13 = v_merge_hi_16(xmm4,  xmm5);
-      xmm14 = v_merge_lo_16(xmm6,  xmm7);
-      xmm15 = v_merge_hi_16(xmm6,  xmm7);
-      
-      xmm16 = v_merge_lo_32(xmm8,  xmm10);
-      xmm17 = v_merge_hi_32(xmm8,  xmm10);
-      xmm18 = v_merge_lo_32(xmm12, xmm14);
-      xmm19 = v_merge_hi_32(xmm12, xmm14);
-      xmm20 = v_merge_lo_32(xmm9,  xmm11);
-      xmm21 = v_merge_hi_32(xmm9,  xmm11);
-      xmm22 = v_merge_lo_32(xmm13, xmm15);
-      xmm23 = v_merge_hi_32(xmm13, xmm15);
-      
-      xmm24 = v_merge_lo_64(xmm16, xmm18);
-      xmm25 = v_merge_hi_64(xmm16, xmm18);
-      xmm26 = v_merge_lo_64(xmm17, xmm19);
-      xmm27 = v_merge_hi_64(xmm17, xmm19);
-      xmm28 = v_merge_lo_64(xmm20, xmm22);
-      xmm29 = v_merge_hi_64(xmm20, xmm22);
-      xmm30 = v_merge_lo_64(xmm21, xmm23);
-      xmm31 = v_merge_hi_64(xmm21, xmm23);
-      
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+0)) + (CHANNELS*j)), xmm24);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+1)) + (CHANNELS*j)), xmm25);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+2)) + (CHANNELS*j)), xmm26);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+3)) + (CHANNELS*j)), xmm27);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+4)) + (CHANNELS*j)), xmm28);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+5)) + (CHANNELS*j)), xmm29);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+6)) + (CHANNELS*j)), xmm30);
-      v_store(reinterpret_cast<__m128i*>(dprofile_word + (CDEPTH*CHANNELS*(i+7)) + (CHANNELS*j)), xmm31);
-    }
-  }
-}
-
-// the score of each channel, read lane by lane
-struct LaneScores
-{
-  alignas(__m128i) std::array<WORD, CHANNELS> lanes {{}};
-
-  explicit LaneScores(__m128i const scores)
-  {
-    v_store(reinterpret_cast<__m128i *>(lanes.data()), scores);
-  }
-};
-
-// the lanes of the channels that start a new sequence (0x8000)
-struct RestartLanes
-{
-  alignas(__m128i) std::array<WORD, CHANNELS> lanes {{}};
-
-  auto vector() const -> __m128i
-  {
-    return v_load(reinterpret_cast<__m128i const *>(lanes.data()));
-  }
-};
-
-// lane c of a comparison mask (two bits per 16-bit lane)
-inline auto lane_is_set(unsigned int const mask, std::size_t const c) -> bool
-{
-  return (mask & (3U << (2 * c))) != 0;
-}
-
-}  // anonymous namespace
 
 auto search16s(WORD * * q_start,
 	       WORD gap_open_penalty,
@@ -244,7 +116,7 @@ auto search16s(WORD * * q_start,
     }
     for (std::size_t c = 0; c < CHANNELS; c++)
     {
-      if (lane_is_set(mask, c))
+      if (lane16_is_set(mask, c))
       {
         d_best[c] = std::prev(d_pos[c]);
       }
@@ -258,7 +130,7 @@ auto search16s(WORD * * q_start,
       }
       for (std::size_t c = 0; c < CHANNELS; c++)
       {
-        if (lane_is_set(m2, c))
+        if (lane16_is_set(m2, c))
         {
           q_best[c] = i;
         }
@@ -281,7 +153,7 @@ auto search16s(WORD * * q_start,
         }
       }
 
-      dprofile_fill16s(dprofile, score_matrix, dseq.data());
+      dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
       align_cells_single<Ops_16>(S, hep, qp, gaps, qlen, Z, No_mask{});
       save_best_positions(v_mask_gt_i16(S, SL));
       SL = S;
@@ -289,8 +161,8 @@ auto search16s(WORD * * q_start,
     }
 
     easy = true;
-    RestartLanes restart;
-    LaneScores const lane_scores(S);
+    RestartLanes16 restart;
+    LaneScores16 const lane_scores(S);
 
     for (std::size_t c = 0; c < CHANNELS; c++)
     {
@@ -351,7 +223,7 @@ auto search16s(WORD * * q_start,
     }
 
     auto const M = restart.vector();
-    dprofile_fill16s(dprofile, score_matrix, dseq.data());
+    dprofile_fill16<CDEPTH>(dprofile, score_matrix, dseq.data());
     align_cells_single<Ops_16>(S, hep, qp, gaps, qlen, Z, Mask<Ops_16>{M});
 
     /* save column address if new highscore */
