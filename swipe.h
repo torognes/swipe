@@ -630,12 +630,15 @@ constexpr std::size_t hearray_row_bytes_avx2 = 2 * vector_bytes_avx2;
 // the limits below which a 7-bit or 16-bit score is accepted
 constexpr std::size_t score_matrix_size = score_matrix_width * score_matrix_width;
 
+// the 63-bit score matrix (scores as long), as align() reads it
+using ScoreMatrix63 = std::array<long, score_matrix_size>;
+
 struct ScoreMatrices
 {
   alignas(vector_bytes) std::array<char, score_matrix_size> score_7 {{}};
   alignas(vector_bytes) std::array<char, score_matrix_size> score_7t {{}};  // transposed
   alignas(vector_bytes) std::array<short, score_matrix_size> score_16 {{}};
-  alignas(vector_bytes) std::array<long, score_matrix_size> score_63 {{}};
+  alignas(vector_bytes) ScoreMatrix63 score_63 {{}};
   long limit_7 = 0;  // SCORELIMIT_7
   long limit_16 = 0;  // SCORELIMIT_16
 };
@@ -707,7 +710,7 @@ struct AlignmentRegion
 // string of operations (e.g. M12D1M5) in alignment, and its region
 auto align(View<char> query_sequence,
            View<char> database_sequence,
-           long const * scorematrix,
+           ScoreMatrix63 const & scorematrix,
            GapPenalties gaps,
            AlignmentRegion const & hint,
            std::string & alignment) -> AlignmentRegion;

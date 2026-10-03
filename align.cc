@@ -24,10 +24,14 @@
 */
 
 #include "swipe.h"
+#include "fatal_allocator.h"  // Buffer
+#include "view.h"  // View
 #include <algorithm>  // std::fill_n, std::max
+#include <array>
 #include <cassert>
 #include <initializer_list>  // std::max({...})
 #include <cstddef>  // std::size_t
+#include <limits>  // std::numeric_limits
 #include <string>  // std::string, std::to_string
 #include <utility>  // std::move
 
@@ -55,10 +59,50 @@ struct Cell
 // change
 struct AlignmentInput
 {
-  char const * a_seq;
-  char const * b_seq;
-  long const * scorematrix;
+  View<char> a_seq;
+  View<char> b_seq;
+  ScoreMatrix63 const & scorematrix;
   GapPenalties gaps;
+
+  // the score of query position a against database position b
+  auto score(long const a, long const b) const -> long
+  {
+    assert((a >= 0) and (b >= 0));
+    auto const query_symbol = static_cast<unsigned char>(a_seq[static_cast<std::size_t>(a)]);
+    auto const database_symbol = static_cast<unsigned char>(b_seq[static_cast<std::size_t>(b)]);
+    return scorematrix[score_matrix_cell(database_symbol, query_symbol)];
+  }
+};
+
+// a work array of the alignment (HH, EE, XX, YY): one score per
+// position of the database sequence, indexed as the positions are
+// (long)
+class Row
+{
+public:
+  explicit Row(long const length) : cells_(static_cast<std::size_t>(length)) {}
+
+  auto operator[](long const j) -> long &
+  {
+    assert((j >= 0) and (static_cast<std::size_t>(j) < cells_.size()));
+    return cells_[static_cast<std::size_t>(j)];
+  }
+
+  // the first 'length' cells set to 'value'
+  auto fill(long const length, long const value) -> void
+  {
+    assert((length >= 0) and (static_cast<std::size_t>(length) <= cells_.size()));
+    std::fill_n(cells_.begin(), length, value);
+  }
+
+  // the memory given back
+  auto release() -> void
+  {
+    Buffer<long>().swap(cells_);
+  }
+
+private:
+  Buffer<long> cells_;
 };
 
 // Reverse pass of region(): from the end cell of the best local
@@ -67,17 +111,14 @@ struct AlignmentInput
 auto region_begin(AlignmentInput const & input,
 		  Cell const end,
 		  long const score,
-		  long * HH,
-		  long * EE) -> Cell
+		  Row & HH,
+		  Row & EE) -> Cell
 {
-  auto const * const a_seq = input.a_seq;
-  auto const * const b_seq = input.b_seq;
-  auto const * const scorematrix = input.scorematrix;
   long const q = input.gaps.open;
   long const r = input.gaps.extend;
   assert(end.b >= 0);
-  std::fill_n(HH, end.b + 1, -1L);
-  std::fill_n(EE, end.b + 1, -1L);
+  HH.fill(end.b + 1, -1L);
+  EE.fill(end.b + 1, -1L);
 
   long Cost = 0;
 
@@ -99,7 +140,7 @@ auto region_begin(AlignmentInput const & input,
 	  f = std::max(f, h - q) - r;
 	  EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	  h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
+	  h = p + input.score(i, j);
 
 	  h = std::max({h, f, EE[j]});
 
@@ -125,25 +166,18 @@ auto region_begin(AlignmentInput const & input,
 // the region of the best local alignment of a_sequence and
 // b_sequence; with a non-zero hint.score, its end cell is that of the
 // hint, and only the reverse pass is run
-auto region(View<char> const a_sequence,
-	    View<char> const b_sequence,
-	    long const * scorematrix,
-	    GapPenalties const gaps,
+auto region(AlignmentInput const & input,
 	    AlignmentRegion const & hint) -> AlignmentRegion
 {
-  auto const * const a_seq = a_sequence.data();
-  auto const * const b_seq = b_sequence.data();
-  auto const M = static_cast<long>(a_sequence.size());
-  auto const N = static_cast<long>(b_sequence.size());
-  long const q = gaps.open;
-  long const r = gaps.extend;
+  auto const M = static_cast<long>(input.a_seq.size());
+  auto const N = static_cast<long>(input.b_seq.size());
+  long const q = input.gaps.open;
+  long const r = input.gaps.extend;
   long a_end = hint.a_end;
   long b_end = hint.b_end;
 
-  Buffer<long> hh_buffer(static_cast<std::size_t>(N));
-  Buffer<long> ee_buffer(static_cast<std::size_t>(N));
-  long * HH = hh_buffer.data();
-  long * EE = ee_buffer.data();
+  Row HH(N);
+  Row EE(N);
 
   long score = 0;
 
@@ -156,8 +190,8 @@ auto region(View<char> const a_sequence,
   else
   {
 
-    std::fill_n(HH, N, 0L);
-    std::fill_n(EE, N, - q);
+    HH.fill(N, 0L);
+    EE.fill(N, - q);
     
     for (long i = 0; i < M; i++)
     {
@@ -169,7 +203,7 @@ auto region(View<char> const a_sequence,
 	f = std::max(f, h - q) - r;
 	EE[j] = std::max(EE[j], HH[j] - q) - r;
 	
-	h = p + (scorematrix + (b_seq[j]<<5))[static_cast<int>(a_seq[i])];
+	h = p + input.score(i, j);
 	
 	h = std::max({h, 0L, f, EE[j]});
 	
@@ -189,14 +223,22 @@ auto region(View<char> const a_sequence,
 
   // Reverse pass
 
-  auto const begin = region_begin({a_seq, b_seq, scorematrix, gaps},
-                                  {a_end, b_end}, score, HH, EE);
+  auto const begin = region_begin(input, {a_end, b_end}, score, HH, EE);
   return {begin.a, begin.b, a_end, b_end, score};
 }
 
+// the operations of an alignment, as they are written in it
+enum struct Operation : char
+{
+  none = 0,
+  deletion = 'D',
+  insertion = 'I',
+  match = 'M'
+};
+
 struct aligner_info
 {
-  char op;
+  Operation op;
   long count;
   std::string alignment;
 };
@@ -206,12 +248,12 @@ auto push(aligner_info & info) -> void
   if (info.count > 0)
   {
     // the operation and its length, as "%c%ld" (e.g. M12)
-    info.alignment += info.op;
+    info.alignment += static_cast<char>(info.op);
     info.alignment += std::to_string(info.count);
   }
 }
 
-auto newop(aligner_info & info, char op, long len) -> void
+auto newop(aligner_info & info, Operation const op, long const len) -> void
 {
   if (info.op == op)
   {
@@ -227,17 +269,17 @@ auto newop(aligner_info & info, char op, long len) -> void
 
 auto delete_a(aligner_info & info, long len) -> void
 {
-  newop(info, 'D', len);
+  newop(info, Operation::deletion, len);
 }
 
 auto insert_b(aligner_info & info, long len) -> void
 {
-  newop(info, 'I', len);
+  newop(info, Operation::insertion, len);
 }
 
 auto match(aligner_info & info) -> void
 {
-  newop(info, 'M', 1);
+  newop(info, Operation::match, 1);
 }
 
 // a block of the alignment matrix: M residues of a from a_pos, N
@@ -263,9 +305,6 @@ auto diff(aligner_info & info,
 	  DiffBlock const & block,
 	  EndGaps const ends) -> void
 {
-  auto const * const a_seq = input.a_seq;
-  auto const * const b_seq = input.b_seq;
-  auto const * const scorematrix = input.scorematrix;
   long const q = input.gaps.open;
   long const r = input.gaps.extend;
   long const a_pos = block.a_pos;
@@ -323,7 +362,7 @@ auto diff(aligner_info & info,
 	  // -A--
 	  // BBBB
 
-	  long Score = (scorematrix + (b_seq[b_pos+j]<<5))[static_cast<int>(a_seq[a_pos])] - (r * (N-1));
+	  long Score = input.score(a_pos, b_pos + j) - (r * (N-1));
 
 	  if (j > 0)
 	  {
@@ -374,10 +413,8 @@ auto diff(aligner_info & info,
 
       // Compute HH & EE in forward phase with tb
 
-      Buffer<long> hh_buffer(static_cast<std::size_t>(N) + 1);
-      Buffer<long> ee_buffer(static_cast<std::size_t>(N) + 1);
-      long * HH = hh_buffer.data();
-      long * EE = ee_buffer.data();
+      Row HH(N + 1);
+      Row EE(N + 1);
 
       HH[0] = 0;
       t = -q;
@@ -401,7 +438,7 @@ auto diff(aligner_info & info,
 	      f = std::max(f, h - q) - r;
 	      EE[j] = std::max(EE[j], HH[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+j-1]<<5))[static_cast<int>(a_seq[a_pos+i-1])];
+	      h = p + input.score(a_pos + i - 1, b_pos + j - 1);
 
 	      h = std::max({h, f, EE[j]});
 	      p = HH[j];
@@ -413,10 +450,8 @@ auto diff(aligner_info & info,
 
       // Compute XX & YY in reverse phase with te
 
-      Buffer<long> xx_buffer(static_cast<std::size_t>(N) + 1);
-      Buffer<long> yy_buffer(static_cast<std::size_t>(N) + 1);
-      long * XX = xx_buffer.data();
-      long * YY = yy_buffer.data();
+      Row XX(N + 1);
+      Row YY(N + 1);
 
       XX[0] = 0;
       t = -q;
@@ -441,7 +476,7 @@ auto diff(aligner_info & info,
 	      f = std::max(f, h - q) - r;
 	      YY[j] = std::max(YY[j], XX[j] - q) - r;
 
-	      h = p + (scorematrix + (b_seq[b_pos+N-j]<<5))[static_cast<int>(a_seq[a_pos+M-i])];
+	      h = p + input.score(a_pos + M - i, b_pos + N - j);
 
 	      h = std::max({h, f, YY[j]});
 	      p = XX[j];
@@ -453,7 +488,7 @@ auto diff(aligner_info & info,
 
 
 
-      long MaxScore = LONG_MIN;
+      long MaxScore = std::numeric_limits<long>::min();
       long P = -1;
       long J = -1;
 
@@ -469,8 +504,8 @@ auto diff(aligner_info & info,
 	}
 
       // released before the recursive calls (peak memory: one level)
-      Buffer<long>().swap(hh_buffer);
-      Buffer<long>().swap(xx_buffer);
+      HH.release();
+      XX.release();
 
       for (j=0; j <= N; j++)
 	{
@@ -483,8 +518,8 @@ auto diff(aligner_info & info,
 	    }
 	}
 
-      Buffer<long>().swap(ee_buffer);
-      Buffer<long>().swap(yy_buffer);
+      EE.release();
+      YY.release();
 
       if (P == 0)
 	{
@@ -504,17 +539,18 @@ auto diff(aligner_info & info,
 
 auto align(View<char> const query_sequence,
 	   View<char> const database_sequence,
-	   long const * scorematrix,
+	   ScoreMatrix63 const & scorematrix,
 	   GapPenalties const gaps,
 	   AlignmentRegion const & hint,
 	   std::string & alignment) -> AlignmentRegion
 {
-  aligner_info ai {0, 0, std::string()};
+  aligner_info ai {Operation::none, 0, std::string()};
+  AlignmentInput const input {query_sequence, database_sequence, scorematrix, gaps};
 
-  auto const result = region(query_sequence, database_sequence, scorematrix, gaps, hint);
+  auto const result = region(input, hint);
 
   diff(ai,
-       {query_sequence.data(), database_sequence.data(), scorematrix, gaps},
+       input,
        {result.a_begin, result.b_begin,
         result.a_end - result.a_begin + 1, result.b_end - result.b_begin + 1},
        {gaps.open, gaps.open});

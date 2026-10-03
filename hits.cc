@@ -650,7 +650,7 @@ auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void
 
     auto const region = align(query_sequence.view(),
 			      make_view(h->dseq),
-			      score_matrices.score_63.data(),
+			      score_matrices.score_63,
 			      {parameters.gapopen, parameters.gapextend},
 			      {0, 0, h->align_q_end, h->align_d_end, h->score_align},
 			      h->alignment);
