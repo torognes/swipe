@@ -26,8 +26,11 @@
 #include "swipe.h"
 #include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_16, align_cells(), No_mask, Mask
+#include "view.h"  // View
 #include <algorithm>  // std::fill_n
+#include <array>
 #include <cstddef>  // std::size_t
+#include <iterator>  // std::next
 
 constexpr std::size_t CHANNELS = channels_16;
 constexpr std::size_t CDEPTH = 4;
@@ -35,6 +38,7 @@ constexpr std::size_t CDEPTH = 4;
 // the word 0x8000 (the lanes of _mm_set_epi16() are short: 0x8000
 // does not fit in a signed short, -32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
+constexpr WORD lane_restart = 0x8000;
 
 // anonymous namespace: limit visibility and usage to this translation unit
 namespace {
@@ -135,6 +139,34 @@ inline auto dprofile_fill16(WORD * dprofile_word,
   }
 }
 
+// the score of each channel, read lane by lane
+struct LaneScores
+{
+  alignas(__m128i) std::array<WORD, CHANNELS> lanes {{}};
+
+  explicit LaneScores(__m128i const scores)
+  {
+    v_store(reinterpret_cast<__m128i *>(lanes.data()), scores);
+  }
+};
+
+// the lanes of the channels that start a new sequence (0x8000)
+struct RestartLanes
+{
+  alignas(__m128i) std::array<WORD, CHANNELS> lanes {{}};
+
+  auto vector() const -> __m128i
+  {
+    return v_load(reinterpret_cast<__m128i const *>(lanes.data()));
+  }
+};
+
+// lane c of a comparison mask (two bits per 16-bit lane)
+inline auto lane_is_set(unsigned int const mask, std::size_t const c) -> bool
+{
+  return (mask & (3U << (2 * c))) != 0;
+}
+
 }  // anonymous namespace
 
 auto search16(WORD * * q_start,
@@ -150,40 +182,28 @@ auto search16(WORD * * q_start,
 	      long * bestpos,
 	      int qlen) -> void
 {
-  
-  __m128i S;
-  __m128i SL;
-  __m128i Q;
-  __m128i R;
-  __m128i T;
-  __m128i M;
-  __m128i Z;
-  __m128i T0;
   auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  __m128i ** const qp = reinterpret_cast<__m128i**>(q_start);
-  std::array<BYTE const *, CHANNELS> d_begin;
-  std::array<BYTE const *, CHANNELS> d_pos;
-  std::array<BYTE const *, CHANNELS> d_best;
-  std::array<BYTE const *, CHANNELS> d_end;
+  auto * const * const qp = reinterpret_cast<__m128i**>(q_start);
+  std::array<BYTE const *, CHANNELS> d_begin {{}};
+  std::array<BYTE const *, CHANNELS> d_pos {{}};
+  std::array<BYTE const *, CHANNELS> d_best {{}};
+  std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(__m128i) std::array<BYTE, CDEPTH * sizeof(__m128i)> dseqalloc;
-
-  auto * dseq = dseqalloc.data();
+  alignas(__m128i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
-  std::array<long, CHANNELS> seq_id;
+  std::array<long, CHANNELS> seq_id {{}};
   long next_id = 0;
-  unsigned done = 0;
-  
-  Z = v_dup_i16(word_0x8000);
-  T0 = v_first_lane_i16(word_0x8000);
-  Q  = v_dup_i16(static_cast<short>(gap_open_penalty));
-  R  = v_dup_i16(static_cast<short>(gap_extend_penalty));
-  
-  S = Z;
-  SL = Z;
-      
+  long done = 0;
+
+  auto const Z = v_dup_i16(word_0x8000);
+  GapVectors<Ops_16> const gaps {v_dup_i16(static_cast<short>(gap_open_penalty)),
+                                 v_dup_i16(static_cast<short>(gap_extend_penalty))};
+
+  auto S = Z;
+  auto SL = Z;
+
   // the H and E scores of each query residue
   std::fill_n(hep, 2 * static_cast<std::size_t>(qlen), Z);
 
@@ -193,160 +213,125 @@ auto search16(WORD * * q_start,
   d_end.fill(&zero);
   seq_id.fill(-1);
 
-  int easy = 0;
-
-  while(true)
+  // the next CDEPTH residues of channel c (zeros after its end)
+  auto const fill_channel = [&](std::size_t const c) -> void
   {
-    if (easy != 0)
+    for (std::size_t j = 0; j < CDEPTH; j++)
     {
-      for (std::size_t c = 0; c < CHANNELS; c++)
+      if (d_pos[c] < d_end[c])
       {
-	for (std::size_t j = 0; j < CDEPTH; j++)
-	{
-	  if (d_pos[c] < d_end[c])
-	  {
-	    dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
-	  }
-	  else
-	  {
-	    dseq[(CHANNELS * j) + c] = 0;
-	  }
-	}
-	if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
-	{
-	  easy = 0;
-	}
+        dseq[(CHANNELS * j) + c] = *d_pos[c];
+        d_pos[c] = std::next(d_pos[c]);
       }
-	
-      dprofile_fill16(dprofile, score_matrix, dseq);
-      	  
-      align_cells<Ops_16>(S, hep, qp, {Q, R}, qlen, Z, No_mask{});
-
-      /* save column address if new highscore */
-      
-      auto const mask = v_mask_gt_i16(S, SL);
-      for (std::size_t c = 0; c < CHANNELS; c++)
+      else
       {
-	if ((mask & (3 << 2 * c)) != 0)
-	{
-	  d_best[c] = d_pos[c];
-	}
+        dseq[(CHANNELS * j) + c] = 0;
       }
-
-      SL = S;
-    }	  
-    else
-    {
-
-      easy = 1;
- 
-      M = v_zero();
-      T = T0;
-
-      for (std::size_t c = 0; c < CHANNELS; c++)
-      {
-	if (d_pos[c] < d_end[c])
-	{
-	  for (std::size_t j = 0; j < CDEPTH; j++)
-	  {
-	    if (d_pos[c] < d_end[c])
-	    {
-	      dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
-	    }
-	    else
-	    {
-	      dseq[(CHANNELS * j) + c] = 0;
-	    }
-	  }
-
-	  if (d_pos[c] == d_end[c])
-	  {
-	    easy = 0;
-	  }
-	}
-	else
-	{
-	  M = v_xor(M, T);
-		  
-	  long const cand_id = seq_id[c];
-		  
-	  if (cand_id >= 0)
-	  {
-	    long const score = reinterpret_cast<WORD *>(&S)[c] ^ 0x8000;
-	    scores[cand_id] = score;
-	    bestpos[cand_id] = d_best[c] - d_begin[c];
-	    done++;
-	  }
-		  
-	  if (next_id < sequences)
-	  {
-	    seq_id[c] = next_id;
-	    long const seqnosf = seqnos[next_id];
-
-	    View<char> const sequence =
-	      db_getsequence(dbt, entry_seqno(seqnosf), entry_where(seqnosf), c);
-		      
-	    d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
-	    d_pos[c] = d_begin[c];
-	    d_best[c] = d_begin[c];
-	    d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
-	    next_id++;
-		      
-	    for (std::size_t j = 0; j < CDEPTH; j++)
-	    {
-	      if (d_pos[c] < d_end[c])
-	      {
-		dseq[(CHANNELS*j)+c] = *(d_pos[c]++);
-	      }
-	      else
-	      {
-		dseq[(CHANNELS * j) + c] = 0;
-	      }
-	    }
-	    if (d_pos[c] == d_end[c])
-	    {
-	      easy = 0;
-	    }
-	  }
-	  else
-	  {
-	    seq_id[c] = -1;
-	    d_begin[c] = &zero;
-	    d_pos[c] = d_begin[c];
-	    d_best[c] = d_begin[c];
-	    d_end[c] = d_begin[c];
-	    for (std::size_t j = 0; j < CDEPTH; j++)
-	    {
-	      dseq[(CHANNELS * j) + c] = 0;
-	    }
-	  }
-	}
-	T = v_shift_bytes_left<2>(T);
-      }
-
-      if (done == sequences)
-      {
-	break;
-      }
-
-      dprofile_fill16(dprofile, score_matrix, dseq);
-      	  
-      align_cells<Ops_16>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_16>{M});
-
-      /* save column address if new highscore */
-      
-      SL = v_adds_i16(SL, M);
-      SL = v_adds_i16(SL, M);
-      auto const mask = v_mask_gt_i16(S, SL);
-      for (std::size_t c = 0; c < CHANNELS; c++)
-      {
-	if ((mask & (3 << 2 * c)) != 0)
-	{
-	  d_best[c] = d_pos[c];
-	}
-      }
-
-      SL = S;
     }
+  };
+
+  /* save column address if new highscore */
+  auto const save_best_positions = [&](unsigned int const mask) -> void
+  {
+    for (std::size_t c = 0; c < CHANNELS; c++)
+    {
+      if (lane_is_set(mask, c))
+      {
+        d_best[c] = d_pos[c];
+      }
+    }
+  };
+
+  bool easy = false;
+
+  while (true)
+  {
+    if (easy)
+    {
+      for (std::size_t c = 0; c < CHANNELS; c++)
+      {
+        fill_channel(c);
+        if ((d_pos[c] == d_end[c]) && (seq_id[c] > -1))
+        {
+          easy = false;
+        }
+      }
+
+      dprofile_fill16(dprofile, score_matrix, dseq.data());
+      align_cells<Ops_16>(S, hep, qp, gaps, qlen, Z, No_mask{});
+      save_best_positions(v_mask_gt_i16(S, SL));
+      SL = S;
+      continue;
+    }
+
+    easy = true;
+    RestartLanes restart;
+    LaneScores const lane_scores(S);
+
+    for (std::size_t c = 0; c < CHANNELS; c++)
+    {
+      if (d_pos[c] < d_end[c])
+      {
+        fill_channel(c);
+        if (d_pos[c] == d_end[c])
+        {
+          easy = false;
+        }
+        continue;
+      }
+
+      restart.lanes[c] = lane_restart;
+
+      long const cand_id = seq_id[c];
+      if (cand_id >= 0)
+      {
+        long const score = lane_scores.lanes[c] ^ 0x8000;
+        scores[cand_id] = score;
+        bestpos[cand_id] = d_best[c] - d_begin[c];
+        done++;
+      }
+
+      if (next_id < sequences)
+      {
+        seq_id[c] = next_id;
+        long const seqnosf = seqnos[next_id];
+        View<char> const sequence =
+          db_getsequence(dbt, entry_seqno(seqnosf), entry_where(seqnosf), c);
+        d_begin[c] = reinterpret_cast<BYTE const *>(sequence.begin());
+        d_pos[c] = d_begin[c];
+        d_best[c] = d_begin[c];
+        d_end[c] = reinterpret_cast<BYTE const *>(sequence.end());
+        next_id++;
+        fill_channel(c);
+        if (d_pos[c] == d_end[c])
+        {
+          easy = false;
+        }
+      }
+      else
+      {
+        seq_id[c] = -1;
+        d_begin[c] = &zero;
+        d_pos[c] = d_begin[c];
+        d_best[c] = d_begin[c];
+        d_end[c] = d_begin[c];
+        fill_channel(c);
+      }
+    }
+
+    if (done == sequences)
+    {
+      break;
+    }
+
+    auto const M = restart.vector();
+    dprofile_fill16(dprofile, score_matrix, dseq.data());
+    align_cells<Ops_16>(S, hep, qp, gaps, qlen, Z, Mask<Ops_16>{M});
+
+    /* save column address if new highscore */
+    SL = v_adds_i16(SL, M);
+    SL = v_adds_i16(SL, M);
+    save_best_positions(v_mask_gt_i16(S, SL));
+    SL = S;
   }
 }

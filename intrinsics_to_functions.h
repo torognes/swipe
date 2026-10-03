@@ -226,14 +226,14 @@ inline auto v_shift_bytes_left(__m128i const vector) -> __m128i
 // lanewise comparisons of 16-bit signed lanes, packed into a byte mask
 // (pcmpgtw or pcmpeqw, then pmovmskb): two bits per lane, bit 2i and
 // 2i + 1 for lane i
-inline auto v_mask_gt_i16(__m128i const lhs, __m128i const rhs) -> int
+inline auto v_mask_gt_i16(__m128i const lhs, __m128i const rhs) -> unsigned int
 {
-  return _mm_movemask_epi8(_mm_cmpgt_epi16(lhs, rhs));
+  return static_cast<unsigned int>(_mm_movemask_epi8(_mm_cmpgt_epi16(lhs, rhs)));
 }
 
-inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> int
+inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> unsigned int
 {
-  return _mm_movemask_epi8(_mm_cmpeq_epi16(lhs, rhs));
+  return static_cast<unsigned int>(_mm_movemask_epi8(_mm_cmpeq_epi16(lhs, rhs)));
 }
 
 
