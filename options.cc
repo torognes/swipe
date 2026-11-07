@@ -36,6 +36,7 @@
 #include <cstring>  // std::strlen
 #include <limits>
 #include <string>
+#include <getopt.h>  // getopt_long, struct option, optarg, opterr (GNU)
 
 // the options: parsed and checked by args_init(), shown by args_show()
 

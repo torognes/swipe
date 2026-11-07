@@ -26,32 +26,20 @@
 #ifndef SWIPE_H
 #define SWIPE_H
 
-#include <cstdio>
-#include <cstring>
-#include <cstdint>  // std::int32_t, std::int64_t
-#include <cstdlib>
-#include <climits>
-#include <cctype>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <arpa/inet.h>
-#include <getopt.h>
-#include <cmath>
 #include <array>
 #include <cassert>
-#include <chrono>
-#include <ctime>
+#include <chrono>  // std::chrono::steady_clock
+#include <climits>  // LONG_MAX
+#include <cstddef>  // std::size_t
+#include <cstdint>  // std::int32_t, std::int64_t
+#include <cstdio>  // FILE
+#include <ctime>  // time_t
 #include <memory>  // std::unique_ptr
 #include <string>
 #include <vector>
 #include "fatal_allocator.h"  // Buffer, xmalloc
 #include "span.h"  // Span
 #include "view.h"  // View
-
-
-#include "os_byteswap.h"  // bswap_32, bswap_64
 
 // the size of the line buffers: a line of a score matrix, and the
 // first allocation (then the growth step) of a query sequence

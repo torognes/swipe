@@ -25,6 +25,7 @@
 
 #include "swipe.h"
 #include "print_view.h"  // as_c_string, fprint
+#include "os_byteswap.h"  // bswap_32, bswap_64
 #include <algorithm>  // std::all_of, std::fill_n, std::find, std::max, std::min
 #include <array>
 #include <cassert>
@@ -39,6 +40,9 @@
 #include <memory>  // std::unique_ptr
 #include <string>
 #include <vector>
+#include <fcntl.h>  // open, O_RDONLY (POSIX)
+#include <sys/mman.h>  // mmap, munmap, MAP_FAILED, MAP_SHARED, PROT_READ (POSIX)
+#include <unistd.h>  // close, getpagesize, lseek (POSIX)
 
 /* http://selab.janelia.org/people/farrarm/blastdbfmtv4/blastdbfmt.html */
 

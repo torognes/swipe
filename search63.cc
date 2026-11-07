@@ -28,6 +28,7 @@
 #include <initializer_list>  // std::max({...})
 #include <cassert>
 #include <cstddef>  // std::size_t
+#include <cstring>  // memset
 
 auto fullsw(char const * dseq,
 	    char const * dend,
