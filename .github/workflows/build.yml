@@ -98,6 +98,9 @@ jobs:
           - { name: ppc64le,  cxx: powerpc64le-linux-gnu-g++,   package: g++-powerpc64le-linux-gnu }
           - { name: riscv64,  cxx: riscv64-linux-gnu-g++,       package: g++-riscv64-linux-gnu }
           - { name: mips64el, cxx: mips64el-linux-gnuabi64-g++, package: g++-mips64el-linux-gnuabi64 }
+          # clang, with the libraries and headers of the GCC cross-compilers
+          - { name: clang-ppc64le, cxx: "clang++ --target=powerpc64le-linux-gnu", package: g++-powerpc64le-linux-gnu }
+          - { name: clang-riscv64, cxx: "clang++ --target=riscv64-linux-gnu",     package: g++-riscv64-linux-gnu }
 
     name: cross (${{ matrix.target.name }})
 
@@ -116,7 +119,7 @@ jobs:
     - name: Build (${{ matrix.target.name }})
       timeout-minutes: 10
       run: |
-        make -j "$(nproc)" CXX=${{ matrix.target.cxx }} RELEASE=1 WERROR=1
+        make -j "$(nproc)" CXX="${{ matrix.target.cxx }}" RELEASE=1 WERROR=1
         file swipe
 
 
