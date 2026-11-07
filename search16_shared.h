@@ -33,16 +33,15 @@
 #define SWIPE_SEARCH16_SHARED_H
 
 #include "swipe.h"  // BYTE, WORD, channels_16, score_matrix_width
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*
+#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
-#include <emmintrin.h>  // __m128i
 #include <iterator>  // std::next
 
 
 constexpr std::size_t channels_16_sse = channels_16;
 
-static_assert(channels_16_sse * sizeof(WORD) == sizeof(__m128i), "one word lane per channel");
+static_assert(channels_16_sse * sizeof(WORD) == sizeof(v128_t), "one word lane per channel");
 
 // The score profile of a block of depth x channels database residues:
 // for each of the 32 query symbols, depth vectors (one per database
@@ -56,7 +55,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 {
   constexpr std::size_t row_words = score_matrix_width;
   constexpr std::size_t block = channels_16_sse;  // 8 x 8 words
-  auto * const profile = reinterpret_cast<__m128i *>(dprofile_word);
+  auto * const profile = reinterpret_cast<v128_t *>(dprofile_word);
 
   for (std::size_t j = 0; j < depth; j++)
   {
@@ -70,9 +69,9 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     for (std::size_t i = 0; i < score_matrix_width; i += block)
     {
       // eight query symbols (i to i + 7) of the row of channel c
-      auto const row = [&](std::size_t const c) -> __m128i
+      auto const row = [&](std::size_t const c) -> v128_t
       {
-        return v_load(reinterpret_cast<__m128i const *>(
+        return v_load(reinterpret_cast<v128_t const *>(
           std::next(score_matrix_word, d[c] + static_cast<std::ptrdiff_t>(i))));
       };
       auto const in0 = row(0);
@@ -103,7 +102,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       auto const b7 = v_merge_hi_32(a5, a7);
 
       // profile vector of query symbol s, database position j
-      auto const store = [&](std::size_t const s, __m128i const vector) -> void
+      auto const store = [&](std::size_t const s, v128_t const vector) -> void
       {
         v_store(std::next(profile, static_cast<std::ptrdiff_t>((depth * s) + j)), vector);
       };
@@ -122,22 +121,22 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 // the score of each channel, read lane by lane
 struct LaneScores16
 {
-  alignas(__m128i) std::array<WORD, channels_16_sse> lanes {{}};
+  alignas(v128_t) std::array<WORD, channels_16_sse> lanes {{}};
 
-  explicit LaneScores16(__m128i const scores)
+  explicit LaneScores16(v128_t const scores)
   {
-    v_store(reinterpret_cast<__m128i *>(lanes.data()), scores);
+    v_store(reinterpret_cast<v128_t *>(lanes.data()), scores);
   }
 };
 
 // the lanes of the channels that start a new sequence (0x8000)
 struct RestartLanes16
 {
-  alignas(__m128i) std::array<WORD, channels_16_sse> lanes {{}};
+  alignas(v128_t) std::array<WORD, channels_16_sse> lanes {{}};
 
-  auto vector() const -> __m128i
+  auto vector() const -> v128_t
   {
-    return v_load(reinterpret_cast<__m128i const *>(lanes.data()));
+    return v_load(reinterpret_cast<v128_t const *>(lanes.data()));
   }
 };
 

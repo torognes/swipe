@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
+#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include "view.h"  // View
 #include <array>
@@ -33,7 +33,7 @@
 #include <iterator>  // std::next
 
 constexpr std::size_t CHANNELS = channels_7;
-static_assert(sizeof(__m128i) == vector_bytes, "an SSE vector");
+static_assert(sizeof(v128_t) == vector_bytes, "an SSE vector");
 constexpr std::size_t CDEPTH = 4;
 
 // the byte 0x80 (the lanes of _mm_set_epi8() are char: 0x80 does not
@@ -60,11 +60,11 @@ constexpr auto profile_row_vectors = static_cast<std::ptrdiff_t>(CDEPTH);
 // symbols 16 to 31 the high table
 struct ShuffleIndices
 {
-  __m128i low;
-  __m128i high;
+  v128_t low;
+  v128_t high;
 };
 
-inline auto shuffle_indices(__m128i const symbols) -> ShuffleIndices
+inline auto shuffle_indices(v128_t const symbols) -> ShuffleIndices
 {
   auto const bit_4 = v_dup_i8(0x10);
   auto const bit_7 = v_dup_i8(byte_0x80);
@@ -73,9 +73,9 @@ inline auto shuffle_indices(__m128i const symbols) -> ShuffleIndices
   return {v_or(symbols, high), v_or(symbols, v_xor(high, bit_7))};
 }
 
-inline auto profile_vector(__m128i const low_table,
-                           __m128i const high_table,
-                           ShuffleIndices const & indices) -> __m128i
+inline auto profile_vector(v128_t const low_table,
+                           v128_t const high_table,
+                           ShuffleIndices const & indices) -> v128_t
 {
   return v_or(v_shuffle_8(low_table, indices.low),
               v_shuffle_8(high_table, indices.high));
@@ -86,7 +86,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE const * dseq_byte) -> void
 {
   static_assert(CDEPTH == 4, "four database positions per block");
-  auto const * const dseq = reinterpret_cast<__m128i const *>(dseq_byte);
+  auto const * const dseq = reinterpret_cast<v128_t const *>(dseq_byte);
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions
@@ -103,8 +103,8 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 
   // one row of the score matrix, shuffled into the four vectors of a
   // row of the profile (the former profline(j) macro)
-  auto const * const matrix = reinterpret_cast<__m128i const *>(score_matrix);
-  auto * const profile = reinterpret_cast<__m128i *>(dprofile);
+  auto const * const matrix = reinterpret_cast<v128_t const *>(score_matrix);
+  auto * const profile = reinterpret_cast<v128_t *>(dprofile);
   auto const profile_row = [&](std::ptrdiff_t const row) -> void
   {
     auto const * const matrix_row = std::next(matrix, matrix_row_vectors * row);
@@ -139,30 +139,30 @@ using ChannelRows = std::array<std::ptrdiff_t, CHANNELS>;
 // the score matrix rows are transposed by groups of 8 columns (8 bytes
 // per channel); a row is two vectors of 16 columns
 constexpr std::ptrdiff_t group_columns = 8;
-constexpr auto vector_columns = static_cast<std::ptrdiff_t>(sizeof(__m128i));
+constexpr auto vector_columns = static_cast<std::ptrdiff_t>(sizeof(v128_t));
 
 // The 8 columns (query symbols) from 'column' of the score matrix rows
 // of the 16 channels (8 x 16 bytes), transposed into the 8 profile
 // vectors of these query symbols, database position j: four rounds of
 // unpacks, of 8-, 16-, 32- and 64-bit elements
 template <std::ptrdiff_t column>
-inline auto dprofile_fill7_columns(__m128i * const profile,
+inline auto dprofile_fill7_columns(v128_t * const profile,
                                    BYTE const * const score_matrix,
                                    ChannelRows const & rows,
                                    std::size_t const j) -> void
 {
-  auto const row = [&](std::size_t const c) -> __m128i const *
+  auto const row = [&](std::size_t const c) -> v128_t const *
   {
-    return reinterpret_cast<__m128i const *>(std::next(score_matrix, rows[c] + column));
+    return reinterpret_cast<v128_t const *>(std::next(score_matrix, rows[c] + column));
   };
   // the 8 bytes of an odd channel: when they start a 16-byte boundary,
   // a full load, which the unpack takes as its memory operand
   // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
-  auto const odd_row = [&](std::size_t const c) -> __m128i
+  auto const odd_row = [&](std::size_t const c) -> v128_t
   {
     return (column % vector_columns == 0) ? v_load(row(c)) : v_load_64(row(c));
   };
-  auto const pair = [&](std::size_t const c) -> __m128i
+  auto const pair = [&](std::size_t const c) -> v128_t
   {
     return v_merge_lo_8(v_load_64(row(c)), odd_row(c + 1));
   };
@@ -194,7 +194,7 @@ inline auto dprofile_fill7_columns(__m128i * const profile,
   auto const l7 = v_merge_hi_32(w5, w7);
 
   // profile vector of query symbol column + s, database position j
-  auto const store = [&](std::ptrdiff_t const s, __m128i const vector) -> void
+  auto const store = [&](std::ptrdiff_t const s, v128_t const vector) -> void
   {
     auto const symbol = column + s;
     v_store(std::next(profile, (static_cast<std::ptrdiff_t>(CDEPTH) * symbol) + static_cast<std::ptrdiff_t>(j)), vector);
@@ -214,7 +214,7 @@ inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE const * dseq) -> void
 {
   static_assert(score_matrix_width == 4 * group_columns, "four groups of 8 columns");
-  auto * const profile = reinterpret_cast<__m128i *>(dprofile);
+  auto * const profile = reinterpret_cast<v128_t *>(dprofile);
   
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions
@@ -257,17 +257,17 @@ search7
 	long * scores,
 	long qlen)
 {
-  auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  auto const * const * const qp = reinterpret_cast<__m128i const * const *>(q_start);
+  auto * const hep = reinterpret_cast<v128_t*>(hearray);
+  auto const * const * const qp = reinterpret_cast<v128_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
   
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(__m128i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  alignas(v128_t) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   // the lanes of the channels that start a new sequence (0x80), and
   // the scores, read lane by lane
-  alignas(__m128i) std::array<BYTE, CHANNELS> restart {{}};
-  alignas(__m128i) std::array<BYTE, CHANNELS> lane_scores {{}};
+  alignas(v128_t) std::array<BYTE, CHANNELS> restart {{}};
+  alignas(v128_t) std::array<BYTE, CHANNELS> lane_scores {{}};
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id {{}};
@@ -336,7 +336,7 @@ search7
 
     easy = true;
     restart.fill(0);
-    v_store(reinterpret_cast<__m128i *>(lane_scores.data()), S);
+    v_store(reinterpret_cast<v128_t *>(lane_scores.data()), S);
 
     for (std::size_t c = 0; c < CHANNELS; c++)
     {
@@ -406,7 +406,7 @@ search7
     dprofile_fill7(dprofile, score_matrix, dseq.data());
 #endif
 
-    auto const M = v_load(reinterpret_cast<__m128i const *>(restart.data()));
+    auto const M = v_load(reinterpret_cast<v128_t const *>(restart.data()));
     align_cells<Ops_7>(S, hep, qp, gaps, qlen, Z, Mask<Ops_7>{M});
   }
 }

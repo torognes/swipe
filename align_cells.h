@@ -33,53 +33,52 @@
 #ifndef SWIPE_ALIGN_CELLS_H
 #define SWIPE_ALIGN_CELLS_H
 
-#include "intrinsics_to_functions.h"
-#include <emmintrin.h>  // __m128i
+#include "intrinsics_to_functions.h"  // v128_t, v256_t, v_*
 #include <iterator>  // std::next
 
 
 // 16 lanes of 7-bit scores: signed saturated arithmetic, unsigned maxima
 struct Ops_7 {
-  using Vector = __m128i;
+  using Vector = v128_t;
   // the zero score is 0x80, and scores are at most 0xff: as signed
   // bytes, at most -1, so that one saturated addition of a -128 lane
   // resets the score to zero
-  static auto mask(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i8(lhs, rhs); }
-  static auto add(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i8(lhs, rhs); }
-  static auto sub(__m128i const lhs, __m128i const rhs) -> __m128i { return v_subs_i8(lhs, rhs); }
-  static auto max(__m128i const lhs, __m128i const rhs) -> __m128i { return v_max_u8(lhs, rhs); }
+  static auto mask(v128_t const lhs, v128_t const rhs) -> v128_t { return v_adds_i8(lhs, rhs); }
+  static auto add(v128_t const lhs, v128_t const rhs) -> v128_t { return v_adds_i8(lhs, rhs); }
+  static auto sub(v128_t const lhs, v128_t const rhs) -> v128_t { return v_subs_i8(lhs, rhs); }
+  static auto max(v128_t const lhs, v128_t const rhs) -> v128_t { return v_max_u8(lhs, rhs); }
 };
 
 // 8 lanes of 16-bit scores: signed saturated arithmetic, signed maxima
 struct Ops_16 {
-  using Vector = __m128i;
+  using Vector = v128_t;
   // the zero score is 0x8000 (-32768), and scores span the whole signed
   // range: two saturated additions of a -32768 lane reset any score to
   // zero
-  static auto mask(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i16(v_adds_i16(lhs, rhs), rhs); }
-  static auto add(__m128i const lhs, __m128i const rhs) -> __m128i { return v_adds_i16(lhs, rhs); }
-  static auto sub(__m128i const lhs, __m128i const rhs) -> __m128i { return v_subs_i16(lhs, rhs); }
-  static auto max(__m128i const lhs, __m128i const rhs) -> __m128i { return v_max_i16(lhs, rhs); }
+  static auto mask(v128_t const lhs, v128_t const rhs) -> v128_t { return v_adds_i16(v_adds_i16(lhs, rhs), rhs); }
+  static auto add(v128_t const lhs, v128_t const rhs) -> v128_t { return v_adds_i16(lhs, rhs); }
+  static auto sub(v128_t const lhs, v128_t const rhs) -> v128_t { return v_subs_i16(lhs, rhs); }
+  static auto max(v128_t const lhs, v128_t const rhs) -> v128_t { return v_max_i16(lhs, rhs); }
 };
 
 
 #ifdef __AVX2__
 // 32 lanes of 7-bit scores (AVX2): the operations of Ops_7
 struct Ops_7_avx2 {
-  using Vector = __m256i;
-  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i8(lhs, rhs); }
-  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i8(lhs, rhs); }
-  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_subs_i8(lhs, rhs); }
-  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_max_u8(lhs, rhs); }
+  using Vector = v256_t;
+  static auto mask(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_adds_i8(lhs, rhs); }
+  static auto add(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_adds_i8(lhs, rhs); }
+  static auto sub(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_subs_i8(lhs, rhs); }
+  static auto max(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_max_u8(lhs, rhs); }
 };
 
 // 16 lanes of 16-bit scores (AVX2): the operations of Ops_16
 struct Ops_16_avx2 {
-  using Vector = __m256i;
-  static auto mask(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i16(v256_adds_i16(lhs, rhs), rhs); }
-  static auto add(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_adds_i16(lhs, rhs); }
-  static auto sub(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_subs_i16(lhs, rhs); }
-  static auto max(__m256i const lhs, __m256i const rhs) -> __m256i { return v256_max_i16(lhs, rhs); }
+  using Vector = v256_t;
+  static auto mask(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_adds_i16(v256_adds_i16(lhs, rhs), rhs); }
+  static auto add(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_adds_i16(lhs, rhs); }
+  static auto sub(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_subs_i16(lhs, rhs); }
+  static auto max(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_max_i16(lhs, rhs); }
 };
 #endif
 

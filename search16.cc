@@ -24,7 +24,7 @@
 */
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v_load, v_store, v_merge_*, v_dup_*, ...
+#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*, v_dup_*, ...
 #include "search16_shared.h"  // dprofile_fill16(), LaneScores16, RestartLanes16
 #include "align_cells.h"  // Ops_16, align_cells(), No_mask, Mask
 #include "view.h"  // View
@@ -57,15 +57,15 @@ auto search16(WORD * * q_start,
 	      long * bestpos,
 	      int qlen) -> void
 {
-  auto * const hep = reinterpret_cast<__m128i*>(hearray);
-  auto const * const * const qp = reinterpret_cast<__m128i const * const *>(q_start);
+  auto * const hep = reinterpret_cast<v128_t*>(hearray);
+  auto const * const * const qp = reinterpret_cast<v128_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_pos {{}};
   std::array<BYTE const *, CHANNELS> d_best {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, 16-byte aligned for the loads
-  alignas(__m128i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  alignas(v128_t) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id {{}};

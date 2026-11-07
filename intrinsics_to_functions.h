@@ -43,22 +43,36 @@
 #endif
 
 
+// The vector types of the kernels, by width: the kernels and the
+// score profile builders spell these names, never an x86 type, so
+// that another architecture (or a portable backend) can provide its
+// own types with the same names and the same operations
+
+// 16 bytes: 16 lanes of 8 bits, or 8 lanes of 16 bits
+using v128_t = __m128i;
+
+#ifdef __AVX2__
+// 32 bytes: 32 lanes of 8 bits, or 16 lanes of 16 bits
+using v256_t = __m256i;
+#endif
+
+
 // 16 lanes of 8 bits
 
 // signed saturated addition (paddsb)
-inline auto v_adds_i8(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_adds_i8(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_adds_epi8(lhs, rhs);
 }
 
 // signed saturated subtraction (psubsb)
-inline auto v_subs_i8(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_subs_i8(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_subs_epi8(lhs, rhs);
 }
 
 // unsigned maximum (pmaxub)
-inline auto v_max_u8(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_max_u8(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_max_epu8(lhs, rhs);
 }
@@ -67,19 +81,19 @@ inline auto v_max_u8(__m128i const lhs, __m128i const rhs) -> __m128i
 // 8 lanes of 16 bits
 
 // signed saturated addition (paddsw)
-inline auto v_adds_i16(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_adds_i16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_adds_epi16(lhs, rhs);
 }
 
 // signed saturated subtraction (psubsw)
-inline auto v_subs_i16(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_subs_i16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_subs_epi16(lhs, rhs);
 }
 
 // signed maximum (pmaxsw)
-inline auto v_max_i16(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_max_i16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_max_epi16(lhs, rhs);
 }
@@ -88,19 +102,19 @@ inline auto v_max_i16(__m128i const lhs, __m128i const rhs) -> __m128i
 // whole vectors
 
 // aligned load of 16 bytes (movdqa)
-inline auto v_load(__m128i const * const ptr) -> __m128i
+inline auto v_load(v128_t const * const ptr) -> v128_t
 {
   return _mm_load_si128(ptr);
 }
 
 // aligned store of 16 bytes (movdqa)
-inline auto v_store(__m128i * const ptr, __m128i const vector) -> void
+inline auto v_store(v128_t * const ptr, v128_t const vector) -> void
 {
   _mm_store_si128(ptr, vector);
 }
 
 // load of 8 bytes into the low half, the high half set to zero (movq)
-inline auto v_load_64(__m128i const * const ptr) -> __m128i
+inline auto v_load_64(v128_t const * const ptr) -> v128_t
 {
   return _mm_loadl_epi64(ptr);
 }
@@ -110,37 +124,37 @@ inline auto v_load_64(__m128i const * const ptr) -> __m128i
 // vectors, by lanes of 8, 16, 32 or 64 bits (punpckl*, punpckh*): the
 // transpositions of the score profile builders
 
-inline auto v_merge_lo_8(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_lo_8(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpacklo_epi8(lhs, rhs);
 }
 
-inline auto v_merge_lo_16(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_lo_16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpacklo_epi16(lhs, rhs);
 }
 
-inline auto v_merge_hi_16(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_hi_16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpackhi_epi16(lhs, rhs);
 }
 
-inline auto v_merge_lo_32(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_lo_32(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpacklo_epi32(lhs, rhs);
 }
 
-inline auto v_merge_hi_32(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_hi_32(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpackhi_epi32(lhs, rhs);
 }
 
-inline auto v_merge_lo_64(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_lo_64(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpacklo_epi64(lhs, rhs);
 }
 
-inline auto v_merge_hi_64(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_merge_hi_64(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_unpackhi_epi64(lhs, rhs);
 }
@@ -148,24 +162,24 @@ inline auto v_merge_hi_64(__m128i const lhs, __m128i const rhs) -> __m128i
 
 // bitwise operations (whole vectors)
 
-inline auto v_and(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_and(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_and_si128(lhs, rhs);
 }
 
-inline auto v_or(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_or(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_or_si128(lhs, rhs);
 }
 
-inline auto v_xor(__m128i const lhs, __m128i const rhs) -> __m128i
+inline auto v_xor(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   return _mm_xor_si128(lhs, rhs);
 }
 
 
 // all 16 lanes of 8 bits set to value
-inline auto v_dup_i8(char const value) -> __m128i
+inline auto v_dup_i8(char const value) -> v128_t
 {
   return _mm_set1_epi8(value);
 }
@@ -173,7 +187,7 @@ inline auto v_dup_i8(char const value) -> __m128i
 // each lane of 16 bits shifted left by 'count' bits (psllw); the count
 // is a template parameter, as the instruction takes an immediate
 template <int count>
-inline auto v_shift_left_i16(__m128i const vector) -> __m128i
+inline auto v_shift_left_i16(v128_t const vector) -> v128_t
 {
   return _mm_slli_epi16(vector, count);
 }
@@ -184,7 +198,7 @@ inline auto v_shift_left_i16(__m128i const vector) -> __m128i
 // set. Porting note: NEON's vqtbl1q_u8 returns zero for every index
 // from 16, and dprofile_shuffle7() uses indices 16 to 31 (bit 7 clear)
 // to read the low 4 bits
-inline auto v_shuffle_8(__m128i const table, __m128i const indices) -> __m128i
+inline auto v_shuffle_8(v128_t const table, v128_t const indices) -> v128_t
 {
   return _mm_shuffle_epi8(table, indices);
 }
@@ -192,7 +206,7 @@ inline auto v_shuffle_8(__m128i const table, __m128i const indices) -> __m128i
 
 
 // all 8 lanes of 16 bits set to value
-inline auto v_dup_i16(short const value) -> __m128i
+inline auto v_dup_i16(short const value) -> v128_t
 {
   return _mm_set1_epi16(value);
 }
@@ -200,12 +214,12 @@ inline auto v_dup_i16(short const value) -> __m128i
 // lanewise comparisons of 16-bit signed lanes, packed into a byte mask
 // (pcmpgtw or pcmpeqw, then pmovmskb): two bits per lane, bit 2i and
 // 2i + 1 for lane i
-inline auto v_mask_gt_i16(__m128i const lhs, __m128i const rhs) -> unsigned int
+inline auto v_mask_gt_i16(v128_t const lhs, v128_t const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm_movemask_epi8(_mm_cmpgt_epi16(lhs, rhs)));
 }
 
-inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> unsigned int
+inline auto v_mask_eq_i16(v128_t const lhs, v128_t const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm_movemask_epi8(_mm_cmpeq_epi16(lhs, rhs)));
 }
@@ -223,62 +237,62 @@ inline auto v_mask_eq_i16(__m128i const lhs, __m128i const rhs) -> unsigned int
 // Most AVX2 operations act on each 128-bit half separately; that only
 // matters for the shuffle and the byte shift (see below).
 
-inline auto v256_adds_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_adds_i8(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_adds_epi8(lhs, rhs);
 }
 
-inline auto v256_subs_i8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_subs_i8(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_subs_epi8(lhs, rhs);
 }
 
-inline auto v256_max_u8(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_max_u8(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_max_epu8(lhs, rhs);
 }
 
 // aligned load and store (32-byte boundary)
-inline auto v256_load(__m256i const * const ptr) -> __m256i
+inline auto v256_load(v256_t const * const ptr) -> v256_t
 {
   return _mm256_load_si256(ptr);
 }
 
-inline auto v256_store(__m256i * const ptr, __m256i const vector) -> void
+inline auto v256_store(v256_t * const ptr, v256_t const vector) -> void
 {
   _mm256_store_si256(ptr, vector);
 }
 
-inline auto v256_and(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_and(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_and_si256(lhs, rhs);
 }
 
-inline auto v256_or(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_or(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_or_si256(lhs, rhs);
 }
 
-inline auto v256_xor(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_xor(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_xor_si256(lhs, rhs);
 }
 
 // all 32 lanes of 8 bits set to value
-inline auto v256_dup_i8(char const value) -> __m256i
+inline auto v256_dup_i8(char const value) -> v256_t
 {
   return _mm256_set1_epi8(value);
 }
 
 template <int count>
-inline auto v256_shift_left_i16(__m256i const vector) -> __m256i
+inline auto v256_shift_left_i16(v256_t const vector) -> v256_t
 {
   return _mm256_slli_epi16(vector, count);
 }
 
 // the 16 bytes at source (aligned), in both halves of the vector
 // (vbroadcasti128)
-inline auto v256_broadcast_128(__m128i const * const source) -> __m256i
+inline auto v256_broadcast_128(v128_t const * const source) -> v256_t
 {
   return _mm256_broadcastsi128_si256(_mm_load_si128(source));
 }
@@ -286,61 +300,61 @@ inline auto v256_broadcast_128(__m128i const * const source) -> __m256i
 
 // 16 lanes of 16 bits (the 16-bit kernels)
 
-inline auto v256_adds_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_adds_i16(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_adds_epi16(lhs, rhs);
 }
 
-inline auto v256_subs_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_subs_i16(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_subs_epi16(lhs, rhs);
 }
 
-inline auto v256_max_i16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_max_i16(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_max_epi16(lhs, rhs);
 }
 
 // all 16 lanes of 16 bits set to value
-inline auto v256_dup_i16(short const value) -> __m256i
+inline auto v256_dup_i16(short const value) -> v256_t
 {
   return _mm256_set1_epi16(value);
 }
 
 // the interleaves work within each half (as two 128-bit unpacks)
-inline auto v256_merge_lo_16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_16(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpacklo_epi16(lhs, rhs);
 }
 
-inline auto v256_merge_hi_16(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_16(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpackhi_epi16(lhs, rhs);
 }
 
-inline auto v256_merge_lo_32(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_32(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpacklo_epi32(lhs, rhs);
 }
 
-inline auto v256_merge_hi_32(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_32(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpackhi_epi32(lhs, rhs);
 }
 
-inline auto v256_merge_lo_64(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_lo_64(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpacklo_epi64(lhs, rhs);
 }
 
-inline auto v256_merge_hi_64(__m256i const lhs, __m256i const rhs) -> __m256i
+inline auto v256_merge_hi_64(v256_t const lhs, v256_t const rhs) -> v256_t
 {
   return _mm256_unpackhi_epi64(lhs, rhs);
 }
 
 // the 16 bytes at low (aligned) in the low half, those at high
 // (aligned) in the high half (vinserti128)
-inline auto v256_load_halves(__m128i const * const low, __m128i const * const high) -> __m256i
+inline auto v256_load_halves(v128_t const * const low, v128_t const * const high) -> v256_t
 {
   return _mm256_inserti128_si256(_mm256_castsi128_si256(_mm_load_si128(low)),
                                  _mm_load_si128(high), 1);
@@ -349,12 +363,12 @@ inline auto v256_load_halves(__m128i const * const low, __m128i const * const hi
 // lanewise comparisons of 16-bit signed lanes, packed into a byte
 // mask: two bits per lane, bits 2i and 2i + 1 for lane i (32 bits:
 // unsigned, the last lane sets the sign bit)
-inline auto v256_mask_gt_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+inline auto v256_mask_gt_i16(v256_t const lhs, v256_t const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpgt_epi16(lhs, rhs)));
 }
 
-inline auto v256_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned int
+inline auto v256_mask_eq_i16(v256_t const lhs, v256_t const rhs) -> unsigned int
 {
   return static_cast<unsigned int>(_mm256_movemask_epi8(_mm256_cmpeq_epi16(lhs, rhs)));
 }
@@ -363,7 +377,7 @@ inline auto v256_mask_eq_i16(__m256i const lhs, __m256i const rhs) -> unsigned i
 // the lane (indices[i] & 0x0f) of the SAME half of table, or zero when
 // bit 7 of indices[i] is set. A 16-entry table must be in both halves
 // (v256_broadcast_128())
-inline auto v256_shuffle_8(__m256i const table, __m256i const indices) -> __m256i
+inline auto v256_shuffle_8(v256_t const table, v256_t const indices) -> v256_t
 {
   return _mm256_shuffle_epi8(table, indices);
 }

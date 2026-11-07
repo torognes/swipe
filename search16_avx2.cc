@@ -29,7 +29,7 @@
 // algorithms as search16() and search16s(), twice as many channels.
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v256_load, v256_store, v_merge_*, ...
+#include "intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v_merge_*, ...
 #include "align_cells.h"  // Ops_16_avx2, align_cells(), align_cells_single()
 #include "view.h"  // View
 #include <algorithm>  // std::fill_n
@@ -46,7 +46,7 @@ namespace {
 
 constexpr std::size_t CHANNELS = channels_16_avx2;
 
-static_assert(CHANNELS * sizeof(WORD) == sizeof(__m256i), "one word lane per channel");
+static_assert(CHANNELS * sizeof(WORD) == sizeof(v256_t), "one word lane per channel");
 
 // the word 0x8000 (-32768 has the same bits)
 constexpr short word_0x8000 = static_cast<short>(-32768);
@@ -71,7 +71,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 {
   constexpr std::size_t half = CHANNELS / 2;
   constexpr std::size_t row_words = score_matrix_width;
-  auto * const profile = reinterpret_cast<__m256i *>(dprofile_word);
+  auto * const profile = reinterpret_cast<v256_t *>(dprofile_word);
 
   for (std::size_t j = 0; j < depth; j++)
   {
@@ -84,9 +84,9 @@ inline auto dprofile_fill16(WORD * dprofile_word,
     for (std::size_t i = 0; i < score_matrix_width; i += half)
     {
       // eight query symbols (i to i + 7) of the row of channel c
-      auto const row = [&](std::size_t const c) -> __m128i const *
+      auto const row = [&](std::size_t const c) -> v128_t const *
       {
-        return reinterpret_cast<__m128i const *>(
+        return reinterpret_cast<v128_t const *>(
           std::next(score_matrix_word, d[c] + static_cast<std::ptrdiff_t>(i)));
       };
       auto const in0 = v256_load_halves(row(0), row(half + 0));
@@ -117,7 +117,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       auto const b7 = v256_merge_hi_32(a5, a7);
 
       // profile vector of query symbol s, database position j
-      auto const store = [&](std::size_t const s, __m256i const vector) -> void
+      auto const store = [&](std::size_t const s, v256_t const vector) -> void
       {
         v256_store(std::next(profile, static_cast<std::ptrdiff_t>((depth * s) + j)), vector);
       };
@@ -136,22 +136,22 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 // the score of each channel, read lane by lane
 struct LaneScores
 {
-  alignas(__m256i) std::array<WORD, CHANNELS> lanes {{}};
+  alignas(v256_t) std::array<WORD, CHANNELS> lanes {{}};
 
-  explicit LaneScores(__m256i const scores)
+  explicit LaneScores(v256_t const scores)
   {
-    v256_store(reinterpret_cast<__m256i *>(lanes.data()), scores);
+    v256_store(reinterpret_cast<v256_t *>(lanes.data()), scores);
   }
 };
 
 // the lanes of the channels that start a new sequence (0x8000)
 struct RestartLanes
 {
-  alignas(__m256i) std::array<WORD, CHANNELS> lanes {{}};
+  alignas(v256_t) std::array<WORD, CHANNELS> lanes {{}};
 
-  auto vector() const -> __m256i
+  auto vector() const -> v256_t
   {
-    return v256_load(reinterpret_cast<__m256i const *>(lanes.data()));
+    return v256_load(reinterpret_cast<v256_t const *>(lanes.data()));
   }
 };
 
@@ -178,15 +178,15 @@ auto search16_avx2(WORD * * q_start,
                    int qlen) -> void
 {
   constexpr std::size_t CDEPTH = 4;
-  auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  auto * const hep = reinterpret_cast<v256_t*>(hearray);
+  auto const * const * const qp = reinterpret_cast<v256_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_pos {{}};
   std::array<BYTE const *, CHANNELS> d_best {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, aligned for the loads
-  alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  alignas(v256_t) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id {{}};
@@ -347,8 +347,8 @@ auto search16s_avx2(WORD * * q_start,
                     int qlen) -> void
 {
   constexpr std::size_t CDEPTH = 1;
-  auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  auto * const hep = reinterpret_cast<v256_t*>(hearray);
+  auto const * const * const qp = reinterpret_cast<v256_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_pos {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
@@ -356,7 +356,7 @@ auto search16s_avx2(WORD * * q_start,
   std::array<long, CHANNELS> q_best {{}};
 
   // the database residues of the channels, aligned for the loads
-  alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  alignas(v256_t) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id {{}};

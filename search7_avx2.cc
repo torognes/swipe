@@ -29,7 +29,7 @@
 // as many channels.
 
 #include "swipe.h"
-#include "intrinsics_to_functions.h"  // v256_load, v256_store, v256_shuffle_8, ...
+#include "intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v256_shuffle_8, ...
 #include "align_cells.h"  // Ops_7_avx2, align_cells(), No_mask, Mask
 #include "view.h"  // View
 #include <array>
@@ -47,7 +47,7 @@ namespace {
 constexpr std::size_t CHANNELS = channels_7_avx2;
 constexpr std::size_t CDEPTH = 4;
 
-static_assert(CHANNELS == sizeof(__m256i), "one byte lane per channel");
+static_assert(CHANNELS == sizeof(v256_t), "one byte lane per channel");
 
 // the byte 0x80 (-128 has the same bits)
 constexpr char byte_0x80 = static_cast<char>(-128);
@@ -62,11 +62,11 @@ constexpr BYTE zero_score = 0x80;
 // symbols 16 to 31 the high table
 struct ShuffleIndices
 {
-  __m256i low;
-  __m256i high;
+  v256_t low;
+  v256_t high;
 };
 
-inline auto shuffle_indices(__m256i const symbols) -> ShuffleIndices
+inline auto shuffle_indices(v256_t const symbols) -> ShuffleIndices
 {
   auto const bit_4 = v256_dup_i8(0x10);
   auto const bit_7 = v256_dup_i8(byte_0x80);
@@ -75,9 +75,9 @@ inline auto shuffle_indices(__m256i const symbols) -> ShuffleIndices
   return {v256_or(symbols, high), v256_or(symbols, v256_xor(high, bit_7))};
 }
 
-inline auto profile_vector(__m256i const low_table,
-                           __m256i const high_table,
-                           ShuffleIndices const & indices) -> __m256i
+inline auto profile_vector(v256_t const low_table,
+                           v256_t const high_table,
+                           ShuffleIndices const & indices) -> v256_t
 {
   return v256_or(v256_shuffle_8(low_table, indices.low),
                  v256_shuffle_8(high_table, indices.high));
@@ -97,7 +97,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
                               BYTE const * dseq_byte) -> void
 {
   static_assert(CDEPTH == 4, "four database positions per block");
-  auto const * const dseq = reinterpret_cast<__m256i const *>(dseq_byte);
+  auto const * const dseq = reinterpret_cast<v256_t const *>(dseq_byte);
   auto const position_0 = shuffle_indices(v256_load(dseq));
   auto const position_1 = shuffle_indices(v256_load(std::next(dseq, 1)));
   auto const position_2 = shuffle_indices(v256_load(std::next(dseq, 2)));
@@ -107,13 +107,13 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
   // and __m256i pointers in one file does not build with GCC 4.8 and
   // 4.9 (the two vector types had the same mangled name before
   // -fabi-version=6)
-  constexpr auto half_row = static_cast<std::ptrdiff_t>(sizeof(__m128i));
-  auto * const profile = reinterpret_cast<__m256i *>(dprofile);
+  constexpr auto half_row = static_cast<std::ptrdiff_t>(sizeof(v128_t));
+  auto * const profile = reinterpret_cast<v256_t *>(dprofile);
   for (std::ptrdiff_t row = 0; row < static_cast<std::ptrdiff_t>(score_matrix_width); ++row)
   {
     auto const * const matrix_row = std::next(score_matrix, 2 * half_row * row);
-    auto const low_table = v256_broadcast_128(reinterpret_cast<__m128i const *>(matrix_row));
-    auto const high_table = v256_broadcast_128(reinterpret_cast<__m128i const *>(std::next(matrix_row, half_row)));
+    auto const low_table = v256_broadcast_128(reinterpret_cast<v128_t const *>(matrix_row));
+    auto const high_table = v256_broadcast_128(reinterpret_cast<v128_t const *>(std::next(matrix_row, half_row)));
     auto * const line = std::next(profile, static_cast<std::ptrdiff_t>(CDEPTH) * row);
     v256_store(line, profile_vector(low_table, high_table, position_0));
     v256_store(std::next(line, 1), profile_vector(low_table, high_table, position_1));
@@ -137,17 +137,17 @@ auto search7_avx2(BYTE * * q_start,
                   long * scores,
                   long qlen) -> void
 {
-  auto * const hep = reinterpret_cast<__m256i*>(hearray);
-  auto const * const * const qp = reinterpret_cast<__m256i const * const *>(q_start);
+  auto * const hep = reinterpret_cast<v256_t*>(hearray);
+  auto const * const * const qp = reinterpret_cast<v256_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_end {{}};
 
   // the database residues of the channels, aligned for the loads
-  alignas(__m256i) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
+  alignas(v256_t) std::array<BYTE, CDEPTH * CHANNELS> dseq {{}};
   // the lanes of the channels that start a new sequence (0x80), and
   // the scores, read lane by lane
-  alignas(__m256i) std::array<BYTE, CHANNELS> restart {{}};
-  alignas(__m256i) std::array<BYTE, CHANNELS> lane_scores {{}};
+  alignas(v256_t) std::array<BYTE, CHANNELS> restart {{}};
+  alignas(v256_t) std::array<BYTE, CHANNELS> lane_scores {{}};
   BYTE const zero = 0;
 
   std::array<long, CHANNELS> seq_id {{}};
@@ -212,7 +212,7 @@ auto search7_avx2(BYTE * * q_start,
     // to new sequences
     easy = true;
     restart.fill(0);
-    v256_store(reinterpret_cast<__m256i *>(lane_scores.data()), S);
+    v256_store(reinterpret_cast<v256_t *>(lane_scores.data()), S);
 
     for (std::size_t c = 0; c < CHANNELS; c++)
     {
@@ -268,7 +268,7 @@ auto search7_avx2(BYTE * * q_start,
     }
 
     dprofile_shuffle7(dprofile, score_matrix, dseq.data());
-    auto const mask = v256_load(reinterpret_cast<__m256i const *>(restart.data()));
+    auto const mask = v256_load(reinterpret_cast<v256_t const *>(restart.data()));
     align_cells<Ops_7_avx2>(S, hep, qp, {Q, R}, qlen, Z, Mask<Ops_7_avx2>{mask});
   }
 }
