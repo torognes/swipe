@@ -31,8 +31,8 @@
 // maxima on the same bytes: another architecture (NEON, AltiVec) can
 // provide the same functions (phase 10)
 
-#ifndef SWIPE_INTRINSICS_TO_FUNCTIONS_H
-#define SWIPE_INTRINSICS_TO_FUNCTIONS_H
+#ifndef SWIPE_ARCH_X86_64_INTRINSICS_TO_FUNCTIONS_H
+#define SWIPE_ARCH_X86_64_INTRINSICS_TO_FUNCTIONS_H
 
 #include <emmintrin.h>  // SSE2
 #ifdef __SSSE3__
@@ -383,4 +383,4 @@ inline auto v256_shuffle_8(v256_t const table, v256_t const indices) -> v256_t
 }
 #endif
 
-#endif  // SWIPE_INTRINSICS_TO_FUNCTIONS_H
+#endif  // SWIPE_ARCH_X86_64_INTRINSICS_TO_FUNCTIONS_H

@@ -30,7 +30,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v_merge_*, ...
+#include "arch/x86_64/intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v_merge_*, ...
 #include "align_cells.h"  // Ops_16_avx2, align_cells(), align_cells_single()
 #include "view.h"  // View
 #include <algorithm>  // std::fill_n

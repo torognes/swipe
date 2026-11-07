@@ -31,7 +31,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_shuffle_8, ...
+#include "arch/x86_64/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_shuffle_8, ...
 #include "search7_shared.h"  // search7_blocks(), depth_7, byte_0x80
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <iterator>  // std::next

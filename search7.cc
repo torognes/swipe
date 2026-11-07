@@ -29,7 +29,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "intrinsics_to_functions.h"  // v128_t, v_load, v_load_64, v_store, v_merge_*
+#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_load_64, v_store, v_merge_*
 #include "search7_shared.h"  // search7_blocks(), channels_7_sse, depth_7
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t

@@ -57,6 +57,13 @@ jobs:
       timeout-minutes: 5
       run: bash .github/scripts/isa_isolation.sh
 
+    - name: Portable vector operations give the x86-64 results
+      if: ${{ matrix.build.name == 'gcc-generic' }}
+      timeout-minutes: 5
+      run: |
+        bash .github/scripts/generic_operations.sh g++
+        bash .github/scripts/generic_operations.sh clang++
+
     - name: Install NCBI BLAST+ (makeblastdb)
       timeout-minutes: 10
       run: |

@@ -35,7 +35,7 @@
 #define SWIPE_SEARCH7_SHARED_H
 
 #include "swipe.h"  // BYTE, channels_7, vector_bytes, db_getsequence, entry_seqno, ...
-#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_dup_i8
+#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_dup_i8
 #include "align_cells.h"  // Ops_7, align_cells(), GapVectors, No_mask, Mask
 #include "view.h"  // View
 #include <array>

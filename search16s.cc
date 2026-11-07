@@ -25,7 +25,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*, v_dup_*, ...
+#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*, v_dup_*, ...
 #include "search16_shared.h"  // dprofile_fill16(), LaneScores16, RestartLanes16
 #include "align_cells.h"  // Ops_16, onestep(), No_mask, Mask
 #include "view.h"  // View

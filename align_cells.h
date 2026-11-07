@@ -33,7 +33,7 @@
 #ifndef SWIPE_ALIGN_CELLS_H
 #define SWIPE_ALIGN_CELLS_H
 
-#include "intrinsics_to_functions.h"  // v128_t, v256_t, v_*
+#include "arch/intrinsics_to_functions.h"  // v128_t, v256_t, v_*
 #include <iterator>  // std::next
 
 

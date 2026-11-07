@@ -73,6 +73,11 @@ ifneq (,$(filter x86_64 amd64, $(MACHINE)))
 else
   ARCH := generic
 endif
+# the 128-bit kernels use the portable vector operations
+# (arch/intrinsics_to_functions.h)
+ifeq ($(ARCH),generic)
+  ARCH_DEFINE := -DSWIPE_ARCH_GENERIC
+endif
 ifeq ($(wildcard arch/$(ARCH)/*.cc),)
   $(error ARCH=$(ARCH): no such architecture (the folders of arch/))
 endif
@@ -128,7 +133,7 @@ endif
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
 SWIPE_CXXFLAGS=-I. $(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
-	$(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
+	$(ARCH_DEFINE) $(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
 PROG=swipe

@@ -33,7 +33,7 @@
 #define SWIPE_SEARCH16_SHARED_H
 
 #include "swipe.h"  // BYTE, WORD, channels_16, score_matrix_width
-#include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*
+#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <iterator>  // std::next
