@@ -113,10 +113,11 @@ inline auto v_store(v128_t * const ptr, v128_t const vector) -> void
   _mm_store_si128(ptr, vector);
 }
 
-// load of 8 bytes into the low half, the high half set to zero (movq)
-inline auto v_load_64(v128_t const * const ptr) -> v128_t
+// load of 8 bytes into the low half, the high half set to zero (movq;
+// ptr needs no alignment)
+inline auto v_load_64(void const * const ptr) -> v128_t
 {
-  return _mm_loadl_epi64(ptr);
+  return _mm_loadl_epi64(static_cast<v128_t const *>(ptr));
 }
 
 

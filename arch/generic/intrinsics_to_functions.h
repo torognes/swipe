@@ -229,8 +229,8 @@ inline auto v_store(v128_t * const ptr, v128_t const vector) -> void
 }
 
 // load of 8 bytes into the low half, the high half set to zero (movq):
-// only 8 bytes are read
-inline auto v_load_64(v128_t const * const ptr) -> v128_t
+// only 8 bytes are read, ptr needs no alignment
+inline auto v_load_64(void const * const ptr) -> v128_t
 {
   v128_t vector {};
   std::memcpy(&vector, ptr, v128_bytes / 2);

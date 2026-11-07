@@ -76,7 +76,7 @@ inline auto search7_blocks(BuildProfile const & build_profile,
                            long * scores,
                            long qlen) -> void
 {
-  auto * const hep = reinterpret_cast<v128_t*>(hearray);
+  auto * const hep = as_v128(hearray);
   auto const * const * const qp = reinterpret_cast<v128_t const * const *>(q_start);
   std::array<BYTE const *, channels_7_sse> d_begin {{}};
   std::array<BYTE const *, channels_7_sse> d_end {{}};
@@ -151,7 +151,7 @@ inline auto search7_blocks(BuildProfile const & build_profile,
 
     easy = true;
     restart.fill(0);
-    v_store(reinterpret_cast<v128_t *>(lane_scores.data()), S);
+    v_store(as_v128(lane_scores.data()), S);
 
     for (std::size_t c = 0; c < channels_7_sse; c++)
     {
@@ -217,7 +217,7 @@ inline auto search7_blocks(BuildProfile const & build_profile,
 
     build_profile(dprofile, score_matrix, dseq.data());
 
-    auto const M = v_load(reinterpret_cast<v128_t const *>(restart.data()));
+    auto const M = v_load(as_v128(restart.data()));
     align_cells<Ops_7>(S, hep, qp, gaps, qlen, Z, Mask<Ops_7>{M});
   }
 }

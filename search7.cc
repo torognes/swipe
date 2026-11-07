@@ -29,7 +29,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_load_64, v_store, v_merge_*
+#include "arch/intrinsics_to_functions.h"  // v128_t, as_v128, v_load, v_load_64, v_store, v_merge_*
 #include "search7_shared.h"  // search7_blocks(), channels_7_sse, depth_7
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
@@ -60,16 +60,16 @@ inline auto dprofile_fill7_columns(v128_t * const profile,
                                    ChannelRows const & rows,
                                    std::size_t const j) -> void
 {
-  auto const row = [&](std::size_t const c) -> v128_t const *
+  auto const row = [&](std::size_t const c) -> BYTE const *
   {
-    return reinterpret_cast<v128_t const *>(std::next(score_matrix, rows[c] + column));
+    return std::next(score_matrix, rows[c] + column);
   };
   // the 8 bytes of an odd channel: when they start a 16-byte boundary,
   // a full load, which the unpack takes as its memory operand
   // loads not aligned on 16 byte boundary, cannot load and unpack in one instr.
   auto const odd_row = [&](std::size_t const c) -> v128_t
   {
-    return (column % vector_columns == 0) ? v_load(row(c)) : v_load_64(row(c));
+    return (column % vector_columns == 0) ? v_load(as_v128(row(c))) : v_load_64(row(c));
   };
   auto const pair = [&](std::size_t const c) -> v128_t
   {
@@ -123,7 +123,7 @@ inline auto dprofile_fill7(BYTE * dprofile,
 			   BYTE const * dseq) -> void
 {
   static_assert(score_matrix_width == 4 * group_columns, "four groups of 8 columns");
-  auto * const profile = reinterpret_cast<v128_t *>(dprofile);
+  auto * const profile = as_v128(dprofile);
   
   // 4 x 16 db symbols
   // ca (60x2+68x2)x4 = 976 instructions

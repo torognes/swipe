@@ -31,7 +31,7 @@
 
 #include "swipe.h"
 #include "search_kernels.h"  // the prototype of the kernel
-#include "arch/x86_64/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_shuffle_8, ...
+#include "arch/intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_shuffle_8, ...
 #include "search7_shared.h"  // search7_blocks(), depth_7, byte_0x80
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <iterator>  // std::next
@@ -77,7 +77,7 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 			      BYTE const * dseq_byte) -> void
 {
   static_assert(CDEPTH == 4, "four database positions per block");
-  auto const * const dseq = reinterpret_cast<v128_t const *>(dseq_byte);
+  auto const * const dseq = as_v128(dseq_byte);
   
   // 16 x 4 = 64 db symbols
   // ca 458 instructions
@@ -94,8 +94,8 @@ inline auto dprofile_shuffle7(BYTE * dprofile,
 
   // one row of the score matrix, shuffled into the four vectors of a
   // row of the profile (the former profline(j) macro)
-  auto const * const matrix = reinterpret_cast<v128_t const *>(score_matrix);
-  auto * const profile = reinterpret_cast<v128_t *>(dprofile);
+  auto const * const matrix = as_v128(score_matrix);
+  auto * const profile = as_v128(dprofile);
   auto const profile_row = [&](std::ptrdiff_t const row) -> void
   {
     auto const * const matrix_row = std::next(matrix, matrix_row_vectors * row);

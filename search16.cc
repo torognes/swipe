@@ -58,7 +58,7 @@ auto search16(WORD * * q_start,
 	      long * bestpos,
 	      int qlen) -> void
 {
-  auto * const hep = reinterpret_cast<v128_t*>(hearray);
+  auto * const hep = as_v128(hearray);
   auto const * const * const qp = reinterpret_cast<v128_t const * const *>(q_start);
   std::array<BYTE const *, CHANNELS> d_begin {{}};
   std::array<BYTE const *, CHANNELS> d_pos {{}};

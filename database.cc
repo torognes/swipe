@@ -1356,7 +1356,7 @@ auto db_getsequence(db_thread_s & t, long seqno, StrandFrame const where,
     for(long j=0; j < nt_length/4; j++)
     {
       auto const b = static_cast<unsigned char>(address[j]);
-      *std::next(reinterpret_cast<unsigned int *>(nt), j) = decompress_nt[b];
+      std::memcpy(std::next(nt, 4 * j), &decompress_nt[b], sizeof(unsigned int));
     }
     
     for(long i=4*(nt_length/4); i<nt_length; i++)

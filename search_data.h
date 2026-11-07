@@ -36,11 +36,24 @@
 #include <array>
 #include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
+#include <cstdint>  // std::uintptr_t
 #include <iterator>  // std::distance, std::next
 
 // the score profile of the SIMD kernels: 32 symbols x 64 bytes (4
 // database residues x 16 bytes of lanes)
 constexpr std::size_t profile_bytes = std::size_t{32} * 64;
+
+// a byte buffer of the kernels (profile, H/E array) as an array of
+// Element (WORD for the 16-bit kernels, long for search63()): a cast
+// through void *, the buffers being aligned by xmalloc(), as a direct
+// cast from a byte pointer warns on the targets that require aligned
+// accesses (-Wcast-align: mips64, and riscv64 by default)
+template <typename Element>
+inline auto buffer_as(Buffer<BYTE> & buffer) -> Element *
+{
+  assert(reinterpret_cast<std::uintptr_t>(buffer.data()) % alignof(Element) == 0);
+  return static_cast<Element *>(static_cast<void *>(buffer.data()));
+}
 
 struct search_data
 {

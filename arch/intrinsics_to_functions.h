@@ -38,4 +38,24 @@
 #include "arch/generic/intrinsics_to_functions.h"
 #endif
 
+#include <cassert>
+#include <cstdint>  // std::uintptr_t
+
+
+// The vectors at 'bytes', a buffer aligned on a vector (alignas(v128_t),
+// or allocated by xmalloc()): a cast through void *, as a direct cast
+// from a byte or word pointer warns on the targets that require
+// aligned accesses (-Wcast-align: mips64, and riscv64 by default)
+inline auto as_v128(void * const bytes) -> v128_t *
+{
+  assert(reinterpret_cast<std::uintptr_t>(bytes) % alignof(v128_t) == 0);
+  return static_cast<v128_t *>(bytes);
+}
+
+inline auto as_v128(void const * const bytes) -> v128_t const *
+{
+  assert(reinterpret_cast<std::uintptr_t>(bytes) % alignof(v128_t) == 0);
+  return static_cast<v128_t const *>(bytes);
+}
+
 #endif  // SWIPE_ARCH_INTRINSICS_TO_FUNCTIONS_H

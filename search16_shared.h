@@ -55,7 +55,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
 {
   constexpr std::size_t row_words = score_matrix_width;
   constexpr std::size_t block = channels_16_sse;  // 8 x 8 words
-  auto * const profile = reinterpret_cast<v128_t *>(dprofile_word);
+  auto * const profile = as_v128(dprofile_word);
 
   for (std::size_t j = 0; j < depth; j++)
   {
@@ -71,7 +71,7 @@ inline auto dprofile_fill16(WORD * dprofile_word,
       // eight query symbols (i to i + 7) of the row of channel c
       auto const row = [&](std::size_t const c) -> v128_t
       {
-        return v_load(reinterpret_cast<v128_t const *>(
+        return v_load(as_v128(
           std::next(score_matrix_word, d[c] + static_cast<std::ptrdiff_t>(i))));
       };
       auto const in0 = row(0);
@@ -125,7 +125,7 @@ struct LaneScores16
 
   explicit LaneScores16(v128_t const scores)
   {
-    v_store(reinterpret_cast<v128_t *>(lanes.data()), scores);
+    v_store(as_v128(lanes.data()), scores);
   }
 };
 
@@ -136,7 +136,7 @@ struct RestartLanes16
 
   auto vector() const -> v128_t
   {
-    return v_load(reinterpret_cast<v128_t const *>(lanes.data()));
+    return v_load(as_v128(lanes.data()));
   }
 };
 
