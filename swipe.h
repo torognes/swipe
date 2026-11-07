@@ -196,9 +196,12 @@ constexpr std::size_t byte_values = 256;
 // the base of the numbers read by strtol() and its siblings
 constexpr int decimal_base = 10;
 
-extern std::array<char, byte_values> const map_ncbi_nt16;
-extern std::array<char, byte_values> const map_ncbi_aa;
-extern std::array<char, byte_values> const map_sound;
+// the symbol code (0 to 31) of each byte of a sequence, or -1 when it
+// is not a symbol: signed char, as plain char is unsigned on aarch64,
+// ppc64le and riscv64, where -1 would read 255
+extern std::array<signed char, byte_values> const map_ncbi_nt16;
+extern std::array<signed char, byte_values> const map_ncbi_aa;
+extern std::array<signed char, byte_values> const map_sound;
 
 extern char const * const sym_ncbi_nt16;
 extern char const * const sym_ncbi_nt16u;
@@ -269,7 +272,7 @@ struct query_s
   long dlen;
   SymbolType symtype;
   QueryStrands strands;
-  char const * map;
+  signed char const * map;
   char const * sym;
 
   FILE * input;  // the query file (stdin with "-")

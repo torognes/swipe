@@ -355,11 +355,11 @@ auto next_score(char const * & cursor) -> long
 // the column symbols of a matrix, as the header lines list them
 struct MatrixColumns
 {
-  std::array<char, line_buffer_size> order {{}};
+  std::array<signed char, line_buffer_size> order {{}};
   int symbols = 0;
 };
 
-auto symbol_map(Parameters const & parameters) -> std::array<char, byte_values> const &
+auto symbol_map(Parameters const & parameters) -> std::array<signed char, byte_values> const &
 {
   if (parameters.symtype == SymbolType::sound)
   {
@@ -377,7 +377,7 @@ enum struct MatrixLine
 
 // one line of a score matrix (NUL-terminated), whether it comes from a
 // file or from a built-in matrix string
-auto parse_matrix_line(char const * line, std::array<char, byte_values> const & map,
+auto parse_matrix_line(char const * line, std::array<signed char, byte_values> const & map,
                        MatrixColumns & columns) -> MatrixLine
 {
       char const * p = line;
@@ -402,7 +402,7 @@ auto parse_matrix_line(char const * line, std::array<char, byte_values> const & 
 	  
 	  {
 	  int const known_symbols = columns.symbols;
-	  char * q = columns.order.data();
+	  signed char * q = columns.order.data();
 
 	  while ((c = *p) != 0)
 	  {

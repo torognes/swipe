@@ -38,7 +38,7 @@
 //   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
 //   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   |
 
-std::array<char, byte_values> const map_sound {{
+std::array<signed char, byte_values> const map_sound {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -57,7 +57,7 @@ std::array<char, byte_values> const map_sound {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   }};
 
-std::array<char, byte_values> const map_ncbi_aa {{
+std::array<signed char, byte_values> const map_ncbi_aa {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 25, -1, -1,  0, -1, -1,
@@ -76,7 +76,7 @@ std::array<char, byte_values> const map_ncbi_aa {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
   }};
 
-std::array<char, byte_values> const map_ncbi_nt16 {{
+std::array<signed char, byte_values> const map_ncbi_nt16 {{
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -305,7 +305,7 @@ auto query_read() -> int
   query_sequence[0] = 0;
   long query_length = 0;
  
-  char const * map = nullptr;
+  signed char const * map = nullptr;
 
   if (query.symtype == SymbolType::sound)
   {
@@ -327,7 +327,7 @@ auto query_read() -> int
     {
       // bytes above 0x7f must not be negative indexes (KI-19)
       int const c = static_cast<unsigned char>(character);
-      char const symbol = map[c];
+      auto const symbol = map[c];
       if (symbol >= 0)
       {
 	if (query_length + 1 >= size)
@@ -335,7 +335,7 @@ auto query_read() -> int
 	  size += static_cast<int>(line_buffer_size);
 	  query_sequence.resize(static_cast<std::size_t>(size));
 	}
-	query_sequence[static_cast<std::size_t>(query_length++)] = symbol;
+	query_sequence[static_cast<std::size_t>(query_length++)] = static_cast<char>(symbol);
       }
     }
     read_line(query.input, query.line);
@@ -469,7 +469,7 @@ auto translate_createtable(long const tableno) -> std::array<char, translation_t
 	  aa = 'X';
 	}
 
-	table[(((a * nucleotide_codes) + b) * nucleotide_codes) + c] = map_ncbi_aa[static_cast<unsigned char>(aa)];
+	table[(((a * nucleotide_codes) + b) * nucleotide_codes) + c] = static_cast<char>(map_ncbi_aa[static_cast<unsigned char>(aa)]);
       }
     }
   }

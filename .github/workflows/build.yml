@@ -29,6 +29,8 @@ jobs:
           - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 }
           # the files of arch/generic/ (any machine but x86-64), on x86-64
           - { name: gcc-generic,  cxx: g++,     recipe: RELEASE=1 WERROR=1 ARCH=generic }
+          # plain char is unsigned on aarch64, ppc64le and riscv64
+          - { name: gcc-unsigned-char, cxx: g++, recipe: RELEASE=1 WERROR=1 CXXFLAGS=-funsigned-char }
 
     name: linux-x86_64 (${{ matrix.build.name }})
 
