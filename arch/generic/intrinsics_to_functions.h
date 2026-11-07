@@ -97,12 +97,75 @@ inline auto saturated(Vector const lhs, Vector const other, Vector const sum,
   return (sum & ~overflow) | (bound & overflow);
 }
 
-// the larger of each pair of lanes (a comparison is a mask: all bits
-// of a lane set where it is true)
-template <typename Vector>
-inline auto maximum(Vector const lhs, Vector const rhs) -> Vector
+// The lane masks (all bits of a lane set where the relation holds) of
+// the comparisons: the vector comparison operators (> and ==), that
+// compilers map to their compare instructions, except with clang and
+// AltiVec (ppc64le, enabled by default), which deprecates their current
+// meaning and will switch to the XL semantics, where a comparison of
+// vectors is a scalar (-Wdeprecated-altivec-src-compat): there, the
+// masks are computed with arithmetic and logic operations (the same
+// results, 2.3 times slower on x86-64, where they were measured).
+#if defined(__clang__) && defined(__ALTIVEC__)
+
+// lhs > rhs, signed lanes of type Signed (Unsigned: the same lanes
+// without sign, for a wrapping subtraction): the sign of rhs - lhs,
+// corrected when the subtraction overflowed (lhs and rhs of different
+// signs, and a difference whose sign differs from that of rhs)
+template <typename Signed, typename Unsigned>
+inline auto greater_signed(Signed const lhs, Signed const rhs, int const sign_shift) -> Signed
 {
-  auto const larger = reinterpret_cast<Vector>(lhs > rhs);
+  auto const difference = reinterpret_cast<Signed>(reinterpret_cast<Unsigned>(rhs) -
+                                                   reinterpret_cast<Unsigned>(lhs));
+  Signed const overflow = (rhs ^ lhs) & (rhs ^ difference);
+  return (difference ^ overflow) >> sign_shift;
+}
+
+// unsigned bytes: the signed order of the bytes with their top bit
+// flipped
+inline auto greater_u8(v128_t const lhs, v128_t const rhs) -> v128_t
+{
+  auto const sign_bit = static_cast<std::uint8_t>(0x80);
+  return reinterpret_cast<v128_t>(greater_signed<i8x16, v128_t>(
+      reinterpret_cast<i8x16>(lhs ^ sign_bit), reinterpret_cast<i8x16>(rhs ^ sign_bit),
+      i8_sign_shift));
+}
+
+inline auto greater_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
+{
+  return greater_signed<i16x8, u16x8>(lhs, rhs, i16_sign_shift);
+}
+
+// x | -x has its sign bit set exactly when x = lhs ^ rhs is not zero
+inline auto equal_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
+{
+  auto const bits = reinterpret_cast<u16x8>(lhs ^ rhs);
+  auto const nonzero = reinterpret_cast<i16x8>(bits | (u16x8 {} - bits));
+  return ~(nonzero >> i16_sign_shift);
+}
+
+#else
+
+inline auto greater_u8(v128_t const lhs, v128_t const rhs) -> v128_t
+{
+  return reinterpret_cast<v128_t>(lhs > rhs);
+}
+
+inline auto greater_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
+{
+  return reinterpret_cast<i16x8>(lhs > rhs);
+}
+
+inline auto equal_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
+{
+  return reinterpret_cast<i16x8>(lhs == rhs);
+}
+
+#endif
+
+// the larger of each pair of lanes, given the mask of lhs > rhs
+template <typename Vector>
+inline auto select_larger(Vector const lhs, Vector const rhs, Vector const larger) -> Vector
+{
   return (lhs & larger) | (rhs & ~larger);
 }
 
@@ -177,7 +240,7 @@ inline auto v_subs_i8(v128_t const lhs, v128_t const rhs) -> v128_t
 // unsigned maximum (pmaxub)
 inline auto v_max_u8(v128_t const lhs, v128_t const rhs) -> v128_t
 {
-  return generic_lanes::maximum(lhs, rhs);
+  return generic_lanes::select_larger(lhs, rhs, generic_lanes::greater_u8(lhs, rhs));
 }
 
 
@@ -210,7 +273,9 @@ inline auto v_max_i16(v128_t const lhs, v128_t const rhs) -> v128_t
 {
   using generic_lanes::i16x8;
   return reinterpret_cast<v128_t>(
-      generic_lanes::maximum(reinterpret_cast<i16x8>(lhs), reinterpret_cast<i16x8>(rhs)));
+      generic_lanes::select_larger(
+          reinterpret_cast<i16x8>(lhs), reinterpret_cast<i16x8>(rhs),
+          generic_lanes::greater_i16(reinterpret_cast<i16x8>(lhs), reinterpret_cast<i16x8>(rhs))));
 }
 
 
@@ -323,13 +388,15 @@ inline auto v_dup_i16(short const value) -> v128_t
 inline auto v_mask_gt_i16(v128_t const lhs, v128_t const rhs) -> unsigned int
 {
   using generic_lanes::i16x8;
-  return generic_lanes::byte_mask(reinterpret_cast<i16x8>(lhs) > reinterpret_cast<i16x8>(rhs));
+  return generic_lanes::byte_mask(
+      generic_lanes::greater_i16(reinterpret_cast<i16x8>(lhs), reinterpret_cast<i16x8>(rhs)));
 }
 
 inline auto v_mask_eq_i16(v128_t const lhs, v128_t const rhs) -> unsigned int
 {
   using generic_lanes::i16x8;
-  return generic_lanes::byte_mask(reinterpret_cast<i16x8>(lhs) == reinterpret_cast<i16x8>(rhs));
+  return generic_lanes::byte_mask(
+      generic_lanes::equal_i16(reinterpret_cast<i16x8>(lhs), reinterpret_cast<i16x8>(rhs)));
 }
 
 #endif  // SWIPE_ARCH_GENERIC_INTRINSICS_TO_FUNCTIONS_H
