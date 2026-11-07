@@ -24,9 +24,9 @@
 */
 
 #include "swipe.h"
+#include "arch/cpu_features.h"  // cpu_features_check
 #include "search_data.h"  // prepare_search, run_threads, align_threads
 #include "print_view.h"  // as_c_string, fprint
-#include <cpuid.h>  // __get_cpuid, bit_SSE2, bit_SSSE3
 #include <cassert>
 #include <cstddef>  // size_t
 #include <cstdio>  // std::fclose, std::ferror, std::fflush
@@ -80,33 +80,6 @@ auto xmalloc(size_t size) -> void *
 
 
 namespace {
-
-auto detect_cpu_features() noexcept -> CpuFeatures
-{
-  // the feature bits of cpuid leaf 1 (bit_SSE2 in edx, bit_SSSE3 in
-  // ecx); __get_cpuid() returns 0, and no feature is reported, when the
-  // processor does not support that leaf
-  unsigned int eax = 0;
-  unsigned int ebx = 0;
-  unsigned int ecx = 0;
-  unsigned int edx = 0;
-  if (__get_cpuid(1, &eax, &ebx, &ecx, &edx) == 0)
-  {
-    return {false, false, false};
-  }
-  bool const sse2 = (edx & bit_SSE2) != 0;
-  bool const ssse3 = (ecx & bit_SSSE3) != 0;
-  // AVX2: the processor (cpuid leaf 7) and the operating system (the
-  // 256-bit registers saved on context switches, XCR0): GCC and clang
-  // check both (sketch: check that GCC 4.8's libgcc does the XCR0 part)
-  __builtin_cpu_init();
-#ifdef SWIPE_NO_AVX2
-  bool const avx2 = false;
-#else
-  bool const avx2 = __builtin_cpu_supports("avx2") != 0;
-#endif
-  return {sse2, ssse3, avx2};
-}
 
 auto clock_start(time_info & timing) -> void
 {
@@ -241,16 +214,10 @@ auto work(Parameters const & parameters) -> void
 
 }  // anonymous namespace
 
-// detected before main() (dynamic initialization: cpuid has no dependency)
-extern CpuFeatures const cpu_features = detect_cpu_features();
-
 auto main(int argc, char**argv) -> int
 {
 
-  if (not cpu_features.sse2)
-  {
-    fatal("This program requires a processor with SSE2.");
-  }
+  cpu_features_check();
 
   auto const parameters = args_init(argc, argv);
 

@@ -24,6 +24,7 @@
 */
 
 #include "search_data.h"
+#include "arch/x86_64/cpu_features.h"  // cpu_features
 #include <algorithm>  // std::copy_n, std::max, std::max_element, std::min, std::transform
 #include <cassert>
 #include <cmath>  // std::floor, std::sqrt

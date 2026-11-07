@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "arch/cpu_features.h"  // cpu_features_show
 #include "print_view.h"  // as_c_string, fprint, fprint_integer
 #include <array>
 #include <cassert>
@@ -45,10 +46,7 @@ auto args_show(Parameters const & parameters) -> void
   if (parameters.view == OutputFormat::plain)
   {
     
-    if (not cpu_features.ssse3)
-    {
-      fprint(out, "The performance is reduced because this CPU lacks SSSE3.\n\n");
-    }
+    cpu_features_show(out);
     
     static constexpr std::array<char const *, 6> symtypestring {{ "Nucleotide", "Amino acid", "Translated query", "Translated database", "Both translated", "Sound" }};
     

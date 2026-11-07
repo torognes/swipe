@@ -177,15 +177,6 @@ auto args_show(Parameters const & parameters) -> void;
 
 
 
-// the SIMD instruction sets of the processor, detected once (cpuid)
-struct CpuFeatures
-{
-  bool sse2;
-  bool ssse3;
-  bool avx2;
-};
-extern CpuFeatures const cpu_features;
-
 // the score matrices are 32 x 32, row-major (symbol codes 0 to 31)
 constexpr std::size_t score_matrix_width = 32;
 

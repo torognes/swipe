@@ -109,7 +109,7 @@ endif
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
-SWIPE_CXXFLAGS=$(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
+SWIPE_CXXFLAGS=-I. $(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
 	$(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
@@ -159,13 +159,15 @@ uninstall :
 
 clean :
 	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov
+	rm -f arch/*/*.o arch/*/*.d arch/*/*.gcno arch/*/*.gcda
 
 distclean : clean
 	rm -f compile_commands.json
 
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o blastkar_partial.o hits.o query.o \
-	search63.o search16.o search16s.o search7.o search7_ssse3.o search7_avx2.o search16_avx2.o
+	search63.o search16.o search16s.o search7.o search7_ssse3.o search7_avx2.o search16_avx2.o \
+	arch/x86_64/cpu_features.o
 
 # Header dependencies are generated alongside each object (*.d
 # files), so that editing any header rebuilds the right objects.

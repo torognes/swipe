@@ -24,6 +24,7 @@
 */
 
 #include "search_data.h"
+#include "arch/x86_64/cpu_features.h"  // cpu_features
 #include <algorithm>  // std::generate, std::min
 #include <array>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
