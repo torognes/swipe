@@ -48,14 +48,14 @@ jobs:
         # swipe -h exits with status 0 since 2.2.0 (KI-2)
         ./swipe -h 2>&1 | head -n 1
 
-    - name: AVX2 code only in the AVX2 kernels
+    - name: AVX2 and SSSE3 code only in their kernels
       # release builds only: at -O0 nothing is inlined, every template
       # used by an AVX2 kernel has an out-of-line AVX2 copy, and which
       # copy the linker keeps varies (the debug binary is never shipped)
       # (and builds with AVX2 kernels: not ARCH=generic)
       if: ${{ matrix.build.name != 'gcc-debug' && matrix.build.name != 'gcc-generic' }}
       timeout-minutes: 5
-      run: bash .github/scripts/avx2_isolation.sh
+      run: bash .github/scripts/isa_isolation.sh
 
     - name: Install NCBI BLAST+ (makeblastdb)
       timeout-minutes: 10
@@ -161,9 +161,9 @@ jobs:
             bash -c 'g++ --version && make clean && make -j "$(nproc)" RELEASE=1 WERROR=1'
         ./swipe -h 2>&1 | head -n 1
 
-    - name: AVX2 code only in the AVX2 kernels
+    - name: AVX2 and SSSE3 code only in their kernels
       timeout-minutes: 5
-      run: bash .github/scripts/avx2_isolation.sh
+      run: bash .github/scripts/isa_isolation.sh
 
     - name: Install NCBI BLAST+ (makeblastdb)
       timeout-minutes: 10

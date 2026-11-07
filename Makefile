@@ -178,16 +178,18 @@ uninstall :
 clean :
 	rm -f *.o *.d *~ $(PROG) gmon.out *.gcno *.gcda *.gcov
 	rm -f arch/*/*.o arch/*/*.d arch/*/*.gcno arch/*/*.gcda
+	rm -f arch/*/*/*.o arch/*/*/*.d arch/*/*/*.gcno arch/*/*/*.gcda
 
 distclean : clean
 	rm -f compile_commands.json
 
-# the kernels of every machine, then those of x86-64 only (compiled
-# with -mssse3 or -mavx2, chosen at run time), and the files of the
-# architecture (CPU features, kernel dispatch)
+# the kernels of every machine, then those of x86-64 only (the files
+# of arch/x86_64/SSSE3/ and arch/x86_64/AVX2/, compiled with -mssse3 or
+# -mavx2, chosen at run time), and the files of the architecture (CPU
+# features, kernel dispatch)
 KERNEL_OBJS = search63.o search16.o search16s.o search7.o
 ifeq ($(ARCH),x86_64)
-  KERNEL_OBJS += search7_ssse3.o search7_avx2.o search16_avx2.o
+  KERNEL_OBJS += $(patsubst %.cc,%.o,$(wildcard arch/x86_64/SSSE3/*.cc arch/x86_64/AVX2/*.cc))
 endif
 ARCH_OBJS = $(patsubst %.cc,%.o,$(wildcard arch/$(ARCH)/*.cc))
 
@@ -212,14 +214,14 @@ swipe.o : VERSION
 swipe : swipe.o $(OBJS)
 	$(CXX) $(SWIPE_LDFLAGS) -o $@ $^ $(LIBS)
 
+# the x86-64 kernels, with their instruction set (these rules come
+# before the generic one: GNU make 3.81 takes the first pattern rule
+# that matches)
+arch/x86_64/SSSE3/%.o : arch/x86_64/SSSE3/%.cc $(DEPS)
+	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+arch/x86_64/AVX2/%.o : arch/x86_64/AVX2/%.cc $(DEPS)
+	$(CXX) -mavx2 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
+
 %.o : %.cc $(DEPS)
 	$(CXX) $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ $<
-
-search7_ssse3.o : search7.cc $(DEPS)
-	$(CXX) -mssse3 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -DSWIPE_SSSE3 -c -o $@ search7.cc
-
-search7_avx2.o : search7_avx2.cc $(DEPS)
-	$(CXX) -mavx2 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ search7_avx2.cc
-
-search16_avx2.o : search16_avx2.cc $(DEPS)
-	$(CXX) -mavx2 $(SWIPE_CXXFLAGS) $(DEPFLAGS) -c -o $@ search16_avx2.cc
