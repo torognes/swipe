@@ -82,6 +82,44 @@ jobs:
         bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
 
 
+  cross:
+    # the other machines (ARCH=generic, portable vector operations),
+    # built with the Ubuntu cross-compilers, warnings as errors: unsigned
+    # char (aarch64, ppc64le, riscv64), strict alignment (mips64el,
+    # riscv64). Build only: the test-suite under qemu-user runs locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { name: aarch64,  cxx: aarch64-linux-gnu-g++,       package: g++-aarch64-linux-gnu }
+          - { name: ppc64le,  cxx: powerpc64le-linux-gnu-g++,   package: g++-powerpc64le-linux-gnu }
+          - { name: riscv64,  cxx: riscv64-linux-gnu-g++,       package: g++-riscv64-linux-gnu }
+          - { name: mips64el, cxx: mips64el-linux-gnuabi64-g++, package: g++-mips64el-linux-gnuabi64 }
+
+    name: cross (${{ matrix.target.name }})
+
+    steps:
+    - name: Checkout
+      timeout-minutes: 5
+      uses: actions/checkout@v6
+
+    - name: Install the cross-compiler
+      timeout-minutes: 10
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install ${{ matrix.target.package }}
+        ${{ matrix.target.cxx }} --version
+
+    - name: Build (${{ matrix.target.name }})
+      timeout-minutes: 10
+      run: |
+        make -j "$(nproc)" CXX=${{ matrix.target.cxx }} RELEASE=1 WERROR=1
+        file swipe
+
+
   reproducible:
     # two builds of the same commit, in two directories, are
     # byte-identical: the release recipe of release.yml (static) and
