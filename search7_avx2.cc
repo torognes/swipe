@@ -29,6 +29,7 @@
 // as many channels.
 
 #include "swipe.h"
+#include "search_kernels.h"  // the prototype of the kernel
 #include "intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v256_shuffle_8, ...
 #include "align_cells.h"  // Ops_7_avx2, align_cells(), No_mask, Mask
 #include "view.h"  // View

@@ -167,7 +167,7 @@ distclean : clean
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o blastkar_partial.o hits.o query.o \
 	search63.o search16.o search16s.o search7.o search7_ssse3.o search7_avx2.o search16_avx2.o \
-	arch/x86_64/cpu_features.o
+	arch/x86_64/cpu_features.o arch/x86_64/search_dispatch.o
 
 # Header dependencies are generated alongside each object (*.d
 # files), so that editing any header rebuilds the right objects.

@@ -24,6 +24,7 @@
 */
 
 #include "swipe.h"
+#include "search_kernels.h"  // the prototype of the kernel
 #include "intrinsics_to_functions.h"  // v128_t, v_load, v_store, v_merge_*, v_dup_*, ...
 #include "align_cells.h"  // Ops_7, align_cells(), No_mask, Mask
 #include "view.h"  // View

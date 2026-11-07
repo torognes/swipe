@@ -29,6 +29,7 @@
 // algorithms as search16() and search16s(), twice as many channels.
 
 #include "swipe.h"
+#include "search_kernels.h"  // the prototype of the kernel
 #include "intrinsics_to_functions.h"  // v256_t, v256_load, v256_store, v_merge_*, ...
 #include "align_cells.h"  // Ops_16_avx2, align_cells(), align_cells_single()
 #include "view.h"  // View
@@ -167,7 +168,7 @@ inline auto lane_is_set(unsigned int const mask, std::size_t const c) -> bool
 auto search16_avx2(WORD * * q_start,
                    WORD gap_open_penalty,
                    WORD gap_extend_penalty,
-                   WORD * score_matrix,
+                   WORD const * score_matrix,
                    WORD * dprofile,
                    WORD * hearray,
                    db_thread_s & dbt,
@@ -335,7 +336,7 @@ auto search16_avx2(WORD * * q_start,
 auto search16s_avx2(WORD * * q_start,
                     WORD gap_open_penalty,
                     WORD gap_extend_penalty,
-                    WORD * score_matrix,
+                    WORD const * score_matrix,
                     WORD * dprofile,
                     WORD * hearray,
                     DbThread const * dbta,

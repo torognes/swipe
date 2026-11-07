@@ -24,7 +24,7 @@
 */
 
 #include "search_data.h"
-#include "arch/x86_64/cpu_features.h"  // cpu_features
+#include "arch/search_dispatch.h"  // kernel_vector_bytes, search7_dispatch, search16_dispatch
 #include <algorithm>  // std::copy_n, std::max, std::max_element, std::min, std::transform
 #include <cassert>
 #include <cmath>  // std::floor, std::sqrt
@@ -55,30 +55,29 @@ struct SearchWork
 
 SearchWork search_work;
 
-// the bytes of a symbol's row in the score profile of search7() and
-// search16(): 4 database residues x 16 bytes of lanes
-constexpr std::ptrdiff_t profile_row_bytes = 64;
-// search7_avx2(): 4 database residues x 32 bytes of lanes
-constexpr std::ptrdiff_t profile_row_bytes_avx2 = 128;
+// the database residues of a block of search7() and search16(): a
+// symbol's row in their score profile is one vector per residue
+constexpr std::size_t search_block_residues = 4;
 
 auto search_init(Parameters const & parameters, search_data & data) -> void
 {
   data.dbt = db_thread_create();
-  // the AVX2 kernel (7-bit) and the 16-bit kernel share the profile
-  // buffer, with tables of their own
-  data.dprofile.resize(cpu_features.avx2 ? profile_bytes_avx2 : profile_bytes);
-  long const hearraylen = query_tables_init(parameters, data, profile_row_bytes, data.qtable);
-  if (cpu_features.avx2)
-  {
-    static_cast<void>(query_tables_init(parameters, data, profile_row_bytes_avx2, data.qtable_avx2));
-  }
+  // the 7-bit and the 16-bit kernels share the profile buffer and the
+  // query tables: 4 database residues x 16 bytes of lanes per row (32
+  // bytes with AVX2)
+  auto const kernel_bytes = kernel_vector_bytes();
+  auto const profile_row_bytes = search_block_residues * kernel_bytes;
+  data.dprofile.resize(score_matrix_width * profile_row_bytes);
+  long const hearraylen = query_tables_init(parameters, data,
+                                            static_cast<std::ptrdiff_t>(profile_row_bytes),
+                                            data.qtable);
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
   // at least one row: the kernels memset() the array, and an empty
   // Buffer has no storage (a null data(), for an empty query)
   data.hearray.resize(static_cast<std::size_t>(std::max(hearraylen, 1L)) *
-                      (cpu_features.avx2 ? hearray_row_bytes_avx2 : hearray_row_bytes));
+                      hearray_row_bytes_of(kernel_bytes));
 
   auto listsize = static_cast<std::size_t>(search_work.maxchunksize);
   if ((parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::tblastx))
@@ -275,48 +274,17 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	    
 	// fprintf(out, "Searching seqnos %ld to %ld\n", data.in_list[0], data.in_list[data.in_count-1]);
 
-	if (cpu_features.avx2)
-	{
-	  search7_avx2(data.qtable_avx2[frame_index(qstrand, qframe)].data(),
-		       gapopenextend_7,
-		       gapextend_7,
-		       reinterpret_cast<BYTE const *>(score_matrices.score_7t.data()),
-		       data.dprofile.data(),
-		       data.hearray.data(),
-		       *data.dbt,
-		       static_cast<long>(data.in_count),
-		       data.in_list.data(),
-		       data.scores.data(),
-		       qlen);
-	}
-	else if (cpu_features.ssse3)
-	{
-	  search7_ssse3(qtable,
-			gapopenextend_7,
-			gapextend_7,
-			reinterpret_cast<BYTE const *>(score_matrices.score_7t.data()),
-			data.dprofile.data(),
-			data.hearray.data(),
-			*data.dbt,
-			static_cast<long>(data.in_count),
-			data.in_list.data(),
-			data.scores.data(),
-			qlen);
-	}
-	else
-	{
-	  search7(qtable,
-		  gapopenextend_7,
-		  gapextend_7,
-		  reinterpret_cast<BYTE const *>(score_matrices.score_7.data()),
-		  data.dprofile.data(),
-		  data.hearray.data(),
-		  *data.dbt,
-		  static_cast<long>(data.in_count),
-		  data.in_list.data(),
-		  data.scores.data(),
-		  qlen);
-	}
+	search7_dispatch(qtable,
+			 gapopenextend_7,
+			 gapextend_7,
+			 score_matrices,
+			 data.dprofile.data(),
+			 data.hearray.data(),
+			 *data.dbt,
+			 static_cast<long>(data.in_count),
+			 data.in_list.data(),
+			 data.scores.data(),
+			 qlen);
 
 	data.out_count = 0;
     
@@ -350,38 +318,18 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 	  
 	// the 16-bit penalties are only used when they fit (KI-13:
 	// otherwise no 16-bit result is accepted)
-	if (cpu_features.avx2)
-	{
-	  // the profile rows of 4 x 16 words: the 128 bytes of the
-	  // 7-bit AVX2 tables
-	  search16_avx2(reinterpret_cast<WORD**>(data.qtable_avx2[frame_index(qstrand, qframe)].data()),
-			static_cast<WORD>(parameters.gapopenextend),
-			static_cast<WORD>(parameters.gapextend),
-			reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-			reinterpret_cast<WORD*>(data.dprofile.data()),
-			reinterpret_cast<WORD*>(data.hearray.data()),
-			*data.dbt,
-			static_cast<long>(data.in_count),
-			data.in_list.data(),
-			data.scores.data(),
-			data.bestpos.data(),
-			static_cast<int>(qlen));
-	}
-	else
-	{
-	  search16(reinterpret_cast<WORD**>(qtable),
-		   static_cast<WORD>(parameters.gapopenextend),
-		   static_cast<WORD>(parameters.gapextend),
-		   reinterpret_cast<WORD*>(score_matrices.score_16.data()),
-		   reinterpret_cast<WORD*>(data.dprofile.data()),
-		   reinterpret_cast<WORD*>(data.hearray.data()),
-		   *data.dbt,
-		   static_cast<long>(data.in_count),
-		   data.in_list.data(),
-		   data.scores.data(),
-		   data.bestpos.data(),
-		   static_cast<int>(qlen));
-	}
+	search16_dispatch(reinterpret_cast<WORD**>(qtable),
+			  static_cast<WORD>(parameters.gapopenextend),
+			  static_cast<WORD>(parameters.gapextend),
+			  score_matrices,
+			  reinterpret_cast<WORD*>(data.dprofile.data()),
+			  reinterpret_cast<WORD*>(data.hearray.data()),
+			  *data.dbt,
+			  static_cast<long>(data.in_count),
+			  data.in_list.data(),
+			  data.scores.data(),
+			  data.bestpos.data(),
+			  static_cast<int>(qlen));
     
 	data.out_count = 0;
     
@@ -531,7 +479,7 @@ auto calc_chunks(View<long> const volume_sequences,
 // residue, the row of the score profile (row_bytes apart) that
 // the kernels read; also the query lengths (data.qlen). Returns the
 // longest query length. Shared by search_init() and align_init(),
-// whose profiles have rows of 64 and 16 bytes.
+// whose profiles have rows of 64 and 16 bytes (128 and 32 with AVX2).
 auto query_tables_init(Parameters const & parameters,
 		       search_data & data,
 		       std::ptrdiff_t const row_bytes,
@@ -607,7 +555,7 @@ auto prepare_search(long par) -> void
 
   search_work.maxchunksize = calc_chunks(make_view(search_work.volseqs),
                                          search_work.volchunks.data(),
-                                         {par, static_cast<long>(cpu_features.avx2 ? channels_7_avx2 : channels_7)});
+                                         {par, static_cast<long>(kernel_vector_bytes() / sizeof(BYTE))});
 
   search_work.volnext = next_bin_with_chunks(make_view(search_work.volchunks).first(volcount), search_work.volnext);
 }

@@ -337,96 +337,6 @@ struct DbThreadDelete
 
 using DbThread = std::unique_ptr<db_thread_s, DbThreadDelete>;
 
-auto search7(BYTE * * q_start,
-	     BYTE gap_open_penalty,
-	     BYTE gap_extend_penalty,
-	     BYTE const * score_matrix,
-	     BYTE * dprofile,
-	     BYTE * hearray,
-	     db_thread_s & dbt,
-	     long sequences,
-	     long const * seqnos,
-	     long * scores,
-	     long qlen) -> void;
-
-auto search7_ssse3(BYTE * * q_start,
-		   BYTE gap_open_penalty,
-		   BYTE gap_extend_penalty,
-		   BYTE const * score_matrix,
-		   BYTE * dprofile,
-		   BYTE * hearray,
-		   db_thread_s & dbt,
-		   long sequences,
-		   long const * seqnos,
-		   long * scores,
-		   long qlen) -> void;
-
-auto search7_avx2(BYTE * * q_start,
-		  BYTE gap_open_penalty,
-		  BYTE gap_extend_penalty,
-		  BYTE const * score_matrix,
-		  BYTE * dprofile,
-		  BYTE * hearray,
-		  db_thread_s & dbt,
-		  long sequences,
-		  long const * seqnos,
-		  long * scores,
-		  long qlen) -> void;
-
-auto search16(WORD * * q_start,
-	      WORD gap_open_penalty,
-	      WORD gap_extend_penalty,
-	      WORD * score_matrix,
-	      WORD * dprofile,
-	      WORD * hearray,
-	      db_thread_s & dbt,
-	      long sequences,
-	      long const * seqnos,
-	      long * scores,
-	      long * bestpos,
-	      int qlen) -> void;
-
-auto search16s(WORD * * q_start,
-	       WORD gap_open_penalty,
-	       WORD gap_extend_penalty,
-	       WORD * score_matrix,
-	       WORD * dprofile,
-	       WORD * hearray,
-	       DbThread const * dbta,
-	       long sequences,
-	       long const * seqnos,
-	       long * scores,
-	       long * bestpos,
-	       long * bestq,
-	       int qlen) -> void;
-
-auto search16_avx2(WORD * * q_start,
-		   WORD gap_open_penalty,
-		   WORD gap_extend_penalty,
-		   WORD * score_matrix,
-		   WORD * dprofile,
-		   WORD * hearray,
-		   db_thread_s & dbt,
-		   long sequences,
-		   long const * seqnos,
-		   long * scores,
-		   long * bestpos,
-		   int qlen) -> void;
-
-auto search16s_avx2(WORD * * q_start,
-		    WORD gap_open_penalty,
-		    WORD gap_extend_penalty,
-		    WORD * score_matrix,
-		    WORD * dprofile,
-		    WORD * hearray,
-		    DbThread const * dbta,
-		    long sequences,
-		    long const * seqnos,
-		    long * scores,
-		    long * bestpos,
-		    long * bestq,
-		    int qlen) -> void;
-
 auto fullsw(char const * dseq,
 	    char const * dend,
 	    char const * qseq,
@@ -613,8 +523,12 @@ constexpr std::size_t vector_bytes_avx2 = 32;
 
 // the H/E array of the kernels: per query position, H and E, one
 // vector each
-constexpr std::size_t hearray_row_bytes = 2 * vector_bytes;
-constexpr std::size_t hearray_row_bytes_avx2 = 2 * vector_bytes_avx2;
+constexpr auto hearray_row_bytes_of(std::size_t const bytes) -> std::size_t
+{
+  return 2 * bytes;
+}
+constexpr std::size_t hearray_row_bytes = hearray_row_bytes_of(vector_bytes);
+constexpr std::size_t hearray_row_bytes_avx2 = hearray_row_bytes_of(vector_bytes_avx2);
 
 // the score matrices of the search (matrices.cc): 32 x 32, aligned for
 // the SIMD kernels, in the four score widths of the search stages, and
