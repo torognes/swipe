@@ -47,7 +47,11 @@ auto detect_cpu_features() noexcept -> CpuFeatures
     return {false, false, false};
   }
   bool const sse2 = (edx & bit_SSE2) != 0;
+#ifdef SWIPE_NO_SSSE3
+  bool const ssse3 = false;
+#else
   bool const ssse3 = (ecx & bit_SSSE3) != 0;
+#endif
   // AVX2: the processor (cpuid leaf 7) and the operating system (the
   // 256-bit registers saved on context switches, XCR0): GCC and clang
   // check both (sketch: check that GCC 4.8's libgcc does the XCR0 part)

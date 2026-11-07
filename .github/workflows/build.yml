@@ -29,6 +29,9 @@ jobs:
           - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 }
           # the files of arch/generic/ (any machine but x86-64), on x86-64
           - { name: gcc-generic,  cxx: g++,     recipe: RELEASE=1 WERROR=1 ARCH=generic }
+          # the SSE2 kernels of the processors without SSSE3 (and the
+          # notice of the plain output about it), forced at build time
+          - { name: gcc-sse2,     cxx: g++,     recipe: RELEASE=1 WERROR=1 "CXXFLAGS=-DSWIPE_NO_AVX2 -DSWIPE_NO_SSSE3" }
           # plain char is unsigned on aarch64, ppc64le and riscv64
           - { name: gcc-unsigned-char, cxx: g++, recipe: RELEASE=1 WERROR=1 CXXFLAGS=-funsigned-char }
 
