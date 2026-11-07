@@ -10,6 +10,11 @@
 # that none of these shared functions contains an AVX instruction (VEX
 # encoding: mnemonics starting with v, or ymm registers).
 #
+# The check is meant for release builds. At -O0 (make DEBUG=1) nothing
+# is inlined: every template an AVX2 kernel uses (std::array members,
+# the _GLIBCXX_DEBUG error formatter) gets an out-of-line AVX2 copy,
+# and which copy the linker keeps varies from one linker to another.
+#
 # usage: bash .github/scripts/avx2_isolation.sh [build directory]
 
 set -o errexit -o nounset -o pipefail

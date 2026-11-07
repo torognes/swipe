@@ -45,6 +45,10 @@ jobs:
         ./swipe -h 2>&1 | head -n 1
 
     - name: AVX2 code only in the AVX2 kernels
+      # release builds only: at -O0 nothing is inlined, every template
+      # used by an AVX2 kernel has an out-of-line AVX2 copy, and which
+      # copy the linker keeps varies (the debug binary is never shipped)
+      if: ${{ matrix.build.name != 'gcc-debug' }}
       timeout-minutes: 5
       run: bash .github/scripts/avx2_isolation.sh
 
