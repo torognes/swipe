@@ -27,6 +27,8 @@ jobs:
           - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 WERROR=1 }
           - { name: gcc-debug,    cxx: g++,     recipe: DEBUG=1 }
           - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 }
+          # the files of arch/generic/ (any machine but x86-64), on x86-64
+          - { name: gcc-generic,  cxx: g++,     recipe: RELEASE=1 WERROR=1 ARCH=generic }
 
     name: linux-x86_64 (${{ matrix.build.name }})
 
@@ -48,7 +50,8 @@ jobs:
       # release builds only: at -O0 nothing is inlined, every template
       # used by an AVX2 kernel has an out-of-line AVX2 copy, and which
       # copy the linker keeps varies (the debug binary is never shipped)
-      if: ${{ matrix.build.name != 'gcc-debug' }}
+      # (and builds with AVX2 kernels: not ARCH=generic)
+      if: ${{ matrix.build.name != 'gcc-debug' && matrix.build.name != 'gcc-generic' }}
       timeout-minutes: 5
       run: bash .github/scripts/avx2_isolation.sh
 

@@ -59,6 +59,24 @@ ifeq ($(origin CXX),default)
   CXX=g++
 endif
 
+# The target machine, as vsearch's src/Makefile: ask the compiler, not
+# the host, so that "make CXX=<triple>-g++" is a cross-compilation.
+# ARCH selects the files of arch/$(ARCH)/: x86_64 (run-time choice of
+# the SSE2, SSSE3 and AVX2 kernels), or generic for any other machine
+# (aarch64, ppc64le and riscv64 included, until they have files of
+# their own). "make ARCH=generic" forces the generic files on x86-64
+# (objects are not tagged with ARCH: run "make clean" when switching).
+TRIPLE := $(shell $(CXX) -dumpmachine 2>/dev/null)
+MACHINE := $(firstword $(subst -, ,$(TRIPLE)))
+ifneq (,$(filter x86_64 amd64, $(MACHINE)))
+  ARCH := x86_64
+else
+  ARCH := generic
+endif
+ifeq ($(wildcard arch/$(ARCH)/*.cc),)
+  $(error ARCH=$(ARCH): no such architecture (the folders of arch/))
+endif
+
 # Compiler identity: ask the preprocessor (works for g++, clang++,
 # version-suffixed names, ccache wrappers and cross-compilers)
 IS_CLANG := $(shell $(CXX) -x c++ -E -dM - < /dev/null 2>/dev/null | grep -c '__clang__')
@@ -164,10 +182,18 @@ clean :
 distclean : clean
 	rm -f compile_commands.json
 
+# the kernels of every machine, then those of x86-64 only (compiled
+# with -mssse3 or -mavx2, chosen at run time), and the files of the
+# architecture (CPU features, kernel dispatch)
+KERNEL_OBJS = search63.o search16.o search16s.o search7.o
+ifeq ($(ARCH),x86_64)
+  KERNEL_OBJS += search7_ssse3.o search7_avx2.o search16_avx2.o
+endif
+ARCH_OBJS = $(patsubst %.cc,%.o,$(wildcard arch/$(ARCH)/*.cc))
+
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o blastkar_partial.o hits.o query.o \
-	search63.o search16.o search16s.o search7.o search7_ssse3.o search7_avx2.o search16_avx2.o \
-	arch/x86_64/cpu_features.o arch/x86_64/search_dispatch.o
+	$(KERNEL_OBJS) $(ARCH_OBJS)
 
 # Header dependencies are generated alongside each object (*.d
 # files), so that editing any header rebuilds the right objects.
