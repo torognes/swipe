@@ -24,15 +24,22 @@
 */
 
 #include "arch/search_dispatch.h"
-#include "search_kernels.h"  // search7, search7_rvv, search16, search16s
-#include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes
+#include "search_kernels.h"  // search7, search7_rvv, search7_rvv256, search16, ...
+#include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes, vector_bytes_avx2
 #include <cstddef>  // std::size_t
+#ifdef __riscv_vector
+#include <riscv_vector.h>
+#endif
 
 
-// riscv64: one set of kernels, with 16-byte vectors, as on the other
-// machines (arch/generic/search_dispatch.cc), except the 7-bit kernel:
-// with the V extension, search7_rvv() builds its profile from the
-// transposed score matrix
+// riscv64: with the V extension, the RVV kernels; with 32-byte vectors
+// when VLEN >= 256 (one register holds them: the search7_rvv256(),
+// search16_rvv256() and search16s_rvv256() kernels), with 16-byte
+// vectors otherwise (search7_rvv(), and search16() and search16s()
+// with the RVV cells). Without V (make SWIPE_RISCV_BASELINE=1): the
+// kernels of the other machines (arch/generic/search_dispatch.cc).
+// Build-time test switch: -DSWIPE_NO_RVV256 (the 16-byte kernels
+// whatever VLEN, as -DSWIPE_NO_AVX2 on x86-64).
 
 namespace {
 
@@ -42,12 +49,22 @@ auto matrix_16(ScoreMatrices const & matrices) noexcept -> WORD const *
   return reinterpret_cast<WORD const *>(matrices.score_16.data());
 }
 
+// the 32-byte kernels: VLEN >= 256 (vlenb: VLEN / 8, in bytes)
+auto wide_vectors() noexcept -> bool
+{
+#if defined(__riscv_vector) && not defined(SWIPE_NO_RVV256)
+  return __riscv_vlenb() >= vector_bytes_avx2;
+#else
+  return false;
+#endif
+}
+
 }  // anonymous namespace
 
 
 auto kernel_vector_bytes() noexcept -> std::size_t
 {
-  return vector_bytes;
+  return wide_vectors() ? vector_bytes_avx2 : vector_bytes;
 }
 
 
@@ -64,8 +81,14 @@ auto search7_dispatch(BYTE * * const q_start,
                       long const qlen) -> void
 {
 #ifdef __riscv_vector
-  search7_rvv(q_start, gap_open_penalty, gap_extend_penalty,
-              reinterpret_cast<BYTE const *>(matrices.score_7t.data()),
+  auto const * const transposed = reinterpret_cast<BYTE const *>(matrices.score_7t.data());
+  if (wide_vectors())
+  {
+    search7_rvv256(q_start, gap_open_penalty, gap_extend_penalty, transposed,
+                   dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
+    return;
+  }
+  search7_rvv(q_start, gap_open_penalty, gap_extend_penalty, transposed,
               dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
 #else
   search7(q_start, gap_open_penalty, gap_extend_penalty,
@@ -88,6 +111,14 @@ auto search16_dispatch(WORD * * const q_start,
                        long * const bestpos,
                        int const qlen) -> void
 {
+#ifdef __riscv_vector
+  if (wide_vectors())
+  {
+    search16_rvv256(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
+                    dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
+    return;
+  }
+#endif
   search16(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
            dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
 }
@@ -107,6 +138,14 @@ auto search16s_dispatch(WORD * * const q_start,
                         long * const bestq,
                         int const qlen) -> void
 {
+#ifdef __riscv_vector
+  if (wide_vectors())
+  {
+    search16s_rvv256(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
+                     dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
+    return;
+  }
+#endif
   search16s(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
             dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
 }

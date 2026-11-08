@@ -87,6 +87,47 @@ auto search7_rvv(BYTE * * q_start,
 		 long * scores,
 		 long qlen) -> void;
 
+// riscv64, VLEN >= 256 (arch/riscv64/search7_rvv.cc and
+// search16_rvv256.cc): 32-byte vectors, as the AVX2 kernels
+auto search7_rvv256(BYTE * * q_start,
+		    BYTE gap_open_penalty,
+		    BYTE gap_extend_penalty,
+		    BYTE const * score_matrix,
+		    BYTE * dprofile,
+		    BYTE * hearray,
+		    db_thread_s & dbt,
+		    long sequences,
+		    long const * seqnos,
+		    long * scores,
+		    long qlen) -> void;
+
+auto search16_rvv256(WORD * * q_start,
+		     WORD gap_open_penalty,
+		     WORD gap_extend_penalty,
+		     WORD const * score_matrix,
+		     WORD * dprofile,
+		     WORD * hearray,
+		     db_thread_s & dbt,
+		     long sequences,
+		     long const * seqnos,
+		     long * scores,
+		     long * bestpos,
+		     int qlen) -> void;
+
+auto search16s_rvv256(WORD * * q_start,
+		      WORD gap_open_penalty,
+		      WORD gap_extend_penalty,
+		      WORD const * score_matrix,
+		      WORD * dprofile,
+		      WORD * hearray,
+		      DbThread const * dbta,
+		      long sequences,
+		      long const * seqnos,
+		      long * scores,
+		      long * bestpos,
+		      long * bestq,
+		      int qlen) -> void;
+
 auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,
