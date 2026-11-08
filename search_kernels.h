@@ -73,6 +73,20 @@ auto search7_avx2(BYTE * * q_start,
 		  long * scores,
 		  long qlen) -> void;
 
+// riscv64 with the V extension (arch/riscv64/search7_rvv.cc): the
+// score profile built from the transposed score matrix
+auto search7_rvv(BYTE * * q_start,
+		 BYTE gap_open_penalty,
+		 BYTE gap_extend_penalty,
+		 BYTE const * score_matrix,
+		 BYTE * dprofile,
+		 BYTE * hearray,
+		 db_thread_s & dbt,
+		 long sequences,
+		 long const * seqnos,
+		 long * scores,
+		 long qlen) -> void;
+
 auto search16(WORD * * q_start,
 	      WORD gap_open_penalty,
 	      WORD gap_extend_penalty,

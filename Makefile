@@ -80,8 +80,8 @@ endif
 ifeq ($(ARCH),generic)
   ARCH_DEFINE := -DSWIPE_ARCH_GENERIC
 endif
-# riscv64: the files of arch/generic/, plus the native RVV kernel cells
-# of arch/riscv64/ (as swarm). Built for RVV 1.0 (RVA23 profile); "make
+# riscv64: the native RVV kernels of arch/riscv64/ (as swarm), and the
+# CPU features of arch/generic/. Built for RVV 1.0 (RVA23 profile); "make
 # SWIPE_RISCV_BASELINE=1" builds for plain rv64gc instead: processors
 # without V, or valgrind (3.28 decodes neither RVV nor Zba/Zbb). Same
 # results, much slower.
@@ -213,7 +213,7 @@ ifeq ($(ARCH),x86_64)
 endif
 ARCH_OBJS = $(patsubst %.cc,%.o,$(wildcard arch/$(ARCH)/*.cc))
 ifeq ($(ARCH),riscv64)
-  ARCH_OBJS += $(patsubst %.cc,%.o,$(wildcard arch/generic/*.cc))
+  ARCH_OBJS += arch/generic/cpu_features.o
 endif
 
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
