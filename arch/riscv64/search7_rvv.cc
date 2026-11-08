@@ -58,6 +58,8 @@ constexpr auto block_stride = static_cast<std::ptrdiff_t>(block_bytes);
 // bytes)
 constexpr std::size_t lmul_2 = 2;
 constexpr std::size_t lmul_4 = 4;
+constexpr std::size_t min_register_bytes = 16;  // VLEN >= 128 (V extension)
+static_assert(lmul_4 * min_register_bytes >= depth_7 * channels_7_sse, "LMUL = 4 holds a block");
 
 // The RVV operations of the profile builder, at one register group
 // size (LMUL = 1, 2 or 4)
@@ -150,7 +152,6 @@ inline auto dprofile_build7(BYTE * const dprofile,
   }
   else
   {
-    assert(lmul_4 * register_bytes >= block_bytes);
     dprofile_gather7<Lmul_4, blocks>(dprofile, score_matrix, dseq);
   }
 }
