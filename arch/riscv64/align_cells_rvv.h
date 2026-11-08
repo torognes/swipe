@@ -36,6 +36,9 @@
 
 #include "align_cells.h"  // align_cells(), align_cells_single(), Ops_7, Ops_16, ...
 #include "arch/intrinsics_to_functions.h"  // v128_t
+#include <array>
+#include <cstddef>  // std::size_t
+#include <cstdint>  // std::uint8_t
 
 
 // The masking of a pass: no_mask (nullptr) for the regular kernels
@@ -52,6 +55,25 @@ auto align_rvv_16(v128_t & S, v128_t * hep, v128_t const * const * qp,
 auto align_rvv_16_single(v128_t & S, v128_t * hep, v128_t const * const * qp,
                          v128_t const & gap_open, v128_t const & gap_extend,
                          long ql, v128_t const & Z, v128_t const * mask) -> void;
+
+
+// The cells of the 32-byte kernels (arch/riscv64/search7_rvv.cc,
+// arch/riscv64/search16_rvv256.cc), when VLEN >= 256: 32 lanes of 8
+// bits, or 16 lanes of 16 bits, stored in 32-byte buffers
+constexpr std::size_t v256_bytes = 32;
+using v256_bytes_t = std::array<std::uint8_t, v256_bytes>;
+
+auto align_rvv256_7(v256_bytes_t & S, v256_bytes_t * hep, v256_bytes_t const * const * qp,
+                    v256_bytes_t const & gap_open, v256_bytes_t const & gap_extend,
+                    long ql, v256_bytes_t const & Z, v256_bytes_t const * mask) -> void;
+
+auto align_rvv256_16(v256_bytes_t & S, v256_bytes_t * hep, v256_bytes_t const * const * qp,
+                     v256_bytes_t const & gap_open, v256_bytes_t const & gap_extend,
+                     long ql, v256_bytes_t const & Z, v256_bytes_t const * mask) -> void;
+
+auto align_rvv256_16_single(v256_bytes_t & S, v256_bytes_t * hep, v256_bytes_t const * const * qp,
+                            v256_bytes_t const & gap_open, v256_bytes_t const & gap_extend,
+                            long ql, v256_bytes_t const & Z, v256_bytes_t const * mask) -> void;
 
 
 template <>
