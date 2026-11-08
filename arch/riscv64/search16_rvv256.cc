@@ -222,7 +222,7 @@ inline auto dprofile_build16(WORD * const dprofile,
                              BYTE const * const dseq) -> void
 {
   constexpr std::size_t table_bytes = table_words * sizeof(WORD);
-  if (__riscv_vlenb() >= table_bytes)
+  if (__riscv_vsetvlmax_e8m1() >= table_bytes)
   {
     dprofile_gather16<Lmul16_1, depth>(dprofile, transposed, dseq);
     return;
@@ -247,7 +247,7 @@ auto search16_rvv256(WORD * * const q_start,
                      int const qlen) -> void
 {
   constexpr std::size_t CDEPTH = 4;
-  assert(__riscv_vlenb() >= v256_bytes);
+  assert(__riscv_vsetvlmax_e8m1() >= v256_bytes);
   auto * const hep = reinterpret_cast<v256_bytes_t *>(hearray);
   auto const * const * const qp = reinterpret_cast<v256_bytes_t const * const *>(q_start);
   std::array<BYTE const *, channels> d_begin {{}};
@@ -425,7 +425,7 @@ auto search16s_rvv256(WORD * * const q_start,
                       int const qlen) -> void
 {
   constexpr std::size_t CDEPTH = 1;
-  assert(__riscv_vlenb() >= v256_bytes);
+  assert(__riscv_vsetvlmax_e8m1() >= v256_bytes);
   auto * const hep = reinterpret_cast<v256_bytes_t *>(hearray);
   auto const * const * const qp = reinterpret_cast<v256_bytes_t const * const *>(q_start);
   std::array<BYTE const *, channels> d_begin {{}};

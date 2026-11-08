@@ -139,7 +139,7 @@ inline auto dprofile_build7(BYTE * const dprofile,
                             BYTE const * const dseq) -> void
 {
   static_assert(block_bytes == 64, "four positions of 16 channels");
-  auto const register_bytes = __riscv_vlenb();  // VLEN / 8, at least 16
+  auto const register_bytes = __riscv_vsetvlmax_e8m1();  // VLEN / 8 (vlenb), at least 16
   if (register_bytes >= block_bytes)
   {
     dprofile_gather7<Lmul_1, blocks>(dprofile, score_matrix, dseq);
@@ -200,7 +200,7 @@ auto search7_rvv256(BYTE * * const q_start,
   constexpr std::size_t channels = channels_7_avx2;
   static_assert(channels == v256_bytes, "one byte lane per channel");
   static_assert(channels == 2 * channels_7_sse, "two 16-channel blocks");
-  assert(__riscv_vlenb() >= v256_bytes);
+  assert(__riscv_vsetvlmax_e8m1() >= v256_bytes);
 
   auto * const hep = reinterpret_cast<v256_bytes_t *>(hearray);
   auto const * const * const qp = reinterpret_cast<v256_bytes_t const * const *>(q_start);

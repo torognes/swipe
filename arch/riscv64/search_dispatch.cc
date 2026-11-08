@@ -49,11 +49,12 @@ auto matrix_16(ScoreMatrices const & matrices) noexcept -> WORD const *
   return reinterpret_cast<WORD const *>(matrices.score_16.data());
 }
 
-// the 32-byte kernels: VLEN >= 256 (vlenb: VLEN / 8, in bytes)
+// the 32-byte kernels: VLEN >= 256 (VLEN / 8, the bytes of a
+// register: vsetvlmax at SEW = 8 and LMUL = 1, as vlenb)
 auto wide_vectors() noexcept -> bool
 {
 #if defined(__riscv_vector) && not defined(SWIPE_NO_RVV256)
-  return __riscv_vlenb() >= vector_bytes_avx2;
+  return __riscv_vsetvlmax_e8m1() >= vector_bytes_avx2;
 #else
   return false;
 #endif
