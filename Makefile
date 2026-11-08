@@ -70,6 +70,8 @@ TRIPLE := $(shell $(CXX) -dumpmachine 2>/dev/null)
 MACHINE := $(firstword $(subst -, ,$(TRIPLE)))
 ifneq (,$(filter x86_64 amd64, $(MACHINE)))
   ARCH := x86_64
+else ifeq ($(MACHINE),riscv64)
+  ARCH := riscv64
 else
   ARCH := generic
 endif
@@ -77,6 +79,19 @@ endif
 # (arch/intrinsics_to_functions.h)
 ifeq ($(ARCH),generic)
   ARCH_DEFINE := -DSWIPE_ARCH_GENERIC
+endif
+# riscv64: the files of arch/generic/, plus the native RVV kernel cells
+# of arch/riscv64/ (as swarm). Built for RVV 1.0 (RVA23 profile); "make
+# SWIPE_RISCV_BASELINE=1" builds for plain rv64gc instead: processors
+# without V, or valgrind (3.28 decodes neither RVV nor Zba/Zbb). Same
+# results, much slower.
+ifeq ($(ARCH),riscv64)
+  ARCH_DEFINE := -DSWIPE_ARCH_RISCV64
+  ifdef SWIPE_RISCV_BASELINE
+    ARCH_FLAGS := -march=rv64gc
+  else
+    ARCH_FLAGS := -march=rv64gcv_zba_zbb_zbs
+  endif
 endif
 ifeq ($(wildcard arch/$(ARCH)/*.cc),)
   $(error ARCH=$(ARCH): no such architecture (the folders of arch/))
@@ -132,7 +147,7 @@ endif
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
-SWIPE_CXXFLAGS=-I. $(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
+SWIPE_CXXFLAGS=-I. $(STD) $(COMPILEOPT) $(COMMON) $(ARCH_FLAGS) $(OPTIMIZATION) \
 	$(ARCH_DEFINE) $(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
@@ -197,6 +212,9 @@ ifeq ($(ARCH),x86_64)
   KERNEL_OBJS += $(patsubst %.cc,%.o,$(wildcard arch/x86_64/SSSE3/*.cc arch/x86_64/AVX2/*.cc))
 endif
 ARCH_OBJS = $(patsubst %.cc,%.o,$(wildcard arch/$(ARCH)/*.cc))
+ifeq ($(ARCH),riscv64)
+  ARCH_OBJS += $(patsubst %.cc,%.o,$(wildcard arch/generic/*.cc))
+endif
 
 OBJS = options.o search_threads.o align_threads.o database.o asnparse.o align.o matrices.o \
 	stats.o blastkar_partial.o hits.o query.o \

@@ -235,4 +235,10 @@ inline auto align_cells_single(typename Ops::Vector & S,
   S = score;  // save S
 }
 
+// riscv64 with the V extension: native versions of align_cells() and
+// align_cells_single() (explicit specializations)
+#ifdef SWIPE_ARCH_RISCV64
+#include "arch/riscv64/align_cells_rvv.h"
+#endif
+
 #endif  // SWIPE_ALIGN_CELLS_H
