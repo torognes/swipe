@@ -62,10 +62,11 @@ endif
 # The target machine, as vsearch's src/Makefile: ask the compiler, not
 # the host, so that "make CXX=<triple>-g++" is a cross-compilation.
 # ARCH selects the files of arch/$(ARCH)/: x86_64 (run-time choice of
-# the SSE2, SSSE3 and AVX2 kernels), or generic for any other machine
-# (aarch64, ppc64le and riscv64 included, until they have files of
-# their own). "make ARCH=generic" forces the generic files on x86-64
-# (objects are not tagged with ARCH: run "make clean" when switching).
+# the SSE2, SSSE3 and AVX2 kernels), riscv64 (the RVV kernels), or
+# generic for any other machine (aarch64 and ppc64le included, until
+# they have files of their own). "make ARCH=generic" forces the
+# generic files on x86-64 (objects are not tagged with ARCH: run "make
+# clean" when switching).
 TRIPLE := $(shell $(CXX) -dumpmachine 2>/dev/null)
 MACHINE := $(firstword $(subst -, ,$(TRIPLE)))
 ifneq (,$(filter x86_64 amd64, $(MACHINE)))
