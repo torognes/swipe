@@ -23,17 +23,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # -march=x86-64: the baseline processor, whatever the default
+        # of the runner's compilers (x86-64-v3, AVX2, on Ubuntu 26.04),
+        # so that only the AVX2 and SSSE3 kernels use their instructions
         build:
-          - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 WERROR=1 }
-          - { name: gcc-debug,    cxx: g++,     recipe: DEBUG=1 }
-          - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 }
+          - { name: gcc-release,  cxx: g++,     recipe: RELEASE=1 WERROR=1 CXXFLAGS=-march=x86-64 }
+          - { name: gcc-debug,    cxx: g++,     recipe: DEBUG=1 CXXFLAGS=-march=x86-64 }
+          - { name: clang-release, cxx: clang++, recipe: RELEASE=1 WERROR=1 CXXFLAGS=-march=x86-64 }
           # the files of arch/generic/ (any machine but x86-64), on x86-64
-          - { name: gcc-generic,  cxx: g++,     recipe: RELEASE=1 WERROR=1 ARCH=generic }
+          - { name: gcc-generic,  cxx: g++,     recipe: RELEASE=1 WERROR=1 ARCH=generic CXXFLAGS=-march=x86-64 }
           # the SSE2 kernels of the processors without SSSE3 (and the
           # notice of the plain output about it), forced at build time
-          - { name: gcc-sse2,     cxx: g++,     recipe: RELEASE=1 WERROR=1 "CXXFLAGS=-DSWIPE_NO_AVX2 -DSWIPE_NO_SSSE3" }
+          - { name: gcc-sse2,     cxx: g++,     recipe: RELEASE=1 WERROR=1 "CXXFLAGS=-march=x86-64 -DSWIPE_NO_AVX2 -DSWIPE_NO_SSSE3" }
           # plain char is unsigned on aarch64, ppc64le and riscv64
-          - { name: gcc-unsigned-char, cxx: g++, recipe: RELEASE=1 WERROR=1 CXXFLAGS=-funsigned-char }
+          - { name: gcc-unsigned-char, cxx: g++, recipe: RELEASE=1 WERROR=1 "CXXFLAGS=-march=x86-64 -funsigned-char" }
 
     name: linux-x86_64 (${{ matrix.build.name }})
 
@@ -89,7 +92,7 @@ jobs:
     # warnings as errors: unsigned
     # char (aarch64, ppc64le, riscv64), strict alignment (mips64el,
     # riscv64). Build only: the test-suite under qemu-user runs locally
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.target.runner || 'ubuntu-latest' }}
     timeout-minutes: 20
 
     strategy:
@@ -101,7 +104,8 @@ jobs:
           - { name: riscv64,  cxx: riscv64-linux-gnu-g++,       package: g++-riscv64-linux-gnu }
           # riscv64 without the V extension (generic vectors, rv64gc)
           - { name: riscv64-baseline, cxx: riscv64-linux-gnu-g++, package: g++-riscv64-linux-gnu, make: SWIPE_RISCV_BASELINE=1 }
-          - { name: mips64el, cxx: mips64el-linux-gnuabi64-g++, package: g++-mips64el-linux-gnuabi64 }
+          # Ubuntu 26.04 has no mips64el cross-compiler (nor Debian 13)
+          - { name: mips64el, cxx: mips64el-linux-gnuabi64-g++, package: g++-mips64el-linux-gnuabi64, runner: ubuntu-24.04 }
           # clang, with the libraries and headers of the GCC cross-compilers
           - { name: clang-ppc64le, cxx: "clang++ --target=powerpc64le-linux-gnu", package: g++-powerpc64le-linux-gnu }
           - { name: clang-riscv64, cxx: "clang++ --target=riscv64-linux-gnu",     package: g++-riscv64-linux-gnu }
@@ -142,11 +146,11 @@ jobs:
 
     - name: GCC, static (release assets)
       timeout-minutes: 10
-      run: bash .github/scripts/reproducible.sh RELEASE=1 LDFLAGS=-static
+      run: bash .github/scripts/reproducible.sh RELEASE=1 LDFLAGS=-static CXXFLAGS=-march=x86-64
 
     - name: clang
       timeout-minutes: 10
-      run: bash .github/scripts/reproducible.sh RELEASE=1 CXX=clang++
+      run: bash .github/scripts/reproducible.sh RELEASE=1 CXX=clang++ CXXFLAGS=-march=x86-64
 
 
   docs-and-install:
@@ -194,7 +198,9 @@ jobs:
     # for a BLAST+ with -blastdb_version 4: swipe is built in the
     # container (docker run), and tested on the host. Never use the
     # floating tag gcc:4.8 (schema-1 manifest, refused at pull time).
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04: the docker of Ubuntu 26.04 fails to unpack the
+    # image gcc:4.8.5 ("failed to extract layer", November 2026)
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     strategy:
