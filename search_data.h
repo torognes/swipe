@@ -118,8 +118,12 @@ auto query_tables_init(Parameters const & parameters,
 		       std::ptrdiff_t row_bytes,
 		       std::array<Buffer<BYTE *>, frame_count> & qtables) -> long;
 
+// the length of the longest query strand or frame searched (the
+// longest query length of query_tables_init())
+auto longest_query_frame(Parameters const & parameters) -> long;
+
 // search_threads.cc: the search of a query by parameters.threads threads
-auto prepare_search(long par) -> void;
+auto prepare_search(Parameters const & parameters) -> void;
 auto run_threads(Parameters const & parameters) -> void;
 
 // align_threads.cc: the alignment of the hits of a query

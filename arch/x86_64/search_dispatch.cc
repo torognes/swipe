@@ -27,6 +27,7 @@
 #include "arch/x86_64/cpu_features.h"  // cpu_features
 #include "search_kernels.h"  // search7, search7_ssse3, search7_avx2, ...
 #include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes, vector_bytes_avx2
+#include <cassert>
 #include <cstddef>  // std::size_t
 
 
@@ -45,7 +46,8 @@ auto matrix_16(ScoreMatrices const & matrices) noexcept -> WORD const *
 }  // anonymous namespace
 
 
-auto kernel_vector_bytes() noexcept -> std::size_t
+// whatever the query and the threads
+auto kernel_vector_bytes(long /* longest_query */, long /* threads */) noexcept -> std::size_t
 {
   return cpu_features.avx2 ? vector_bytes_avx2 : vector_bytes;
 }
@@ -61,10 +63,12 @@ auto search7_dispatch(BYTE * * const q_start,
                       long const sequences,
                       long const * const seqnos,
                       long * const scores,
-                      long const qlen) -> void
+                      long const qlen,
+                      std::size_t const kernel_bytes) -> void
 {
-  if (cpu_features.avx2)
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(cpu_features.avx2);
     search7_avx2(q_start, gap_open_penalty, gap_extend_penalty,
                  reinterpret_cast<BYTE const *>(matrices.score_7t.data()),
                  dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
@@ -94,10 +98,12 @@ auto search16_dispatch(WORD * * const q_start,
                        long const * const seqnos,
                        long * const scores,
                        long * const bestpos,
-                       int const qlen) -> void
+                       int const qlen,
+                       std::size_t const kernel_bytes) -> void
 {
-  if (cpu_features.avx2)
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(cpu_features.avx2);
     search16_avx2(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
                   dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
     return;
@@ -119,10 +125,12 @@ auto search16s_dispatch(WORD * * const q_start,
                         long * const scores,
                         long * const bestpos,
                         long * const bestq,
-                        int const qlen) -> void
+                        int const qlen,
+                        std::size_t const kernel_bytes) -> void
 {
-  if (cpu_features.avx2)
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(cpu_features.avx2);
     search16s_avx2(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
                    dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
     return;

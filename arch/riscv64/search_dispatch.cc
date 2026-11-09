@@ -25,7 +25,9 @@
 
 #include "arch/search_dispatch.h"
 #include "search_kernels.h"  // search7, search7_rvv, search7_rvv256, search16, ...
-#include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes, vector_bytes_avx2
+#include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes, vector_bytes_avx2, hearray_row_bytes_avx2
+#include <algorithm>  // std::min
+#include <cassert>
 #include <cstddef>  // std::size_t
 #ifdef __riscv_vector
 #include <riscv_vector.h>
@@ -34,7 +36,8 @@
 
 // riscv64: with the V extension, the RVV kernels; with 32-byte vectors
 // when VLEN >= 256 (one register holds them: the search7_rvv256(),
-// search16_rvv256() and search16s_rvv256() kernels), with 16-byte
+// search16_rvv256() and search16s_rvv256() kernels) and the query is
+// not too long for the cache (kernel_vector_bytes()), with 16-byte
 // vectors otherwise (search7_rvv(), and search16() and search16s()
 // with the RVV cells). Without V (make SWIPE_RISCV_BASELINE=1): the
 // kernels of the other machines (arch/generic/search_dispatch.cc).
@@ -60,12 +63,36 @@ auto wide_vectors() noexcept -> bool
 #endif
 }
 
+// the H/E arrays of the threads in the shared cache: the 32-byte
+// kernels read and write, per query residue, a row of 64 bytes
+// (hearray_row_bytes_avx2), twice the row of the 16-byte kernels. With
+// long queries and several threads, the rows no longer fit in the L2
+// cache and the 32-byte kernels become slower than the 16-byte ones.
+// The constants are those of the SpacemiT K1 (BPI-F3), the only
+// processor with VLEN >= 256 measured so far: a 512 KiB L2 cache per
+// cluster of 4 cores. With 4 threads, the 32-byte kernels are faster
+// for 1792 residues, slower for 2371 (0.95x; 0.62x with 8 threads).
+// Another processor may have other caches: this choice changes the
+// speed, never the results.
+constexpr std::size_t shared_cache_bytes = std::size_t{512} * 1024;
+constexpr long threads_per_cache = 4;
+
+auto rows_fit_in_cache(long const longest_query, long const threads) noexcept -> bool
+{
+  assert(longest_query >= 0);
+  assert(threads >= 1);
+  auto const sharing = static_cast<std::size_t>(std::min(threads, threads_per_cache));
+  return sharing * static_cast<std::size_t>(longest_query) * hearray_row_bytes_avx2 <= shared_cache_bytes;
+}
+
 }  // anonymous namespace
 
 
-auto kernel_vector_bytes() noexcept -> std::size_t
+// the 32-byte kernels when the processor has them (VLEN >= 256) and
+// the H/E rows of the threads fit in the cache
+auto kernel_vector_bytes(long const longest_query, long const threads) noexcept -> std::size_t
 {
-  return wide_vectors() ? vector_bytes_avx2 : vector_bytes;
+  return (wide_vectors() && rows_fit_in_cache(longest_query, threads)) ? vector_bytes_avx2 : vector_bytes;
 }
 
 
@@ -79,19 +106,25 @@ auto search7_dispatch(BYTE * * const q_start,
                       long const sequences,
                       long const * const seqnos,
                       long * const scores,
-                      long const qlen) -> void
+                      long const qlen,
+                      std::size_t const kernel_bytes) -> void
 {
 #ifdef __riscv_vector
   auto const * const transposed = reinterpret_cast<BYTE const *>(matrices.score_7t.data());
-  if (wide_vectors())
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(wide_vectors());
     search7_rvv256(q_start, gap_open_penalty, gap_extend_penalty, transposed,
                    dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
     return;
   }
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search7_rvv(q_start, gap_open_penalty, gap_extend_penalty, transposed,
               dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
 #else
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search7(q_start, gap_open_penalty, gap_extend_penalty,
           reinterpret_cast<BYTE const *>(matrices.score_7.data()),
           dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
@@ -110,16 +143,20 @@ auto search16_dispatch(WORD * * const q_start,
                        long const * const seqnos,
                        long * const scores,
                        long * const bestpos,
-                       int const qlen) -> void
+                       int const qlen,
+                       std::size_t const kernel_bytes) -> void
 {
 #ifdef __riscv_vector
-  if (wide_vectors())
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(wide_vectors());
     search16_rvv256(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
                     dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
     return;
   }
 #endif
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search16(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
            dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
 }
@@ -137,16 +174,20 @@ auto search16s_dispatch(WORD * * const q_start,
                         long * const scores,
                         long * const bestpos,
                         long * const bestq,
-                        int const qlen) -> void
+                        int const qlen,
+                        std::size_t const kernel_bytes) -> void
 {
 #ifdef __riscv_vector
-  if (wide_vectors())
+  if (kernel_bytes == vector_bytes_avx2)
   {
+    assert(wide_vectors());
     search16s_rvv256(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
                      dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
     return;
   }
 #endif
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search16s(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
             dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
 }

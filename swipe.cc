@@ -181,7 +181,7 @@ auto work(Parameters const & parameters) -> void
 
   //  totalhits = 0;
 
-  prepare_search(parameters.threads);
+  prepare_search(parameters);
 
   if (parameters.view==OutputFormat::plain)
   {

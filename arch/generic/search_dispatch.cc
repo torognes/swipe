@@ -26,6 +26,7 @@
 #include "arch/search_dispatch.h"
 #include "search_kernels.h"  // search7, search16, search16s
 #include "swipe.h"  // BYTE, WORD, ScoreMatrices, vector_bytes
+#include <cassert>
 #include <cstddef>  // std::size_t
 
 
@@ -44,7 +45,8 @@ auto matrix_16(ScoreMatrices const & matrices) noexcept -> WORD const *
 }  // anonymous namespace
 
 
-auto kernel_vector_bytes() noexcept -> std::size_t
+// whatever the query and the threads
+auto kernel_vector_bytes(long /* longest_query */, long /* threads */) noexcept -> std::size_t
 {
   return vector_bytes;
 }
@@ -60,8 +62,11 @@ auto search7_dispatch(BYTE * * const q_start,
                       long const sequences,
                       long const * const seqnos,
                       long * const scores,
-                      long const qlen) -> void
+                      long const qlen,
+                      std::size_t const kernel_bytes) -> void
 {
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search7(q_start, gap_open_penalty, gap_extend_penalty,
           reinterpret_cast<BYTE const *>(matrices.score_7.data()),
           dprofile, hearray, dbt, sequences, seqnos, scores, qlen);
@@ -79,8 +84,11 @@ auto search16_dispatch(WORD * * const q_start,
                        long const * const seqnos,
                        long * const scores,
                        long * const bestpos,
-                       int const qlen) -> void
+                       int const qlen,
+                       std::size_t const kernel_bytes) -> void
 {
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search16(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
            dprofile, hearray, dbt, sequences, seqnos, scores, bestpos, qlen);
 }
@@ -98,8 +106,11 @@ auto search16s_dispatch(WORD * * const q_start,
                         long * const scores,
                         long * const bestpos,
                         long * const bestq,
-                        int const qlen) -> void
+                        int const qlen,
+                        std::size_t const kernel_bytes) -> void
 {
+  assert(kernel_bytes == vector_bytes);
+  static_cast<void>(kernel_bytes);  // without assert() (NDEBUG)
   search16s(q_start, gap_open_penalty, gap_extend_penalty, matrix_16(matrices),
             dprofile, hearray, dbta, sequences, seqnos, scores, bestpos, bestq, qlen);
 }
