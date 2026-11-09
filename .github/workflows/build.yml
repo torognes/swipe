@@ -82,7 +82,10 @@ jobs:
       run: |
         bash .github/scripts/fetch_tests.sh "${BRANCH}"
         cd swipe-tests || exit 1
-        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+        # SIGPIPE ignored by the runner: see the macos-x86_64 job
+        perl -e 'print "SIGPIPE: ", ($SIG{PIPE} // "DEFAULT"), "\n"'
+        perl -e '$SIG{PIPE} = "DEFAULT"; exec @ARGV or die "exec: $!"' \
+            bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
 
 
   cross:
@@ -238,7 +241,10 @@ jobs:
       run: |
         bash .github/scripts/fetch_tests.sh "${BRANCH}"
         cd swipe-tests || exit 1
-        bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+        # SIGPIPE ignored by the runner: see the macos-x86_64 job
+        perl -e 'print "SIGPIPE: ", ($SIG{PIPE} // "DEFAULT"), "\n"'
+        perl -e '$SIG{PIPE} = "DEFAULT"; exec @ARGV or die "exec: $!"' \
+            bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
 
 
   macos-x86_64:
@@ -274,4 +280,11 @@ jobs:
       run: |
         bash .github/scripts/fetch_tests.sh "${BRANCH}"
         cd swipe-tests || exit 1
-        time bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
+        # the runner starts the step with SIGPIPE ignored, and bash
+        # cannot restore a signal ignored at its start: swipe, writing
+        # to a pipe closed early (grep -q), then reports a write error
+        # on stderr instead of being stopped silently (the default action).
+        # perl restores the default action before running the tests.
+        perl -e 'print "SIGPIPE: ", ($SIG{PIPE} // "DEFAULT"), "\n"'
+        time perl -e '$SIG{PIPE} = "DEFAULT"; exec @ARGV or die "exec: $!"' \
+            bash ./run_all_tests.sh "${GITHUB_WORKSPACE}/swipe"
