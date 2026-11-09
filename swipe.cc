@@ -200,6 +200,8 @@ auto work(Parameters const & parameters) -> void
  
   clock_stop(parameters, run.ti);
 
+  hits_keep_best(parameters);
+
   //  if (view == 0)
   //    clock_start(&ti);
 

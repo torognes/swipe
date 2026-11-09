@@ -95,6 +95,7 @@ inline auto searches_strand(QueryStrands const strands, long const strand) -> bo
 
 constexpr long default_maxmatches = 250;
 constexpr long default_alignments = 100;
+constexpr long default_show_best = 0;  // 0: all the hits, whatever their score
 constexpr long default_minscore = 1;
 constexpr long default_maxscore = LONG_MAX;
 constexpr char const * default_queryname = "-";
@@ -139,6 +140,7 @@ struct Parameters
   double minexpect = default_minexpect;
   long alignments = default_alignments;
   long maxmatches = default_maxmatches;
+  long show_best = default_show_best;  // hits with one of the N best scores (GitHub #37)
   long minscore = default_minscore;
   long maxscore = default_maxscore;
   long gapopen = default_gapopen;
@@ -563,6 +565,7 @@ struct HitStrands
 
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> Buffer<long>;
+auto hits_keep_best(Parameters const & parameters) -> void;
 auto hits_getcount() -> long;
 auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;

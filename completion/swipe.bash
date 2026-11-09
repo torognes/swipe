@@ -30,7 +30,7 @@ _swipe()
 -a -b -c -C -d -D -e -E -F -G -h -H -i -I -k -K -m -M -N -o -p -q -Q -r \
 -S -u -v -x -z \
 --db --query --matrix --penalty --reward --gapopen --gapextend --strand \
---num_descriptions --num_alignments --min_score --max_score --evalue \
+--num_descriptions --num_alignments --show_best --min_score --max_score --evalue \
 --minevalue --num_threads --outfmt --symtype --taxidlist --taxid \
 --comp_based_stats --query_gencode --db_gencode --filter --subalignments \
 --dump --out --dbsize --show_gis --show_taxid --help --version"
@@ -93,7 +93,7 @@ sound" -- "$cur") )
             ;;
         # Options whose argument is a number -> no value suggestion.
         -a|--num_threads|\
-        -b|--num_alignments|\
+        -b|--num_alignments|--show_best|\
         -c|--min_score|\
         -e|--evalue|\
         -E|--gapextend|\

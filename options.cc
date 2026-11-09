@@ -160,6 +160,13 @@ auto args_show(Parameters const & parameters) -> void
       fprint(out, "Alignments shown:  ");
       fprint_integer(out, parameters.alignments);
       fprint(out, "\n");
+      // only when given: the parameter block is unchanged by default
+      if (parameters.show_best > 0)
+      {
+        fprint(out, "Best scores shown: ");
+        fprint_integer(out, parameters.show_best);
+        fprint(out, "\n");
+      }
       fprint(out, "Show gi's:         ");
       fprint_integer(out, parameters.show_gis);
       fprint(out, "\n");
@@ -223,6 +230,7 @@ auto args_usage(char const * const program_name) -> void
   fprint(out, "  -E, --gapextend=NUM        gap extension penalty (1)\n");
   fprint(out, "  -v, --num_descriptions=NUM sequence descriptions to show (250)\n");
   fprint(out, "  -b, --num_alignments=NUM   sequence alignments to show (100)\n");
+  fprint(out, "      --show_best=NUM        hits with one of the NUM best scores (0=all)\n");
   fprint(out, "  -e, --evalue=REAL          maximum expect value of sequences to show (10.0)\n");
   fprint(out, "  -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)\n");
   fprint(out, "  -c, --min_score=NUM        minimum score of sequences to show (1)\n");
@@ -323,7 +331,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
   opterr = 1;
   constexpr char const * short_options = "d:i:M:q:r:G:E:S:v:b:c:u:e:k:a:m:p:x:C:Q:D:F:K:N:o:z:IHh";
 
-  static std::array<struct option, 32> const long_options {{
+  static std::array<struct option, 33> const long_options {{
     {"db",               required_argument, nullptr, 'd' },
     {"query",            required_argument, nullptr, 'i' },
     {"matrix",           required_argument, nullptr, 'M' },
@@ -334,6 +342,7 @@ auto args_init(int argc, char * const * argv) -> Parameters
     {"strand",           required_argument, nullptr, 'S' },
     {"num_descriptions", required_argument, nullptr, 'v' },
     {"num_alignments",   required_argument, nullptr, 'b' },
+    {"show_best",        required_argument, nullptr, 'B' },
     {"min_score",        required_argument, nullptr, 'c' },
     {"max_score",        required_argument, nullptr, 'u' },
     {"evalue",           required_argument, nullptr, 'e' },
@@ -384,6 +393,12 @@ auto args_init(int argc, char * const * argv) -> Parameters
 	case 'b':
 	  /* alignments */
 	  parameters.alignments = parse_long(optarg, "Illegal number of alignments specified.");
+	  break;
+
+	case 'B':
+	  /* long option only: blastall's -B is the number of concatenated
+	     queries */
+	  parameters.show_best = parse_long(optarg, "Illegal number of best scores specified.");
 	  break;
 	  
 	case 'c':
@@ -705,6 +720,11 @@ auto args_init(int argc, char * const * argv) -> Parameters
   if (parameters.alignments < 0)
   {
     fatal("Illegal number of alignments specified.");
+  }
+
+  if (parameters.show_best < 0)
+  {
+    fatal("Illegal number of best scores specified.");
   }
 
   /* scores below 1 are not alignments ("Internal error in align

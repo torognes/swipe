@@ -228,6 +228,9 @@ struct hits_entry
   long align_d_end;
 };
 
+// no hit has been left out of the list (scores are positive)
+constexpr auto no_hit_left_out = std::numeric_limits<long>::min();
+
 // the best hits of the query, sorted by decreasing score, entered by
 // the search threads (hits_enter(), under the mutex)
 struct HitList
@@ -241,6 +244,8 @@ struct HitList
   long obvious = 0;  // the hits above upper_score_threshold
   long descriptions = 0;  // -v
   long alignments = 0;  // -b
+  // the best score of the hits left out of the full list (--show_best)
+  long best_left_out = no_hit_left_out;
   std::mutex mutex;
 };
 
@@ -296,6 +301,17 @@ auto hits_enter(long seqno, long score, HitStrands const & strands) -> void
   if (score >= hit_list.init_threshold)
   {
     run.totalhits++;
+  }
+
+  // the list is full: this hit, or the last hit of the list, is left
+  // out (the lower score of the two)
+  if ((hit_list.count == hit_list.keep) and
+      (score >= hit_list.init_threshold) and
+      (score <= hit_list.upper_score_threshold))
+  {
+    auto const left_out = (hit_list.keep > 0) ?
+      std::min(score, hit_entry(hit_list.keep - 1).score) : score;
+    hit_list.best_left_out = std::max(hit_list.best_left_out, left_out);
   }
 
   if ((score < hit_list.score_threshold) || (score > hit_list.upper_score_threshold))
@@ -414,6 +430,7 @@ auto hits_init(Parameters const & parameters) -> void
 
   hit_list.obvious = 0;
   hit_list.count = 0;
+  hit_list.best_left_out = no_hit_left_out;
   hit_list.entries.clear();
   hit_list.entries.resize(static_cast<std::size_t>(hit_list.keep));
 
@@ -2268,6 +2285,54 @@ auto hits_show_end(OutputFormat view) -> void
   {
     fprint(out, "</ParalignXML>\n");
   }
+}
+
+// --show_best N (GitHub #37): only the hits with one of the N best
+// scores are kept, before the alignments are computed. The list is
+// sorted by decreasing score. A warning is printed when a hit left out
+// of the full list (-v, -b) has one of these scores
+auto hits_keep_best(Parameters const & parameters) -> void
+{
+  auto const best_scores = parameters.show_best;
+  assert(best_scores >= 0);
+  if (best_scores == 0)
+  {
+    return;
+  }
+
+  long kept = 0;
+  long scores = 0;  // different scores among the hits kept
+  long last_score = 0;
+  for (auto const & hit : make_view(hit_list.entries).first(static_cast<std::size_t>(hit_list.count)))
+  {
+    auto const is_new_score = (kept == 0) or (hit.score != last_score);
+    if (is_new_score and (scores == best_scores))
+    {
+      break;
+    }
+    if (is_new_score)
+    {
+      ++scores;
+      last_score = hit.score;
+    }
+    ++kept;
+  }
+  hit_list.count = static_cast<int>(kept);
+
+  // the hits left out score at most the last hit of the list: they
+  // have one of the best scores if the list holds fewer than N
+  // different scores, or if they tie with the last score kept
+  auto const has_best_score = (hit_list.best_left_out != no_hit_left_out) and
+    ((scores < best_scores) or (hit_list.best_left_out >= last_score));
+  if (not has_best_score)
+  {
+    return;
+  }
+  fprint(stderr, "Warning: query ");
+  fprint(stderr, query_id(query.description));
+  fprint(stderr, ": the list of hits is full, some hits with one of the ");
+  fprint_integer(stderr, best_scores);
+  fprint(stderr, " best scores are not shown (increase --num_descriptions and --num_alignments)\n");
 }
 
 auto hits_show(Parameters const & parameters) -> void

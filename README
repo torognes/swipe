@@ -55,6 +55,7 @@ Usage: ./swipe [OPTIONS]
   -E, --gapextend=NUM        gap extension penalty (1)
   -v, --num_descriptions=NUM sequence descriptions to show (250)
   -b, --num_alignments=NUM   sequence alignments to show (100)
+      --show_best=NUM        hits with one of the NUM best scores (0=all)
   -e, --evalue=REAL          maximum expect value of sequences to show (10.0)
   -k, --minevalue=REAL       minimum expect value of sequences to show (0.0)
   -c, --min_score=NUM        minimum score of sequences to show (1)
