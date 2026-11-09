@@ -1,5 +1,16 @@
 2026-09-28  Frédéric Mahé  <frederic.mahe@cirad.fr>
         * Version 2.2.0 (in development)
+        * AVX2: on x86-64 processors with AVX2, the search and alignment
+          kernels compute 32 database sequences at once (16 with SSE2 and
+          SSSE3), chosen at run time. The results are identical
+        * SWIPE compiles on other 64-bit machines (aarch64, ppc64le,
+          riscv64, mips64el): portable vector code (arch/generic/) gives
+          the same results as x86-64, more slowly
+        * riscv64: kernels for the vector extension (RVV 1.0), 16 or 32
+          database sequences at once depending on the vector length, and
+          on the query length and number of threads; same results. The
+          default build targets rv64gcv_zba_zbb_zbs (part of RVA23);
+          "make SWIPE_RISCV_BASELINE=1" builds for processors without V
         * BLAST databases in format version 5 are accepted, in addition
           to version 4: databases made by current versions of makeblastdb
           (whose default is version 5) and NCBI's pre-formatted databases

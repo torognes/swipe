@@ -27,6 +27,7 @@
 #include "arch/search_dispatch.h"  // kernel_vector_bytes, search16s_dispatch
 #include <algorithm>  // std::generate, std::min
 #include <array>
+#include <cassert>
 #include <cstddef>  // std::ptrdiff_t, std::size_t
 #include <functional>  // std::cref
 #include <iterator>  // std::begin, std::end, std::next
@@ -48,6 +49,7 @@ struct AlignWork
 {
   std::mutex mutex;
   long maxchunksize = 0;  // the largest chunk: the size of the lists
+  std::size_t kernel_bytes = 0;  // the vectors of the query's kernels
   long alignedhits = 0;  // the first hit of the next chunk
   Buffer<long> hits_sorted;  // the hits, in alignment order
   std::size_t volnext = 0;  // the next bin with chunks left
@@ -66,10 +68,11 @@ auto align_init(Parameters const & parameters, search_data & data) -> void
   data.dprofile.resize(profile_bytes);
   // a symbol's row in the score profile of search16s(): 1 database
   // residue x 16 bytes of lanes (32 bytes with AVX2)
-  auto const kernel_bytes = kernel_vector_bytes();
+  auto const kernel_bytes = align_work.kernel_bytes;
   long const hearraylen = query_tables_init(parameters, data,
                                             static_cast<std::ptrdiff_t>(kernel_bytes),
                                             data.qtable);
+  assert(hearraylen == longest_query_frame(parameters));
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
@@ -209,7 +212,8 @@ auto align_chunk(Parameters const & parameters, search_data & data, HitChunk con
 			     data.scores.data(),
 			     data.bestpos.data(),
 			     data.bestq.data(),
-			     static_cast<int>(qlen));
+			     static_cast<int>(qlen),
+			     align_work.kernel_bytes);
 	
 	  for (std::size_t i = 0; i < data.start_count; i++)
 	  {
@@ -254,6 +258,7 @@ auto align_threads_init(Parameters const & parameters) -> void
   auto const hits = hits_getcount();
 
   align_work.hits_sorted = hits_sort();
+  align_work.kernel_bytes = kernel_vector_bytes(longest_query_frame(parameters), parameters.threads);
 
   align_work.volseqs.fill(0);
 
@@ -269,7 +274,7 @@ auto align_threads_init(Parameters const & parameters) -> void
 
   align_work.maxchunksize = calc_chunks(make_view(align_work.volseqs),
                                         align_work.volchunks.data(),
-                                        {parameters.threads, static_cast<long>(kernel_vector_bytes() / sizeof(WORD))});
+                                        {parameters.threads, static_cast<long>(align_work.kernel_bytes / sizeof(WORD))});
 
   align_work.alignedhits = 0;
   align_work.volnext = 0;

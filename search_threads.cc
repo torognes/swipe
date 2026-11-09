@@ -47,6 +47,7 @@ struct SearchWork
   std::mutex mutex;
   std::mutex count_mutex;  // for run.compute7 (swipe.cc)
   long maxchunksize = 0;  // the largest chunk: the size of the lists
+  std::size_t kernel_bytes = 0;  // the vectors of the query's kernels
   std::size_t volnext = 0;  // the next volume with chunks left
   long seqnext = 0;  // the first sequence of the next chunk
   Buffer<long> volchunks;  // the chunks left in each volume
@@ -65,12 +66,13 @@ auto search_init(Parameters const & parameters, search_data & data) -> void
   // the 7-bit and the 16-bit kernels share the profile buffer and the
   // query tables: 4 database residues x 16 bytes of lanes per row (32
   // bytes with AVX2)
-  auto const kernel_bytes = kernel_vector_bytes();
+  auto const kernel_bytes = search_work.kernel_bytes;
   auto const profile_row_bytes = search_block_residues * kernel_bytes;
   data.dprofile.resize(score_matrix_width * profile_row_bytes);
   long const hearraylen = query_tables_init(parameters, data,
                                             static_cast<std::ptrdiff_t>(profile_row_bytes),
                                             data.qtable);
+  assert(hearraylen == longest_query_frame(parameters));
 
   //  fprintf(out, "hearray length = %ld\n", hearraylen);
 
@@ -284,7 +286,8 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 			 static_cast<long>(data.in_count),
 			 data.in_list.data(),
 			 data.scores.data(),
-			 qlen);
+			 qlen,
+			 search_work.kernel_bytes);
 
 	data.out_count = 0;
     
@@ -329,7 +332,8 @@ auto search_chunk(Parameters const & parameters, search_data & data) -> void
 			  data.in_list.data(),
 			  data.scores.data(),
 			  data.bestpos.data(),
-			  static_cast<int>(qlen));
+			  static_cast<int>(qlen),
+			  search_work.kernel_bytes);
     
 	data.out_count = 0;
     
@@ -475,6 +479,39 @@ auto calc_chunks(View<long> const volume_sequences,
   return biggest_chunk_size;
 }
 
+auto longest_query_frame(Parameters const & parameters) -> long
+{
+  long longest = 0;
+  if (parameters.symtype == SymbolType::blastn)
+  {
+    for (long s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
+        longest = std::max(longest, query.nt[strand_index(s)].len);
+      }
+    }
+  }
+  else if ((parameters.symtype == SymbolType::blastp) || (parameters.symtype == SymbolType::tblastn) || (parameters.symtype == SymbolType::sound))
+  {
+    longest = query.aa[0].len;
+  }
+  else if ((parameters.symtype == SymbolType::blastx) || (parameters.symtype == SymbolType::tblastx))
+  {
+    for (long s = 0; s < 2; s++)
+    {
+      if (searches_strand(parameters.querystrands, s))
+      {
+        for (long f = 0; f < 3; f++)
+        {
+          longest = std::max(longest, query.aa[frame_index(s, f)].len);
+        }
+      }
+    }
+  }
+  return longest;
+}
+
 // the query tables of the strands or frames searched: for each query
 // residue, the row of the score profile (row_bytes apart) that
 // the kernels read; also the query lengths (data.qlen). Returns the
@@ -540,8 +577,9 @@ auto query_tables_init(Parameters const & parameters,
   return hearraylen;
 }
 
-auto prepare_search(long par) -> void
+auto prepare_search(Parameters const & parameters) -> void
 {
+  search_work.kernel_bytes = kernel_vector_bytes(longest_query_frame(parameters), parameters.threads);
   search_work.volnext = 0;
   search_work.seqnext = 0;
 
@@ -555,7 +593,7 @@ auto prepare_search(long par) -> void
 
   search_work.maxchunksize = calc_chunks(make_view(search_work.volseqs),
                                          search_work.volchunks.data(),
-                                         {par, static_cast<long>(kernel_vector_bytes() / sizeof(BYTE))});
+                                         {parameters.threads, static_cast<long>(search_work.kernel_bytes / sizeof(BYTE))});
 
   search_work.volnext = next_bin_with_chunks(make_view(search_work.volchunks).first(volcount), search_work.volnext);
 }

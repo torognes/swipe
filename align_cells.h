@@ -62,7 +62,9 @@ struct Ops_16 {
 };
 
 
-#ifdef __AVX2__
+// (not with ARCH=generic, which has no v256_t, even when the compiler
+// targets AVX2 by default: x86-64-v3, as on Ubuntu 26.04)
+#if defined(__AVX2__) && not defined(SWIPE_ARCH_GENERIC)
 // 32 lanes of 7-bit scores (AVX2): the operations of Ops_7
 struct Ops_7_avx2 {
   using Vector = v256_t;
@@ -80,7 +82,7 @@ struct Ops_16_avx2 {
   static auto sub(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_subs_i16(lhs, rhs); }
   static auto max(v256_t const lhs, v256_t const rhs) -> v256_t { return v256_max_i16(lhs, rhs); }
 };
-#endif
+#endif  // __AVX2__ && not SWIPE_ARCH_GENERIC
 
 
 // The masking of a kernel pass, selected by the type of its last
@@ -234,5 +236,11 @@ inline auto align_cells_single(typename Ops::Vector & S,
 
   S = score;  // save S
 }
+
+// riscv64 with the V extension: native versions of align_cells() and
+// align_cells_single() (explicit specializations)
+#ifdef SWIPE_ARCH_RISCV64
+#include "arch/riscv64/align_cells_rvv.h"
+#endif
 
 #endif  // SWIPE_ALIGN_CELLS_H

@@ -6,9 +6,10 @@ Smith-Waterman database searches with inter-sequence SIMD parallelisation
 SWIPE is a tool for performing rapid local alignment searches in amino
 acid or nucleotide sequence databases. It is a highly optimized
 implementation of the Smith-Waterman algorithm, using the SIMD parallel
-computing instructions of common x86-64 CPUs (SSE2 is required, SSSE3
-is faster): the optimal local alignment score is computed for every
-database sequence, with no heuristic.
+computing instructions of x86-64 CPUs (SSE2 is required, SSSE3 and AVX2
+are faster) and of RISC-V CPUs with the vector extension (RVV 1.0):
+the optimal local alignment score is computed for every database
+sequence, with no heuristic.
 
 The method and a performance evaluation are described in detail in the
 following publication:
@@ -77,6 +78,13 @@ zsh completions under `/usr/local` (`make install PREFIX=$HOME/.local`
 to install elsewhere; `DESTDIR` is supported), and `make uninstall`
 removes them. The usual variables `CXX`, `CXXFLAGS`, `CPPFLAGS` and
 `LDFLAGS` are honoured (e.g. `make CXXFLAGS=-O2`).
+
+On x86-64, the kernels are chosen at run time (SSE2, SSSE3 or AVX2).
+On riscv64, SWIPE is built for processors with the vector extension
+(`-march=rv64gcv_zba_zbb_zbs`, part of the RVA23 profile);
+`make SWIPE_RISCV_BASELINE=1` builds for processors without it
+(rv64gc, much slower). Other 64-bit machines (aarch64, ppc64le, ...) use
+portable code: the results are the same, the searches are slower.
 
 
 ## Shell auto-completion

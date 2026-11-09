@@ -42,8 +42,11 @@
 // the bytes of a vector of the kernels chosen for this processor (16
 // or 32): the channels of the 7-bit kernel (a byte each) and of the
 // 16-bit kernels (a word each), and the strides of the score profile
-// rows and of the H/E array that follow from them
-auto kernel_vector_bytes() noexcept -> std::size_t;
+// rows and of the H/E array that follow from them. Chosen once per
+// query, from the longest strand or frame searched and the number of
+// threads (riscv64: see arch/riscv64/search_dispatch.cc), and passed
+// to the kernel dispatch below (kernel_bytes)
+auto kernel_vector_bytes(long longest_query, long threads) noexcept -> std::size_t;
 
 // 7-bit search, 4 database residues per block
 auto search7_dispatch(BYTE * * q_start,
@@ -56,7 +59,8 @@ auto search7_dispatch(BYTE * * q_start,
                       long sequences,
                       long const * seqnos,
                       long * scores,
-                      long qlen) -> void;
+                      long qlen,
+                      std::size_t kernel_bytes) -> void;
 
 // 16-bit search, 4 database residues per block, with the alignment end
 auto search16_dispatch(WORD * * q_start,
@@ -70,7 +74,8 @@ auto search16_dispatch(WORD * * q_start,
                        long const * seqnos,
                        long * scores,
                        long * bestpos,
-                       int qlen) -> void;
+                       int qlen,
+                       std::size_t kernel_bytes) -> void;
 
 // 16-bit search, 1 database residue per block, with the alignment end
 // on both sequences (the alignment threads)
@@ -86,6 +91,7 @@ auto search16s_dispatch(WORD * * q_start,
                         long * scores,
                         long * bestpos,
                         long * bestq,
-                        int qlen) -> void;
+                        int qlen,
+                        std::size_t kernel_bytes) -> void;
 
 #endif  // SWIPE_ARCH_SEARCH_DISPATCH_H

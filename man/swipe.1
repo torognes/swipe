@@ -53,7 +53,13 @@ Smith-Waterman algorithm: the optimal local alignment score is
 computed for every database sequence, with no heuristic.
 Speed comes from inter-sequence parallelisation: the SIMD
 instructions of the processor compute the alignment scores of up to
-16 database sequences at once (SSE2 is required; SSSE3 is faster).
+32 database sequences at once.
+On x86-64, 16 with SSE2 (required) or SSSE3 (faster), and 32 with
+AVX2.
+On riscv64 with the vector extension (RVV 1.0), 16, or 32 when the
+vector registers have 256 bits or more.
+On other machines, portable code computes the same scores, more
+slowly.
 Scores are first computed with 7-bit saturated arithmetic, and the
 sequences whose score overflows are searched again with 16-bit,
 then 63-bit arithmetic, so that every score is exact.

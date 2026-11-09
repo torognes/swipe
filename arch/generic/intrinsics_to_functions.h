@@ -152,12 +152,12 @@ inline auto greater_u8(v128_t const lhs, v128_t const rhs) -> v128_t
 
 inline auto greater_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
 {
-  return reinterpret_cast<i16x8>(lhs > rhs);
+  return lhs > rhs;
 }
 
 inline auto equal_i16(i16x8 const lhs, i16x8 const rhs) -> i16x8
 {
-  return reinterpret_cast<i16x8>(lhs == rhs);
+  return lhs == rhs;
 }
 
 #endif
