@@ -253,6 +253,28 @@ lines is set by
 .BR \-b ,
 not by
 .BR \-v .
+.TP
+.BI \-\-show_best\fB\~ "positive integer or zero"
+report only the hits that have one of the best raw scores: with 1,
+the hits that tie with the best hit; with 2, these hits and the hits
+with the second best score; and so on (default is 0: all the hits).
+The hits are still limited by
+.B \-v
+and
+.BR \-b ,
+and are found among the best hits kept during the search, as many as
+the larger of
+.B \-v
+and
+.BR \-b :
+when some hits with one of the best scores do not fit, a warning is
+written to the standard error, and
+.B \-v
+and
+.B \-b
+should be increased.
+Only the hits reported are aligned.
+This option has no short form.
 .\" ----------------------------------------------------------------------------
 .SS Output options
 .TP 9

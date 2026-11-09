@@ -28,6 +28,7 @@ _swipe() {
         '(-E --gapextend)'{-E,--gapextend}'[gap extension penalty]:penalty:' \
         '(-v --num_descriptions)'{-v,--num_descriptions}'[sequence descriptions to show]:number:' \
         '(-b --num_alignments)'{-b,--num_alignments}'[sequence alignments to show]:number:' \
+        '--show_best[show only hits with one of the N best scores]:number:' \
         '(-e --evalue)'{-e,--evalue}'[maximum expect value of sequences to show]:evalue:' \
         '(-k --minevalue)'{-k,--minevalue}'[minimum expect value of sequences to show]:evalue:' \
         '(-c --min_score)'{-c,--min_score}'[minimum raw score of sequences to show]:score:' \

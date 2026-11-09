@@ -22,6 +22,13 @@
           mpiswipe
         * New option --version: shows the version and the reference, and
           exits with status 0
+        * New option --show_best=NUM: only the hits with one of the NUM
+          best raw scores are reported and aligned, e.g. all the hits that
+          tie with the best hit with --show_best 1 (GitHub #37, from
+          GitHub #38 by Kristian Davidsen). The hits are still limited by
+          -v and -b; a warning is written to stderr when hits with one of
+          these scores do not fit in the list of hits. The default, 0,
+          reports all the hits, as before
         * README: the BLAST option -K (--subalignments) is documented as
           accepted and ignored (as it always was)
         * New manual page, man/swipe.1 (GitHub #15), and bash and zsh
