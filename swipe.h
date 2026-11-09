@@ -565,6 +565,7 @@ struct HitStrands
 
 auto hits_enter(long seqno, long score, HitStrands const & strands) -> void;
 auto hits_sort() -> Buffer<long>;
+auto hits_keep_best(Parameters const & parameters) -> void;
 auto hits_getcount() -> long;
 auto hits_align(Parameters const & parameters, db_thread_s & t, long i) -> void;
 auto hits_show_begin(OutputFormat view) -> void;
