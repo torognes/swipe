@@ -132,7 +132,10 @@ endif
 # User variables (CXXFLAGS, CPPFLAGS, LDFLAGS, and LINKFLAGS, kept
 # for compatibility) are appended after the flags above, so they can
 # override them (e.g. make CXXFLAGS=-O2).
-SWIPE_CXXFLAGS=-I. $(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
+# -iquote, not -I: the headers of swipe are included with quotes, and
+# the file VERSION must not stand for the standard header <version>
+# (libc++, on case-insensitive file systems: macOS).
+SWIPE_CXXFLAGS=-iquote . $(STD) $(COMPILEOPT) $(COMMON) $(OPTIMIZATION) \
 	$(ARCH_DEFINE) $(VERSION_DEFINE) $(CPPFLAGS) $(CXXFLAGS)
 SWIPE_LDFLAGS=$(COMMON) $(LINKOPT) $(LDFLAGS) $(LINKFLAGS)
 
