@@ -5,8 +5,8 @@ authors:
   given-names: "Torbjørn"
   orcid: "https://orcid.org/0000-0002-9329-9974"
 title: "SWIPE: Smith-Waterman database searches with inter-sequence SIMD parallelisation"
-version: 2.1.2
-date-released: 2026-09-27
+version: 2.2.0
+date-released: 2026-11-11
 url: "https://github.com/torognes/swipe"
 preferred-citation:
   type: article

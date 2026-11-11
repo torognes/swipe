@@ -1,5 +1,5 @@
-2026-09-28  Frédéric Mahé  <frederic.mahe@cirad.fr>
-        * Version 2.2.0 (in development)
+2026-11-11  Frédéric Mahé  <frederic.mahe@cirad.fr>
+        * Version 2.2.0
         * AVX2: on x86-64 processors with AVX2, the search and alignment
           kernels compute 32 database sequences at once (16 with SSE2 and
           SSSE3), chosen at run time. The results are identical
