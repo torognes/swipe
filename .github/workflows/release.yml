@@ -98,7 +98,7 @@ jobs:
           echo "::error::the binary is not statically linked" >&2
           exit 1
         }
-        # swipe -h exits with status 1 (KI-2, fixed in 2.2.0)
+        # swipe -h exits with status 0 since 2.2.0 (KI-2)
         banner=$(./swipe -h 2>&1 | head -n 1 || true)
         echo "banner: ${banner}"
         test "${banner}" = "SWIPE ${VERSION}" || {
